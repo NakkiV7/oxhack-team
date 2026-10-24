@@ -4,7 +4,9 @@ cd "$(dirname "$0")/.."
 mkdir -p Native/Vendor
 fetch() {
   local name="$1" hash="$2" archive="Native/Vendor/$1.zip"
-  if [[ ! -d "Native/Vendor/$name.xcframework" ]]; then
+  local directory="$name"
+  [[ "$name" != MediaPipeTaskGraphs ]] || directory=MediaPipeTaskGraphs_library
+  if [[ ! -d "Native/Vendor/$directory.xcframework" ]]; then
     curl -fL --retry 2 "https://dl.google.com/cpdc/20261013-213039/$name-1.1.1.xcframework.zip" -o "$archive"
     echo "$hash  $archive" | shasum -a 256 -c -
     unzip -qo "$archive" -d Native/Vendor

@@ -16,6 +16,23 @@ import Testing
     #expect(session.sets.isEmpty)
 }
 
+@Test func watchWaitsForFreshStateBeforeAllowingControls() {
+    var session = TrainingSession()
+    session.start(at: 0)
+    let now = Date()
+    var state = CompanionState()
+    let first = CompanionSnapshot(session: session, sentAt: now)
+    state.receive(first, now: now)
+    #expect(state.snapshot?.phase == .active)
+    #expect(state.command(.pause, now: now)?.generation == session.generation)
+    #expect(state.command(.resume, now: now) == nil)
+    session.pause(at: 1)
+    state.receive(.init(session: session, sentAt: now.addingTimeInterval(2)), now: now.addingTimeInterval(2))
+    state.receive(first, now: now.addingTimeInterval(3))
+    #expect(state.snapshot?.phase == .paused)
+    #expect(state.command(.resume, now: now.addingTimeInterval(20)) == nil)
+}
+
 @Test func snapshotRoundTripsAndExpiresInsteadOfShowingOldLiveCounts() throws {
     var session = TrainingSession()
     session.start(at: 0)

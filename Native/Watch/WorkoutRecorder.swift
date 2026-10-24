@@ -1,0 +1,96 @@
+import HealthKit
+import CoreMotion
+
+@MainActor
+final class WorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBuilderDelegate {
+    var onHeart: ((SensorReading) -> Void)?
+    var onMotion: ((SensorReading, SensorReading) -> Void)?
+    var onStatus: ((String) -> Void)?
+    var onRecording: ((Bool) -> Void)?
+    private let health = HKHealthStore()
+    private let motion = CMMotionManager()
+    private let motionQueue = OperationQueue()
+    private var workout: HKWorkoutSession?
+    private var builder: HKLiveWorkoutBuilder?
+    private var generation = UUID()
+    private var lastMotion = Date.distantPast
+
+    func start() {
+        #if targetEnvironment(simulator)
+        onStatus?("Heart rate needs Apple Watch."); onRecording?(false)
+        #else
+        guard workout == nil, HKHealthStore.isHealthDataAvailable() else { onStatus?("Health data unavailable"); onRecording?(false); return }
+        let token = UUID(); generation = token
+        health.requestAuthorization(toShare: [.workoutType()], read: [HKQuantityType(.heartRate)]) { [weak self] success, error in
+            Task { @MainActor in
+                guard let self, self.generation == token else { return }
+                guard success, error == nil, self.health.authorizationStatus(for: .workoutType()) == .sharingAuthorized else {
+                    self.onStatus?("Workout permission wasn’t granted."); self.onRecording?(false); return
+                }
+                self.begin()
+            }
+        }
+        #endif
+    }
+    private func begin() {
+        do {
+            let config = HKWorkoutConfiguration()
+            config.activityType = .traditionalStrengthTraining; config.locationType = .indoor
+            let session = try HKWorkoutSession(healthStore: health, configuration: config)
+            let builder = session.associatedWorkoutBuilder()
+            builder.dataSource = HKLiveWorkoutDataSource(healthStore: health, workoutConfiguration: config)
+            session.delegate = self; builder.delegate = self
+            self.workout = session; self.builder = builder
+            let date = Date(); session.startActivity(with: date)
+            builder.beginCollection(withStart: date) { [weak self] success, _ in
+                Task { @MainActor in self?.onStatus?(success ? "Workout recording" : "Couldn’t collect workout data.") }
+            }
+            startMotion()
+        } catch { onStatus?("Couldn’t start a workout."); onRecording?(false) }
+    }
+    private func startMotion() {
+        guard motion.isDeviceMotionAvailable else { return }
+        motion.deviceMotionUpdateInterval = 0.1
+        motionQueue.maxConcurrentOperationCount = 1
+        motion.startDeviceMotionUpdates(to: motionQueue) { [weak self] data, _ in
+            guard let data else { return }
+            let acceleration = data.userAcceleration, rotation = data.rotationRate
+            let magnitude = sqrt(acceleration.x * acceleration.x + acceleration.y * acceleration.y + acceleration.z * acceleration.z)
+            let angularSpeed = sqrt(rotation.x * rotation.x + rotation.y * rotation.y + rotation.z * rotation.z)
+            Task { @MainActor in
+                guard let self, self.workout != nil, Date().timeIntervalSince(self.lastMotion) >= 1 else { return }
+                self.lastMotion = Date()
+                self.onMotion?(.init(value: magnitude), .init(value: angularSpeed))
+            }
+        }
+    }
+    func pause() { workout?.pause(); motion.stopDeviceMotionUpdates() }
+    func resume() { guard workout?.state == .paused else { return }; workout?.resume(); startMotion() }
+    func end() {
+        generation = UUID(); motion.stopDeviceMotionUpdates()
+        guard let workout, let builder else { return }
+        self.workout = nil; self.builder = nil; workout.end()
+        onStatus?("Ending workout…"); onRecording?(false)
+        builder.endCollection(withEnd: Date()) { [weak self] success, _ in
+            guard success else {
+                builder.discardWorkout()
+                Task { @MainActor in self?.onStatus?("Couldn’t save workout.") }; return
+            }
+            builder.finishWorkout { workout, error in
+                Task { @MainActor in self?.onStatus?(workout != nil && error == nil ? "Workout saved" : "Couldn’t save workout.") }
+            }
+        }
+    }
+    nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState, from fromState: HKWorkoutSessionState, date: Date) {}
+    nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {
+        Task { @MainActor in self.onStatus?("Workout interrupted."); self.end() }
+    }
+    nonisolated func workoutBuilderDidCollectEvent(_ workoutBuilder: HKLiveWorkoutBuilder) {}
+    nonisolated func workoutBuilder(_ workoutBuilder: HKLiveWorkoutBuilder, didCollectDataOf collectedTypes: Set<HKSampleType>) {
+        let type = HKQuantityType(.heartRate)
+        guard collectedTypes.contains(type), let stats = workoutBuilder.statistics(for: type),
+              let value = stats.mostRecentQuantity()?.doubleValue(for: HKUnit.count().unitDivided(by: .minute())),
+              let date = stats.mostRecentQuantityDateInterval()?.end else { return }
+        Task { @MainActor in self.onHeart?(.init(value: value, date: date)) }
+    }
+}

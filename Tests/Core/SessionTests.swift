@@ -2,6 +2,17 @@ import Foundation
 import Testing
 @testable import SpottrCore
 
+@Test func canStartWithPushupsAndThenSwitchToSquats() {
+    var session = TrainingSession(firstExercise: .pushup)
+    session.start(at: 0)
+    #expect(session.exercise == .pushup)
+    for index in 0..<3 {
+        session.endSet(at: Double(index + 1))
+        session.nextSet(at: Double(index + 2))
+    }
+    #expect(session.exercise == .squat)
+}
+
 @Test func pauseDiscardsPartialRepAndExcludesPausedTime() {
     var session = TrainingSession()
     session.start(at: 10)

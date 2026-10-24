@@ -1,5 +1,27 @@
 import Foundation
 
+public struct CompanionState: Sendable {
+    public private(set) var snapshot: CompanionSnapshot?
+    public init() {}
+    public mutating func receive(_ value: CompanionSnapshot, now: Date = Date()) {
+        guard value.isFresh(at: now), value.sentAt > (snapshot?.sentAt ?? .distantPast) else { return }
+        snapshot = value
+    }
+    public func command(_ action: CompanionCommand.Action, now: Date = Date()) -> CompanionCommand? {
+        guard let snapshot, snapshot.isFresh(at: now) else { return nil }
+        let allowed: Bool
+        switch action {
+        case .pause: allowed = snapshot.phase == .active
+        case .resume: allowed = snapshot.phase == .paused
+        case .endSet: allowed = snapshot.phase == .active || snapshot.phase == .paused
+        case .nextSet: allowed = snapshot.phase == .rest
+        case .finish: allowed = snapshot.phase != .idle && snapshot.phase != .finished
+        }
+        guard allowed else { return nil }
+        return .init(sessionID: snapshot.sessionID, generation: snapshot.generation, action: action)
+    }
+}
+
 public struct CompanionCommand: Codable, Sendable {
     public enum Action: String, Codable, Sendable { case pause, resume, endSet, nextSet, finish }
     public let sessionID: UUID

@@ -31,6 +31,18 @@ public struct SessionRecord: Codable, Identifiable, Equatable, Sendable {
     public let id: UUID
     public let date: Date
     public let sets: [SetRecord]
+    public let telemetry: [WatchTelemetry]
+    public init(id: UUID, date: Date, sets: [SetRecord], telemetry: [WatchTelemetry] = []) {
+        self.id = id; self.date = date; self.sets = sets; self.telemetry = telemetry
+    }
+    private enum CodingKeys: String, CodingKey { case id, date, sets, telemetry }
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        date = try values.decode(Date.self, forKey: .date)
+        sets = try values.decode([SetRecord].self, forKey: .sets)
+        telemetry = try values.decodeIfPresent([WatchTelemetry].self, forKey: .telemetry) ?? []
+    }
     public var reps: Int { sets.reduce(0) { $0 + $1.reps } }
     public var activeSeconds: Double { sets.reduce(0) { $0 + $1.activeSeconds } }
 }
@@ -41,6 +53,7 @@ public struct TrainingSession: Sendable {
     public private(set) var generation = UUID()
     public private(set) var phase: SessionPhase = .idle
     public private(set) var sets: [SetRecord] = []
+    public private(set) var telemetry: [WatchTelemetry] = []
     public private(set) var counter = RepCounter(exercise: .squat)
     public var exercise: Exercise { counter.exercise }
     public var setNumber: Int { sets.count % 3 + 1 }
@@ -48,8 +61,20 @@ public struct TrainingSession: Sendable {
     private var activeStarted: Double?
     private var accumulated = 0.0
     private var source: InputSource = .camera
-    public init() {}
-    public var record: SessionRecord { .init(id: id, date: date, sets: sets) }
+    private let firstExercise: Exercise
+    public init(firstExercise: Exercise = .squat) {
+        self.firstExercise = firstExercise
+        counter = RepCounter(exercise: firstExercise)
+    }
+    public var record: SessionRecord { .init(id: id, date: date, sets: sets, telemetry: telemetry) }
+    public mutating func receiveTelemetry(_ sample: WatchTelemetry, now: Date = Date()) {
+        guard [.active, .paused, .rest].contains(phase), sample.sessionID == id else { return }
+        let age = now.timeIntervalSince(sample.sentAt)
+        guard age >= -2, age <= 12, sample.sentAt > (telemetry.last?.sentAt ?? .distantPast) else { return }
+        let readings = [sample.heartRate, sample.accelerationG, sample.rotationRadiansPerSecond].compactMap { $0 }
+        guard readings.allSatisfy({ $0.value.isFinite && $0.value >= 0 && $0.date.timeIntervalSince1970.isFinite }) else { return }
+        telemetry = Array((telemetry + [sample]).suffix(7200))
+    }
     public mutating func feedback(reserve: Int?, reason: StopReason) {
         guard phase == .rest, !sets.isEmpty else { return }
         sets[sets.count - 1].reserve = reserve.flatMap { (0...3).contains($0) ? $0 : nil }
@@ -58,7 +83,7 @@ public struct TrainingSession: Sendable {
     public mutating func nextSet(at time: Double) {
         guard phase == .rest else { return }
         guard sets.count < 6, sets.last?.reason != .discomfort else { phase = .finished; return }
-        counter = RepCounter(exercise: sets.count < 3 ? .squat : .pushup)
+        counter = RepCounter(exercise: sets.count < 3 ? firstExercise : (firstExercise == .squat ? .pushup : .squat))
         accumulated = 0; activeStarted = time; phase = .active; generation = UUID(); cue = .ready
         source = .camera
     }

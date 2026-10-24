@@ -1,0 +1,843 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		002EC16A1AC70B102A750D5F /* VisionWorker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AAFE48E900D69B652DD5B70 /* VisionWorker.swift */; };
+		05F117622E6FEC5CE7D01205 /* CompanionLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9E46001FA4649131ED128DE /* CompanionLink.swift */; };
+		0963777B8D649FED6B95E1B9 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 711662D93D19CF50E14E9882 /* Foundation.framework */; };
+		1017C0FCC814A24ED2DFC34C /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AF6A8FBDFDB9F3DE195DF74E /* CoreVideo.framework */; };
+		112BC01B7CD24F35C4F649EA /* SpottrWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 53C58807081D2C71F4C46A41 /* SpottrWatch.app */; };
+		15565E74772C58B5738B9F02 /* SpottrApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5A315294846B6C4088D1B6F /* SpottrApp.swift */; };
+		15C6ABDD6A91731165FAD427 /* MediaPipe-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = C8BF5238EE6917306DC0AF5F /* MediaPipe-LICENSE.txt */; };
+		191F66359898DAEAE41E63D9 /* Companion.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD3989CA1B335E9D264085D7 /* Companion.swift */; };
+		1A6422CD82DFD12C4F41A15C /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 47DE2D0C09D8FDB560F78CB4 /* Foundation.framework */; };
+		22959DCA4E9AA424FFF46EE9 /* PoseGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 725B1F2088488CC464A20A25 /* PoseGeometry.swift */; };
+		27B9CA3F1A805F697AB06FAD /* Telemetry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 016E5A3855F08685E4E9B436 /* Telemetry.swift */; };
+		31529AD067FEA97FD062196F /* pose_landmarker_lite.task in Resources */ = {isa = PBXBuildFile; fileRef = DF4203C520AE0B250644806D /* pose_landmarker_lite.task */; };
+		4EA6E9C9072988D46292FFE9 /* RepCounter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CC1ACE761AFD11964E4BC6D /* RepCounter.swift */; };
+		5E587477C026713610074E64 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 711662D93D19CF50E14E9882 /* Foundation.framework */; };
+		6114BB649D37339200B49867 /* VisionLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C74FDB7680D0CCCD3BDB082 /* VisionLifecycleTests.swift */; };
+		61BA74FBBB2EF4FBCF9A00A5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 401105473E689E4B03D6ACC0 /* Assets.xcassets */; };
+		67E67998FC9CF97EF7E33059 /* SpottrWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAD8C89C68FD0B8E2E0175A5 /* SpottrWatchApp.swift */; };
+		6811E60C18BF1ED380103A35 /* TrainingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFE45D9C7FF1A08020E556DD /* TrainingSession.swift */; };
+		6998A38F880503D14C4762E7 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 711662D93D19CF50E14E9882 /* Foundation.framework */; };
+		6B1C1BFB7B1618197F0A0807 /* CompanionLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 404981BE4B43B49A863D1DAC /* CompanionLink.swift */; };
+		6E584611587EFB92020B388C /* HomeViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13665F0C45709B4FA3A7AAD1 /* HomeViews.swift */; };
+		77B99E5CE7C7331B799FF8F2 /* Telemetry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A7F37F968A2B85A4496E89 /* Telemetry.swift */; };
+		7CF197C287A7436FCEECF78B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CD508447161F3AC6DAB0379B /* Assets.xcassets */; };
+		85E31CD1AB64B642B86B16BE /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DA19F04190B8E92BE665B3C6 /* AudioToolbox.framework */; };
+		86BE1B3DE58F1809C354705B /* SessionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58CDD8A4AEEFD1D2ECE0055E /* SessionViews.swift */; };
+		885F59151E14EB163C16AAF3 /* SpottrFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AEEBB35A9B2693177AF5557 /* SpottrFlowTests.swift */; };
+		899907162EDBAE4500F89CB7 /* TrainingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F05DEF5D91F52151E4911556 /* TrainingSession.swift */; };
+		928CD7961479892847759571 /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 61715CD1397042E8759EAB32 /* Accelerate.framework */; };
+		9C1533130BE0B8E44B97E023 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7FC77763C1D04E337B7D4F67 /* AVFoundation.framework */; };
+		9D623B6B7E3981EC44677853 /* HistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC2D37B8C34132C98ECFC939 /* HistoryStore.swift */; };
+		9E7809B247E79D42B3E7A3CB /* WatchStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D02E02D9C4BCC2A72D18888F /* WatchStore.swift */; };
+		9FB873CEAC24A48A2205EFB4 /* HistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEE359448801EECDF1FCBB65 /* HistoryStore.swift */; };
+		A46DCD4BA40DDDC9175D0EDD /* Companion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5260170AC870F23AA44DA95D /* Companion.swift */; };
+		A66C86F38130AC9253DB4776 /* PoseGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43E5ED30B5B5712F7AB6BF1E /* PoseGeometry.swift */; };
+		AF35BDAEFD3680D66D731A88 /* MediaPipeTasksVision.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 43710BB424F765C4222D6CA8 /* MediaPipeTasksVision.xcframework */; };
+		B0D26B5CC14F556DB9E71553 /* pose.jpg in Resources */ = {isa = PBXBuildFile; fileRef = C6B51ACFD8F6C915CA7A10C4 /* pose.jpg */; };
+		B8CEB964E6F717EFE3EEE6D7 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ACE849667DF6736AEC893B31 /* QuartzCore.framework */; };
+		BD1F4D5436125984C7F4BF91 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B55203AA6902390242072E99 /* CoreGraphics.framework */; };
+		C3C90457400760EF9DC0D1C0 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 180085D43697739A10413686 /* Components.swift */; };
+		C5ADEC71D7D1824C452799C1 /* MediaPipeTasksCommon.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = FAEA67A2B46397504009B6FE /* MediaPipeTasksCommon.xcframework */; };
+		C5DC0BE46C679AD121028110 /* CoreImage.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6D111BD2596DF10BC7CA1547 /* CoreImage.framework */; };
+		CC435FD7173CF37D158B94B4 /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BEC767E16C1E2D48471DF109 /* CoreMedia.framework */; };
+		CF6386A3A480E7D4161A8690 /* blank.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 1753F4F30F1C1610E3106704 /* blank.mp4 */; };
+		D01E01FD8A822CBCB8296633 /* Exercise.swift in Sources */ = {isa = PBXBuildFile; fileRef = 757B674F7EB1A2316BFEEC63 /* Exercise.swift */; };
+		D2967F3A016B31EECF93B617 /* RepCounter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE3FB025A9F4E4C0A95C5D53 /* RepCounter.swift */; };
+		DC699363D706B159AB3359E3 /* TrainingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68DB2ABD82A617123C655792 /* TrainingStore.swift */; };
+		E0E7C2ED512DD44C19107C0D /* PoseDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4640B7324F625983AC2ACFEA /* PoseDetector.swift */; };
+		E174D5A6F959C506456F2469 /* VideoTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 888B8F2FA7F4C7D4ABFBE356 /* VideoTests.swift */; };
+		E61466D9326BB23FE43BE53A /* PoseDetectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F72FDFF90216F19203F7CD97 /* PoseDetectorTests.swift */; };
+		F015BDA93AA1263BDCFFA72A /* WorkoutRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F0A486EE1ECA0DFFB79B503 /* WorkoutRecorder.swift */; };
+		F20E768F58C4F9FEF234E0C6 /* Exercise.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21683D37889699B230DD4717 /* Exercise.swift */; };
+		F5F32E80A44FA0AF6D181C7D /* MediaPipeTaskGraphs_library.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = BA9CF86A3CD59C65C5EA25E8 /* MediaPipeTaskGraphs_library.xcframework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		14042B9F9235677D940A0D57 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 38831494188913ED9C90DB34 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0593A2BFBAABEDDDE531164F;
+			remoteInfo = Spottr;
+		};
+		25E65C696A1F02FB8D366082 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 38831494188913ED9C90DB34 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0593A2BFBAABEDDDE531164F;
+			remoteInfo = Spottr;
+		};
+		C5E47C754705E8689829CE2E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 38831494188913ED9C90DB34 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3F0CAEE370A76E842CFEE59D;
+			remoteInfo = SpottrWatch;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		01CFA5171C947C73F7F065A5 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				112BC01B7CD24F35C4F649EA /* SpottrWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		016E5A3855F08685E4E9B436 /* Telemetry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Telemetry.swift; path = Shared/Core/Telemetry.swift; sourceTree = "<group>"; };
+		13665F0C45709B4FA3A7AAD1 /* HomeViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HomeViews.swift; path = Native/iOS/HomeViews.swift; sourceTree = "<group>"; };
+		1753F4F30F1C1610E3106704 /* blank.mp4 */ = {isa = PBXFileReference; includeInIndex = 1; name = blank.mp4; path = Tests/iOS/Resources/blank.mp4; sourceTree = "<group>"; };
+		180085D43697739A10413686 /* Components.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Components.swift; path = Native/iOS/Components.swift; sourceTree = "<group>"; };
+		21683D37889699B230DD4717 /* Exercise.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Exercise.swift; path = Shared/Core/Exercise.swift; sourceTree = "<group>"; };
+		2C74FDB7680D0CCCD3BDB082 /* VisionLifecycleTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VisionLifecycleTests.swift; path = Tests/iOS/VisionLifecycleTests.swift; sourceTree = "<group>"; };
+		31A7F37F968A2B85A4496E89 /* Telemetry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Telemetry.swift; path = Shared/Core/Telemetry.swift; sourceTree = "<group>"; };
+		3AEEBB35A9B2693177AF5557 /* SpottrFlowTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SpottrFlowTests.swift; path = Tests/UI/SpottrFlowTests.swift; sourceTree = "<group>"; };
+		3F0A486EE1ECA0DFFB79B503 /* WorkoutRecorder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WorkoutRecorder.swift; path = Native/Watch/WorkoutRecorder.swift; sourceTree = "<group>"; };
+		401105473E689E4B03D6ACC0 /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = Native/Watch/Assets.xcassets; sourceTree = "<group>"; };
+		404981BE4B43B49A863D1DAC /* CompanionLink.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CompanionLink.swift; path = Shared/Apple/CompanionLink.swift; sourceTree = "<group>"; };
+		43710BB424F765C4222D6CA8 /* MediaPipeTasksVision.xcframework */ = {isa = PBXFileReference; includeInIndex = 1; name = MediaPipeTasksVision.xcframework; path = Native/Vendor/MediaPipeTasksVision.xcframework; sourceTree = "<group>"; };
+		43E5ED30B5B5712F7AB6BF1E /* PoseGeometry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PoseGeometry.swift; path = Shared/Core/PoseGeometry.swift; sourceTree = "<group>"; };
+		4640B7324F625983AC2ACFEA /* PoseDetector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PoseDetector.swift; path = Native/iOS/PoseDetector.swift; sourceTree = "<group>"; };
+		47DE2D0C09D8FDB560F78CB4 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		5260170AC870F23AA44DA95D /* Companion.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Companion.swift; path = Shared/Core/Companion.swift; sourceTree = "<group>"; };
+		53C58807081D2C71F4C46A41 /* SpottrWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SpottrWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		58CDD8A4AEEFD1D2ECE0055E /* SessionViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SessionViews.swift; path = Native/iOS/SessionViews.swift; sourceTree = "<group>"; };
+		5CC1ACE761AFD11964E4BC6D /* RepCounter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RepCounter.swift; path = Shared/Core/RepCounter.swift; sourceTree = "<group>"; };
+		61715CD1397042E8759EAB32 /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Accelerate.framework; sourceTree = DEVELOPER_DIR; };
+		68DB2ABD82A617123C655792 /* TrainingStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TrainingStore.swift; path = Native/iOS/TrainingStore.swift; sourceTree = "<group>"; };
+		6D111BD2596DF10BC7CA1547 /* CoreImage.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreImage.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/CoreImage.framework; sourceTree = DEVELOPER_DIR; };
+		711662D93D19CF50E14E9882 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		725B1F2088488CC464A20A25 /* PoseGeometry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PoseGeometry.swift; path = Shared/Core/PoseGeometry.swift; sourceTree = "<group>"; };
+		757B674F7EB1A2316BFEEC63 /* Exercise.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Exercise.swift; path = Shared/Core/Exercise.swift; sourceTree = "<group>"; };
+		7AAFE48E900D69B652DD5B70 /* VisionWorker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VisionWorker.swift; path = Native/iOS/VisionWorker.swift; sourceTree = "<group>"; };
+		7FC77763C1D04E337B7D4F67 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/AVFoundation.framework; sourceTree = DEVELOPER_DIR; };
+		83EE4E151132D312B149E3F7 /* Spottr.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Spottr.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		888B8F2FA7F4C7D4ABFBE356 /* VideoTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VideoTests.swift; path = Tests/iOS/VideoTests.swift; sourceTree = "<group>"; };
+		A5A315294846B6C4088D1B6F /* SpottrApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SpottrApp.swift; path = Native/iOS/SpottrApp.swift; sourceTree = "<group>"; };
+		ACE849667DF6736AEC893B31 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/QuartzCore.framework; sourceTree = DEVELOPER_DIR; };
+		AEE359448801EECDF1FCBB65 /* HistoryStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HistoryStore.swift; path = Shared/Core/HistoryStore.swift; sourceTree = "<group>"; };
+		AF6A8FBDFDB9F3DE195DF74E /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/CoreVideo.framework; sourceTree = DEVELOPER_DIR; };
+		B55203AA6902390242072E99 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/CoreGraphics.framework; sourceTree = DEVELOPER_DIR; };
+		BA9CF86A3CD59C65C5EA25E8 /* MediaPipeTaskGraphs_library.xcframework */ = {isa = PBXFileReference; includeInIndex = 1; name = MediaPipeTaskGraphs_library.xcframework; path = Native/Vendor/MediaPipeTaskGraphs_library.xcframework; sourceTree = "<group>"; };
+		BEC767E16C1E2D48471DF109 /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMedia.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/CoreMedia.framework; sourceTree = DEVELOPER_DIR; };
+		BFE45D9C7FF1A08020E556DD /* TrainingSession.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TrainingSession.swift; path = Shared/Core/TrainingSession.swift; sourceTree = "<group>"; };
+		C6B51ACFD8F6C915CA7A10C4 /* pose.jpg */ = {isa = PBXFileReference; includeInIndex = 1; name = pose.jpg; path = Tests/iOS/Resources/pose.jpg; sourceTree = "<group>"; };
+		C8BF5238EE6917306DC0AF5F /* MediaPipe-LICENSE.txt */ = {isa = PBXFileReference; includeInIndex = 1; name = "MediaPipe-LICENSE.txt"; path = "Native/Resources/MediaPipe-LICENSE.txt"; sourceTree = "<group>"; };
+		CC2D37B8C34132C98ECFC939 /* HistoryStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HistoryStore.swift; path = Shared/Core/HistoryStore.swift; sourceTree = "<group>"; };
+		CD3989CA1B335E9D264085D7 /* Companion.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Companion.swift; path = Shared/Core/Companion.swift; sourceTree = "<group>"; };
+		CD508447161F3AC6DAB0379B /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = Native/Resources/Assets.xcassets; sourceTree = "<group>"; };
+		CE3FB025A9F4E4C0A95C5D53 /* RepCounter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RepCounter.swift; path = Shared/Core/RepCounter.swift; sourceTree = "<group>"; };
+		D02E02D9C4BCC2A72D18888F /* WatchStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WatchStore.swift; path = Native/Watch/WatchStore.swift; sourceTree = "<group>"; };
+		D9E46001FA4649131ED128DE /* CompanionLink.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CompanionLink.swift; path = Shared/Apple/CompanionLink.swift; sourceTree = "<group>"; };
+		DA19F04190B8E92BE665B3C6 /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/AudioToolbox.framework; sourceTree = DEVELOPER_DIR; };
+		DAD8C89C68FD0B8E2E0175A5 /* SpottrWatchApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SpottrWatchApp.swift; path = Native/Watch/SpottrWatchApp.swift; sourceTree = "<group>"; };
+		DE720E97FC8EF53D32D89C22 /* SpottrUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpottrUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		DF4203C520AE0B250644806D /* pose_landmarker_lite.task */ = {isa = PBXFileReference; includeInIndex = 1; name = pose_landmarker_lite.task; path = Native/Resources/pose_landmarker_lite.task; sourceTree = "<group>"; };
+		F05DEF5D91F52151E4911556 /* TrainingSession.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TrainingSession.swift; path = Shared/Core/TrainingSession.swift; sourceTree = "<group>"; };
+		F0F202D689313484F2B69BB5 /* SpottrTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpottrTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F72FDFF90216F19203F7CD97 /* PoseDetectorTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PoseDetectorTests.swift; path = Tests/iOS/PoseDetectorTests.swift; sourceTree = "<group>"; };
+		FAEA67A2B46397504009B6FE /* MediaPipeTasksCommon.xcframework */ = {isa = PBXFileReference; includeInIndex = 1; name = MediaPipeTasksCommon.xcframework; path = Native/Vendor/MediaPipeTasksCommon.xcframework; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		8DC85787580ECC9E430E82E3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0963777B8D649FED6B95E1B9 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		92ACEC704C77BB562CF6A07C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5E587477C026713610074E64 /* Foundation.framework in Frameworks */,
+				F5F32E80A44FA0AF6D181C7D /* MediaPipeTaskGraphs_library.xcframework in Frameworks */,
+				C5ADEC71D7D1824C452799C1 /* MediaPipeTasksCommon.xcframework in Frameworks */,
+				AF35BDAEFD3680D66D731A88 /* MediaPipeTasksVision.xcframework in Frameworks */,
+				928CD7961479892847759571 /* Accelerate.framework in Frameworks */,
+				9C1533130BE0B8E44B97E023 /* AVFoundation.framework in Frameworks */,
+				CC435FD7173CF37D158B94B4 /* CoreMedia.framework in Frameworks */,
+				85E31CD1AB64B642B86B16BE /* AudioToolbox.framework in Frameworks */,
+				BD1F4D5436125984C7F4BF91 /* CoreGraphics.framework in Frameworks */,
+				C5DC0BE46C679AD121028110 /* CoreImage.framework in Frameworks */,
+				1017C0FCC814A24ED2DFC34C /* CoreVideo.framework in Frameworks */,
+				B8CEB964E6F717EFE3EEE6D7 /* QuartzCore.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E68922ABED0C1C22DE13B8D7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1A6422CD82DFD12C4F41A15C /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F46769E3607CFBD02396C216 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6998A38F880503D14C4762E7 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		277843B13B43A2BBDE110D0A /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				83EE4E151132D312B149E3F7 /* Spottr.app */,
+				53C58807081D2C71F4C46A41 /* SpottrWatch.app */,
+				F0F202D689313484F2B69BB5 /* SpottrTests.xctest */,
+				DE720E97FC8EF53D32D89C22 /* SpottrUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		393B20BE9E54732F99F47898 /* watchOS */ = {
+			isa = PBXGroup;
+			children = (
+				47DE2D0C09D8FDB560F78CB4 /* Foundation.framework */,
+			);
+			name = watchOS;
+			sourceTree = "<group>";
+		};
+		627BB47654E6882186740312 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				A19D36A35945A0488957592E /* iOS */,
+				393B20BE9E54732F99F47898 /* watchOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		8C21BAA25A3C672DA620FBC2 = {
+			isa = PBXGroup;
+			children = (
+				277843B13B43A2BBDE110D0A /* Products */,
+				627BB47654E6882186740312 /* Frameworks */,
+				180085D43697739A10413686 /* Components.swift */,
+				13665F0C45709B4FA3A7AAD1 /* HomeViews.swift */,
+				4640B7324F625983AC2ACFEA /* PoseDetector.swift */,
+				58CDD8A4AEEFD1D2ECE0055E /* SessionViews.swift */,
+				A5A315294846B6C4088D1B6F /* SpottrApp.swift */,
+				68DB2ABD82A617123C655792 /* TrainingStore.swift */,
+				7AAFE48E900D69B652DD5B70 /* VisionWorker.swift */,
+				D9E46001FA4649131ED128DE /* CompanionLink.swift */,
+				CD3989CA1B335E9D264085D7 /* Companion.swift */,
+				757B674F7EB1A2316BFEEC63 /* Exercise.swift */,
+				CC2D37B8C34132C98ECFC939 /* HistoryStore.swift */,
+				725B1F2088488CC464A20A25 /* PoseGeometry.swift */,
+				CE3FB025A9F4E4C0A95C5D53 /* RepCounter.swift */,
+				016E5A3855F08685E4E9B436 /* Telemetry.swift */,
+				BFE45D9C7FF1A08020E556DD /* TrainingSession.swift */,
+				DAD8C89C68FD0B8E2E0175A5 /* SpottrWatchApp.swift */,
+				D02E02D9C4BCC2A72D18888F /* WatchStore.swift */,
+				3F0A486EE1ECA0DFFB79B503 /* WorkoutRecorder.swift */,
+				404981BE4B43B49A863D1DAC /* CompanionLink.swift */,
+				5260170AC870F23AA44DA95D /* Companion.swift */,
+				21683D37889699B230DD4717 /* Exercise.swift */,
+				AEE359448801EECDF1FCBB65 /* HistoryStore.swift */,
+				43E5ED30B5B5712F7AB6BF1E /* PoseGeometry.swift */,
+				5CC1ACE761AFD11964E4BC6D /* RepCounter.swift */,
+				31A7F37F968A2B85A4496E89 /* Telemetry.swift */,
+				F05DEF5D91F52151E4911556 /* TrainingSession.swift */,
+				F72FDFF90216F19203F7CD97 /* PoseDetectorTests.swift */,
+				888B8F2FA7F4C7D4ABFBE356 /* VideoTests.swift */,
+				2C74FDB7680D0CCCD3BDB082 /* VisionLifecycleTests.swift */,
+				3AEEBB35A9B2693177AF5557 /* SpottrFlowTests.swift */,
+				DF4203C520AE0B250644806D /* pose_landmarker_lite.task */,
+				C8BF5238EE6917306DC0AF5F /* MediaPipe-LICENSE.txt */,
+				CD508447161F3AC6DAB0379B /* Assets.xcassets */,
+				401105473E689E4B03D6ACC0 /* Assets.xcassets */,
+				C6B51ACFD8F6C915CA7A10C4 /* pose.jpg */,
+				1753F4F30F1C1610E3106704 /* blank.mp4 */,
+				BA9CF86A3CD59C65C5EA25E8 /* MediaPipeTaskGraphs_library.xcframework */,
+				FAEA67A2B46397504009B6FE /* MediaPipeTasksCommon.xcframework */,
+				43710BB424F765C4222D6CA8 /* MediaPipeTasksVision.xcframework */,
+			);
+			sourceTree = "<group>";
+		};
+		A19D36A35945A0488957592E /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				711662D93D19CF50E14E9882 /* Foundation.framework */,
+				61715CD1397042E8759EAB32 /* Accelerate.framework */,
+				7FC77763C1D04E337B7D4F67 /* AVFoundation.framework */,
+				BEC767E16C1E2D48471DF109 /* CoreMedia.framework */,
+				DA19F04190B8E92BE665B3C6 /* AudioToolbox.framework */,
+				B55203AA6902390242072E99 /* CoreGraphics.framework */,
+				6D111BD2596DF10BC7CA1547 /* CoreImage.framework */,
+				AF6A8FBDFDB9F3DE195DF74E /* CoreVideo.framework */,
+				ACE849667DF6736AEC893B31 /* QuartzCore.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0593A2BFBAABEDDDE531164F /* Spottr */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4D70E814C4E25C6686D1B80C /* Build configuration list for PBXNativeTarget "Spottr" */;
+			buildPhases = (
+				89DBB2E475CF4188EFD08B5A /* Sources */,
+				92ACEC704C77BB562CF6A07C /* Frameworks */,
+				ED29A84EAFC0CDEB361D4414 /* Resources */,
+				01CFA5171C947C73F7F065A5 /* Embed Watch Content */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7EE539CBE243572BB2C7C780 /* PBXTargetDependency */,
+			);
+			name = Spottr;
+			productName = Spottr;
+			productReference = 83EE4E151132D312B149E3F7 /* Spottr.app */;
+			productType = "com.apple.product-type.application";
+		};
+		3F0CAEE370A76E842CFEE59D /* SpottrWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8AC1A55794061B3F050D58B3 /* Build configuration list for PBXNativeTarget "SpottrWatch" */;
+			buildPhases = (
+				B062DAD309FCAEBE86D60239 /* Sources */,
+				E68922ABED0C1C22DE13B8D7 /* Frameworks */,
+				5CB2C35E180BB8F28D4EEEE5 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SpottrWatch;
+			productName = SpottrWatch;
+			productReference = 53C58807081D2C71F4C46A41 /* SpottrWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
+		5DC96C8838F5E2AD1F69E006 /* SpottrUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D3649AC9719536B64E5A5963 /* Build configuration list for PBXNativeTarget "SpottrUITests" */;
+			buildPhases = (
+				56DC696B6AB1AB9BA0140377 /* Sources */,
+				8DC85787580ECC9E430E82E3 /* Frameworks */,
+				717472320FE36C1304255193 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E195CE4A11475E256FD6BF5C /* PBXTargetDependency */,
+			);
+			name = SpottrUITests;
+			productName = SpottrUITests;
+			productReference = DE720E97FC8EF53D32D89C22 /* SpottrUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		672DA3D201E0A3A254173DF2 /* SpottrTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B2D86D57E8FCBE20AAF11029 /* Build configuration list for PBXNativeTarget "SpottrTests" */;
+			buildPhases = (
+				3A630865AC3F06AC54E999E3 /* Sources */,
+				F46769E3607CFBD02396C216 /* Frameworks */,
+				4853B3E213B6454D24BF2CB3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A36D16CF65FD0801A1E26147 /* PBXTargetDependency */,
+			);
+			name = SpottrTests;
+			productName = SpottrTests;
+			productReference = F0F202D689313484F2B69BB5 /* SpottrTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		38831494188913ED9C90DB34 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 2700;
+			};
+			buildConfigurationList = 98768089387A836A18000564 /* Build configuration list for PBXProject "Spottr" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 8C21BAA25A3C672DA620FBC2;
+			minimizedProjectReferenceProxies = 0;
+			preferredProjectObjectVersion = 100;
+			productRefGroup = 277843B13B43A2BBDE110D0A /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				0593A2BFBAABEDDDE531164F /* Spottr */,
+				3F0CAEE370A76E842CFEE59D /* SpottrWatch */,
+				672DA3D201E0A3A254173DF2 /* SpottrTests */,
+				5DC96C8838F5E2AD1F69E006 /* SpottrUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		4853B3E213B6454D24BF2CB3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B0D26B5CC14F556DB9E71553 /* pose.jpg in Resources */,
+				CF6386A3A480E7D4161A8690 /* blank.mp4 in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5CB2C35E180BB8F28D4EEEE5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				61BA74FBBB2EF4FBCF9A00A5 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		717472320FE36C1304255193 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		ED29A84EAFC0CDEB361D4414 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				31529AD067FEA97FD062196F /* pose_landmarker_lite.task in Resources */,
+				15C6ABDD6A91731165FAD427 /* MediaPipe-LICENSE.txt in Resources */,
+				7CF197C287A7436FCEECF78B /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		3A630865AC3F06AC54E999E3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E61466D9326BB23FE43BE53A /* PoseDetectorTests.swift in Sources */,
+				E174D5A6F959C506456F2469 /* VideoTests.swift in Sources */,
+				6114BB649D37339200B49867 /* VisionLifecycleTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		56DC696B6AB1AB9BA0140377 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				885F59151E14EB163C16AAF3 /* SpottrFlowTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		89DBB2E475CF4188EFD08B5A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C3C90457400760EF9DC0D1C0 /* Components.swift in Sources */,
+				6E584611587EFB92020B388C /* HomeViews.swift in Sources */,
+				E0E7C2ED512DD44C19107C0D /* PoseDetector.swift in Sources */,
+				86BE1B3DE58F1809C354705B /* SessionViews.swift in Sources */,
+				15565E74772C58B5738B9F02 /* SpottrApp.swift in Sources */,
+				DC699363D706B159AB3359E3 /* TrainingStore.swift in Sources */,
+				002EC16A1AC70B102A750D5F /* VisionWorker.swift in Sources */,
+				05F117622E6FEC5CE7D01205 /* CompanionLink.swift in Sources */,
+				191F66359898DAEAE41E63D9 /* Companion.swift in Sources */,
+				D01E01FD8A822CBCB8296633 /* Exercise.swift in Sources */,
+				9D623B6B7E3981EC44677853 /* HistoryStore.swift in Sources */,
+				22959DCA4E9AA424FFF46EE9 /* PoseGeometry.swift in Sources */,
+				D2967F3A016B31EECF93B617 /* RepCounter.swift in Sources */,
+				27B9CA3F1A805F697AB06FAD /* Telemetry.swift in Sources */,
+				6811E60C18BF1ED380103A35 /* TrainingSession.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B062DAD309FCAEBE86D60239 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				67E67998FC9CF97EF7E33059 /* SpottrWatchApp.swift in Sources */,
+				9E7809B247E79D42B3E7A3CB /* WatchStore.swift in Sources */,
+				F015BDA93AA1263BDCFFA72A /* WorkoutRecorder.swift in Sources */,
+				6B1C1BFB7B1618197F0A0807 /* CompanionLink.swift in Sources */,
+				A46DCD4BA40DDDC9175D0EDD /* Companion.swift in Sources */,
+				F20E768F58C4F9FEF234E0C6 /* Exercise.swift in Sources */,
+				9FB873CEAC24A48A2205EFB4 /* HistoryStore.swift in Sources */,
+				A66C86F38130AC9253DB4776 /* PoseGeometry.swift in Sources */,
+				4EA6E9C9072988D46292FFE9 /* RepCounter.swift in Sources */,
+				77B99E5CE7C7331B799FF8F2 /* Telemetry.swift in Sources */,
+				899907162EDBAE4500F89CB7 /* TrainingSession.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		7EE539CBE243572BB2C7C780 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = SpottrWatch;
+			target = 3F0CAEE370A76E842CFEE59D /* SpottrWatch */;
+			targetProxy = C5E47C754705E8689829CE2E /* PBXContainerItemProxy */;
+		};
+		A36D16CF65FD0801A1E26147 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = Spottr;
+			target = 0593A2BFBAABEDDDE531164F /* Spottr */;
+			targetProxy = 14042B9F9235677D940A0D57 /* PBXContainerItemProxy */;
+		};
+		E195CE4A11475E256FD6BF5C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = Spottr;
+			target = 0593A2BFBAABEDDDE531164F /* Spottr */;
+			targetProxy = 25E65C696A1F02FB8D366082 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		09DC6091F00639D93F321432 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Native/iOS/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-all_load",
+					"-lc++",
+					"-lsqlite3",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.omarchoudhry.spottr;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		21983B62963464EF774B1383 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.omarchoudhry.spottruitests;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TEST_TARGET_NAME = Spottr;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		3D748541BC23A9E3A2F1C0A8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.omarchoudhry.spottrtests;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Spottr.app/Spottr";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		4294A43F3B6E8C98EF4389A6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		60D50F96B932EA6D72B13449 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Native/Watch/SpottrWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Native/Watch/Info.plist;
+				PRODUCT_BUNDLE_IDENTIFIER = com.omarchoudhry.spottr.watchkitapp;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
+		66D78CA79D999E667DC4E9C3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Native/iOS/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-all_load",
+					"-lc++",
+					"-lsqlite3",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.omarchoudhry.spottr;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		9711F2E0DE9A3163B74A85A6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.omarchoudhry.spottruitests;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TEST_TARGET_NAME = Spottr;
+			};
+			name = Debug;
+		};
+		B9ECEA020F896DEF86C0CC01 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Native/Watch/SpottrWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Native/Watch/Info.plist;
+				PRODUCT_BUNDLE_IDENTIFIER = com.omarchoudhry.spottr.watchkitapp;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		BEB596CA4ED48823AC23C285 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		FE5426B5E5944D20C8765C9F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.omarchoudhry.spottrtests;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Spottr.app/Spottr";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4D70E814C4E25C6686D1B80C /* Build configuration list for PBXNativeTarget "Spottr" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				66D78CA79D999E667DC4E9C3 /* Release */,
+				09DC6091F00639D93F321432 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8AC1A55794061B3F050D58B3 /* Build configuration list for PBXNativeTarget "SpottrWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				60D50F96B932EA6D72B13449 /* Release */,
+				B9ECEA020F896DEF86C0CC01 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		98768089387A836A18000564 /* Build configuration list for PBXProject "Spottr" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BEB596CA4ED48823AC23C285 /* Debug */,
+				4294A43F3B6E8C98EF4389A6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B2D86D57E8FCBE20AAF11029 /* Build configuration list for PBXNativeTarget "SpottrTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3D748541BC23A9E3A2F1C0A8 /* Release */,
+				FE5426B5E5944D20C8765C9F /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D3649AC9719536B64E5A5963 /* Build configuration list for PBXNativeTarget "SpottrUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				21983B62963464EF774B1383 /* Release */,
+				9711F2E0DE9A3163B74A85A6 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 38831494188913ED9C90DB34 /* Project object */;
+}
