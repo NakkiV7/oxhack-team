@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CoachView: View {
     let store: TrainingStore
+    let profile: LocalProfile?
     @State private var model = CoachModel()
     @State private var message = ""
     @State private var settingsPresented = false
@@ -10,6 +11,8 @@ struct CoachView: View {
     @State private var task: Task<Void, Never>?
     @State private var logItem: CoachSavedPlan.Item?
     private let supports = Array(Set(ExerciseCatalog.all.compactMap(\.support))).sorted()
+
+    init(store: TrainingStore, profile: LocalProfile? = nil) { self.store = store; self.profile = profile }
 
     var body: some View {
         NavigationStack {
@@ -64,6 +67,9 @@ struct CoachView: View {
                     }
                 }
                 .onChange(of: model.proposal?.generationID) { _, _ in selected = [] }
+                .onAppear { model.updateProfile(profile) }
+                .onChange(of: profile?.goals) { _, _ in profileChanged() }
+                .onChange(of: profile?.weeklyTarget) { _, _ in profileChanged() }
                 .onChange(of: support) { _, _ in selected = []; task?.cancel(); model.invalidateContext() }
                 .onChange(of: store.history) { _, _ in task?.cancel(); model.invalidateContext() }
                 .onDisappear(perform: cancel)
@@ -73,8 +79,11 @@ struct CoachView: View {
     private var introduction: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Your next move.").font(.system(size: 32, weight: .bold)).tracking(-1)
+            CoachGoalContext(profile: profile, identifier: "coach-goal-context")
             Text("Ask about your training, or build a session you can make your own.").font(.subheadline).foregroundStyle(.secondary)
-            Text("Your message, training sets and recorded Watch summaries are shared with Gemini when you tap Send or Propose.")
+            Text(profile == nil
+                 ? "Your message, training sets and recorded Watch summaries are shared with Gemini when you tap Send or Propose."
+                 : "Your message, selected goals, weekly target, training sets and recorded Watch summaries are shared with Gemini when you tap Send or Propose. Your optional profile name stays on this iPhone.")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }
@@ -133,6 +142,18 @@ struct CoachView: View {
 
     private func run(_ action: @escaping @MainActor () async -> Void) { task?.cancel(); task = Task { await action() } }
     private func cancel() { task?.cancel(); model.cancel() }
+    private func profileChanged() { task?.cancel(); model.updateProfile(profile); selected = [] }
+}
+
+private struct CoachGoalContext: View {
+    let profile: LocalProfile?
+    let identifier: String
+    var body: some View {
+        if let profile {
+            Text("\(profile.goals.map(\.title).sorted().joined(separator: " · ")) · \(profile.weeklyTarget) \(profile.weeklyTarget == 1 ? "day" : "days")/week")
+                .font(.caption.weight(.medium)).accessibilityIdentifier(identifier)
+        }
+    }
 }
 
 struct CoachSettingsView: View {
@@ -164,20 +185,25 @@ struct CoachSettingsView: View {
 struct CoachSummaryCard: View {
     let history: [SessionRecord]
     let kind: CoachSummaryKind
+    let profile: LocalProfile?
     @State private var model = CoachModel()
     @State private var task: Task<Void, Never>?
-    init(history: [SessionRecord], kind: CoachSummaryKind) { self.history = history; self.kind = kind }
-    init(record: SessionRecord) { history = [record]; kind = .session }
+    init(history: [SessionRecord], kind: CoachSummaryKind, profile: LocalProfile? = nil) {
+        self.history = history; self.kind = kind; self.profile = profile
+    }
+    init(record: SessionRecord, profile: LocalProfile? = nil) { history = [record]; kind = .session; self.profile = profile }
     var body: some View {
         VStack(alignment: .leading, spacing: 13) {
             Label("Coach insight", systemImage: "sparkles").font(.headline)
+            CoachGoalContext(profile: profile, identifier: "coach-summary-goal-context")
             if let summary = model.summary {
                 Text(summary.headline.text).font(.subheadline.weight(.semibold))
                 ForEach(Array(summary.insights.enumerated()), id: \.offset) { _, insight in Text(insight.text).font(.subheadline) }
                 Text(summary.focus.text).font(.subheadline).foregroundStyle(.secondary)
                 Text("Generated with Gemini from the recorded facts shared for this report.").font(.caption2).foregroundStyle(.secondary)
             } else {
-                Text("Share this \(kind == .weekly ? "week’s" : "session’s") training sets and recorded Watch summaries with Gemini when you tap.").font(.caption).foregroundStyle(.secondary)
+                Text("Share this \(kind == .weekly ? "week’s" : "session’s") training sets and recorded Watch summaries\(profile == nil ? "" : ", plus your selected goals and weekly target") with Gemini when you tap.").font(.caption).foregroundStyle(.secondary)
+                if profile != nil { Text("Your optional profile name stays on this iPhone.").font(.caption).foregroundStyle(.secondary) }
             }
             if model.isLoading {
                 HStack { ProgressView(); Text("Thinking…").font(.caption); Spacer(); Button("Cancel") { task?.cancel(); model.cancel() } }
@@ -187,6 +213,9 @@ struct CoachSummaryCard: View {
             }
             if let error = model.error { Text(error).font(.caption).foregroundStyle(Palette.red) }
         }.padding(20).frame(maxWidth: .infinity, alignment: .leading).background(Palette.surface, in: RoundedRectangle(cornerRadius: 22))
+            .onAppear { model.updateProfile(profile) }
+            .onChange(of: profile?.goals) { _, _ in task?.cancel(); model.updateProfile(profile) }
+            .onChange(of: profile?.weeklyTarget) { _, _ in task?.cancel(); model.updateProfile(profile) }
             .onChange(of: history) { _, _ in task?.cancel(); model.invalidateContext() }
             .onDisappear { task?.cancel(); model.cancel() }
     }

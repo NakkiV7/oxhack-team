@@ -20,9 +20,9 @@ struct SpottrRoot: View {
                 TabView {
                     TodayView(store: store, profileStore: profileStore) { settingsPresented = true }
                         .tabItem { Label("Today", systemImage: "house") }
-                    WeeklyProgressView(store: store).tabItem { Label("Progress", systemImage: "chart.bar.xaxis") }
+                    WeeklyProgressView(store: store, profile: profileStore.profile).tabItem { Label("Progress", systemImage: "chart.bar.xaxis") }
                     SkillsView(store: store).tabItem { Label("Skills", systemImage: "point.3.connected.trianglepath.dotted") }
-                    CoachView(store: store).tabItem { Label("Coach", systemImage: "bubble") }
+                    CoachView(store: store, profile: profileStore.profile).tabItem { Label("Coach", systemImage: "bubble") }
                 }
             }
         }
