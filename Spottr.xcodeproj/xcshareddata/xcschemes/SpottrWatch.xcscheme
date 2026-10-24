@@ -14,7 +14,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "7BC2F80834B3B5B6E78AC7ED"
+               BlueprintIdentifier = "B507E0AACD60300005B46AD9"
                BuildableName = "SpottrWatch.app"
                BlueprintName = "SpottrWatch"
                ReferencedContainer = "container:Spottr.xcodeproj">
@@ -30,7 +30,7 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "7BC2F80834B3B5B6E78AC7ED"
+            BlueprintIdentifier = "B507E0AACD60300005B46AD9"
             BuildableName = "SpottrWatch.app"
             BlueprintName = "SpottrWatch"
             ReferencedContainer = "container:Spottr.xcodeproj">
@@ -53,7 +53,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "7BC2F80834B3B5B6E78AC7ED"
+            BlueprintIdentifier = "B507E0AACD60300005B46AD9"
             BuildableName = "SpottrWatch.app"
             BlueprintName = "SpottrWatch"
             ReferencedContainer = "container:Spottr.xcodeproj">
@@ -70,7 +70,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "7BC2F80834B3B5B6E78AC7ED"
+            BlueprintIdentifier = "B507E0AACD60300005B46AD9"
             BuildableName = "SpottrWatch.app"
             BlueprintName = "SpottrWatch"
             ReferencedContainer = "container:Spottr.xcodeproj">

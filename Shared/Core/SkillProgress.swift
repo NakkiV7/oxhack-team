@@ -17,6 +17,32 @@ public struct ManualHoldClock: Sendable {
     }
 }
 
+public enum SkillGraph {
+    public struct Edge: Hashable, Sendable {
+        public let from: String
+        public let to: String
+    }
+    public static let version = 1
+    public static var exerciseIDs: [String] { ExerciseCatalog.all.map(\.id) }
+    public static var edges: [Edge] {
+        exerciseIDs.flatMap { id in prerequisites(for: id).map { Edge(from: $0, to: id) } }
+    }
+    public static func prerequisites(for id: String) -> [String] {
+        guard let entry = ExerciseCatalog.find(id) else { return [] }
+        let previous = ExerciseCatalog.all.first { $0.family == entry.family && $0.level == entry.level - 1 }
+        let support: [String: [String]] = [
+            "pushup": ["plank"], "closeGripPushup": ["sidePlank"],
+            "reverseLunge": ["singleLegBalance"], "assistedSquat": ["hipFlexorStretch"],
+            "mountainClimber": ["plank"]
+        ]
+        return (previous.map { [$0.id] } ?? []) + (support[id] ?? [])
+    }
+    public static func dependents(of id: String) -> [String] { edges.filter { $0.from == id }.map(\.to) }
+    public static func tier(of id: String) -> Int {
+        prerequisites(for: id).map { tier(of: $0) + 1 }.max() ?? 0
+    }
+}
+
 public struct SkillNodeProgress: Sendable {
     public let exerciseID: String
     public let qualifyingSets: Int
@@ -66,11 +92,12 @@ public struct SkillProgress: Sendable {
             }
             return (tracked + manual).filter { setIDs.insert($0.id).inserted }
         }
-        let nodes = ExerciseCatalog.all.sorted { $0.level < $1.level }.reduce([SkillNodeProgress]()) { nodes, entry in
+        let nodes = ExerciseCatalog.all.sorted { SkillGraph.tier(of: $0.id) < SkillGraph.tier(of: $1.id) }.reduce([SkillNodeProgress]()) { nodes, entry in
             let sets = evidence.filter { $0.qualifies(for: entry) }
             let days = Set(sets.map { calendar.startOfDay(for: $0.date) }).count
-            let previous = ExerciseCatalog.all.first { $0.family == entry.family && $0.level == entry.level - 1 }
-            let available = previous.map { previous in nodes.contains { $0.exerciseID == previous.id && $0.isComplete } } ?? true
+            let available = SkillGraph.prerequisites(for: entry.id).allSatisfy { id in
+                nodes.contains { $0.exerciseID == id && $0.isComplete }
+            }
             let node = SkillNodeProgress(exerciseID: entry.id, qualifyingSets: sets.count, trainingDays: days,
                                      manualSets: sets.filter { $0.source == .manual }.count,
                                      cameraSets: sets.filter { $0.source == .camera }.count, isAvailable: available,
