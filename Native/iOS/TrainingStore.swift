@@ -391,7 +391,7 @@ final class TrainingStore {
     }
     func persist(_ record: SessionRecord) {
         do {
-            try historyStore.save(record); history = try historyStore.load().reversed(); error = nil
+            history = try historyStore.save(record).reversed(); error = nil
         } catch { self.error = "Couldn’t save this session. Try again." }
     }
     func exportHistory() throws -> URL {

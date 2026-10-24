@@ -3,9 +3,9 @@ import SwiftUI
 struct SkillsView: View {
     @Bindable var store: TrainingStore
     @AppStorage("skills.layout") private var layout = "grid"
-    private var progress: SkillProgress { .evaluate(history: store.history) }
 
     var body: some View {
+        let progress = SkillProgress.evaluate(history: store.history)
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
@@ -31,7 +31,7 @@ struct SkillsView: View {
                         Text("Linear").tag("linear")
                     }.pickerStyle(.segmented).accessibilityIdentifier("skill-layout")
                     if layout == "grid" { SkillGraphView(store: store, progress: progress) }
-                    else { linearTree }
+                    else { linearTree(progress: progress) }
                     Text("Earn each challenge with 3 goal sets across 2 days. Connected challenges unlock together. You can practise every exercise at any time.")
                         .font(.caption).foregroundStyle(.secondary)
                     Text("Each goal set earns 10 XP, up to 3 sets per exercise each day. Manual and camera sets count; video replays don’t. XP and unlocks are game progress.")
@@ -41,7 +41,7 @@ struct SkillsView: View {
         }
     }
 
-    private var linearTree: some View {
+    private func linearTree(progress: SkillProgress) -> some View {
         ForEach(ExerciseFamily.allCases, id: \.self) { family in
             VStack(alignment: .leading, spacing: 14) {
                 Text(family.title).font(.title3.bold())
