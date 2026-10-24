@@ -24,6 +24,12 @@ struct SessionView: View {
                 Spacer()
                 Image(systemName: store.session.phase == .rest ? "wind" : "figure.strengthtraining.traditional").frame(width: 40, height: 40)
             }.padding(.horizontal, 14).padding(.top, 8)
+            if store.session.phase == .active || store.session.phase == .paused || store.session.phase == .rest {
+                Toggle("Voice feedback", isOn: Binding(get: { store.voiceFeedbackEnabled }, set: { store.setVoiceFeedback($0) }))
+                    .font(.caption)
+                    .accessibilityIdentifier("voice-feedback-toggle")
+                    .padding(.horizontal, 24).padding(.vertical, 6)
+            }
             switch store.session.phase {
             case .active, .paused: LiveSetView(store: store)
             case .rest: RecoveryView(store: store)
