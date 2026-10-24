@@ -8,4 +8,5 @@ xcuserdata/
 .superpowers/
 .xcodebuildmcp/
 .env*
+Native/Vendor/
 !*.example
