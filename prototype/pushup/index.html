@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Push-up Coach</title>
+<style>
+  :root { --bg:#0f1115; --card:#181b22; --fg:#e8eaed; --mut:#8b93a1; --ok:#3ddc84; --warn:#ffb74d; --bad:#ff6b6b; --acc:#6ea8fe; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f5f6f8; --card:#fff; --fg:#1a1d23; --mut:#667085; } }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:16px; background:var(--bg); color:var(--fg); font:15px/1.4 system-ui,sans-serif; }
+  .wrap { max-width:1000px; margin:0 auto; display:grid; gap:16px; grid-template-columns:1.6fr 1fr; }
+  @media (max-width:800px) { .wrap { grid-template-columns:1fr; } }
+  .card { background:var(--card); border-radius:12px; padding:14px; }
+  h1 { font-size:20px; margin:0 0 4px; } h2 { font-size:13px; margin:0 0 8px; color:var(--mut); text-transform:uppercase; letter-spacing:.05em; }
+  .stage { position:relative; background:#000; border-radius:12px; overflow:hidden; aspect-ratio:4/3; }
+  video, canvas { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+  button, select { font:inherit; padding:8px 12px; border-radius:8px; border:1px solid var(--mut); background:var(--card); color:var(--fg); cursor:pointer; }
+  button.primary { background:var(--acc); border-color:var(--acc); color:#06142e; font-weight:600; }
+  .count { font-size:72px; font-weight:700; line-height:1; } .sub { color:var(--mut); }
+  .feedback { font-size:18px; font-weight:600; min-height:26px; } .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+  .bar { height:8px; background:var(--bg); border-radius:4px; overflow:hidden; margin:4px 0 10px; } .bar > i { display:block; height:100%; background:var(--acc); width:0; transition:width .1s; }
+  ul { list-style:none; margin:0; padding:0; max-height:220px; overflow:auto; } li { padding:4px 0; border-bottom:1px solid var(--bg); font-size:13px; }
+  .tip { font-size:13px; color:var(--mut); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1>Push-up Coach</h1>
+    <div class="tip">Put the camera to your <b>side</b>, 2–3 m away, so your whole body is in frame. Runs entirely on your Mac.</div>
+    <div class="stage" style="margin-top:10px">
+      <video id="video" playsinline muted></video>
+      <canvas id="overlay"></canvas>
+    </div>
+    <div class="row">
+      <select id="variation"></select>
+      <button class="primary" id="startCam">Start camera</button>
+      <button id="stop">Stop</button>
+      <label class="sub">or video: <input type="file" id="file" accept="video/*"></label>
+      <button id="reset">Reset reps</button>
+    </div>
+    <div class="tip" id="status" style="margin-top:8px">Loading pose model…</div>
+    <div class="card" style="margin-top:12px">
+      <h2>AI coach</h2>
+      <ul id="coachLog" style="max-height:260px"><li class="sub" id="coachEmpty">Gemini chimes in every few reps or when your form slips. Ask a short question below (answers come from WHO, CDC, NHS, NIH).</li></ul>
+      <form id="askForm" class="row" autocomplete="off">
+        <input id="askQ" maxlength="256" placeholder="Ask a short question…" style="flex:1;min-width:160px;font:inherit;padding:8px;border-radius:8px;border:1px solid var(--mut);background:var(--bg);color:var(--fg)">
+        <button class="primary" id="askBtn">Ask</button>
+        <span class="sub" id="askCount">0/256</span>
+      </form>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Reps</h2>
+    <div class="count" id="count">0</div>
+    <div class="sub"><span id="good">0</span> with good form</div>
+    <div class="feedback" id="feedback" style="margin-top:12px"></div>
+    <h2 style="margin-top:14px">Elbow angle</h2>
+    <div class="bar"><i id="elbowBar"></i></div>
+    <div class="sub" id="elbowTxt">–</div>
+    <h2 style="margin-top:14px">Body line (straightness)</h2>
+    <div class="bar"><i id="lineBar"></i></div>
+    <div class="sub" id="lineTxt">–</div>
+    <h2 style="margin-top:14px">History</h2>
+    <ul id="history"></ul>
+  </div>
+</div>
+<script type="module">
+import { PoseLandmarker, FilesetResolver, DrawingUtils } from '/vendor/vision_bundle.mjs';
+import { VARIATIONS, JOINTS, pickSide, measure, postureIssue, RepCounter } from '/pushup.mjs';
+
+const $ = (id) => document.getElementById(id);
+const video = $('video'), canvas = $('overlay'), ctx = canvas.getContext('2d');
+const sel = $('variation');
+for (const [k, v] of Object.entries(VARIATIONS)) sel.add(new Option(v.label, k));
+
+const counter = new RepCounter('wall');
+sel.onchange = () => { counter.setVariation(sel.value); render(null, null); $('history').innerHTML = ''; };
+$('reset').onclick = () => { counter.reset(); $('history').innerHTML = ''; render(null, null); };
+
+let landmarker, running = false, stream = null, lastTs = -1;
+
+async function init() {
+  const files = await FilesetResolver.forVisionTasks('/vendor/wasm');
+  const make = (delegate) => PoseLandmarker.createFromOptions(files, {
+    baseOptions: { modelAssetPath: '/models/pose_landmarker_full.task', delegate },
+    runningMode: 'VIDEO', numPoses: 1,
+  });
+  try { landmarker = await make('GPU'); } catch { landmarker = await make('CPU'); }
+  $('status').textContent = 'Model ready. Pick a variation and start the camera (or load a video).';
+}
+init().catch((e) => { $('status').textContent = 'Model failed to load: ' + e.message; });
+
+async function begin() {
+  running = true; lastTs = -1;
+  await video.play();
+  requestAnimationFrame(loop);
+}
+
+$('startCam').onclick = async () => {
+  try {
+    stopAll();
+    stream = await navigator.mediaDevices.getUserMedia({ video: { width: 960, height: 720 } });
+    video.srcObject = stream; video.loop = false;
+    await begin();
+    $('status').textContent = 'Running. Get into position.';
+  } catch (e) { $('status').textContent = 'Camera error: ' + e.message + ' (grant camera access to your browser).'; }
+};
+$('file').onchange = async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  stopAll(); counter.reset(); $('history').innerHTML = '';
+  video.src = URL.createObjectURL(f); video.loop = false;
+  video.onended = () => { running = false; $('status').textContent = 'Video finished.'; };
+  await begin();
+  $('status').textContent = 'Analysing video…';
+};
+$('stop').onclick = () => { stopAll(); $('status').textContent = 'Stopped.'; };
+function stopAll() {
+  running = false;
+  setTimeout(() => publish(null, 0, true), 0);
+  stream?.getTracks().forEach((t) => t.stop()); stream = null;
+  video.pause(); video.removeAttribute('src'); video.srcObject = null;
+}
+
+function loop() {
+  if (!running) return;
+  if (landmarker && video.readyState >= 2 && video.currentTime !== lastTs) {
+    lastTs = video.currentTime;
+    const res = landmarker.detectForVideo(video, performance.now());
+    const lm = res.landmarks?.[0];
+    if (lm) {
+      const side = pickSide(lm);
+      const m = measure(lm, side, counter.variation);
+      const rep = counter.update(m);
+      if (rep) addHistory(rep);
+      render(lm, m, side);
+      publish(lm, side, !!rep);
+    } else { render(null, null); publish(null, 0, false); }
+    publishFrame();
+  }
+  requestAnimationFrame(loop);
+}
+
+// Send the live state to the server, which fans it out to the iPhone app (~10 Hz, immediately on a finished rep).
+let lastPub = 0;
+function publish(lm, side, force = false) {
+  const now = performance.now();
+  if (!force && now - lastPub < 100) return;
+  lastPub = now;
+  const cfg = VARIATIONS[counter.variation];
+  const pt = (j) => { const q = lm?.[JOINTS[j][side]]; return q ? [q.x, q.y] : null; };
+  const fb = $('feedback');
+  const state = {
+    running, variation: counter.variation, label: cfg.label,
+    count: counter.count, good: counter.goodCount, total: counter.reps.length,
+    feedback: fb.textContent, tone: fb.className.split(' ')[1] ?? 'ok', phase: counter.state,
+    elbow: counter.elbow, line: counter.line,
+    up: cfg.up, down: cfg.down, minLine: cfg.minLine,
+    aspect: video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 4 / 3,
+    pose: lm ? { shoulder: pt('shoulder'), elbow: pt('elbow'), wrist: pt('wrist'), hip: pt('hip'), ref: pt(cfg.lineRef) } : null,
+    reps: counter.reps.slice(-30),
+  };
+  fetch('/state', { method: 'POST', body: JSON.stringify(state) }).catch(() => {});
+}
+
+// Send a small JPEG of the camera/video to the iPhone (~8 fps, 480 px wide). Skipped while the previous frame is still uploading.
+const frameCanvas = document.createElement('canvas');
+let lastFrame = 0, frameBusy = false;
+function publishFrame() {
+  const now = performance.now();
+  if (frameBusy || now - lastFrame < 125 || !video.videoWidth) return;
+  lastFrame = now; frameBusy = true;
+  frameCanvas.width = 480; frameCanvas.height = Math.round(480 * video.videoHeight / video.videoWidth);
+  frameCanvas.getContext('2d').drawImage(video, 0, 0, frameCanvas.width, frameCanvas.height);
+  const b64 = frameCanvas.toDataURL('image/jpeg', 0.5).split(',')[1];
+  fetch('/frame', { method: 'POST', body: b64 }).catch(() => {}).finally(() => { frameBusy = false; });
+}
+
+// AI coach panel: reads the coach messages the server already generated (no extra Gemini calls) and sends questions to /ask.
+const coachSeen = new Set();
+function coachItem(cls, text, sources = []) {
+  $('coachEmpty')?.remove();
+  const li = document.createElement('li');
+  li.className = cls;
+  li.append(document.createTextNode(text));
+  if (sources.length) {
+    li.append(document.createElement('br'));
+    for (const s of sources) {
+      const a = document.createElement('a');
+      a.href = s.url; a.target = '_blank'; a.rel = 'noopener'; a.title = s.title; a.textContent = `[${s.id}] ${new URL(s.url).hostname.replace('www.', '')}`;
+      a.style.marginRight = '8px';
+      li.append(a);
+    }
+  }
+  $('coachLog').prepend(li);
+  return li;
+}
+const coachEvents = new EventSource('/coach-events');
+coachEvents.addEventListener('coach', (e) => {
+  const m = JSON.parse(e.data);
+  if (coachSeen.has(m.time)) return;
+  coachSeen.add(m.time);
+  coachItem('', `✨ ${m.text}`);
+});
+coachEvents.addEventListener('status', (e) => {
+  if (!JSON.parse(e.data).on) { $('coachEmpty') && ($('coachEmpty').textContent = 'AI coach is off: add GEMINI_API_KEY to pushup/.env and restart.'); $('askForm').style.display = 'none'; }
+});
+$('askQ').addEventListener('input', () => { $('askCount').textContent = `${$('askQ').value.length}/256`; });
+$('askForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const q = $('askQ').value.trim();
+  if (!q || $('askBtn').disabled) return;
+  $('askQ').value = ''; $('askCount').textContent = '0/256'; $('askBtn').disabled = true;
+  coachItem('', `🙋 ${q}`);
+  const pending = coachItem('sub', 'Checking official sources…');
+  try {
+    const r = await fetch('/ask', { method: 'POST', body: JSON.stringify({ q }) });
+    const d = await r.json();
+    pending.remove();
+    coachItem(d.answer ? '' : 'bad', d.answer ?? d.error ?? 'No answer.', d.sources ?? []);
+  } catch { pending.remove(); coachItem('bad', 'Could not reach the server.'); }
+  $('askBtn').disabled = false;
+});
+
+function addHistory(rep) {
+  const li = document.createElement('li');
+  li.textContent = rep.counted
+    ? `${rep.good ? '✅' : '⚠️'} Rep ${rep.n}: elbow ${rep.minElbow}°, body line ${rep.minLine}°${rep.issue ? ' – ' + rep.issue : ''}`
+    : `✖ Not counted – ${rep.issue}`;
+  $('history').prepend(li);
+}
+
+function render(lm, m, side) {
+  if (canvas.width !== video.videoWidth && video.videoWidth) { canvas.width = video.videoWidth; canvas.height = video.videoHeight; }
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  $('count').textContent = counter.count;
+  $('good').textContent = counter.goodCount;
+  const fb = $('feedback');
+  if (!lm || !m) { fb.className = 'feedback warn'; fb.textContent = lm === null && running ? 'Step back: show your whole body from the side' : ''; return; }
+  if (m.minVis < 0.5) { fb.className = 'feedback warn'; fb.textContent = 'Some joints are hidden: turn side-on to the camera'; }
+  else {
+    const cfg = VARIATIONS[counter.variation];
+    const issue = postureIssue({ line: counter.line ?? m.line, hipDrop: counter.hipDrop }, counter.variation);
+    if (issue) { fb.className = 'feedback bad'; fb.textContent = issue; }
+    else if (counter.state === 'down') { fb.className = 'feedback ok'; fb.textContent = counter.elbow <= cfg.down ? 'Good depth, push up!' : 'Go lower'; }
+    else { fb.className = 'feedback ok'; fb.textContent = counter.state === 'unknown' ? 'Get into the top position' : 'Good line, lower yourself'; }
+  }
+  const pct = (a) => Math.max(0, Math.min(100, ((a - 60) / 120) * 100));
+  $('elbowBar').style.width = pct(counter.elbow ?? m.elbow) + '%';
+  $('lineBar').style.width = pct(counter.line ?? m.line) + '%';
+  $('elbowTxt').textContent = `${Math.round(counter.elbow ?? m.elbow)}°  (down ≤ ${VARIATIONS[counter.variation].down}°, up ≥ ${VARIATIONS[counter.variation].up}°)`;
+  $('lineTxt').textContent = `${Math.round(counter.line ?? m.line)}°  (aim ≥ ${VARIATIONS[counter.variation].minLine}°)`;
+
+  // Draw the tracked side only.
+  const pt = (j) => lm[JOINTS[j][side]];
+  const chain = ['shoulder', 'elbow', 'wrist'];
+  const body = ['shoulder', 'hip', VARIATIONS[counter.variation].lineRef];
+  const W = canvas.width, H = canvas.height;
+  const draw = (names, color) => {
+    ctx.strokeStyle = color; ctx.lineWidth = 5; ctx.beginPath();
+    names.forEach((n, i) => { const q = pt(n); i ? ctx.lineTo(q.x * W, q.y * H) : ctx.moveTo(q.x * W, q.y * H); });
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    for (const n of names) { const q = pt(n); ctx.beginPath(); ctx.arc(q.x * W, q.y * H, 7, 0, 7); ctx.fill(); }
+  };
+  const lineOk = (counter.line ?? m.line) >= VARIATIONS[counter.variation].minLine;
+  draw(body, lineOk ? '#3ddc84' : '#ff6b6b');
+  draw(chain, '#6ea8fe');
+}
+</script>
+</body>
+</html>
