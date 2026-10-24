@@ -48,4 +48,55 @@ final class CoachFlowTests: XCTestCase {
         app.buttons["Cancel"].tap()
         XCTAssertTrue(app.buttons["Propose a workout"].exists)
     }
+
+    @MainActor func testConfiguredCameraChoiceNeedsResetConfirmationAndOtherExercisesRemainManual() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
+        app.launchEnvironment["SPOTTR_APPROVED_PLAN_FIXTURE"] = #"{"items":[{"exerciseID":"squat","sets":1,"target":2,"unit":"reps","restSeconds":30},{"exerciseID":"plank","sets":1,"target":20,"unit":"seconds","restSeconds":30}],"approvedAt":0,"rationale":"Synthetic UI fixture"}"#
+        app.launch()
+        app.tabBars.buttons["Coach"].tap()
+        let startPlan = app.buttons["Start saved workout"]
+        for _ in 0..<6 where !startPlan.isHittable { app.swipeUp() }
+        XCTAssertTrue(startPlan.waitForExistence(timeout: 3), "The isolated debug fixture should expose the saved workout without persisting a plan.")
+        startPlan.tap()
+        let start = app.buttons["configured-start"]
+        XCTAssertTrue(start.waitForExistence(timeout: 3))
+        let input = app.buttons["configured-input-menu"]
+        XCTAssertTrue(input.exists)
+        start.tap()
+        let reps = app.textFields["configured-reps"]
+        for _ in 0..<4 where !reps.isHittable || reps.frame.maxY > app.frame.maxY - 190 { app.swipeUp() }
+        reps.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
+        reps.typeText("3")
+        if app.buttons["Done entering reps"].exists { app.buttons["Done entering reps"].tap() }
+        for _ in 0..<4 where !input.isHittable { app.swipeDown() }
+        input.tap(); app.buttons["configured-input-phoneCamera"].tap()
+        app.buttons["Cancel"].tap()
+        XCTAssertEqual(reps.value as? String, "3")
+        input.tap(); app.buttons["configured-input-phoneCamera"].tap()
+        app.buttons["Reset and switch"].tap()
+        XCTAssertTrue(start.exists)
+        XCTAssertFalse(reps.exists)
+        XCTAssertEqual(app.staticTexts["configured-quantity"].label, "0")
+        XCTAssertEqual(app.switches["configured-voice-toggle"].value as? String, "0")
+        input.tap(); app.buttons["configured-input-manual"].tap()
+        XCTAssertTrue(start.exists)
+        start.tap()
+        for _ in 0..<4 where !reps.isHittable || reps.frame.maxY > app.frame.maxY - 190 { app.swipeUp() }
+        reps.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
+        reps.typeText("2")
+        if app.buttons["Done entering reps"].exists { app.buttons["Done entering reps"].tap() }
+        app.buttons["configured-end"].tap()
+        app.buttons["configured-next"].tap()
+        XCTAssertFalse(input.exists)
+        XCTAssertTrue(app.buttons["configured-start"].exists)
+        app.buttons["Finish custom session"].tap()
+        app.buttons["Finish and save ended sets"].tap()
+        XCTAssertTrue(app.staticTexts["Session saved on this iPhone."].waitForExistence(timeout: 3))
+        app.buttons["Done"].tap()
+    }
+
 }

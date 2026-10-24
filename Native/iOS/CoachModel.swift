@@ -15,7 +15,7 @@ final class CoachModel {
     private var lastMessage = ""
     private var profile: LocalProfile?
 
-    init(configuration: @escaping @MainActor () throws -> CoachGatewayClient = CoachSettings.client, savedPlanData: Data? = UserDefaults.standard.data(forKey: "coach.approvedPlan"), profile: LocalProfile? = nil) {
+    init(configuration: @escaping @MainActor () throws -> CoachGatewayClient = CoachSettings.client, savedPlanData: Data? = CoachSettings.planData(), profile: LocalProfile? = nil) {
         self.configuration = configuration
         self.profile = profile
         approvedPlan = savedPlanData.flatMap { try? JSONDecoder().decode(CoachSavedPlan.self, from: $0) }
@@ -95,6 +95,14 @@ final class CoachModel {
 
 @MainActor
 enum CoachSettings {
+    nonisolated static func planData(environment: [String: String] = ProcessInfo.processInfo.environment, defaults: UserDefaults = .standard) -> Data? {
+        #if DEBUG
+        if let namespace = environment["SPOTTR_DATA_NAMESPACE"], UUID(uuidString: namespace) != nil,
+           let fixture = environment["SPOTTR_APPROVED_PLAN_FIXTURE"], let data = fixture.data(using: .utf8),
+           (try? JSONDecoder().decode(CoachSavedPlan.self, from: data)) != nil { return data }
+        #endif
+        return defaults.data(forKey: "coach.approvedPlan")
+    }
     static var gatewayURL: String { UserDefaults.standard.string(forKey: "coach.gatewayURL") ?? "" }
     static func client() throws -> CoachGatewayClient {
         guard let url = URL(string: gatewayURL), !gatewayURL.isEmpty, let token = token(), !token.isEmpty else { throw CoachGatewayError.configuration }

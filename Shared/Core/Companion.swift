@@ -46,6 +46,7 @@ public struct ConfiguredCompanionSnapshot: Codable, Sendable {
     public let hasStarted: Bool
     public let canEndSet: Bool
     public let stoppedForDiscomfort: Bool
+    public let source: InputSource?
 }
 
 public struct CompanionSnapshot: Codable, Sendable {
@@ -72,20 +73,25 @@ public struct CompanionSnapshot: Codable, Sendable {
         let activeSeconds = session.phase == .rest || session.phase == .finished
             ? (ended?.activeSeconds ?? ended?.seconds ?? 0) : session.elapsed(at: time)
         sessionID = session.id; generation = session.generation; exercise = nil
-        phase = session.phase; reps = session.manualReps ?? 0; target = session.current.target
-        setNumber = session.current.number; cue = session.phase == .paused ? .paused : .ready
+        phase = session.phase; reps = session.actualReps ?? 0; target = session.current.target
+        setNumber = session.current.number; cue = session.cue
         self.sentAt = sentAt
         configured = .init(exerciseID: session.current.exerciseID, unit: session.current.unit,
             totalSets: session.current.totalSets, stepIndex: session.index + 1, totalSteps: session.steps.count,
             enteredReps: session.manualReps, activeSeconds: activeSeconds,
             restElapsed: session.restElapsed(at: time), restTarget: session.current.restSeconds,
             hasStarted: session.hasStarted, canEndSet: session.canEndSet(at: time),
-            stoppedForDiscomfort: session.stoppedForDiscomfort)
+            stoppedForDiscomfort: session.stoppedForDiscomfort, source: session.source)
     }
     public func isFresh(at now: Date) -> Bool {
         let age = now.timeIntervalSince(sentAt)
         guard age >= -5, age <= 10, reps >= 0, (1...1000).contains(target) else { return false }
         guard let configured else { return exercise != nil && (1...3).contains(setNumber) }
+        guard configured.source != .video else { return false }
+        if configured.source == .camera {
+            guard Exercise(rawValue: configured.exerciseID) != nil, configured.unit == .reps,
+                  configured.enteredReps == nil else { return false }
+        }
         return ExerciseCatalog.find(configured.exerciseID)?.unit == configured.unit
             && (1...10).contains(configured.totalSets) && (1...configured.totalSets).contains(setNumber)
             && (1...120).contains(configured.totalSteps) && (1...configured.totalSteps).contains(configured.stepIndex)

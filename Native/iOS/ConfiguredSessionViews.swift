@@ -24,6 +24,11 @@ struct ConfiguredSessionView: View {
                 Spacer()
                 Image(systemName: "list.bullet.clipboard").frame(width: 44, height: 44)
             }.padding(.horizontal, 14).padding(.top, 8)
+            if let run = store.configured, run.source == .camera, [.active, .paused, .rest].contains(run.phase) {
+                Toggle("Voice feedback", isOn: Binding(get: { store.voiceFeedbackEnabled }, set: { store.setVoiceFeedback($0) }))
+                    .font(.caption).accessibilityIdentifier("configured-voice-toggle")
+                    .padding(.horizontal, 24).padding(.vertical, 6)
+            }
             if let run = store.configured {
                 switch run.phase {
                 case .active, .paused: ConfiguredLiveSetView(store: store).id(run.current.id)
@@ -43,6 +48,8 @@ struct ConfiguredSessionView: View {
 private struct ConfiguredLiveSetView: View {
     @Bindable var store: TrainingStore
     @State private var quantity = ""
+    @State private var pendingInput: TrainingStore.ConfiguredInput?
+    @State private var pairingPresented = false
     @FocusState private var enteringReps: Bool
     var body: some View {
         TimelineView(.periodic(from: .now, by: 0.5)) { context in
@@ -50,27 +57,27 @@ private struct ConfiguredLiveSetView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
                         HStack(alignment: .firstTextBaseline) {
-                            Text(run.current.unit == .seconds ? clockText(run.elapsed(at: store.now)) : run.manualReps.map(String.init) ?? "—")
+                            Text(run.current.unit == .seconds ? clockText(run.elapsed(at: store.now)) : run.actualReps.map(String.init) ?? "—")
                                 .font(.system(size: 66, weight: .semibold, design: .rounded)).monospacedDigit()
                                 .accessibilityIdentifier("configured-quantity")
                             Text("/ \(run.current.target) \(run.current.unit == .seconds ? "sec" : "reps")").foregroundStyle(.secondary)
                             Spacer()
                             Label(store.heartRate(at: context.date), systemImage: "heart").font(.caption)
                         }
-                        Group {
-                            if UIImage(named: run.current.entry.art) != nil {
-                                Image(run.current.entry.art).resizable().scaledToFit()
-                            } else {
-                                Image(systemName: "figure.strengthtraining.traditional").resizable().scaledToFit().padding(30)
-                            }
-                        }.frame(maxWidth: .infinity).frame(height: 210).padding(20)
-                            .background(Palette.surface, in: RoundedRectangle(cornerRadius: 23))
-                            .accessibilityLabel(run.current.entry.name)
+                        inputControl(run)
+                        preview(run)
                         Text(run.current.entry.instruction).font(.headline)
-                        Label(run.current.unit == .seconds ? "Manual hold · active timer" : "Manual self-report", systemImage: "hand.tap")
+                        Label(run.source == .camera ? "Camera observation" : (run.current.unit == .seconds ? "Manual hold · active timer" : "Manual self-report"), systemImage: run.source == .camera ? "camera" : "hand.tap")
                             .font(.caption.weight(.medium)).foregroundStyle(.secondary)
                         Text(status(run)).font(.subheadline).accessibilityIdentifier("configured-status")
-                        if run.hasStarted, run.current.unit == .reps {
+                        if run.source == .camera, run.hasStarted {
+                            Text(store.visionState.message).font(.caption).foregroundStyle(.secondary)
+                            Text(store.coachingEvent?.decision.text ?? run.cue.text)
+                                .font(.headline).accessibilityIdentifier("configured-coaching-cue")
+                            Text("Observed reps stay separate from your target. End this set yourself.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        if run.source == .manual, run.hasStarted, run.current.unit == .reps {
                             VStack(alignment: .leading, spacing: 10) {
                                 Text("Actual completed reps").font(.subheadline.weight(.semibold))
                                 TextField("Enter reps", text: $quantity).keyboardType(.numberPad).focused($enteringReps)
@@ -103,14 +110,67 @@ private struct ConfiguredLiveSetView: View {
                             }
                         }.padding(.horizontal, 24).padding(.vertical, 12).background(.white)
                     }
+                    .onChange(of: run.generation) { _, _ in
+                        if !run.hasStarted { quantity = ""; enteringReps = false }
+                    }
             }
         }
+        .alert("Reset this unfinished set?", isPresented: Binding(get: { pendingInput != nil }, set: { if !$0 { pendingInput = nil } })) {
+            if let input = pendingInput {
+                Button("Reset and switch", role: .destructive) {
+                    store.selectConfiguredInput(input)
+                    pendingInput = nil
+                }
+            }
+            Button("Cancel", role: .cancel) { pendingInput = nil }
+        } message: { Text("This set’s unsaved reps and active time will be discarded. Ended sets stay saved. Start the new input when you’re ready.") }
+        .sheet(isPresented: $pairingPresented) { SecondaryCameraSettingsView() }
+    }
+    @ViewBuilder private func inputControl(_ run: ConfigurableSession) -> some View {
+        if run.trackingExercise != nil {
+            Menu {
+                ForEach(TrainingStore.ConfiguredInput.allCases, id: \.self) { input in
+                    Button(input.title) {
+                        guard input != store.configuredInput else { return }
+                        enteringReps = false
+                        if run.hasStarted { pendingInput = input }
+                        else { store.selectConfiguredInput(input) }
+                    }.accessibilityIdentifier("configured-input-\(input.rawValue)")
+                }
+                Divider()
+                Button("Pair side camera", systemImage: "link") { store.pause(); pairingPresented = true }
+            } label: {
+                Label(store.configuredInput.title, systemImage: run.source == .camera ? "camera" : "hand.tap")
+                    .font(.subheadline.weight(.medium))
+            }.accessibilityIdentifier("configured-input-menu")
+        }
+    }
+    private func preview(_ run: ConfigurableSession) -> some View {
+        ZStack {
+            Palette.surface
+            if run.source == .camera, run.hasStarted, run.phase == .active,
+               case .camera = store.visionState, !store.usingSecondaryCamera {
+                CameraPreview(session: store.vision.capture)
+            } else if let image = store.image, run.source == .camera {
+                Image(uiImage: image).resizable().scaledToFit()
+            } else if UIImage(named: run.current.entry.art) != nil {
+                Image(run.current.entry.art).resizable().scaledToFit().padding(20)
+            } else {
+                Image(systemName: "figure.strengthtraining.traditional").resizable().scaledToFit().padding(30)
+            }
+            if let frame = store.frame, let exercise = run.trackingExercise, run.source == .camera {
+                PoseOverlay(frame: frame, exercise: exercise)
+            }
+        }.frame(maxWidth: .infinity).frame(height: 250).clipShape(RoundedRectangle(cornerRadius: 23))
+            .accessibilityLabel(run.current.entry.name)
     }
     private func status(_ run: ConfigurableSession) -> String {
-        if !run.hasStarted { return "Get into position, then start. Preparation time is left out." }
-        if run.phase == .paused { return "Your set is paused. Resume when you’re ready." }
+        if !run.hasStarted {
+            return run.source == .camera ? "Get your full body in view, then Start to open the selected camera. Preparation time is left out." : "Get into position, then start. Preparation time is left out."
+        }
+        if run.phase == .paused { return "Your set is paused. Resume when you’re ready, or switch input to reset this unfinished set." }
         if run.current.unit == .seconds { return "Only active hold seconds count. Pause whenever you stop holding. End the set yourself." }
-        return "Complete your reps, enter the actual count, then end this set."
+        return run.source == .camera ? "Keep your full body visible for camera form tracking." : "Complete your reps, enter the actual count, then end this set."
     }
 }
 
@@ -179,7 +239,7 @@ private struct ConfiguredFinishedView: View {
                     ForEach(run.completed) { set in
                         VStack(alignment: .leading, spacing: 7) {
                             Text("\(ExerciseCatalog.find(set.exerciseID)?.name ?? set.exerciseID) · Set \(set.number ?? 1)").font(.headline)
-                            Text("\(set.seconds > 0 ? "\(Int(set.seconds)) sec" : "\(set.reps) reps") · \(set.quantityOrigin == .activeTimer ? "active hold timer" : "manual self-report")")
+                            Text("\(set.seconds > 0 ? "\(Int(set.seconds)) sec" : "\(set.reps) reps") · \(set.source == .camera ? "camera observation" : (set.quantityOrigin == .activeTimer ? "active hold timer" : "manual self-report"))")
                                 .font(.subheadline)
                             Text(set.reason.title).font(.caption).foregroundStyle(.secondary)
                             if let rest = set.restSecondsBefore { Text("\(Int(rest)) sec recorded rest before this set").font(.caption).foregroundStyle(.secondary) }

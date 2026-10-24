@@ -11,8 +11,20 @@ struct CoachingEvent: Identifiable, Equatable {
 
 @MainActor @Observable
 final class TrainingStore {
+    enum ConfiguredInput: String, CaseIterable {
+        case manual, phoneCamera, secondaryCamera
+        var source: InputSource { self == .manual ? .manual : .camera }
+        var title: String {
+            switch self {
+            case .manual: return "Manual reps"
+            case .phoneCamera: return "iPhone camera"
+            case .secondaryCamera: return "Pi side camera"
+            }
+        }
+    }
     var session = TrainingSession()
     private(set) var configured: ConfigurableSession?
+    private(set) var configuredInput: ConfiguredInput = .manual
     var sessionPhase: SessionPhase { configured?.phase ?? session.phase }
     var presented = false
     var history: [SessionRecord] = []
@@ -23,7 +35,7 @@ final class TrainingStore {
     var source: InputSource = .camera
     var hasInput = false
     var selectedExercise: Exercise = .squat
-    let vision = VisionWorker()
+    let vision: VisionWorker
     let secondaryVision: SecondaryCameraVisionWorker
     private(set) var usingSecondaryCamera = false
     private let secondaryCameraClient: @MainActor () throws -> SecondaryCameraClient
@@ -40,10 +52,21 @@ final class TrainingStore {
     private var restGeneration: UUID?
     private var restStartedAt: Double?
 
+    private var feedbackContext: VoiceCueContext {
+        if let run = configured { return .init(sessionID: run.id, generation: run.generation, phase: run.phase) }
+        return .init(sessionID: session.id, generation: session.generation, phase: session.phase)
+    }
+    private var trackingExercise: Exercise? { configured?.trackingExercise ?? (configured == nil ? session.exercise : nil) }
+    private var acceptsTracking: Bool {
+        if let run = configured { return run.source == .camera && run.hasStarted && run.phase == .active && run.trackingExercise != nil }
+        return session.phase == .active
+    }
+
     var coachingEvent: CoachingEvent? {
+        let context = feedbackContext
         guard let event = activeCoachingEvent,
-              event.sessionID == session.id, event.generation == session.generation,
-              session.phase == .active || session.phase == .rest else { return nil }
+              event.sessionID == context.sessionID, event.generation == context.generation,
+              context.phase == .active || context.phase == .rest else { return nil }
         return event
     }
 
@@ -54,7 +77,7 @@ final class TrainingStore {
 
     func setVoiceFeedback(_ enabled: Bool) {
         guard voiceFeedbackEnabled != enabled else { return }
-        coachingVoice.update(session: session, event: coachingEvent, enabled: false, now: now)
+        coachingVoice.update(context: feedbackContext, event: coachingEvent, enabled: false, now: now)
         voiceFeedbackEnabled = enabled
     }
 
@@ -72,33 +95,44 @@ final class TrainingStore {
 
     func coachingTick(at time: Double? = nil, wallTime: Date = Date()) {
         guard appActive else { cancelCoaching(); return }
-        guard configured == nil else { coachingVoice.cancel(); return }
         let time = time ?? now
-        defer { coachingVoice.update(session: session, event: coachingEvent, enabled: voiceFeedbackEnabled, now: time) }
+        let context = feedbackContext
+        defer { coachingVoice.update(context: context, event: coachingEvent, enabled: voiceFeedbackEnabled, now: time) }
         guard time.isFinite else { return }
+        if let run = configured, run.source != .camera || run.trackingExercise == nil || (!run.hasStarted && !run.stoppedForDiscomfort) {
+            cancelCoaching(); return
+        }
+        let cue = configured?.cue ?? session.cue
+        let restElapsed = configured == nil ? actualRestElapsed(at: time) : configured?.restElapsed(at: time)
+        let stopReason: StopReason?
+        if let run = configured {
+            stopReason = run.stoppedForDiscomfort ? .discomfort : (run.phase == .rest ? run.completed.last?.reason : nil)
+        } else { stopReason = session.phase == .rest ? session.sets.last?.reason : nil }
         if coachingEvent == nil || activeCoachingEvent?.expiresAt.map({ time >= $0 }) == true {
             activeCoachingEvent = nil
         }
         if let event = coachingEvent, event.decision.priority == .form,
-           (event.decision.reason == .alignment && session.cue != .alignment)
-            || (event.decision.reason == .tracking && session.cue != .tracking) {
+           (event.decision.reason == .alignment && cue != .alignment)
+            || (event.decision.reason == .tracking && cue != .tracking) {
             activeCoachingEvent = nil
         }
-        guard let decision = coachingPolicy.evaluate(.init(
-            sessionID: session.id, generation: session.generation, phase: session.phase,
-            now: time, exercise: session.exercise, repCount: session.counter.reps,
-            lastRepDuration: session.counter.lastRepDuration, cue: session.cue,
+        guard let exercise = trackingExercise,
+              let decision = coachingPolicy.evaluate(.init(
+            sessionID: context.sessionID, generation: context.generation, phase: context.phase,
+            now: time, exercise: exercise, repCount: configured?.actualReps ?? session.counter.reps,
+            lastRepDuration: configured == nil ? session.counter.lastRepDuration : configured?.counter?.lastRepDuration, cue: cue,
             heartRate: recentHeartRate(at: wallTime), wallTime: wallTime,
-            restElapsed: actualRestElapsed(at: time),
-            target: session.exercise.target, stopReason: session.phase == .rest ? session.sets.last?.reason : nil, source: source
+            restElapsed: restElapsed,
+            target: configured?.current.target ?? session.exercise.target,
+            stopReason: stopReason, source: configured?.source ?? source
         )) else { return }
-        activeCoachingEvent = CoachingEvent(sessionID: session.id, generation: session.generation,
+        activeCoachingEvent = CoachingEvent(sessionID: context.sessionID, generation: context.generation,
                                            decision: decision, issuedAt: time,
                                            expiresAt: decision.priority == .stop ? nil : time + 6)
     }
 
     private func recentHeartRate(at date: Date) -> [SensorReading] {
-        let readings = session.telemetry.suffix(120).compactMap(\.heartRate).filter {
+        let readings = (configured?.telemetry ?? session.telemetry).suffix(120).compactMap(\.heartRate).filter {
             let age = date.timeIntervalSince($0.date)
             return $0.value.isFinite && (1...300).contains($0.value) && age >= -2 && age <= 30
         }
@@ -108,7 +142,8 @@ final class TrainingStore {
 
     init(historyURL: URL? = nil, secondaryVision: SecondaryCameraVisionWorker? = nil,
          secondaryCameraClient: @escaping @MainActor () throws -> SecondaryCameraClient = { try SecondaryCameraSettings.client() },
-         voicePlayback: VoicePlayback? = nil) {
+         voicePlayback: VoicePlayback? = nil, vision: VisionWorker? = nil) {
+        self.vision = vision ?? VisionWorker()
         coachingVoice = CoachingVoiceBridge(playback: voicePlayback ?? LocalVoicePlayback())
         self.secondaryVision = secondaryVision ?? SecondaryCameraVisionWorker()
         self.secondaryCameraClient = secondaryCameraClient
@@ -118,18 +153,22 @@ final class TrainingStore {
         historyStore = HistoryStore(url: historyURL ?? folder.appendingPathComponent("history.json"))
         do { history = try historyStore.load().reversed() }
         catch { self.error = "Couldn’t read your saved sessions." }
-        vision.onFrame = { [weak self] frame, image, generation in
+        self.vision.onFrame = { [weak self] frame, image, generation in
             Task { @MainActor in
                 guard let self, !self.usingSecondaryCamera else { return }
                 self.receive(frame, image: image, generation: generation)
             }
         }
-        vision.onState = { [weak self] state, generation in
+        self.vision.onState = { [weak self] state, generation in
             Task { @MainActor in
-                guard let self, !self.usingSecondaryCamera, self.configured == nil, self.session.generation == generation, self.session.phase == .active else { return }
+                guard let self, !self.usingSecondaryCamera, self.acceptsTracking, self.feedbackContext.generation == generation else { return }
                 self.visionState = state
                 if case .finished = state { self.pause() }
                 if case .failed = state { self.pause() }
+                if self.configured != nil {
+                    if case .denied = state { self.pause() }
+                    if case .unavailable = state { self.pause() }
+                }
             }
         }
         self.secondaryVision.onFrame = { [weak self] frame, image, generation in
@@ -137,8 +176,8 @@ final class TrainingStore {
             self.receive(frame, image: image, generation: generation)
         }
         self.secondaryVision.onState = { [weak self] state, generation in
-            guard let self, self.usingSecondaryCamera, self.configured == nil,
-                  self.session.generation == generation, self.session.phase == .active else { return }
+            guard let self, self.usingSecondaryCamera, self.acceptsTracking,
+                  self.feedbackContext.generation == generation else { return }
             switch state {
             case .idle: break
             case .starting: self.visionState = .idle
@@ -188,6 +227,7 @@ final class TrainingStore {
         defer { publish() }
         voiceFeedbackEnabled = false
         configured = nil
+        configuredInput = .manual
         vision.stop(); secondaryVision.stop(); session = TrainingSession(firstExercise: selectedExercise)
         coachingPolicy = CoachingPolicy(history: history)
         reportedDiscomfort = false
@@ -198,13 +238,37 @@ final class TrainingStore {
             var run = try ConfigurableSession(plan: plan, availableSupport: availableSupport)
             run.start(at: now)
             vision.stop(); secondaryVision.stop(); clearInput(); configured = run
+            configuredInput = .manual; source = .manual; voiceFeedbackEnabled = false
+            coachingPolicy = CoachingPolicy(history: history)
             reportedDiscomfort = false; presented = true; error = nil; publish()
         } catch { self.error = "This plan needs valid exercises and its required support selected in Coach before it can start." }
     }
-    func beginConfiguredSet() { configured?.beginSet(at: now); publish() }
+    @discardableResult func selectConfiguredInput(_ input: ConfiguredInput) -> Bool {
+        guard configured?.resetSet(source: input.source, at: now) == true else { return false }
+        vision.stop(); secondaryVision.stop(); clearInput()
+        configuredInput = input; source = input.source
+        publish(); return true
+    }
+    func beginConfiguredSet() {
+        guard let run = configured, run.phase == .active, !run.hasStarted else { return }
+        configured?.beginSet(at: now)
+        startConfiguredCapture(); publish()
+    }
+    private func startConfiguredCapture() {
+        guard let run = configured, run.source == .camera, run.hasStarted, run.phase == .active else { return }
+        hasInput = true; source = .camera; usingSecondaryCamera = configuredInput == .secondaryCamera
+        if usingSecondaryCamera { startSecondaryCamera() }
+        else { vision.camera(token: run.generation) }
+    }
     func setConfiguredReps(_ reps: Int?) { configured?.setReps(reps); publish() }
-    func stopConfiguredForDiscomfort() { configured?.stopForDiscomfort(at: now); cancelCoaching(); publish() }
+    func stopConfiguredForDiscomfort() {
+        guard configured != nil else { return }
+        configured?.stopForDiscomfort(at: now)
+        vision.stop(); secondaryVision.stop(); frame = nil; image = nil; cancelCoaching()
+        coachingTick(); publish()
+    }
     func camera() {
+        guard configured == nil else { return }
         defer { publish() }
         vision.stop(); secondaryVision.stop(); session.restartSet(source: .camera, at: now); clearInput()
         source = .camera; hasInput = true; vision.camera(token: session.generation)
@@ -218,22 +282,29 @@ final class TrainingStore {
         startSecondaryCamera()
     }
     private func startSecondaryCamera() {
-        do { secondaryVision.start(client: try secondaryCameraClient(), generation: session.generation) }
+        do { secondaryVision.start(client: try secondaryCameraClient(), generation: feedbackContext.generation) }
         catch {
             visionState = .failed("Pair your side camera in Camera settings before starting capture.")
             pause()
         }
     }
     func video(_ url: URL) {
+        guard configured == nil else { return }
         defer { publish() }
         vision.stop(); secondaryVision.stop(); session.restartSet(source: .video, at: now); clearInput()
         source = .video; hasInput = true; vision.video(url: url, token: session.generation)
     }
     private func receive(_ frame: PoseFrame, image: UIImage, generation: UUID) {
-        guard configured == nil, generation == session.generation, session.phase == .active else { return }
+        guard acceptsTracking, generation == feedbackContext.generation, let exercise = trackingExercise else { return }
         self.frame = frame; self.image = image
-        let sample = PoseGeometry.measure(frame, exercise: session.exercise, preferredSide: preferredSide)
+        let sample = PoseGeometry.measure(frame, exercise: exercise, preferredSide: preferredSide)
         preferredSide = sample?.side
+        if configured != nil {
+            let previousReps = configured?.actualReps, previousCue = configured?.cue
+            configured?.consume(sample ?? .init(time: frame.time, angle: .nan, confidence: 0), generation: generation)
+            if previousReps != configured?.actualReps || previousCue != configured?.cue { coachingTick(); publish() }
+            return
+        }
         let previousReps = session.counter.reps, previousCue = session.cue
         session.consume(sample ?? .init(time: frame.time, angle: .nan, confidence: 0), generation: generation)
         if previousReps != session.counter.reps || previousCue != session.cue {
@@ -242,13 +313,19 @@ final class TrainingStore {
         }
     }
     func pause() {
-        if configured != nil { configured?.pause(at: now); cancelCoaching(); publish(); return }
+        if configured != nil {
+            configured?.pause(at: now); vision.pause(); secondaryVision.stop()
+            frame = nil; image = nil; preferredSide = nil; cancelCoaching(); publish(); return
+        }
         session.pause(at: now); vision.pause(); secondaryVision.stop(); frame = nil; image = nil
         cancelCoaching()
         publish()
     }
     func resume() {
-        if configured != nil { configured?.resume(at: now); publish(); return }
+        if configured != nil {
+            guard configured?.phase == .paused else { return }
+            configured?.resume(at: now); startConfiguredCapture(); publish(); return
+        }
         guard session.phase == .paused else { return }
         session.resume(at: now)
         if usingSecondaryCamera { startSecondaryCamera() }
@@ -257,8 +334,9 @@ final class TrainingStore {
     }
     func endSet() {
         if let run = configured {
-            let quantity = run.current.unit == .reps ? Double(run.manualReps ?? 0) : run.elapsed(at: now)
-            configured?.endSet(at: now, reason: quantity >= Double(run.current.target) ? .target : .voluntary)
+            let quantity = run.current.unit == .reps ? Double(run.actualReps ?? 0) : run.elapsed(at: now)
+            guard configured?.endSet(at: now, reason: quantity >= Double(run.current.target) ? .target : .voluntary) == true else { return }
+            vision.stop(); secondaryVision.stop(); frame = nil; image = nil; preferredSide = nil
             cancelCoaching(); publish(); return
         }
         guard session.phase == .active || session.phase == .paused else { return }
@@ -270,14 +348,17 @@ final class TrainingStore {
         publish()
     }
     func feedback(reserve: Int?, reason: StopReason) {
-        if configured != nil { configured?.feedback(reserve: reserve, reason: reason); publish(); return }
+        if configured != nil { configured?.feedback(reserve: reserve, reason: reason); coachingTick(); publish(); return }
         if session.phase == .rest, reason == .discomfort { reportedDiscomfort = true }
         session.feedback(reserve: reserve, reason: reportedDiscomfort ? .discomfort : reason)
         coachingTick()
     }
     func next() {
         if configured != nil {
+            guard configured?.phase == .rest, configured?.stoppedForDiscomfort == false else { return }
             configured?.nextSet(at: now)
+            vision.stop(); secondaryVision.stop(); clearInput()
+            configuredInput = .manual; source = .manual
             if configured?.phase == .finished { save() }
             publish(); return
         }
@@ -287,7 +368,10 @@ final class TrainingStore {
         publish()
     }
     func finish() {
-        if configured != nil { configured?.finish(at: now); cancelCoaching(); save(); publish(); return }
+        if configured != nil {
+            configured?.finish(at: now); vision.stop(); secondaryVision.stop(); clearInput()
+            configuredInput = .manual; source = .manual; save(); publish(); return
+        }
         session.finish(at: now); vision.stop(); secondaryVision.stop(); frame = nil; image = nil; cancelCoaching(); save(); publish()
     }
     func save() {
