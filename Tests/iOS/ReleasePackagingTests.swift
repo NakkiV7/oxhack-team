@@ -1,6 +1,13 @@
 import XCTest
 
 final class ReleasePackagingTests: XCTestCase {
+    func testHostAndWatchDeclareAuditedExemptEncryption() throws {
+        XCTAssertEqual(Bundle.main.object(forInfoDictionaryKey: "ITSAppUsesNonExemptEncryption") as? Bool, false)
+        let watch = Bundle.main.bundleURL.appendingPathComponent("Watch/SpottrWatch.app/Info.plist")
+        let info = try XCTUnwrap(try PropertyListSerialization.propertyList(from: Data(contentsOf: watch), format: nil) as? [String: Any])
+        XCTAssertEqual(info["ITSAppUsesNonExemptEncryption"] as? Bool, false)
+    }
+
     func testInstallableHostAndWatchHaveMatchingReleaseAndBuildVersions() throws {
         let release = try XCTUnwrap(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
         let build = try XCTUnwrap(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String)
