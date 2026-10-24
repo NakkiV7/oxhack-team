@@ -1,0 +1,100 @@
+[
+  {
+    "file": "today-simulator.jpg",
+    "source": "/var/folders/zs/2tq7h99n0g9drgncqt4crppr0000gr/T/screenshot_optimized_0b25a877-625c-43ce-88cf-c3850306e014.jpg",
+    "sha256": "a11c4ae13abc57ece185b9694e6b23fe4b3385d40cfb8a2d6a30c8daa639fef3",
+    "role": "actual simulator capture, no physical physiology claimed",
+    "slides": [
+      1
+    ],
+    "usage": "embedded in final deck"
+  },
+  {
+    "file": "watch-simulator.jpg",
+    "source": "/Users/scsoc/dev/AI PT/docs/evidence/watch-compact-2026-10-24.jpg",
+    "sha256": "b4a6a8d6ce78ab43ef6dbb791d8af4d7f4fa2fedb7abcffa82a4f3fa473bec88",
+    "role": "actual simulator capture, no physical physiology claimed",
+    "slides": [
+      3
+    ],
+    "usage": "embedded in final deck"
+  },
+  {
+    "file": "pushup-top.png",
+    "source": "/Users/scsoc/dev/AI PT/Native/Resources/Assets.xcassets/pushup-top.imageset/pushup-top.png",
+    "sha256": "d347e9ce062440258f9d37d7032c5b67c547ad47fcc75abef21bd79774c03355",
+    "role": "existing exercise illustration",
+    "slides": [
+      4
+    ],
+    "usage": "embedded in final deck"
+  },
+  {
+    "file": "pushup-mid.png",
+    "source": "/Users/scsoc/dev/AI PT/Native/Resources/Assets.xcassets/pushup-mid.imageset/pushup-mid.png",
+    "sha256": "ffe2a0c50fb4db1eefe1bc2f260eec4ac05da154a89e0057114efefdc63e4cd7",
+    "role": "existing exercise illustration",
+    "slides": [
+      4
+    ],
+    "usage": "embedded in final deck"
+  },
+  {
+    "file": "pushup-bottom.png",
+    "source": "/Users/scsoc/dev/AI PT/Native/Resources/Assets.xcassets/pushup-bottom.imageset/pushup-bottom.png",
+    "sha256": "ba55c6390dc0e09110368a9149566b528e4199cf64f2231599bd019307f38693",
+    "role": "existing exercise illustration",
+    "slides": [
+      4
+    ],
+    "usage": "embedded in final deck"
+  },
+  {
+    "file": "kneePushup.png",
+    "source": "/Users/scsoc/dev/AI PT/Native/Resources/Assets.xcassets/kneePushup.imageset/kneePushup.png",
+    "sha256": "f6b7047faa22e4aeb5816c020989bb64e29d098aa9da0224bd0bd0f0fa2e7b64",
+    "role": "existing exercise illustration",
+    "slides": [],
+    "usage": "available source asset, not embedded"
+  },
+  {
+    "file": "plank.png",
+    "source": "/Users/scsoc/dev/AI PT/Native/Resources/Assets.xcassets/plank.imageset/plank.png",
+    "sha256": "2b115c3c828256510b77da465eb58882d4431d4eb2b549262c71be033bd96587",
+    "role": "existing exercise illustration",
+    "slides": [],
+    "usage": "available source asset, not embedded"
+  },
+  {
+    "file": "inclinePushup.png",
+    "source": "/Users/scsoc/dev/AI PT/Native/Resources/Assets.xcassets/inclinePushup.imageset/inclinePushup.png",
+    "sha256": "6c40b8ebe8642bc27e1bcd659948ebf611de8961ed77f8cae85fd12d0b841ca0",
+    "role": "existing exercise illustration",
+    "slides": [],
+    "usage": "available source asset, not embedded"
+  },
+  {
+    "file": "strength.png",
+    "source": "/Users/scsoc/dev/AI PT/Native/Resources/Assets.xcassets/strength.imageset/strength.png",
+    "sha256": "8d65d3af7fa75ab6a0981730f0479bbae74037f9fb588c58cdd199eb3ad079d4",
+    "role": "existing exercise illustration",
+    "slides": [],
+    "usage": "available source asset, not embedded"
+  },
+  {
+    "file": "heldout-errors.png",
+    "source": "/Users/scsoc/dev/AI PT/research/hr_forecast/results/heldout-errors.png",
+    "sha256": "4452eb31fee1b2fb463e07df2901216e85ee2ce40bc617435cd3cc8dd24daeb8",
+    "role": "recorded offline public-data plot",
+    "slides": [],
+    "usage": "supplementary recorded plot"
+  },
+  {
+    "file": "forecast-example.png",
+    "source": "/Users/scsoc/dev/AI PT/research/hr_forecast/results/forecast-example.png",
+    "sha256": "2546d701d1564e551e450aeff55018bef167014ef5c7b38e94b4ad0e2abaea6a",
+    "role": "recorded offline public-data plot",
+    "slides": [],
+    "usage": "supplementary recorded plot"
+  }
+]

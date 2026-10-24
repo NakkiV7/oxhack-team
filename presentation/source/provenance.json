@@ -1,0 +1,61 @@
+{
+  "title": "Spottr judges presentation",
+  "evidence_snapshot_utc": "2026-10-24T20:55:00Z",
+  "created_utc": "2026-10-24T21:01:08.564697+00:00",
+  "git_head_at_source_inventory": "8ec9fdb54bb5eaa7120c593024d6962999eab923",
+  "slide_count": 10,
+  "font": {
+    "family": "Helvetica Neue",
+    "basis": "design; available bundled-runtime font discovery"
+  },
+  "assets_manifest": "assets.json",
+  "asset_scope": "Existing exercise PNGs and explicitly owner-approved actual iPhone/Watch simulator JPEGs. No authored SVG or generated new artwork. PNG HR plots are supplementary unchanged evidence.",
+  "source_sha256": {
+    "docs/integration-readiness.md": "35a98c9e8a4fbe618729828d49e239628516cf0a16f23a79220e3748ca56f6df",
+    "docs/ISSUES.md": "1751c9a1b8036163d5a3eb4b6eb8bd219a08c3ce25ae1420162c3c66def94eea",
+    "docs/app-guide.md": "a2d3257a53b21a4b8cd2e530d2efa9e690c41910e18193f8e9ac1c0c088a8da3",
+    "docs/watch-telemetry.md": "b852e62c820a9649065dfa920163cbc1acfc2688a25af206c614a1161138d206",
+    "docs/watch-simulator-acceptance.md": "880b631c99addb3dd39309b1d662cbb1b6ab6a68de1dd0fe38783f071bbb5a0c",
+    "docs/voice-feedback.md": "e16877f87430faa1ffd986e378f611251aab9207ce903850d6ec6bd58b078055",
+    "docs/coach-goals.md": "af46246795436fe5314cd2e3e3f6f103a3fae63b400f985a04827691c35180cd",
+    "docs/tiger-live-readiness.md": "82938c6f4ebfacfdea1a0937dbab7f97d7e8e5ea16962e60bbf6413c0c3a01ec",
+    "docs/release-readiness.md": "f2c13ed43e2f520e4a45aa5dcf5749d201327d954a66e1bbb94385ae91b652ed",
+    "docs/testflight-provisioning.md": "315343b5e70b15e77eb825cf78746806172978175d96373758990a611fec8780",
+    "docs/presage-integration.md": "33b6b621efdd371b6ab10529590576963ca13f06401f2ae32997c8a314d81cc0",
+    "docs/delta-workflow.md": "81a547269ca531a93baaca198bfe440865c780945cd102865cf86f5266de2d32",
+    "docs/public-data-benchmark.md": "84d33c91097fd3141355f40b60a3f607ca59b58f516320ea089d05abbe2b934c",
+    "research/hr_forecast/results/report.json": "f7c12bfaf022c90ebb6cbc86b84c87695051d737de435a707b50cdac685f4576",
+    "research/hr_forecast/results/inventory.json": "0d90c7cd4b59c82bde5d953e2444e50f0796fa1805566ac7c59837d0f3c32d23",
+    "Shared/Core/CoachingPolicy.swift": "b04f7095f82b4cbc6dfcb746059d38f46e72c2a480be20452c2f46529e9b8d1f",
+    "Shared/Core/RepCounter.swift": "5d7834843009054ea83562b9c1bfe10d9162cad6f85f9d304b5c73ba54ee5a95",
+    "Shared/Core/SkillProgress.swift": "caf0464e18f1b26af50e6c8d893812cdcfaef7e628a172c03c234b04814ffa6b",
+    "Shared/Core/ExerciseCatalog.swift": "e979c2a0d1b800ccc82d29aadafd93eaf30a629df810d5e31de1c439c09c3f1d",
+    "hardware/pi/EVIDENCE-2026-10-24.md": "a7c52d27fa498b5cc6133df9d43c4e69bac5f2e9a8a3a7f5aa54f3cb9fdd2c22"
+  },
+  "outputs": {
+    "preview-montage.png": {
+      "bytes": 677642,
+      "sha256": "a4680b36e25863ec1462f70d78116d3f657619b72012495c9f94054032e1d829"
+    },
+    "spottr-judges-rendered.pdf": {
+      "bytes": 943346,
+      "sha256": "f1a8f109c290f0e15f6e7bfe9b4c4c05564cd59b1cd96f6dd7e5c1f782e5eb2e"
+    },
+    "spottr-judges.pptx": {
+      "bytes": 253396,
+      "sha256": "2e428e93a173d07b519472d3179f90f56d6c63eb607a4d66ae85bd63ae83a952"
+    }
+  },
+  "pdf": "Static image-based PDF assembled from final imported-PPTX renders; native PDF export failed with missing #standard-fonts/Helvetica dependency.",
+  "limits": [
+    "Simulator captures do not establish physical Watch readings.",
+    "Gateway live synthetic calls are separate from native phone acceptance.",
+    "Pi delivered real initial frames but sustained USB capture is blocked.",
+    "Voice tests use fake playback; audible acceptance is pending.",
+    "HR forecast is offline, exploratory and not Watch/failure/recovery validation.",
+    "Profiles/record exist but no accepted TestFlight build.",
+    "No native PowerPoint UI acceptance or external publication."
+  ],
+  "validation_receipt_private": ".build/validation-v2.json",
+  "finalizer_sha256": "2e428e93a173d07b519472d3179f90f56d6c63eb607a4d66ae85bd63ae83a952"
+}
