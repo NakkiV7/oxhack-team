@@ -3,11 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Spottr — Your AI Personal Trainer</title>
-  <meta name="description" content="Spottr uses on-device vision and Apple Watch to count your reps, coach your form, and track your progress. No gym required.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <title>Spottr — Train. Level up. Repeat.</title>
+  <meta name="description" content="Count push-ups and squats with on-device pose tracking, review your training and build new skills. Spottr is in development for iPhone and Apple Watch.">
+  <link rel="icon" href="data:,">
   <style>
     /* ───── Reset & base ───── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -23,10 +21,10 @@
       --radius:  16px;
     }
 
-    html { scroll-behavior: smooth; }
+    html { scroll-behavior: smooth; scroll-padding-top: 88px; }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       color: var(--black);
       background: var(--white);
       line-height: 1.6;
@@ -37,6 +35,9 @@
     img { display: block; max-width: 100%; height: auto; }
 
     a { color: inherit; text-decoration: none; }
+    a:focus-visible, button:focus-visible { outline: 3px solid var(--green); outline-offset: 5px; }
+    .skip-link { position: fixed; top: -100px; left: 16px; z-index: 101; padding: 12px 18px; background: var(--black); color: var(--white); border-radius: 8px; }
+    .skip-link:focus { top: 12px; }
 
     /* ───── Utility ───── */
     .container {
@@ -120,12 +121,6 @@
       width: 8px; height: 8px;
       background: var(--green);
       border-radius: 50%;
-      animation: pulse 2s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
     }
 
     .hero__title {
@@ -160,17 +155,21 @@
       flex-wrap: wrap;
     }
 
-    /* Apple App Store badge — an inline SVG button */
-    .app-store-btn {
-      display: inline-block;
-      transition: opacity 0.2s, transform 0.2s;
-      border-radius: 13px;
+    .availability-button {
+      padding: 16px 28px;
+      border: 0;
+      border-radius: 100px;
+      background: var(--black);
+      color: var(--white);
+      font: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: default;
+      opacity: 1;
     }
-    .app-store-btn:hover {
-      opacity: 0.85;
-      transform: scale(1.03);
-    }
-    .app-store-btn svg { display: block; }
+    .availability-note, .preview-caption { margin-top: 16px; color: var(--gray); font-size: 13px; text-align: center; }
+    .cta .availability-button { background: rgba(255,255,255,0.12); color: var(--white); border: 1px solid rgba(255,255,255,0.35); }
+    .cta .availability-note { color: rgba(255,255,255,0.7); position: relative; }
 
     .hero__secondary {
       display: inline-flex;
@@ -212,7 +211,6 @@
 
     .phone-mock__screen {
       width: 100%;
-      aspect-ratio: 9 / 19.5;
       background: var(--white);
       border-radius: 26px;
       overflow: hidden;
@@ -225,8 +223,8 @@
 
     .phone-mock__screen img {
       width: 100%;
-      height: 100%;
-      object-fit: cover;
+      height: auto;
+      object-fit: contain;
     }
 
     /* Placeholder screen content (used when images can't load) */
@@ -432,7 +430,7 @@
     .step__image img {
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      object-fit: contain;
     }
 
     /* Placeholder inside step images */
@@ -617,9 +615,14 @@
 
       .footer__inner { flex-direction: column; text-align: center; }
     }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition: none !important; }
+    }
   </style>
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to content</a>
 
   <!-- ════════ Nav ════════ -->
   <nav class="nav">
@@ -628,21 +631,22 @@
       <div class="nav__links">
         <a href="#features">Features</a>
         <a href="#how">How It Works</a>
-        <a href="#download" class="nav__cta">
+        <a href="#availability" class="nav__cta">
           <!-- Small Apple icon -->
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.33-3.14-2.57C4.25 16 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-          Download
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.33-3.14-2.57C4.25 16 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+          Availability
         </a>
       </div>
     </div>
   </nav>
+  <main id="main" tabindex="-1">
 
   <!-- ════════ Hero ════════ -->
   <section class="hero" id="hero">
     <div class="container">
       <div class="hero__badge">
-        <span class="hero__badge-dot"></span>
-        Built for iPhone + Apple Watch
+        <span class="hero__badge-dot" aria-hidden="true"></span>
+        In development · iPhone + Apple Watch
       </div>
 
       <h1 class="hero__title">
@@ -650,40 +654,28 @@
       </h1>
 
       <p class="hero__sub">
-        On-device vision tracks your push-ups and squats. Apple Watch adds heart rate. One clear coaching cue at the right time — no gym&nbsp;required.
+        Count push-ups and squats with on-device pose tracking. Review your training, follow your progress and build your next&nbsp;skill.
       </p>
 
       <div class="hero__actions">
-        <!-- Apple App Store button — links to App Store (placeholder URL) -->
-        <a href="https://apps.apple.com/app/spottr" class="app-store-btn" target="_blank" rel="noopener noreferrer" aria-label="Download on the App Store">
-          <svg xmlns="http://www.w3.org/2000/svg" width="200" height="60" viewBox="0 0 200 60">
-            <rect width="200" height="60" rx="13" fill="#000"/>
-            <!-- "Download on the" -->
-            <text x="67" y="20" fill="#fff" font-family="Inter,-apple-system,sans-serif" font-size="9" font-weight="500" letter-spacing="0.2">Download on the</text>
-            <!-- "App Store" -->
-            <text x="67" y="40" fill="#fff" font-family="Inter,-apple-system,sans-serif" font-size="19" font-weight="700" letter-spacing="-0.3">App Store</text>
-            <!-- Apple logo -->
-            <g transform="translate(22,10)" fill="#fff">
-              <path d="M16.47 17.5c-.73 1.08-1.5 2.14-2.67 2.16-1.17.02-1.55-.69-2.88-.69-1.34 0-1.75.67-2.86.72-1.15.04-2.02-1.17-2.75-2.25-1.5-2.2-2.65-6.22-1.11-8.94.76-1.33 2.13-2.17 3.61-2.2 1.12-.02 2.19.76 2.88.76.68 0 1.97-.94 3.33-.8.57.02 2.16.23 3.18 1.73-.08.05-1.9 1.12-1.88 3.34.02 2.64 2.32 3.52 2.35 3.53-.03.06-.37 1.26-1.21 2.47M12.37 4.06c.64-.73 1.7-1.28 2.58-1.31.11 1.02-.3 2.06-.91 2.79-.61.74-1.6 1.32-2.58 1.24-.13-1 .36-2.06.92-2.72z"/>
-            </g>
-          </svg>
-        </a>
+        <button class="availability-button" type="button" disabled aria-describedby="hero-availability">TestFlight soon</button>
 
         <a href="#how" class="hero__secondary">
           See how it works
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17l9.2-9.2M17 17V7.8H7.8"/></svg>
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17l9.2-9.2M17 17V7.8H7.8"/></svg>
         </a>
       </div>
+      <p class="availability-note" id="hero-availability">A public test link is not available yet.</p>
 
       <!-- Hero visual — phone mockups + watch -->
       <div class="hero__visual">
         <!-- Phone: Today screen -->
         <div class="phone-mock">
           <div class="phone-mock__screen">
-            <img src="../design/phone-today.png" alt="Spottr Today screen" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <img src="assets/phone-today.png" width="351" height="958" alt="Design preview of the Spottr Today screen" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <div class="phone-placeholder" style="display:none;">
               <div class="phone-placeholder__icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#737373" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#737373" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
               </div>
               <span class="phone-placeholder__label">Today</span>
             </div>
@@ -691,9 +683,9 @@
         </div>
 
         <!-- Watch -->
-        <div class="watch-mock">
+        <div class="watch-mock" role="img" aria-label="Watch design preview: sample 142 BPM and 8 reps">
           <div class="watch-mock__screen">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="#ac3535"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="#ac3535"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
             <span class="watch-mock__hr">142</span>
             <span class="watch-mock__label">BPM</span>
             <span class="watch-mock__reps">8 reps</span>
@@ -703,16 +695,17 @@
         <!-- Phone: Train screen -->
         <div class="phone-mock">
           <div class="phone-mock__screen">
-            <img src="../design/phone-train.png" alt="Spottr Train screen" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <img src="assets/phone-train.png" width="351" height="838" alt="Design preview of the Spottr training screen" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <div class="phone-placeholder" style="display:none;">
               <div class="phone-placeholder__icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#737373" stroke-width="1.5"><path d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8zM6 1v3M10 1v3M14 1v3"/></svg>
+                <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#737373" stroke-width="1.5"><path d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8zM6 1v3M10 1v3M14 1v3"/></svg>
               </div>
               <span class="phone-placeholder__label">Live Training</span>
             </div>
           </div>
         </div>
       </div>
+      <p class="preview-caption">Design previews with sample data.</p>
     </div>
   </section>
 
@@ -728,55 +721,55 @@
         <!-- 1 -->
         <div class="feature-card">
           <div class="feature-card__icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
           </div>
           <h3 class="feature-card__name">Vision Tracking</h3>
-          <p class="feature-card__desc">MediaPipe pose detection counts your reps and checks your form — entirely on-device. No cloud latency, no privacy&nbsp;concerns.</p>
+          <p class="feature-card__desc">On-device pose tracking counts push-ups and squats and offers short form cues. It works best with a clear side&nbsp;view.</p>
         </div>
 
         <!-- 2 -->
         <div class="feature-card">
           <div class="feature-card__icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+            <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
           </div>
           <h3 class="feature-card__name">Apple Watch HR</h3>
-          <p class="feature-card__desc">Real-time heart rate from your wrist. Smart rest suggestions based on your recovery, not a generic&nbsp;timer.</p>
+          <p class="feature-card__desc">The Watch companion records heart rate and wrist movement when you choose to record a workout. Device testing is&nbsp;ongoing.</p>
         </div>
 
         <!-- 3 -->
         <div class="feature-card">
           <div class="feature-card__icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
           </div>
           <h3 class="feature-card__name">AI Coach</h3>
-          <p class="feature-card__desc">One brief, useful cue at the right time. Powered by Gemini — grounded in your actual session data, not generic&nbsp;tips.</p>
+          <p class="feature-card__desc">Ask about your recorded training or request a workout plan. Optional Gemini coaching uses a configured internet&nbsp;connection.</p>
         </div>
 
         <!-- 4 -->
         <div class="feature-card">
           <div class="feature-card__icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--black)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--black)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
           </div>
           <h3 class="feature-card__name">Works Offline</h3>
-          <p class="feature-card__desc">All tracking and coaching runs locally on your phone. Cloud sync is optional and explicit — your data stays&nbsp;yours.</p>
+          <p class="feature-card__desc">Rep counting, on-screen cues and local history work offline. You choose when to request AI coaching or upload a&nbsp;workout.</p>
         </div>
 
         <!-- 5 -->
         <div class="feature-card">
           <div class="feature-card__icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
           </div>
           <h3 class="feature-card__name">Progress & Reports</h3>
-          <p class="feature-card__desc">Session summaries, tempo trends and skill progression. See exactly how you're improving over&nbsp;time.</p>
+          <p class="feature-card__desc">Review your recorded sets and rep tempo. Earn XP and follow connected skill challenges in a tree or a linear&nbsp;view.</p>
         </div>
 
         <!-- 6 -->
         <div class="feature-card">
           <div class="feature-card__icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           </div>
-          <h3 class="feature-card__name">Voice Cues</h3>
-          <p class="feature-card__desc">Hear coaching cues through ElevenLabs voice — hands-free, eyes-on-form. Urgent cues interrupt; routine cues&nbsp;queue.</p>
+          <h3 class="feature-card__name">Voice Cues · Planned</h3>
+          <p class="feature-card__desc">Spoken coaching is planned. Live sessions currently show short on-screen cues so you can follow your next&nbsp;move.</p>
         </div>
       </div>
     </div>
@@ -788,15 +781,16 @@
       <div class="how__header">
         <p class="how__kicker">How It Works</p>
         <h2 class="how__title">Set up. Show up. Get stronger.</h2>
+        <p class="preview-caption">Illustrations and interface concepts shown below.</p>
       </div>
 
       <div class="how__steps">
         <!-- Step 1 -->
         <div class="step">
           <div class="step__image">
-            <img src="../design/landing-studio.png" alt="Set up your phone side-on" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <img src="assets/landing-studio.png" width="1056" height="1100" alt="Earlier design concept for the Spottr training experience" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <div class="step__placeholder" style="display:none;">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#737373" stroke-width="1.5"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="18" r="1"/></svg>
+              <svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#737373" stroke-width="1.5"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="18" r="1"/></svg>
               <span style="font-size:12px; font-weight:600;">Position</span>
             </div>
           </div>
@@ -808,9 +802,9 @@
         <!-- Step 2 -->
         <div class="step">
           <div class="step__image">
-            <img src="../design/landing-field.png" alt="Train with real-time feedback" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <img src="assets/landing-field.png" width="1056" height="1246" alt="Earlier design concept for a Spottr push-up screen" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <div class="step__placeholder" style="display:none;">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#737373" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              <svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#737373" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
               <span style="font-size:12px; font-weight:600;">Train</span>
             </div>
           </div>
@@ -822,15 +816,15 @@
         <!-- Step 3 -->
         <div class="step">
           <div class="step__image">
-            <img src="../design/phone-review.png" alt="Review your session" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <img src="assets/phone-review.png" width="351" height="893" alt="Design preview of a session report" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <div class="step__placeholder" style="display:none;">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#737373" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              <svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#737373" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
               <span style="font-size:12px; font-weight:600;">Review</span>
             </div>
           </div>
           <div class="step__number">3</div>
           <h3 class="step__name">Review & Improve</h3>
-          <p class="step__desc">See reps, tempo, HR trajectory and one focused takeaway for your next session.</p>
+          <p class="step__desc">Review recorded reps and tempo, with Watch data when available. Choose what to work on&nbsp;next.</p>
         </div>
       </div>
     </div>
@@ -848,41 +842,34 @@
         <p class="stat__label">CV-tracked exercises</p>
       </div>
       <div>
-        <p class="stat__number">0ms</p>
-        <p class="stat__label">Cloud latency (on-device)</p>
+        <p class="stat__number">4</p>
+        <p class="stat__label">Training goals</p>
       </div>
       <div>
-        <p class="stat__number">∞</p>
-        <p class="stat__label">Works without internet</p>
+        <p class="stat__number">Local</p>
+        <p class="stat__label">History on your iPhone</p>
       </div>
     </div>
   </section>
 
   <!-- ════════ CTA ════════ -->
-  <section class="cta" id="download">
+  <section class="cta" id="availability">
     <div class="container">
       <div class="cta__card">
-        <h2 class="cta__title">Ready to train smarter?</h2>
-        <p class="cta__sub">Download Spottr and let your phone be your spotter.</p>
+        <h2 class="cta__title">Follow the build.</h2>
+        <p class="cta__sub">Spottr is in development. Browse the project while we prepare TestFlight.</p>
         <div class="cta__actions">
-          <a href="https://apps.apple.com/app/spottr" class="app-store-btn" target="_blank" rel="noopener noreferrer" aria-label="Download on the App Store">
-            <svg xmlns="http://www.w3.org/2000/svg" width="200" height="60" viewBox="0 0 200 60">
-              <rect width="200" height="60" rx="13" fill="#fff"/>
-              <text x="67" y="20" fill="#141414" font-family="Inter,-apple-system,sans-serif" font-size="9" font-weight="500" letter-spacing="0.2">Download on the</text>
-              <text x="67" y="40" fill="#141414" font-family="Inter,-apple-system,sans-serif" font-size="19" font-weight="700" letter-spacing="-0.3">App Store</text>
-              <g transform="translate(22,10)" fill="#141414">
-                <path d="M16.47 17.5c-.73 1.08-1.5 2.14-2.67 2.16-1.17.02-1.55-.69-2.88-.69-1.34 0-1.75.67-2.86.72-1.15.04-2.02-1.17-2.75-2.25-1.5-2.2-2.65-6.22-1.11-8.94.76-1.33 2.13-2.17 3.61-2.2 1.12-.02 2.19.76 2.88.76.68 0 1.97-.94 3.33-.8.57.02 2.16.23 3.18 1.73-.08.05-1.9 1.12-1.88 3.34.02 2.64 2.32 3.52 2.35 3.53-.03.06-.37 1.26-1.21 2.47M12.37 4.06c.64-.73 1.7-1.28 2.58-1.31.11 1.02-.3 2.06-.91 2.79-.61.74-1.6 1.32-2.58 1.24-.13-1 .36-2.06.92-2.72z"/>
-              </g>
-            </svg>
-          </a>
+          <button class="availability-button" type="button" disabled aria-describedby="footer-availability">TestFlight soon</button>
           <a href="https://github.com/NakkiV7/oxhack-team" class="cta__btn-white" target="_blank" rel="noopener noreferrer">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
             View Source
           </a>
         </div>
+        <p class="availability-note" id="footer-availability">A public test link is not available yet.</p>
       </div>
     </div>
   </section>
+  </main>
 
   <!-- ════════ Footer ════════ -->
   <footer class="footer">
