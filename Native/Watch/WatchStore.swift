@@ -28,7 +28,7 @@ final class WatchStore {
         state.receive(snapshot)
         guard state.snapshot?.sentAt == snapshot.sentAt else { return }
         if previous?.sessionID != snapshot.sessionID, recording { stopRecording() }
-        if snapshot.reps > (previous?.reps ?? 0) { WKInterfaceDevice.current().play(.click) }
+        if snapshot.configured == nil, snapshot.reps > (previous?.reps ?? 0) { WKInterfaceDevice.current().play(.click) }
         if snapshot.phase == .paused { recorder.pause() }
         if snapshot.phase == .active || snapshot.phase == .rest { recorder.resume() }
         if snapshot.phase == .finished || snapshot.phase == .idle { stopRecording() }

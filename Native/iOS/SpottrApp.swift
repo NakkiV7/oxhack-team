@@ -18,7 +18,8 @@ struct SpottrApp: App {
                     }
                 }
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .background, store.session.phase == .active { store.pause() }
+                    if store.sessionPhase == .active,
+                       phase == .background || (phase == .inactive && store.configured != nil) { store.pause() }
                 }
         }
     }

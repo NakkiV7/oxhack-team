@@ -12,6 +12,8 @@ struct CoachingEvent: Identifiable, Equatable {
 @MainActor @Observable
 final class TrainingStore {
     var session = TrainingSession()
+    private(set) var configured: ConfigurableSession?
+    var sessionPhase: SessionPhase { configured?.phase ?? session.phase }
     var presented = false
     var history: [SessionRecord] = []
     var error: String?
@@ -49,6 +51,7 @@ final class TrainingStore {
     }
 
     func coachingTick(at time: Double? = nil, wallTime: Date = Date()) {
+        guard configured == nil else { return }
         let time = time ?? now
         guard time.isFinite else { return }
         if coachingEvent == nil || activeCoachingEvent?.expiresAt.map({ time >= $0 }) == true {
@@ -81,11 +84,11 @@ final class TrainingStore {
         return Array(distinct.values.sorted { $0.date < $1.date }.suffix(60))
     }
 
-    init() {
+    init(historyURL: URL? = nil) {
         let root = URL.applicationSupportDirectory.appendingPathComponent("Spottr")
         let namespace = ProcessInfo.processInfo.environment["SPOTTR_DATA_NAMESPACE"].flatMap(UUID.init(uuidString:))
         let folder = namespace.map { root.appendingPathComponent($0.uuidString) } ?? root
-        historyStore = HistoryStore(url: folder.appendingPathComponent("history.json"))
+        historyStore = HistoryStore(url: historyURL ?? folder.appendingPathComponent("history.json"))
         do { history = try historyStore.load().reversed() }
         catch { self.error = "Couldn’t read your saved sessions." }
         vision.onFrame = { [weak self] frame, image, generation in
@@ -93,7 +96,7 @@ final class TrainingStore {
         }
         vision.onState = { [weak self] state, generation in
             Task { @MainActor in
-                guard let self, self.session.generation == generation, self.session.phase == .active else { return }
+                guard let self, self.configured == nil, self.session.generation == generation, self.session.phase == .active else { return }
                 self.visionState = state
                 if case .finished = state { self.pause() }
                 if case .failed = state { self.pause() }
@@ -103,7 +106,11 @@ final class TrainingStore {
             Task { @MainActor in self?.command(command) }
         }
         companion.onTelemetry = { [weak self] telemetry in
-            Task { @MainActor in self?.session.receiveTelemetry(telemetry) }
+            Task { @MainActor in
+                guard let self else { return }
+                if self.configured != nil { self.configured?.receiveTelemetry(telemetry) }
+                else { self.session.receiveTelemetry(telemetry) }
+            }
         }
         companion.onReachability = { [weak self] reachable in
             Task { @MainActor in self?.watchReachable = reachable; self?.publish() }
@@ -111,10 +118,15 @@ final class TrainingStore {
         companion.onRequest = { [weak self] in Task { @MainActor in self?.publish() } }
     }
 
-    func publish() { companion.publish(CompanionSnapshot(session: session)) }
+    func publish() {
+        if let configured { companion.publish(CompanionSnapshot(session: configured, at: now)) }
+        else { companion.publish(CompanionSnapshot(session: session)) }
+    }
     private func command(_ command: CompanionCommand) {
-        guard command.sessionID == session.id, command.generation == session.generation else { publish(); return }
+        guard command.sessionID == (configured?.id ?? session.id),
+              command.generation == (configured?.generation ?? session.generation) else { publish(); return }
         switch command.action {
+        case .startSet: beginConfiguredSet()
         case .pause: pause()
         case .resume: resume()
         case .endSet: endSet()
@@ -124,17 +136,29 @@ final class TrainingStore {
         publish()
     }
     func heartRate(at date: Date) -> String {
-        session.telemetry.last?.heartRate?.heartRate(at: date).map { "\(Int($0.rounded())) bpm" } ?? "—"
+        (configured?.telemetry ?? session.telemetry).last?.heartRate?.heartRate(at: date).map { "\(Int($0.rounded())) bpm" } ?? "—"
     }
 
     var now: Double { ProcessInfo.processInfo.systemUptime }
     func start() {
         defer { publish() }
+        configured = nil
         vision.stop(); session = TrainingSession(firstExercise: selectedExercise)
         coachingPolicy = CoachingPolicy(history: history)
         reportedDiscomfort = false
         session.start(at: now); presented = true; error = nil; clearInput()
     }
+    func startPlan(_ plan: CoachSavedPlan, availableSupport: Set<String>) {
+        do {
+            var run = try ConfigurableSession(plan: plan, availableSupport: availableSupport)
+            run.start(at: now)
+            vision.stop(); clearInput(); configured = run
+            reportedDiscomfort = false; presented = true; error = nil; publish()
+        } catch { self.error = "This plan needs valid exercises and its required support selected in Coach before it can start." }
+    }
+    func beginConfiguredSet() { configured?.beginSet(at: now); publish() }
+    func setConfiguredReps(_ reps: Int?) { configured?.setReps(reps); publish() }
+    func stopConfiguredForDiscomfort() { configured?.stopForDiscomfort(at: now); cancelCoaching(); publish() }
     func camera() {
         defer { publish() }
         vision.stop(); session.restartSet(source: .camera, at: now); clearInput()
@@ -146,7 +170,7 @@ final class TrainingStore {
         source = .video; hasInput = true; vision.video(url: url, token: session.generation)
     }
     private func receive(_ frame: PoseFrame, image: UIImage, generation: UUID) {
-        guard generation == session.generation, session.phase == .active else { return }
+        guard configured == nil, generation == session.generation, session.phase == .active else { return }
         self.frame = frame; self.image = image
         let sample = PoseGeometry.measure(frame, exercise: session.exercise, preferredSide: preferredSide)
         preferredSide = sample?.side
@@ -158,16 +182,23 @@ final class TrainingStore {
         }
     }
     func pause() {
+        if configured != nil { configured?.pause(at: now); cancelCoaching(); publish(); return }
         session.pause(at: now); vision.pause(); frame = nil
         cancelCoaching()
         publish()
     }
     func resume() {
+        if configured != nil { configured?.resume(at: now); publish(); return }
         session.resume(at: now)
         if hasInput { vision.resume(token: session.generation, source: source) }
         publish()
     }
     func endSet() {
+        if let run = configured {
+            let quantity = run.current.unit == .reps ? Double(run.manualReps ?? 0) : run.elapsed(at: now)
+            configured?.endSet(at: now, reason: quantity >= Double(run.current.target) ? .target : .voluntary)
+            cancelCoaching(); publish(); return
+        }
         guard session.phase == .active || session.phase == .paused else { return }
         let time = now
         session.endSet(at: time, reason: session.counter.reps >= session.exercise.target ? .target : .voluntary)
@@ -177,18 +208,31 @@ final class TrainingStore {
         publish()
     }
     func feedback(reserve: Int?, reason: StopReason) {
+        if configured != nil { configured?.feedback(reserve: reserve, reason: reason); publish(); return }
         if session.phase == .rest, reason == .discomfort { reportedDiscomfort = true }
         session.feedback(reserve: reserve, reason: reportedDiscomfort ? .discomfort : reason)
         coachingTick()
     }
     func next() {
+        if configured != nil {
+            configured?.nextSet(at: now)
+            if configured?.phase == .finished { save() }
+            publish(); return
+        }
         guard !reportedDiscomfort else { publish(); return }
         session.nextSet(at: now); clearInput()
         if session.phase == .finished { save() }
         publish()
     }
-    func finish() { session.finish(at: now); vision.stop(); frame = nil; cancelCoaching(); save(); publish() }
+    func finish() {
+        if configured != nil { configured?.finish(at: now); cancelCoaching(); save(); publish(); return }
+        session.finish(at: now); vision.stop(); frame = nil; cancelCoaching(); save(); publish()
+    }
     func save() {
+        if let configured {
+            guard configured.phase == .finished, !configured.completed.isEmpty else { return }
+            persist(configured.record); return
+        }
         persist(session.record)
     }
     func persist(_ record: SessionRecord) {

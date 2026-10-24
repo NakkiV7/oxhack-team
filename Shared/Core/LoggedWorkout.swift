@@ -1,12 +1,19 @@
 import Foundation
 
 public struct LoggedSet: Codable, Identifiable, Equatable, Sendable {
+    public enum QuantityOrigin: String, Codable, Sendable { case selfReport, activeTimer }
     public let id: UUID
     public let exerciseID: String
     public let reps: Int
     public let seconds: Double
     public let source: InputSource
-    public let reason: StopReason
+    public var reason: StopReason
+    public var number: Int? = nil
+    public var target: Int? = nil
+    public var activeSeconds: Double? = nil
+    public var restSecondsBefore: Double? = nil
+    public var reserve: Int? = nil
+    public var quantityOrigin: QuantityOrigin? = nil
 }
 public enum LoggedWorkout {
     public enum Invalid: Error { case quantity }

@@ -30,6 +30,15 @@ public struct ReportSet: Identifiable, Sendable {
     public let reason: StopReason
     public let repDurations: [Double]
     public let restSecondsBefore: Double?
+    public let quantityOrigin: LoggedSet.QuantityOrigin?
+    public var sourceLabel: String {
+        if quantityOrigin == .activeTimer { return "Manual hold timer" }
+        switch source {
+        case .manual: return "Manual self-report"
+        case .camera: return "Camera"
+        case .video: return "Video"
+        }
+    }
     public var averageRepSeconds: Double? { repDurations.isEmpty ? nil : repDurations.reduce(0, +) / Double(repDurations.count) }
     public var quantityText: String { holdSeconds > 0 ? "\(Int(holdSeconds)) sec" : "\(reps) reps" }
 }
@@ -72,14 +81,15 @@ public struct WorkoutReport: Identifiable, Sendable {
                 reps: set.reps, holdSeconds: 0, activeSeconds: set.activeSeconds,
                 source: set.source, reserve: set.reserve, reason: set.reason,
                 repDurations: Self.recordedRepDurations(for: set),
-                restSecondsBefore: set.restSecondsBefore.flatMap { $0.isFinite && $0 >= 0 ? $0 : nil })
+                restSecondsBefore: set.restSecondsBefore.flatMap { $0.isFinite && $0 >= 0 ? $0 : nil }, quantityOrigin: nil)
         } + record.loggedSets.map { set in
             let entry = ExerciseCatalog.find(set.exerciseID)
             return ReportSet(id: set.id, exerciseID: set.exerciseID,
                 exerciseName: entry?.name ?? "Unknown exercise",
                 category: entry.map { WorkoutCategory(family: $0.family) } ?? .other,
-                reps: set.reps, holdSeconds: set.seconds, activeSeconds: set.seconds,
-                source: set.source, reserve: nil, reason: set.reason, repDurations: [], restSecondsBefore: nil)
+                reps: set.reps, holdSeconds: set.seconds, activeSeconds: set.activeSeconds ?? set.seconds,
+                source: set.source, reserve: set.reserve, reason: set.reason, repDurations: [],
+                restSecondsBefore: set.restSecondsBefore.flatMap { $0.isFinite && $0 >= 0 ? $0 : nil }, quantityOrigin: set.quantityOrigin)
         }
         sets = projectedSets.reduce(into: [ReportSet]()) { unique, set in
             if !unique.contains(where: { $0.id == set.id }) { unique.append(set) }

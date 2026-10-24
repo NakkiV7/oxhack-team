@@ -38,12 +38,17 @@ struct WatchTrainingView: View {
                     if let snapshot = store.state.snapshot, snapshot.isFresh(at: context.date),
                        [.active, .paused, .rest].contains(snapshot.phase) {
                         HStack(spacing: 5) {
-                            if snapshot.phase == .rest {
+                            if snapshot.configured?.stoppedForDiscomfort == true {
+                                Button("Finish") { store.command(.finish) }.buttonStyle(.borderedProminent)
+                            } else if snapshot.phase == .rest {
                                 Button("Next set") { store.command(.nextSet) }.buttonStyle(.borderedProminent)
+                            } else if snapshot.configured?.hasStarted == false {
+                                Button("Start set") { store.command(.startSet) }.buttonStyle(.borderedProminent)
                             } else {
                                 Button(snapshot.phase == .paused ? "Resume" : "Pause") { store.command(snapshot.phase == .paused ? .resume : .pause) }
                                     .buttonStyle(.borderedProminent)
                                 Button("End set") { store.command(.endSet) }.buttonStyle(.bordered)
+                                    .disabled(snapshot.configured?.canEndSet == false)
                             }
                         }.font(.caption2).disabled(!store.reachable).padding(.horizontal, 6).padding(.vertical, 4).background(.white)
                     }
@@ -57,16 +62,34 @@ struct WatchTrainingView: View {
             Text("Session complete").font(.headline)
             Text("Your review is on iPhone.").font(.caption)
         } else {
-            Text(snapshot.exercise.title).font(.subheadline.weight(.semibold))
+            Text(snapshot.configured.flatMap { ExerciseCatalog.find($0.exerciseID)?.name } ?? snapshot.exercise?.title ?? "Workout")
+                .font(.subheadline.weight(.semibold))
             HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text("\(snapshot.reps)").font(.system(size: 44, weight: .semibold, design: .rounded)).monospacedDigit()
-                Text("/ \(snapshot.target)").font(.subheadline).foregroundStyle(.secondary)
+                Text(quantity(snapshot)).font(.system(size: 44, weight: .semibold, design: .rounded)).monospacedDigit()
+                Text("/ \(snapshot.target)\(snapshot.configured?.unit == .seconds ? " s" : "")").font(.subheadline).foregroundStyle(.secondary)
             }
-            Text(snapshot.phase == .rest ? "Take a breather." : snapshot.cue.text).font(.caption2).multilineTextAlignment(.center).lineLimit(2)
+            Text(instruction(snapshot)).font(.caption2).multilineTextAlignment(.center).lineLimit(3)
             Label(store.heart?.heartRate(at: now).map { "\(Int($0.rounded())) bpm" } ?? "— bpm", systemImage: "heart").font(.caption)
             if !store.recording {
                 Button("Record workout") { store.record() }.font(.caption).buttonStyle(.bordered)
             }
+            if snapshot.configured != nil, snapshot.configured?.stoppedForDiscomfort != true {
+                Button("Finish session") { store.command(.finish) }.font(.caption2)
+                Text("Only ended sets are saved.").font(.caption2).foregroundStyle(.secondary)
+            }
         }
+    }
+    private func quantity(_ snapshot: CompanionSnapshot) -> String {
+        guard let configured = snapshot.configured else { return "\(snapshot.reps)" }
+        if configured.unit == .seconds { return "\(Int(configured.activeSeconds))" }
+        return configured.enteredReps.map(String.init) ?? "—"
+    }
+    private func instruction(_ snapshot: CompanionSnapshot) -> String {
+        guard let configured = snapshot.configured else { return snapshot.phase == .rest ? "Take a breather." : snapshot.cue.text }
+        if configured.stoppedForDiscomfort { return "Stop here. Finish this session and recover." }
+        if snapshot.phase == .rest { return "Rest \(Int(configured.restElapsed ?? 0)) s · suggested \(configured.restTarget) s" }
+        if !configured.hasStarted { return "Start when you’re in position." }
+        if snapshot.phase == .paused { return "Paused. Resume when you’re ready." }
+        return configured.unit == .reps ? "Enter actual reps on iPhone before ending this set." : "Active hold timer. End the set when you stop."
     }
 }
