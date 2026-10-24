@@ -123,6 +123,8 @@ npm run ui      # http://localhost:3001
 
 **Next:** consented side-view clips, count-error and cue measurements, then an exercise-specific push-up policy with landmark-fixture tests. Edits to `PoseGeometry.swift` and `RepCounter.swift` are agreed with the squat owner first.
 
+See the [architecture](docs/ARCHITECTURE.md), [accounts and keys](docs/SETUP.md), and [integration evidence](docs/integration-readiness.md) for how the pieces fit together.
+
 ## Pick up a feature
 
 - [Team ownership and help wanted](docs/TEAM.md): claim a branch and file boundary before editing.

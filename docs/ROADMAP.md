@@ -1,12 +1,12 @@
 # Roadmap and evidence gates
 
-Working handoff, 24 October 2026. Native foundation merged through PR #16. “Implemented” means code exists; “verified” needs the named check. Local changes and integration work can be in progress on feature branches. Check the actual PR/branch before assuming a feature is merged. Priority: usable phone + Watch → landing page → optional Arduino. No CI/CD is planned.
+Working handoff, 24 October 2026. Native foundation and adaptive coaching merged through PR #24. “Implemented” means code exists; “verified” needs the named check. Local changes and integration work can be in progress on feature branches. Check the actual PR/branch before assuming a feature is merged. Priority: usable phone + Watch → landing page → optional Pi camera. No CI/CD is planned.
 
 ## Current baseline
 
 The native source includes a shared 19-exercise catalogue, camera/video push-up and squat counters, manual logging, timed holds, local history, skill progression and deterministic session/week reports. Foundation-only behavior tests run through SwiftPM; native model and UI tests run in Xcode. Earlier native smoke-test evidence is recorded in [native-build-progress.md](native-build-progress.md); rerun relevant tests after integration. Camera baselines need labelled-video calibration and physical accuracy checks. Physical Watch sensor capture remains a distinct gate. No personalised reserve predictor has been trained or validated.
 
-Gemini contracts/parsing and explicit proposal selection are implemented. Gateway/app chat, summaries, proposals and explicit Tiger upload are implemented and tested offline; offline contract success must be followed by an actual bounded provider request before claiming live AI coaching. A runnable Tiger pg adapter and narrow scalar/snapshot migration exist; the wider analytics SQL remains a proposal. Neither has been executed against Tiger. Snowflake has an implemented bounded SQL API connection check, with batch analytics still pending. Historical design documents may describe earlier deferred states.
+Gemini contracts/parsing and explicit proposal selection are implemented. Gateway/app chat, summaries, proposals and explicit Tiger upload are implemented and tested offline; offline contract success must be followed by an actual bounded provider request before claiming live AI coaching. A runnable Tiger pg adapter and narrow scalar/snapshot migration exist; the wider analytics SQL remains a proposal. A development service is provisioned; direct connection is awaiting a trusted certificate chain, so database persistence remains unverified. Snowflake has an implemented bounded SQL API connection check, with batch analytics still pending. Historical design documents may describe earlier deferred states.
 
 ## Feature and integration acceptance
 
@@ -40,6 +40,6 @@ For Tiger account setup, start with the [Tiger Data account quickstart](https://
 
 Keep secrets out of source, screenshots and evidence. Keep private biometric recordings private. Provider configuration, local mocks, passing tests, deployment and successful physical/live behavior are separate evidence states.
 
-Additional follow-ups: [body-landmark training #17](https://github.com/NakkiV7/oxhack-team/issues/17), [paused artwork #18](https://github.com/NakkiV7/oxhack-team/issues/18), and [configurable live plans #19](https://github.com/NakkiV7/oxhack-team/issues/19). All belong to @omariosc; teammate scopes #1–#4 are unchanged.
+Additional follow-ups: [body-landmark training #17](https://github.com/NakkiV7/oxhack-team/issues/17), [artwork #18](https://github.com/NakkiV7/oxhack-team/issues/18), and [configurable live plans #19](https://github.com/NakkiV7/oxhack-team/issues/19). All belong to @omariosc; teammate scopes #1–#4 are unchanged.
 
-Active next milestone: [statistical coaching #22](https://github.com/NakkiV7/oxhack-team/issues/22), using real rep/rest timing, personal mean/sample SD, observed form and fresh Watch context. No paid per-second calls.
+Completed: [statistical coaching #22](https://github.com/NakkiV7/oxhack-team/issues/22) in PR #24. Active work: configurable plans #19, Tiger #8, physical Pi #13 and the overnight MVP plan. Artwork #18 is resumed by explicit user instruction. No paid per-second calls.
