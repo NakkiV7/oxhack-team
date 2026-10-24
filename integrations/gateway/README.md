@@ -66,6 +66,20 @@ Only observed scalar values are inserted: `heartRate` in bpm (1–300), `acceler
 
 PostgreSQL pool connection timeout is five seconds; each statement is limited to ten seconds. The adapter does not retry a failed transaction. An uncertain network result can be explicitly retried using the identical snapshot; the receipt hash prevents overwriting a committed different snapshot. Actual migration, ingest/replay/conflict, readback and measured latency on Tiger remain to be verified live.
 
+### Opt-in Tiger smoke test
+
+After an operator has configured the trusted TLS connection and explicitly applied the migration, run from `server/`:
+
+```sh
+npm run tiger:smoke -- --allow-live-synthetic
+```
+
+This makes real database requests only after the explicit flag. It checks PostgreSQL ≥14, TimescaleDB ≥2.18, the current connection's `pg_stat_ssl.ssl = true`, and the existing scalar hypertable before writing. It then uses the same `createTigerStore` path as the gateway to check immutable ingest, identical replay, changed-content conflict, exact snapshot readback, deduplicated observations, a half-open time window and an empty gap. It runs no migrations, model requests, server lifecycle operations, deletion or automatic retries. TLS verification remains enabled; a certificate failure must be resolved using a trusted CA rather than bypassed.
+
+The fixed synthetic installation is `f17e0000-0000-4000-8000-000000000001`, with workout `f17e0000-0000-4000-8000-000000000002` and set `f17e0000-0000-4000-8000-000000000003`. These fixtures use year-2000 timestamps and artificial scalar constants, never real biometrics. They leave one snapshot and four scalar rows in that dedicated namespace. Repeated runs verify replay without adding rows. Keep this installation excluded from all user/analytics cohorts; the command refuses to run if `SPOTTR_INSTALLATION_ID` equals the fixture installation. It never changes the app's configured owner or reads that owner's records.
+
+Exit zero means all assertions passed. Standard output contains only fixture IDs, check/row counts and step timings; errors contain a sanitized code with no database URL, password, SQL or raw driver message. `created: 0` with `replays: 2` is expected on later runs. The command does not prove the native device sync path or represent performance on real user workloads. Its automated tests use fake database responses; live acceptance must be recorded separately by the operator.
+
 ## Snowflake connection check
 
 Set `SNOWFLAKE_ACCOUNT` to the account identifier (without URL/suffix), `SNOWFLAKE_TOKEN` to a server token, and `SNOWFLAKE_TOKEN_TYPE` to `PROGRAMMATIC_ACCESS_TOKEN` (default), `KEYPAIR_JWT` or `OAUTH`. Optional `SNOWFLAKE_WAREHOUSE` supplies an existing warehouse. Then explicitly run:

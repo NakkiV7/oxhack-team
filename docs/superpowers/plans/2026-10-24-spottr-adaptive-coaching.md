@@ -10,6 +10,6 @@ Architecture: local deterministic one-second/rep-boundary policy → expiring ge
 - [x] Grounded Gemini facts include complete totals, actual tempo/rest and observed Watch aggregates, without raw streams or recovery/capacity inference.
 - [x] Pi USB capture/forwarding adapter with explicit control, bearer authentication, capture IDs, freshness and lease tests. No deployment/camera claimed.
 - [x] Combined core/server/Pi and native checks, independent immutable-tree review, fix important findings.
-- [ ] Publish feature branch/PR and update issues #13/#22. Main foundation is already usable through PR #16.
+- [x] Published and merged PR #24; updated #13 and voice handoff #1; #22 closed. Main contains the reviewed adaptive milestone.
 
 Physical CV/Watch calibration, actual Pi camera/phone ingestion, provider cost/latency tuning and voice playback remain separate acceptance. ElevenLabs supplied value was rejected as api_key_id_used_as_api_key; actual secret value is still needed.

@@ -8,6 +8,7 @@
   "scripts": {
     "start": "node --env-file-if-exists=../.env src/start.mjs",
     "migrate": "node --env-file-if-exists=../.env src/migrate.mjs",
+    "tiger:smoke": "node --env-file-if-exists=../.env src/tiger-smoke-cli.mjs",
     "snowflake:check": "node --env-file-if-exists=../.env src/snowflake-check.mjs",
     "test": "node --test test/*.test.mjs"
   },
