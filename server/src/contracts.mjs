@@ -15,11 +15,18 @@ export const coachRequest = z.strictObject({
 const catalogSource = readFileSync(new URL('../../Shared/Core/ExerciseCatalog.swift', import.meta.url), 'utf8');
 const catalogRows = catalogSource.split('\n').filter(line => line.includes('.init(id:'));
 export const catalog = catalogRows.map(line => {
-  const match = line.match(/\.init\(id: "([^"]+)", name: "([^"]+)".*?unit: \.(reps|seconds).*?support: (nil|"[^"]+")/);
+  const match = line.match(/\.init\(id: "([^"]+)", name: "([^"]+)".*?unit: \.(reps|seconds).*?support: (nil|"[^"]+"), tracking: (nil|\.[A-Za-z0-9]+)/);
   if (!match) throw Error('Exercise catalogue format changed; update gateway catalogue reader.');
-  return { id: match[1], name: match[2], unit: match[3], support: match[4] === 'nil' ? null : JSON.parse(match[4]) };
+  return { id: match[1], name: match[2], unit: match[3], support: match[4] === 'nil' ? null : JSON.parse(match[4]), cameraTracking: match[5] !== 'nil' };
 });
 if (!catalog.length || new Set(catalog.map(item => item.id)).size !== catalog.length) throw Error('Exercise catalogue is empty or ambiguous.');
+
+export const appCapabilities = {
+  exercises: catalog.map(({ id, name, unit, cameraTracking }) => ({ id, name, unit, cameraTracking })),
+  inputRules: 'Camera tracking is available only for entries with cameraTracking true. Other rep exercises use manual self-report; seconds exercises use an active hold timer. Camera support does not extend to untracked variants.',
+  setControl: 'Custom workout sets require explicit Start and End set. Reaching the target does not automatically end the set.',
+  voiceFeedback: 'Local spoken camera cues are optional and off until enabled by the user for the workout.'
+};
 
 export function outputContract({ path, data }) {
   const generationID = z.enum([data.generationID]);

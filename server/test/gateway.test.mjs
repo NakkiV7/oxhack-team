@@ -54,6 +54,33 @@ test('chat sends bounded context to Google REST and returns only matching genera
   assert.deepEqual(await response.json(), { generationID: input.generationID, text: 'You recorded eight squats.' });
 });
 
+test('chat supplies server-owned camera and manual capabilities without inventing personal evidence', async t => {
+  let outbound;
+  const request = await serve(t, { env, fetchImpl: async (_url, options) => {
+    outbound = JSON.parse(options.body);
+    return providerResponse('Camera tracking supports push-ups and squats.');
+  } });
+  const response = await request('/v1/chat', post({ ...input, message: 'Which exercises can you track with the camera?', facts: [] }));
+  assert.equal(response.status, 200);
+  const metadata = outbound.systemInstruction.parts.flatMap(part => {
+    try { return [JSON.parse(part.text)]; } catch { return []; }
+  }).find(part => part.appCapabilities)?.appCapabilities;
+  assert.ok(metadata, 'Gemini needs server-owned app capabilities to answer product questions without personal facts');
+  assert.deepEqual(metadata.exercises.filter(item => item.cameraTracking).map(item => item.id).sort(), ['pushup', 'squat']);
+  assert.equal(metadata.exercises.find(item => item.id === 'pushup').name, 'Push-ups');
+  assert.equal(metadata.exercises.find(item => item.id === 'wallPushup').cameraTracking, false);
+  assert.equal(metadata.exercises.find(item => item.id === 'wallPushup').unit, 'reps');
+  assert.equal(metadata.exercises.find(item => item.id === 'plank').cameraTracking, false);
+  assert.equal(metadata.exercises.find(item => item.id === 'plank').unit, 'seconds');
+  assert.match(metadata.inputRules, /manual self-report/);
+  assert.match(metadata.inputRules, /active hold timer/);
+  assert.match(metadata.setControl, /explicit Start/i);
+  assert.match(metadata.voiceFeedback, /off.*enabled/i);
+  assert.deepEqual(JSON.parse(outbound.contents.at(-1).parts.at(-1).text).facts, []);
+  assert.match(outbound.systemInstruction.parts[0].text, /Ground personal claims in supplied facts/);
+  assert.equal((await request('/v1/chat', post({ ...input, appCapabilities: metadata }))).status, 422);
+});
+
 test('invalid, oversized, duplicate or unknown request data never reaches Gemini', async t => {
   const request = await serve(t, { env, fetchImpl: async () => Response.json({ candidates: [{ content: { parts: [{ text: 'unexpected' }] } }] }) });
   const invalid = [
