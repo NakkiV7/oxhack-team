@@ -13,13 +13,13 @@ Native iPhone + Apple Watch training companion for OxHack 2026. Repository: [Nak
 
 The working baseline includes on-device MediaPipe push-up/squat tracking, manual and timed custom workouts, a 19-exercise library with lessons and private demo-video imports, local profiles/goals, connected skill progression and deterministic session/week reports. Most exercises use manual logging or a timer; only push-ups and squats currently have camera tracking. Attribute points are game progress, not measured physiology. Local training needs no sign-in or cloud sync.
 
-Merged milestones through [PR #36](https://github.com/NakkiV7/oxhack-team/pull/36) include the profile-aware Coach, Pi camera client and opt-in local voice. Provider integrations and physical-device evidence have separate acceptance gates. A passing simulator test does not establish rep accuracy or real Watch sensor capture. The [current evidence ledger](docs/integration-readiness.md) distinguishes implemented, offline-tested, live and pending paths.
+Start with the [morning handoff](docs/morning-handoff.md) for the current MVP, startup steps, owners and device checks. Merged milestones through [PR #48](https://github.com/NakkiV7/oxhack-team/pull/48) include profile-aware Coach, Pi/local voice, mixed camera/manual workout plans, public-data research and the judges' guide. Provider integrations and physical-device evidence have separate acceptance gates. A passing simulator test does not establish rep accuracy or real Watch sensor capture. The [current evidence ledger](docs/integration-readiness.md) distinguishes implemented, offline-tested, live and pending paths.
 
 ## What the demo can show
 
-- Local custom workouts with explicit manual reps, paused hold timing, history and reports; connected grid/linear skill views; profile goals and weekly targets.
+- Local custom workouts with explicit manual reps, paused hold timing, optional base push-up/squat camera input, history and reports; connected grid/linear skill views; profile goals and weekly targets.
 - Nineteen exercise icons, six push-up/squat phase illustrations and recording guides. User-filmed demonstration videos remain to be recorded; illustrations and imported fixtures are not physical exercise evidence.
-- Optional grounded Gemini chat, two report types and selected workout proposals. Four local gateway requests returned 200 using synthetic inputs; a native phone-to-provider flow is still pending.
+- Optional grounded Gemini chat, two report types and selected workout proposals. Four local gateway requests returned 200 using synthetic inputs; one signed-simulator chat also reached Google and displayed its real response. Physical phone networking and native proposal/report acceptance remain pending.
 - Opt-in standard local voice and a paired Pi side-camera path. Audible phone acceptance remains pending; the actual Pi camera disconnects after roughly two seconds, so sustained tracking is not established.
 
 For judges, distinguish these paths from the pending Tiger persistence, hosted Vultr gateway, physical Watch sensors, Presage measurement and Delta review. There is no public TestFlight build yet. See [release readiness](docs/release-readiness.md) and the [integration ledger](docs/integration-readiness.md).
@@ -45,7 +45,7 @@ Current contributor boundaries:
 | Push-up counting | @azhar-rafiq | ✅ baseline, 🚧 validation on labelled clips (test plan in `prototype/pushup/docs/TEST_PLAN.md`, no accuracy claim yet) |
 | Squat counting | @NakkiV7 | ✅ baseline, 🚧 validation on labelled clips |
 | Manual/timed logging, profile, lessons, skill tree, reports | @omariosc | Merged local implementation |
-| Gemini chat, summaries, proposals | @omariosc | Merged native flow; live gateway synthetic checks passed, native network acceptance pending |
+| Gemini chat, summaries, proposals | @omariosc | Merged native flow; live gateway synthetic checks and one signed-simulator chat passed; physical phone/proposal/report acceptance pending |
 | Local voice | @omariosc | Merged; fake playback tests passed, audible acceptance pending |
 | ElevenLabs and landing page | @MishaGitnik | Local page work exists; remote synthesis and public deployment pending |
 | Pi side camera | @omariosc | Native client merged; companion deployed, sustained USB capture blocked |
@@ -88,7 +88,7 @@ Use the variable descriptions in [.env.example](.env.example) and the [gateway s
 
 The gateway defaults to `http://127.0.0.1:8787`; `GET /health` reports configuration without a provider call. Health readiness and a configured key do not prove a provider request succeeded. In **Coach → Coach settings** (sliders), enter the gateway URL and gateway access token, then save. The app stores the token in this-device Keychain. It accepts HTTPS and permits HTTP for localhost development; a physical phone needs a reachable HTTPS gateway. [Vultr packaging](docs/vultr-deployment.md) is prepared with bounded HTTPS proxying, but no VM is deployed and the bearer token remains a single-owner demo boundary.
 
-Use Send, Propose or Generate summary to explicitly share saved training, skill game points, recorded Watch summaries and saved goals/weekly target; raw sensor streams and the optional profile name are not sent. Proposals start unselected: choose exercises, then **Approve & save selected exercises**. **Start saved workout** runs the approved manual/timed plan with explicit set controls. Cancel/failure/invalid coaching preserves local reports and the current plan. See [goals and privacy](docs/coach-goals.md) and the gateway README.
+Use Send, Propose or Generate summary to explicitly share saved training, skill game points, recorded Watch summaries and saved goals/weekly target; raw sensor streams and the optional profile name are not sent. Proposals start unselected: choose exercises, then **Approve & save selected exercises**. **Start saved workout** runs the approved plan with explicit set controls; base push-up/squat additionally offer opt-in phone/Pi camera tracking. See [custom workouts](docs/custom-workouts.md). Cancel/failure/invalid coaching preserves local reports and the current plan. See [goals and privacy](docs/coach-goals.md) and the gateway README.
 
 The local coaching policy evaluates form and pacing every second and at rep boundaries, using personal mean/sample SD from valid observed camera reps. It records actual rest between sets and emits expiring, prioritized events. An explicit **Voice feedback** toggle speaks new events through Apple's local synthesizer; it starts off for every new tracked workout. No per-second provider call is made. See [coaching policy](docs/coaching-policy.md) and [voice feedback](docs/voice-feedback.md).
 
@@ -121,6 +121,7 @@ See the [architecture](docs/ARCHITECTURE.md), [accounts and keys](docs/SETUP.md)
 
 ## Pick up a feature
 
+- [Morning handoff](docs/morning-handoff.md): current implementation, local startup and physical acceptance checklist.
 - [Team ownership and help wanted](docs/TEAM.md): claim a branch and file boundary before editing.
 - [Contributing](CONTRIBUTING.md): small feature PRs, local checks, generated-project coordination and smoke tests.
 - [Assigned GitHub issues](docs/ISSUES.md): current work, owners and suggested branches.
