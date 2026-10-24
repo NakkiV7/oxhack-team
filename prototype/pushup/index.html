@@ -47,6 +47,12 @@
   .split { flex:1; display:flex; flex-direction:column; gap:10px; min-height:0; }
   .split > .card { flex:1; display:flex; flex-direction:column; }
   .split > .coach { flex:1.6; }
+  /* profile dialog */
+  dialog#profile { width:min(560px, calc(100vw - 32px)); padding:0; border:1px solid var(--mut); border-radius:12px; background:var(--card); color:var(--fg); }
+  dialog#profile::backdrop { background:rgba(0,0,0,.55); }
+  #profile .refs-body p, #profile .refs-body li { margin:6px 0; }
+  .tag { display:inline-block; font-size:11px; font-weight:600; padding:2px 7px; border-radius:99px; background:color-mix(in srgb, var(--warn) 30%, var(--card)); }
+  .stages li { list-style:none; padding:3px 0; color:var(--mut); } .stages li.done { color:var(--fg); } .stages li.done::before { content:'✓ '; color:var(--ok); } .stages li.now::before { content:'… '; }
   /* references dialog */
   dialog#refs { width:min(820px, calc(100vw - 32px)); max-height:calc(100vh - 48px); padding:0; border:1px solid var(--mut); border-radius:12px; background:var(--card); color:var(--fg); }
   dialog#refs::backdrop { background:rgba(0,0,0,.55); }
@@ -77,13 +83,16 @@
     </div>
     <div class="row">
       <select id="variation"></select>
+      <select id="ruleMode" title="Which rule judges your form. Chosen before you start; it cannot change mid-workout."><option value="default">Default rule</option><option value="personal">My personal rule</option></select>
       <button class="primary" id="startCam">Start camera</button>
       <label class="btn" for="file">Upload video</label><input type="file" id="file" accept="video/*">
       <button id="pause" disabled>Pause</button>
       <button id="stop">Stop</button>
       <button id="reset">Reset reps</button>
+      <button id="profileBtn" title="Train a personal profile from your past workouts">My profile</button>
       <button id="refsBtn" title="How reps are judged, push-up types and sources">References</button>
     </div>
+    <div class="tip" id="ruleNote"></div>
     <div class="tip" id="status">Loading pose model…</div>
   </div>
   <div class="side">
@@ -119,6 +128,15 @@
     </div>
   </div>
 </div>
+<dialog id="profile" aria-labelledby="profileTitle">
+  <div class="refs-head"><h1 id="profileTitle">My profile</h1><button id="profileClose" aria-label="Close">Close</button></div>
+  <div class="refs-body">
+    <p id="profStatus" class="sub">Checking your history…</p>
+    <ul class="stages" id="profStages"></ul>
+    <div id="profResult"></div>
+    <div class="row" style="margin-top:10px"><button class="primary" id="profTrain" disabled>Train from my history</button></div>
+  </div>
+</dialog>
 <dialog id="refs" aria-labelledby="refsTitle">
   <div class="refs-head"><h1 id="refsTitle">How it works and references</h1><button id="refsClose" aria-label="Close">Close</button></div>
   <div class="refs-body">
@@ -131,6 +149,8 @@
       <li><b>Image shape:</b> MediaPipe gives x and y as fractions of width and height, so x is scaled by the video's width/height before measuring angles. Without this a horizontal body on a wide video looks more bent than it is <a href="#ref-7">[7]</a>.</li>
     </ul>
 
+    <h3>Default rule vs your trained rule</h3>
+    <div id="ruleCompare"></div>
     <h3>Push-up types</h3>
     <p>All four use the same counting logic; they differ in body position, which joint the body line is measured to, and the angle limits. Hands-elevated (incline) and knee push-ups put less load through the hands than the standard push-up <a href="#ref-6">[6]</a>.</p>
     <div class="tbl"><table id="varTable"></table></div>
@@ -171,7 +191,7 @@
 </dialog>
 <script type="module">
 import { PoseLandmarker, FilesetResolver, DrawingUtils } from '/vendor/vision_bundle.mjs';
-import { VARIATIONS, JOINTS, pickSide, measure, postureIssue, RepCounter } from '/pushup.mjs';
+import { VARIATIONS, JOINTS, pickSide, measure, postureIssue, RepCounter, personalRule } from '/pushup.mjs';
 
 const $ = (id) => document.getElementById(id);
 const video = $('video'), canvas = $('overlay'), ctx = canvas.getContext('2d');
@@ -181,7 +201,7 @@ for (const [k, v] of Object.entries(VARIATIONS)) sel.add(new Option(v.label, k))
 const DEFAULT_VARIATION = 'standard';
 sel.value = DEFAULT_VARIATION;
 const counter = new RepCounter(DEFAULT_VARIATION);
-sel.onchange = () => { counter.setVariation(sel.value); render(null, null); $('history').innerHTML = ''; };
+sel.onchange = () => { counter.setVariation(sel.value); render(null, null); $('history').innerHTML = ''; updateRuleUI(); };
 $('reset').onclick = () => { counter.reset(); $('history').innerHTML = ''; clockReset(); render(null, null); };
 
 // references dialog: the variation table is built from VARIATIONS so it always shows the live thresholds
@@ -200,7 +220,110 @@ function fillVarTable() {
   }).join('');
   $('varTable').innerHTML = head + rows;
 }
-$('refsBtn').onclick = () => { fillVarTable(); $('refs').showModal(); };
+// Which rule judges form. The personal rule comes from the saved profile (see personalRule() in pushup.mjs): it only
+// tightens "good form" and the cues, counting still follows the default depth line. Chosen before a workout starts and
+// locked while it runs, so one workout is never judged by two rules.
+let savedProfile = null, ruleUsed = 'default';
+let syncInfo = null; // { status: 'saving' | 'saved' | 'failed' | 'info', text } for the phone; cleared when the next workout starts
+const RULE_KEY = 'pushup.ruleMode';
+const getMode = () => { try { return localStorage.getItem(RULE_KEY) || 'personal'; } catch { return 'personal'; } };
+const ruleFor = () => (getMode() === 'personal' ? personalRule(savedProfile?.profile, counter.variation) : null);
+function updateRuleUI() {
+  const sel = $('ruleMode'), rule = personalRule(savedProfile?.profile, counter.variation);
+  sel.querySelector('[value=personal]').disabled = !rule;
+  sel.value = rule && getMode() === 'personal' ? 'personal' : 'default';
+  const p = savedProfile?.profile, d = VARIATIONS[counter.variation];
+  let note;
+  if (sel.value === 'personal') {
+    const demo = savedProfile.mockShare > 0 ? ' (demo data)' : '';
+    note = `Rule: <b>your personal rule</b>, learned from your past data (${p.reps} reps, ${p.sessions} sessions${demo}): depth ${rule.warnElbow}° or lower, body line ${rule.minLine}° or higher, instead of the default ${d.down}° / ${d.minLine}°. Reps still count by the default depth line.`;
+  } else if (!p) note = 'Rule: <b>default</b> (fixed thresholds). Train "My profile" to get a personal rule.';
+  else if (!rule) note = `Rule: <b>default</b> (fixed thresholds). The personal rule is for standard push-ups with at least 30 good reps in your history.`;
+  else note = 'Rule: <b>default</b> (fixed thresholds), by your choice.';
+  $('ruleNote').innerHTML = note;
+}
+$('ruleMode').onchange = () => { try { localStorage.setItem(RULE_KEY, $('ruleMode').value); } catch { /* not remembered */ } updateRuleUI(); publish(null, 0, true); };
+async function loadSavedProfile() {
+  try { const s = await (await fetch('/profile/status')).json(); savedProfile = s.profile ? s : null; } catch { savedProfile = null; }
+  updateRuleUI();
+}
+loadSavedProfile();
+// Shown on the phone: which rule judges the workout (the one chosen, until a workout starts) and the cloud save status.
+function ruleInfo() {
+  const rule = counter.reps.length || running || paused ? counter.personal : ruleFor();
+  const demo = savedProfile?.mockShare > 0 ? ' (demo data)' : '';
+  return rule
+    ? { mode: 'personal', text: `Your personal rule: depth ≤ ${rule.warnElbow}°, body line ≥ ${rule.minLine}°${demo}` }
+    : { mode: 'default', text: 'Default rule' };
+}
+
+// "My profile": asks the server how much history there is, trains when it is enough, shows the stages and result.
+// Training really takes well under a second; each stage is shown for a moment so the steps can be read.
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+function profileSummary(p) {
+  const b = p.baselines;
+  const acc = p.holdoutAccuracy == null ? 'n/a' : Math.round(p.holdoutAccuracy * 100) + '%';
+  return `<p><b>Your usual rep:</b> elbow ${b.elbow.typical}° (±${b.elbow.spread}), body line ${b.body_line.typical}° (±${b.body_line.spread}), ${b.seconds.typical} s.</p>
+    <p><b>Checked on sessions it had not seen:</b> ${acc} right. ${p.mockShare > 0 ? '<span class="tag">demo data</span> The history is mock data, so this only shows the pipeline works.' : ''}</p>
+    <p><b>Rules it learned:</b></p><ul>${p.rules.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>`;
+}
+async function profileRefresh() {
+  const st = $('profStatus'), btn = $('profTrain');
+  btn.disabled = true;
+  try {
+    const s = await (await fetch('/profile/status')).json();
+    if (s.error) throw new Error(s.error);
+    const tag = s.mockShare > 0 ? ' <span class="tag">demo data</span>' : '';
+    st.innerHTML = `${s.reps} reps over ${s.sessions} sessions (${s.bad} with bad form), from ${esc(s.where)}.${tag} ` +
+      (s.ready ? 'That is enough data to train.' : `Not enough yet: need ${s.missing.join(', ')}.`);
+    const p = s.profile, when = p && p.trainedAt && !isNaN(new Date(p.trainedAt)) ? ` on ${new Date(p.trainedAt).toLocaleString()}` : '';
+    const stale = p && p.reps !== s.reps ? ' Your history has changed since, so train again to update it.' : '';
+    $('profResult').innerHTML = p ? `<p class="sub">Saved profile: trained${when} on ${p.reps} reps over ${p.sessions} sessions.${stale}</p>` + profileSummary({ ...p, mockShare: s.mockShare }) : '';
+    btn.disabled = !s.ready;
+  } catch (e) { st.textContent = `Could not read your history: ${e.message}`; }
+}
+$('profileBtn').onclick = () => { $('profStages').innerHTML = ''; $('profile').showModal(); profileRefresh(); };
+$('profileClose').onclick = () => $('profile').close();
+$('profile').addEventListener('click', (e) => { if (e.target === $('profile')) $('profile').close(); });
+$('profTrain').onclick = async () => {
+  const btn = $('profTrain'), list = $('profStages');
+  btn.disabled = true; $('profResult').innerHTML = ''; list.innerHTML = '';
+  $('profStatus').textContent = 'Training your profile…';
+  try {
+    const out = await (await fetch('/profile/train', { method: 'POST' })).json();
+    if (out.error) throw new Error(out.error);
+    if (!out.ok) { $('profStatus').textContent = `Not enough data yet: need ${out.missing.join(', ')}.`; return; }
+    for (const [i, name] of out.stages.entries()) {
+      list.insertAdjacentHTML('beforeend', `<li class="now" id="st${i}">${esc(name)}</li>`);
+      await wait(450);
+      $('st' + i).className = 'done';
+    }
+    $('profStatus').innerHTML = `Profile ready: trained on ${out.reps} reps from ${out.sessions} sessions (${esc(out.where)}).`;
+    $('profResult').innerHTML = profileSummary({ ...out.profile, mockShare: out.mockShare });
+    loadSavedProfile();
+  } catch (e) { $('profStatus').textContent = `Training failed: ${e.message}`; }
+  finally { btn.disabled = false; }
+};
+async function fillRuleCompare() {
+  const box = $('ruleCompare'), d = VARIATIONS.standard;
+  await loadSavedProfile();
+  const p = savedProfile?.profile, rule = personalRule(p, 'standard');
+  if (!p) { box.innerHTML = '<p>You have not trained a profile yet. Open <b>My profile</b> and press <b>Train from my history</b>; the two rules are compared here afterwards.</p>'; return; }
+  if (!rule) { box.innerHTML = '<p>Your saved profile cannot make a personal rule: it needs at least 30 good standard push-ups in the history.</p>'; return; }
+  const demo = savedProfile.mockShare > 0 ? ' <span class="tag">demo data</span>' : '';
+  const b = p.baselines, when = p.trainedAt && !isNaN(new Date(p.trainedAt)) ? ` on ${new Date(p.trainedAt).toLocaleDateString()}` : '';
+  box.innerHTML = `<div class="tbl"><table>
+    <tr><th>Standard push-up</th><th>Default rule</th><th>Your trained rule</th></tr>
+    <tr><td>A rep counts when the elbow reaches</td><td>${d.down}°</td><td>${d.down}° (same, counting is never changed)</td></tr>
+    <tr><td>"Good form" depth: elbow at or below</td><td>${d.down}°</td><td><b>${rule.warnElbow}°</b></td></tr>
+    <tr><td>"Good form" body line: at least</td><td>${d.minLine}°</td><td><b>${rule.minLine}°</b></td></tr>
+    <tr><td>Based on</td><td>Reasoned starting values, not measured</td><td>${p.reps} reps, ${p.sessions} sessions${when}${demo}</td></tr>
+    <tr><td>Your usual good rep</td><td>–</td><td>elbow ${b.elbow.typical}° (±${b.elbow.spread}), body line ${b.body_line.typical}° (±${b.body_line.spread})</td></tr>
+    </table></div>
+    <p>Your rule is your usual good rep plus 3 spreads (at least 3° for the elbow and 2° for the body line), and is never looser than the default. It changes only "good form" and the cues, so a bad profile cannot stop reps from counting. The rule tree shown in My profile is not used during a workout yet.${savedProfile.mockShare > 0 ? ' The history is mock data, so these numbers only show the idea.' : ''}</p>`;
+}
+$('refsBtn').onclick = () => { fillVarTable(); fillRuleCompare(); $('refs').showModal(); };
 $('refsClose').onclick = () => $('refs').close();
 $('refs').addEventListener('click', (e) => { if (e.target === $('refs')) $('refs').close(); });
 
@@ -255,9 +378,56 @@ function summaryStats() {
     avg: secs.length ? secs.reduce((x, y) => x + y, 0) / secs.length : null,
     fastest: secs.length ? Math.min(...secs) : null, slowest: secs.length ? Math.max(...secs) : null,
     notCounted: counter.reps.length - done.length, label: VARIATIONS[counter.variation].label,
-    topIssue: top?.[0] ?? null, topIssueCount: top?.[1] ?? 0,
+    topIssue: top?.[0] ?? null, topIssueCount: top?.[1] ?? 0, rule: ruleUsed,
   };
 }
+
+// Cloud sync: a finished camera workout is saved to Tiger Data as real reps. If the save fails (offline, server error)
+// the workout is kept in this browser and retried when the page opens or on Retry. Uploaded videos are never saved.
+let cameraWorkout = false;
+const PENDING = 'pushup.pendingSync';
+const pendingList = () => { try { return JSON.parse(localStorage.getItem(PENDING) || '[]'); } catch { return []; } };
+const setPending = (list) => { try { localStorage.setItem(PENDING, JSON.stringify(list)); } catch { /* storage blocked: no retry queue */ } };
+async function postSync(body) {
+  const res = await fetch('/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(out.error || `server answered ${res.status}`), { status: res.status });
+  return out;
+}
+const setSync = (html, status = 'info') => {
+  const el = $('syncStatus'); if (el) el.innerHTML = html;
+  syncInfo = { status, text: html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim() };
+  publish(null, 0, true);
+};
+async function runSync(body) {
+  setSync('☁ Saving to Tiger Data…', 'saving');
+  try {
+    const out = await postSync(body);
+    setPending(pendingList().filter((p) => p.startedAt !== body.startedAt));
+    setSync(out.saved ? `✓ Saved ${out.saved} rep${out.saved === 1 ? '' : 's'} to Tiger Data` : '✓ Already saved to Tiger Data', 'saved');
+  } catch (e) {
+    const retryable = e.status !== 422 && e.status !== 503; // bad data or sync turned off would fail again
+    if (retryable && !pendingList().some((p) => p.startedAt === body.startedAt)) setPending([...pendingList(), body]);
+    setSync(`⚠ Not saved to the cloud: ${esc(e.message)}.${retryable ? ' Kept on this Mac and will retry. <button id="retrySync">Retry now</button>' : ''}`, 'failed');
+    if ($('retrySync')) $('retrySync').onclick = () => runSync(body);
+  }
+}
+function saveWorkout(st) {
+  if (!cameraWorkout) return setSync('Uploaded videos are not saved to the cloud.');
+  if (counter.variation !== 'standard') return setSync('Only standard push-ups are saved for your profile.');
+  // The default rule's judgement is saved, never the personal one, so training does not learn from its own labels.
+  const reps = counter.reps.map((r) => ({ counted: r.counted, good: r.baseGood ?? r.good, minElbow: r.minElbow, minLine: r.minLine, secs: r.secs, issue: r.baseIssue ?? r.issue }));
+  if (!reps.length) return setSync('No reps to save.');
+  runSync({ startedAt: Math.round(Date.now() - st.timeMs), timeMs: st.timeMs, variation: counter.variation, reps });
+}
+// Workouts that could not be saved earlier are sent again when the page opens.
+(async () => {
+  let sent = 0;
+  for (const body of pendingList()) {
+    try { await postSync(body); sent++; setPending(pendingList().filter((p) => p.startedAt !== body.startedAt)); } catch (e) { if (e.status === 422 || e.status === 503) break; }
+  }
+  if (sent) $('status').textContent = `Saved ${sent} earlier workout${sent === 1 ? '' : 's'} to Tiger Data.`;
+})();
 
 function endWorkout() {
   clockPause(); stopAll(); showClock(); workoutEnded = true;
@@ -269,16 +439,19 @@ function endWorkout() {
       ${tile(fmtTime(st.timeMs), 'Total time')}${tile(st.reps, 'Reps')}${tile(st.good, 'Good form')}
       ${tile(s1(st.avg), 'Avg / rep')}${tile(s1(st.fastest), 'Fastest')}${tile(s1(st.slowest), 'Slowest')}
     </div>
-    <div class="note">${st.label}${st.notCounted ? ` · ${st.notCounted} not counted` : ''}${st.topIssue ? `<br>Most common issue: ${st.topIssue} (×${st.topIssueCount})` : st.reps ? '<br>Clean form all the way. Nice.' : ''}</div>
+    <div class="note">${st.label} · ${ruleUsed === 'personal' ? 'your personal rule' : 'default rule'}${st.notCounted ? ` · ${st.notCounted} not counted` : ''}${st.topIssue ? `<br>Most common issue: ${st.topIssue} (×${st.topIssueCount})` : st.reps ? '<br>Clean form all the way. Nice.' : ''}</div>
+    <div class="note" id="syncStatus"></div>
     <div class="row"><button class="primary" id="closeSummary">Start again</button></div></div>`;
   panel.hidden = false;
   $('closeSummary').onclick = hidePanel;
+  saveWorkout(st);
   $('status').textContent = 'Workout finished. Start the camera or upload a video to begin a new one.';
 }
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hidePanel(); });
 
 async function begin() {
   video.muted = true; running = true; lastTs = -1; lm0Logged = false;
+  const rule = ruleFor(); counter.setPersonal(rule); ruleUsed = rule ? 'personal' : 'default'; $('ruleMode').disabled = true; syncInfo = null;
   await video.play();
   clockStart();
   if (video.src) setPause(true); // uploaded video only; covers the click-to-start path too
@@ -287,7 +460,7 @@ async function begin() {
 
 $('startCam').onclick = async () => {
   try {
-    stopAll(); newWorkout();
+    stopAll(); newWorkout(); cameraWorkout = true;
     stream = await navigator.mediaDevices.getUserMedia({ video: { width: 960, height: 720 } });
     video.srcObject = stream; video.loop = false;
     await begin();
@@ -297,7 +470,7 @@ $('startCam').onclick = async () => {
 $('file').onchange = async (e) => {
   const f = e.target.files[0]; if (!f) return;
   console.log('[video] picked', { name: f.name, type: f.type, size: f.size, landmarkerReady: !!landmarker, canPlay: video.canPlayType(f.type) || '(no)' });
-  stopAll(); counter.reset(); $('history').innerHTML = ''; workoutEnded = false; hidePanel(); clockAcc = 0; clockSince = null; showClock();
+  stopAll(); cameraWorkout = false; counter.reset(); $('history').innerHTML = ''; workoutEnded = false; hidePanel(); clockAcc = 0; clockSince = null; showClock();
   if (!landmarker) { console.warn('[video] model not loaded yet'); $('status').textContent = 'Model is still loading, pick the video again in a moment.'; return; }
   $('status').textContent = 'Loading video…';
   video.onerror = () => { console.error('[video] element error', video.error); running = false; $('status').textContent = 'Cannot play this video (codec not supported by the browser). Try an .mp4 (H.264).'; };
@@ -343,7 +516,7 @@ $('stop').onclick = () => {
   askEnd();
 };
 function stopAll() {
-  running = false; setPause(false); clockPause();
+  running = false; setPause(false); clockPause(); $('ruleMode').disabled = false;
   setTimeout(() => publish(null, 0, true), 0);
   stream?.getTracks().forEach((t) => t.stop()); stream = null;
   video.pause(); video.removeAttribute('src'); video.srcObject = null;
@@ -384,7 +557,8 @@ function publish(lm, side, force = false) {
     count: counter.count, good: counter.goodCount, total: counter.reps.length,
     feedback: fb.textContent, tone: fb.className.split(' ')[1] ?? 'ok', phase: counter.state,
     elbow: counter.elbow, line: counter.line,
-    up: cfg.up, down: cfg.down, minLine: cfg.minLine,
+    up: cfg.up, down: counter.personal?.warnElbow ?? cfg.down, minLine: counter.personal?.minLine ?? cfg.minLine, // gauges follow the active rule
+    rule: ruleInfo(), sync: syncInfo,
     aspect: video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 4 / 3,
     pose: lm ? { shoulder: pt('shoulder'), elbow: pt('elbow'), wrist: pt('wrist'), hip: pt('hip'), ref: pt(cfg.lineRef) } : null,
     reps: counter.reps.slice(-30),
@@ -527,16 +701,16 @@ function render(lm, m, side) {
   if (m.minVis < 0.5) { fb.className = 'feedback warn'; fb.textContent = 'Some joints are hidden: turn side-on to the camera'; }
   else {
     const cfg = VARIATIONS[counter.variation];
-    const issue = postureIssue({ line: counter.line ?? m.line, hipDrop: counter.hipDrop }, counter.variation);
+    const issue = postureIssue({ line: counter.line ?? m.line, hipDrop: counter.hipDrop }, counter.variation, counter.personal?.minLine);
     if (issue) { fb.className = 'feedback bad'; fb.textContent = issue; }
-    else if (counter.state === 'down') { fb.className = 'feedback ok'; fb.textContent = counter.elbow <= cfg.down ? 'Good depth, push up!' : 'Go lower'; }
+    else if (counter.state === 'down') { fb.className = 'feedback ok'; fb.textContent = counter.elbow <= (counter.personal?.warnElbow ?? cfg.down) ? 'Good depth, push up!' : 'Go lower'; }
     else { fb.className = 'feedback ok'; fb.textContent = counter.state === 'unknown' ? 'Get into the top position' : 'Good line, lower yourself'; }
   }
   const pct = (a) => Math.max(0, Math.min(100, ((a - 60) / 120) * 100));
   $('elbowBar').style.width = pct(counter.elbow ?? m.elbow) + '%';
   $('lineBar').style.width = pct(counter.line ?? m.line) + '%';
-  $('elbowTxt').textContent = `${Math.round(counter.elbow ?? m.elbow)}°  (down ≤ ${VARIATIONS[counter.variation].down}°, up ≥ ${VARIATIONS[counter.variation].up}°)`;
-  $('lineTxt').textContent = `${Math.round(counter.line ?? m.line)}°  (aim ≥ ${VARIATIONS[counter.variation].minLine}°)`;
+  $('elbowTxt').textContent = `${Math.round(counter.elbow ?? m.elbow)}°  (down ≤ ${counter.personal?.warnElbow ?? VARIATIONS[counter.variation].down}°, up ≥ ${VARIATIONS[counter.variation].up}°)`;
+  $('lineTxt').textContent = `${Math.round(counter.line ?? m.line)}°  (aim ≥ ${counter.personal?.minLine ?? VARIATIONS[counter.variation].minLine}°)`;
 
   // Draw the tracked side only.
   const pt = (j) => lm[JOINTS[j][side]];
@@ -550,7 +724,7 @@ function render(lm, m, side) {
     ctx.fillStyle = '#fff';
     for (const n of names) { const q = pt(n); ctx.beginPath(); ctx.arc(q.x * W, q.y * H, 7, 0, 7); ctx.fill(); }
   };
-  const lineOk = (counter.line ?? m.line) >= VARIATIONS[counter.variation].minLine;
+  const lineOk = (counter.line ?? m.line) >= (counter.personal?.minLine ?? VARIATIONS[counter.variation].minLine);
   draw(body, lineOk ? '#3ddc84' : '#ff6b6b');
   draw(chain, '#6ea8fe');
 }

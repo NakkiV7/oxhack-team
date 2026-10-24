@@ -3,6 +3,9 @@ import os from 'node:os';
 import { readFile, writeFile } from 'node:fs/promises';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { createAsker } from './ask.mjs';
+import { parseCsv } from './profile.mjs';
+import { createProfileService } from './profile-service.mjs';
+import { parseSync } from './sync.mjs';
 
 const PORT = Number(process.env.PORT ?? 3001);
 
@@ -117,6 +120,36 @@ Reply with ONE or TWO short sentences (max 30 words): either a pep talk or one c
   }
 }
 
+// Personal profile: reads this user's reps from Tiger Data when a connection string is set, else from the mock CSV.
+const PROFILE_FILE = new URL('./data/profile.json', import.meta.url);
+let tigerPool = null;
+async function tigerLib() { // loads pg only when Tiger is used; opens one shared pool
+  const lib = await import('./tiger.mjs');
+  tigerPool ??= await lib.createPool();
+  return lib;
+}
+const hasTiger = () => !!(process.env.TIGER_DATABASE_URL || process.env.TIGER_DB_ADDRESS);
+const profileService = createProfileService({
+  async loadRows() {
+    if (!hasTiger()) {
+      const csv = await readFile(new URL('./data/history-demo.csv', import.meta.url), 'utf8').catch(() => readFile(new URL('./data/history.csv', import.meta.url), 'utf8'));
+      return { rows: parseCsv(csv), where: 'mock CSV file' };
+    }
+    const { readReps } = await tigerLib();
+    const rows = await readReps(tigerPool, { userId: process.env.PUSHUP_USER_ID || 'local', sources: (process.env.PUSHUP_SOURCES || 'mock,real').split(',') });
+    return { rows, where: 'Tiger Data' };
+  },
+  save: (p) => writeFile(PROFILE_FILE, JSON.stringify(p, null, 2) + '\n'),
+  load: async () => {
+    const p = JSON.parse(await readFile(PROFILE_FILE, 'utf8').catch(() => 'null'));
+    return p && { trainedAt: p.trainedAt, reps: p.reps, sessions: p.sessions, baselines: p.baselines, holdoutAccuracy: p.holdoutAccuracy, rules: p.rules, where: p.where };
+  },
+});
+const profileError = (res, e) => {
+  const json = JSON.stringify({ error: e.message?.slice(0, 200) ?? 'Failed' });
+  res.writeHead(502, { 'Content-Type': 'application/json' }).end(json);
+};
+
 const isLoopback = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
 
 const readBody = (req) => new Promise((resolve, reject) => {
@@ -203,6 +236,30 @@ const server = http.createServer(async (req, res) => {
 
     // Everything else (page, assets, publishing state) is for the Mac itself.
     if (!isLoopback(req)) return res.writeHead(403).end();
+
+    if (req.method === 'GET' && path === '/profile/status') {
+      let out;
+      try { out = await profileService.status(); } catch (e) { return profileError(res, e); }
+      return res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(out));
+    }
+    if (req.method === 'POST' && path === '/profile/train') {
+      let out;
+      try { out = await profileService.train(); } catch (e) { return profileError(res, e); }
+      return res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(out));
+    }
+
+    // A finished camera workout from the page: stored in Tiger Data as real reps. Re-sending the same workout adds nothing.
+    if (req.method === 'POST' && path === '/sync') {
+      const send = (status, obj) => res.writeHead(status, { 'Content-Type': 'application/json' }).end(JSON.stringify(obj));
+      if (!hasTiger()) return send(503, { error: 'Cloud sync is off: no TIGER_DATABASE_URL in .env' });
+      let parsed;
+      try { parsed = parseSync(JSON.parse(await readBody(req))); } catch (e) { return send(422, { error: e.message.slice(0, 200) }); }
+      try {
+        const { insertReps } = await tigerLib();
+        const saved = await insertReps(tigerPool, parsed.rows, { userId: process.env.PUSHUP_USER_ID || 'local', source: 'real' });
+        return send(200, { ok: true, saved, total: parsed.rows.length, session: parsed.session, where: 'Tiger Data' });
+      } catch (e) { return send(502, { error: String(e.message).slice(0, 200) }); }
+    }
 
     if (req.method === 'GET' && path === '/control-code') return res.writeHead(200, { 'Content-Type': 'text/plain' }).end(controlToken);
 

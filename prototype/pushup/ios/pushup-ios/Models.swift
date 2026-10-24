@@ -27,8 +27,23 @@ struct PushupState: Decodable, Equatable {
     var paused: Bool?
     var canPause: Bool?    // only an uploaded video can be paused, not the live camera
     var summary: WorkoutSummary? // non-nil while the Mac shows the end-of-workout summary
+    var rule: RuleInfo?    // which rule judges the workout (default, or the personal one learned from past data)
+    var sync: SyncInfo?    // cloud save status of the last finished workout (nil until a workout ends)
 
     var lineOK: Bool { (line ?? 0) >= minLine }
+}
+
+/// The rule judging form: "default" (fixed thresholds) or "personal" (learned from the user's past data). See ruleInfo() in pushup/index.html.
+struct RuleInfo: Decodable, Equatable {
+    var mode: String // "default" | "personal"
+    var text: String
+    var isPersonal: Bool { mode == "personal" }
+}
+
+/// Cloud save of the finished workout to Tiger Data. See setSync() in pushup/index.html.
+struct SyncInfo: Decodable, Equatable {
+    var status: String // "saving" | "saved" | "failed" | "info"
+    var text: String
 }
 
 /// Normalized (0-1) image coordinates of the tracked side of the body.
@@ -63,6 +78,7 @@ struct WorkoutSummary: Decodable, Equatable {
     var label: String
     var topIssue: String?
     var topIssueCount: Int
+    var rule: String? // "default" | "personal": the rule the workout was judged by
 }
 
 /// "05:07", or "1:05:07" past an hour. Same format as the Mac page.

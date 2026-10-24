@@ -94,12 +94,16 @@ struct ContentView: View {
                 .background(toneColor(s.tone).opacity(0.2), in: RoundedRectangle(cornerRadius: 12))
                 .foregroundStyle(toneColor(s.tone))
 
+            ruleRow(s.rule)
+
             PoseView(state: s, image: client.frame)
                 .overlay {
                     if let summary = s.summary, !summaryDismissed {
                         summaryCard(summary)
                     }
                 }
+
+            if let sync = s.sync { syncRow(sync) }
 
             if s.active == true { controlBar(s) }
 
@@ -203,7 +207,7 @@ struct ContentView: View {
                     tile(formatSeconds(sm.fastest), "Fastest")
                     tile(formatSeconds(sm.slowest), "Slowest")
                 }
-                Text("\(sm.label)\(sm.notCounted > 0 ? " · \(sm.notCounted) not counted" : "")")
+                Text("\(sm.label)\(sm.rule == "personal" ? " · personal rule" : "")\(sm.notCounted > 0 ? " · \(sm.notCounted) not counted" : "")")
                     .font(.caption).foregroundStyle(.secondary)
                 if let issue = sm.topIssue {
                     Text("Most common issue: \(issue) (×\(sm.topIssueCount))").font(.caption).multilineTextAlignment(.center)
@@ -217,6 +221,36 @@ struct ContentView: View {
         }
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    /// Which rule is judging the workout, so it is clear whether the thresholds are the defaults or learned from past data.
+    @ViewBuilder
+    private func ruleRow(_ rule: RuleInfo?) -> some View {
+        if let rule {
+            Label(rule.text, systemImage: rule.isPersonal ? "person.crop.circle.badge.checkmark" : "slider.horizontal.3")
+                .font(.caption)
+                .foregroundStyle(rule.isPersonal ? Color.accentColor : Color.secondary)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// Upload status of the finished workout: saving, saved, or not saved (the Mac retries on its own).
+    private func syncRow(_ sync: SyncInfo) -> some View {
+        let (icon, color): (String, Color) = switch sync.status {
+        case "saved": ("checkmark.icloud", .green)
+        case "failed": ("exclamationmark.icloud", .orange)
+        case "saving": ("icloud.and.arrow.up", .accentColor)
+        default: ("icloud", .secondary)
+        }
+        return HStack(spacing: 8) {
+            if sync.status == "saving" { ProgressView().controlSize(.small) } else { Image(systemName: icon) }
+            Text(sync.text).font(.footnote).multilineTextAlignment(.leading)
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(color)
+        .padding(8)
+        .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
     }
 
     private func tile(_ value: String, _ label: String) -> some View {

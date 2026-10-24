@@ -99,6 +99,22 @@ These are untuned starting points chosen by reasoning about range of motion, not
 
 Each frame the UI shows, in priority order: joints hidden, step back (no pose), current posture issue (from smoothed body line), then a phase cue (get into position, lower yourself, go lower, good depth push up). The overlay draws shoulder-hip-ankle (green when straight, red when not) and shoulder-elbow-wrist (blue) for the tracked side.
 
+## 9. Personal profile (offline, mock data so far)
+
+Not part of the live pipeline yet. [profile.mjs](../profile.mjs) turns past reps (`data/history.csv`: elbow, body line, seconds per rep, label) into a profile:
+
+- **Baselines:** mean and standard deviation of elbow and body line, median of rep time, over the reps labeled `good`. Median for time because slow outlier reps would drag a mean.
+- **Decision tree:** CART, Gini impurity, depth <= 4, >= 5 reps per leaf, features `elbow`, `body_line`, `seconds`, `rep` (rep number in the set). Printed as readable if/then rules. The last 2 sessions are held out to measure accuracy on sessions the tree has not seen; the saved tree is retrained on all reps.
+- The CSV is generated (`data/make-history.mjs`, seeded) with labels set by the generator, not by the app's own rules, so the tree has something to learn beyond the fixed thresholds. Real use needs real labels (for example a "bad rep" tap) and roughly 300+ labeled reps with at least 50 bad ones.
+- Storage: reps can be kept in Tiger Data (`pushup.rep` hypertable, 7-day chunks, `source` = mock or real). `pushup.session_stats` is a continuous aggregate (per day, user, session: reps, good reps, mean good elbow and body line, mean seconds). `train.mjs --tiger` reads reps back in the CSV row shape.
+- Readiness (`readiness()` in `profile.mjs`): train only with >= 300 reps, >= 5 sessions and >= 50 reps not labeled good. `profile-service.mjs` wraps status and training for the server (`GET /profile/status`, `POST /profile/train`, loopback only).
+- Real sessions: `sync.mjs` (`parseSync`, `labelOf`) turns a finished camera workout into rows (`source=real`, session id = start time in epoch seconds so a resend is idempotent, labels good/shallow/sagging/piking/other from the app cue, migration `003_label_values.sql`). The page POSTs them to `/sync` (loopback only).
+- Training takes well under a second, so any loading screen would be presentation only.
+
+## 10. Personal rule (live)
+
+`personalRule(profile)` in `pushup.mjs` turns the saved profile's baselines (good reps) into two limits for standard push-ups: `warnElbow = min(default down, typical elbow + 3 x max(spread, 3))` and `minLine = max(default minLine, typical line - 3 x max(spread, 2))`, needs >= 30 good reps. `RepCounter.setPersonal()` applies it in `#finish()`: a rep still counts by the default depth line, but is "good" only if it also meets the personal limits, and the issue text says "Shallower than your usual" or the posture cue at the personal line. Each rep keeps the default judgement (`baseGood`, `baseIssue`) and that is what `/sync` stores, so the profile never trains on its own labels (otherwise good reps would get ever narrower). The rule tree is not used live yet.
+
 ## Known limitations
 
 - 2D only: no elbow flare, wrist alignment, scapular movement or head position.
