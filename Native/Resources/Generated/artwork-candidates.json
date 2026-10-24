@@ -1,0 +1,242 @@
+{
+  "generatedWith": "built-in image_gen",
+  "date": "2026-10-24",
+  "style": "flat nonrealistic black/grey sports pictograms; no authored SVG",
+  "purpose": "approved raster artwork integrated as new imagesets; original candidates and existing accepted assets preserved",
+  "records": [
+    {
+      "id": "deadBug",
+      "sourcePath": "/Users/scsoc/.codex/generated_images/01a16dc8-a0bb-7202-9eb7-d26634ac6a0e/exec-f0f33c58-ae49-405d-950b-eaa2d2ba169a.png",
+      "destination": "deadBug-v2.png",
+      "prompt": "Use case: illustration-story. A clean flat vector-like dead-bug exercise pictogram, delivered as transparent PNG raster. One featureless human stick figure lying on back, head on left, bent knee raised, opposite leg extended low to right, one arm raised and other extended overhead. Simple solid BLACK ink limbs, round solid BLACK head, consistent thick rounded strokes, light-grey far-side arm and leg ONLY. Bold clear opaque black silhouette, perfectly clean crisp edges, intended for a WHITE app background at 48 pixels. All parts of the figure must be completely OPAQUE. The empty background must be fully TRANSPARENT. No other content. NO glow, NO shading, NO white halo, NO shadows, NO gradients, NO faded or translucent limbs, NO dark background, NO ground line, NO labels, NO text, NO arrows. A strict simple monochrome sports pictogram, anatomically plausible, legible and uncluttered. Wide composition with generous empty margins around full figure.",
+      "status": "approved; copied unchanged into new native imageset",
+      "validation": {
+        "width": 1774,
+        "height": 887,
+        "mode": "RGBA",
+        "alphaRange": [
+          0,
+          255
+        ],
+        "alphaBounds": [
+          43,
+          103,
+          1738,
+          831
+        ],
+        "bytes": 242161,
+        "sha256": "d120f2832d5086e44b54d8334ffec0719b6ce1552671e4bedb9fb7df182a9627",
+        "visualReview": "full size and 48px on white; no clipping, text, realistic humans or apparent extra limbs"
+      },
+      "nativeAsset": "Native/Resources/Assets.xcassets/deadBug.imageset/deadBug.png"
+    },
+    {
+      "id": "sidePlank",
+      "sourcePath": "/Users/scsoc/.codex/generated_images/01a16dc8-a0bb-7202-9eb7-d26634ac6a0e/exec-a7e12c81-c16e-40b4-9ac9-ccadba6ae855.png",
+      "destination": "sidePlank-v1.png",
+      "prompt": "Use case: illustration-story. Asset type: one Spottr exercise library/skill-tree pictogram, raster PNG. Style is a premium minimal sports pictogram: featureless round head; simple thick rounded BLACK opaque limbs and torso, one pale-grey far-side limb where needed for clarity. FLAT BLACK AND GREY ONLY, no green dots, no clothing details or muscles. Crisp edges, physically plausible limb anatomy, readable at 48 pixels on WHITE. One full body centred in a square composition, fill about 80% of frame without clipping. Genuinely TRANSPARENT empty background, solid opaque figure. No glow, gradients, shadows, ground line, words, numbers, arrows, tile or border. No realistic human, 3D or anatomical detail. Subject: side plank. Person seen from the front/three-quarter side, supporting body on one bent forearm directly under shoulder and the outer edge of feet, straight diagonal alignment from head through hips to ankles; legs stacked; free hand rests on hip, chest open. Show the supporting upper arm vertical, forearm flat and small simplified palm. Both legs complete. Bold clear raised torso with visible triangle of empty space underneath.",
+      "status": "approved; copied unchanged into new native imageset",
+      "validation": {
+        "width": 1254,
+        "height": 1254,
+        "mode": "RGBA",
+        "alphaRange": [
+          0,
+          255
+        ],
+        "alphaBounds": [
+          0,
+          97,
+          1254,
+          1091
+        ],
+        "bytes": 354140,
+        "sha256": "8944452fb1146211bc3818823401aaa3cf79684640c9492eb0ca9d4e2e147069",
+        "visualReview": "full size and 48px on white; no clipping, text, realistic humans or apparent extra limbs"
+      },
+      "nativeAsset": "Native/Resources/Assets.xcassets/sidePlank.imageset/sidePlank.png"
+    },
+    {
+      "id": "stepJack",
+      "sourcePath": "/Users/scsoc/.codex/generated_images/01a16dc8-a0bb-7202-9eb7-d26634ac6a0e/exec-382ed22f-9170-40a9-9e41-541c4c2ada72.png",
+      "destination": "stepJack-v1.png",
+      "prompt": "Use case: illustration-story. Asset type: one Spottr exercise library/skill-tree pictogram, raster PNG. Style is a premium minimal sports pictogram: featureless round head; simple thick rounded BLACK opaque limbs and torso, one pale-grey far-side limb where needed for clarity. FLAT BLACK AND GREY ONLY, no green dots, no clothing details or muscles. Crisp edges, physically plausible limb anatomy, readable at 48 pixels on WHITE. One full body centred in a square composition, fill about 80% of frame without clipping. Genuinely TRANSPARENT empty background, solid opaque figure. No glow, gradients, shadows, ground line, words, numbers, arrows, tile or border. No realistic human, 3D or anatomical detail. Subject: step jack, low impact standing jumping-jack variation. Front view full figure, one foot steps outward to the right and both arms reach in an open V overhead. Other foot stays centred. Show one clear single pose, not multiple positions or arrows. Rounded black head and equally thick simple arm strokes, legs distinctly separated.",
+      "status": "approved; copied unchanged into new native imageset",
+      "validation": {
+        "width": 1254,
+        "height": 1254,
+        "mode": "RGBA",
+        "alphaRange": [
+          0,
+          255
+        ],
+        "alphaBounds": [
+          103,
+          48,
+          1182,
+          1254
+        ],
+        "bytes": 241635,
+        "sha256": "3bb27a8347d81cbfbfd141d23c7db62dbb716d65ab348238ab885e4c10464e32",
+        "visualReview": "full size and 48px on white; no clipping, text, realistic humans or apparent extra limbs"
+      },
+      "nativeAsset": "Native/Resources/Assets.xcassets/stepJack.imageset/stepJack.png"
+    },
+    {
+      "id": "highKnees",
+      "sourcePath": "/Users/scsoc/.codex/generated_images/01a16dc8-a0bb-7202-9eb7-d26634ac6a0e/exec-1871a3ad-a1e9-4f83-a7f2-af46c3e05ba7.png",
+      "destination": "highKnees-v1.png",
+      "prompt": "Use case: illustration-story. Asset type: one Spottr exercise library/skill-tree pictogram, raster PNG. Style is a premium minimal sports pictogram: featureless round head; simple thick rounded BLACK opaque limbs and torso, one pale-grey far-side limb where needed for clarity. FLAT BLACK AND GREY ONLY, no green dots, no clothing details or muscles. Crisp edges, physically plausible limb anatomy, readable at 48 pixels on WHITE. One full body centred in a square composition, fill about 80% of frame without clipping. Genuinely TRANSPARENT empty background, solid opaque figure. No glow, gradients, shadows, ground line, words, numbers, arrows, tile or border. No realistic human, 3D or anatomical detail. Subject: high-knee march. Full standing figure in a clear side/three-quarter view facing RIGHT. One knee lifted to hip height, shin vertical below knee, opposite leg straight planted below hip. Opposite arm bent forward at chest height, other arm bent back, natural reciprocal marching posture. No running motion blur, no floating detached limbs.",
+      "status": "approved; copied unchanged into new native imageset",
+      "validation": {
+        "width": 1254,
+        "height": 1254,
+        "mode": "RGBA",
+        "alphaRange": [
+          0,
+          255
+        ],
+        "alphaBounds": [
+          113,
+          49,
+          965,
+          1208
+        ],
+        "bytes": 314431,
+        "sha256": "e97977c82cf5e8b0cdbca8f2aaf93ff6940301f759a626c5f0a4debf0f6cc854",
+        "visualReview": "full size and 48px on white; no clipping, text, realistic humans or apparent extra limbs"
+      },
+      "nativeAsset": "Native/Resources/Assets.xcassets/highKnees.imageset/highKnees.png"
+    },
+    {
+      "id": "mountainClimber",
+      "sourcePath": "/Users/scsoc/.codex/generated_images/01a16dc8-a0bb-7202-9eb7-d26634ac6a0e/exec-358792ed-fe7a-4594-af2b-fdb0fde836b6.png",
+      "destination": "mountainClimber-v1.png",
+      "prompt": "Use case: illustration-story. Asset type: one Spottr exercise library/skill-tree pictogram, raster PNG. Style is a premium minimal sports pictogram: featureless round head; simple thick rounded BLACK opaque limbs and torso, one pale-grey far-side limb where needed for clarity. FLAT BLACK AND GREY ONLY, no green dots, no clothing details or muscles. Crisp edges, physically plausible limb anatomy, readable at 48 pixels on WHITE. One full body centred in a square composition, fill about 80% of frame without clipping. Genuinely TRANSPARENT empty background, solid opaque figure. No glow, gradients, shadows, ground line, words, numbers, arrows, tile or border. No realistic human, 3D or anatomical detail. Subject: mountain climber. Full body in side view facing RIGHT, both palms planted under shoulders, supporting arms straight and vertical, one leg long extended back left with toes planted, opposite knee pulled forward under chest. Hips level, neutral straight back. Precisely two arms and two legs, far-side arm light grey for separation. No floating hands or extra limbs.",
+      "status": "approved; copied unchanged into new native imageset",
+      "validation": {
+        "width": 1254,
+        "height": 1254,
+        "mode": "RGBA",
+        "alphaRange": [
+          0,
+          255
+        ],
+        "alphaBounds": [
+          0,
+          38,
+          1254,
+          1113
+        ],
+        "bytes": 332690,
+        "sha256": "9b5685a2bc658109a36d1b34edeb249f81249f1f6a8b36ad7e6c8571337581a2",
+        "visualReview": "full size and 48px on white; no clipping, text, realistic humans or apparent extra limbs"
+      },
+      "nativeAsset": "Native/Resources/Assets.xcassets/mountainClimber.imageset/mountainClimber.png"
+    },
+    {
+      "id": "catCow",
+      "sourcePath": "/Users/scsoc/.codex/generated_images/01a16dc8-a0bb-7202-9eb7-d26634ac6a0e/exec-f220d985-2ca2-49a4-84e6-f37d1a22bfad.png",
+      "destination": "catCow-v1.png",
+      "prompt": "Use case: illustration-story. Asset type: one Spottr exercise library/skill-tree pictogram, raster PNG. Style is a premium minimal sports pictogram: featureless round head; simple thick rounded BLACK opaque limbs and torso, one pale-grey far-side limb where needed for clarity. FLAT BLACK AND GREY ONLY, no green dots, no clothing details or muscles. Crisp edges, physically plausible limb anatomy, readable at 48 pixels on WHITE. One full body centred in a square composition, fill about 80% of frame without clipping. Genuinely TRANSPARENT empty background, solid opaque figure. No glow, gradients, shadows, ground line, words, numbers, arrows, tile or border. No realistic human, 3D or anatomical detail. Subject: cat-cow exercise in the gently rounded-back CAT position. Full body facing RIGHT in side view on hands and knees, shoulders over palms, hips over knees, back in a smooth gentle arch upward and head softly inclined downward. Shins on ground, toes relaxed. Precisely two arms and two legs, with far-side limbs light grey where needed. A restrained anatomically plausible yoga mobility pictogram, not an actual cat.",
+      "status": "approved; copied unchanged into new native imageset",
+      "validation": {
+        "width": 1254,
+        "height": 1254,
+        "mode": "RGBA",
+        "alphaRange": [
+          0,
+          255
+        ],
+        "alphaBounds": [
+          17,
+          208,
+          1243,
+          1198
+        ],
+        "bytes": 409409,
+        "sha256": "0d6749321af6cf4c973548edbf43e64494423d0014db9cdd5a2b73c971569117",
+        "visualReview": "full size and 48px on white; no clipping, text, realistic humans or apparent extra limbs"
+      },
+      "nativeAsset": "Native/Resources/Assets.xcassets/catCow.imageset/catCow.png"
+    },
+    {
+      "id": "hipFlexorStretch",
+      "sourcePath": "/Users/scsoc/.codex/generated_images/01a16dc8-a0bb-7202-9eb7-d26634ac6a0e/exec-9133e8dd-45bc-4406-a29a-7feb91abf2e1.png",
+      "destination": "hipFlexorStretch-v1.png",
+      "prompt": "Use case: illustration-story. Asset type: one Spottr exercise library/skill-tree pictogram, raster PNG. Style is a premium minimal sports pictogram: featureless round head; simple thick rounded BLACK opaque limbs and torso, one pale-grey far-side limb where needed for clarity. FLAT BLACK AND GREY ONLY, no green dots, no clothing details or muscles. Crisp edges, physically plausible limb anatomy, readable at 48 pixels on WHITE. One full body centred in a square composition, fill about 80% of frame without clipping. Genuinely TRANSPARENT empty background, solid opaque figure. No glow, gradients, shadows, ground line, words, numbers, arrows, tile or border. No realistic human, 3D or anatomical detail. Subject: half-kneeling hip flexor stretch. Full body facing RIGHT in side view, torso upright, front foot flat with knee bent about 90 degrees, opposite knee on ground behind hip, rear shin horizontal back. Hands gently on front thigh or hips, mild controlled forward shift, no extreme back bend. Clear upright half-kneeling silhouette, not a deep lunge or squat.",
+      "status": "approved; copied unchanged into new native imageset",
+      "validation": {
+        "width": 1254,
+        "height": 1254,
+        "mode": "RGBA",
+        "alphaRange": [
+          0,
+          255
+        ],
+        "alphaBounds": [
+          47,
+          0,
+          1216,
+          1228
+        ],
+        "bytes": 435315,
+        "sha256": "2d55aef16b53c58e3d25984306111f76af2136a03c654e96f298d27ce28e11e8",
+        "visualReview": "full size and 48px on white; no clipping, text, realistic humans or apparent extra limbs"
+      },
+      "nativeAsset": "Native/Resources/Assets.xcassets/hipFlexorStretch.imageset/hipFlexorStretch.png"
+    },
+    {
+      "id": "singleLegBalance",
+      "sourcePath": "/Users/scsoc/.codex/generated_images/01a16dc8-a0bb-7202-9eb7-d26634ac6a0e/exec-b41a608b-0305-4206-bfa1-864160d98fce.png",
+      "destination": "singleLegBalance-v1.png",
+      "prompt": "Use case: illustration-story. Asset type: one Spottr exercise library/skill-tree pictogram, raster PNG. Style is a premium minimal sports pictogram: featureless round head; simple thick rounded BLACK opaque limbs and torso, one pale-grey far-side limb where needed for clarity. FLAT BLACK AND GREY ONLY, no green dots, no clothing details or muscles. Crisp edges, physically plausible limb anatomy, readable at 48 pixels on WHITE. One full body centred in a square composition, fill about 80% of frame without clipping. Genuinely TRANSPARENT empty background, solid opaque figure. No glow, gradients, shadows, ground line, words, numbers, arrows, tile or border. No realistic human, 3D or anatomical detail. Subject: single-leg balance stand. Full body seen from front/three-quarter view, one straight planted leg under hip, other leg lifted with knee bent and foot off the ground near the supporting calf without overlapping it. Torso upright, both arms extended out comfortably to the sides for balance. Head level, two complete distinct legs, simple hands. Deliberate stable balance pose, not running and not yoga tree pose.",
+      "status": "approved; copied unchanged into new native imageset",
+      "validation": {
+        "width": 1254,
+        "height": 1254,
+        "mode": "RGBA",
+        "alphaRange": [
+          0,
+          255
+        ],
+        "alphaBounds": [
+          33,
+          0,
+          1156,
+          1205
+        ],
+        "bytes": 330562,
+        "sha256": "249917f310fc8377c1d483fa045ad7d4d6fb9f6ae01aa39ab26630efa7531afc",
+        "visualReview": "full size and 48px on white; no clipping, text, realistic humans or apparent extra limbs"
+      },
+      "nativeAsset": "Native/Resources/Assets.xcassets/singleLegBalance.imageset/singleLegBalance.png"
+    },
+    {
+      "id": "onboarding-skills",
+      "sourcePath": "/Users/scsoc/.codex/generated_images/01a16dc8-a0bb-7202-9eb7-d26634ac6a0e/exec-d8118d9c-90ac-4b84-bd0a-cc8cb5d1f3b8.png",
+      "destination": "onboarding-skills-v1.png",
+      "prompt": "Use case: illustration-story. Asset type: premium Spottr mobile onboarding hero illustration. Create one coherent minimal FLAT 2D black-and-white graphic about building physical skills one step at a time. White/transparent background. Composition: a clean branching training path made of elegant fine charcoal connector lines and generous circular skill nodes, ascending diagonally. Three dominant nodes contain very simple rounded charcoal exercise pictograms: a controlled squat, a push-up, and a single-leg balance. A small flexed-bicep symbol near the upper destination provides a clear fitness motif. A single tiny restrained mint completion tick may appear on the lowest completed node; everything else black, pale grey and white. Think refined editorial sports app illustration, simple solid silhouettes with featureless round heads, beautifully balanced negative space, recognisable at mobile size. Square composition; fully visible with 10% empty margin; no text labels, numbers, logos, arrows, phone frames, hands holding phones, texture, shadows, gradients, glow, 3D, realistic humans or anatomical details. Transparent alpha background, opaque crisp graphic marks. It must feel like ONE designed onboarding illustration, not a sheet of separate unrelated icons.",
+      "status": "approved; copied unchanged into new native imageset",
+      "validation": {
+        "width": 1254,
+        "height": 1254,
+        "mode": "RGBA",
+        "alphaRange": [
+          0,
+          255
+        ],
+        "alphaBounds": [
+          76,
+          88,
+          1191,
+          1180
+        ],
+        "bytes": 412618,
+        "sha256": "7431c1e8cbda5193684a9541f3959f70fb638e4f7c40b52fa45d2ccaee1b6d49",
+        "visualReview": "full size and 48px on white; no clipping, text, realistic humans or apparent extra limbs"
+      },
+      "nativeAsset": "Native/Resources/Assets.xcassets/onboarding-skills.imageset/onboarding-skills.png"
+    }
+  ]
+}
