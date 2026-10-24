@@ -47,7 +47,14 @@ final class WorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBu
             builder.beginCollection(withStart: date) { [weak self] success, _ in
                 Task { @MainActor in
                     guard let self, self.capture.isCurrent(token), self.builder === builder else { return }
-                    self.onStatus?(success ? "Workout recording" : "Couldn’t collect workout data.")
+                    guard success else {
+                        self.capture.end(); self.motion.stopDeviceMotionUpdates()
+                        self.workout = nil; self.builder = nil
+                        session.end(); builder.discardWorkout()
+                        self.onRecording?(false); self.onStatus?("Couldn’t collect workout data.")
+                        return
+                    }
+                    self.onStatus?("Workout recording")
                 }
             }
             if capture.isPaused { session.pause() }
