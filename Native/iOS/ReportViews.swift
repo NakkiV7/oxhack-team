@@ -3,6 +3,8 @@ import Charts
 
 struct WeeklyProgressView: View {
     let store: TrainingStore
+    let profile: LocalProfile?
+    init(store: TrainingStore, profile: LocalProfile? = nil) { self.store = store; self.profile = profile }
     var body: some View {
         let week = WeekReport(history: store.history)
         NavigationStack {
@@ -46,7 +48,7 @@ struct WeeklyProgressView: View {
                         Text("Session reports").font(.headline)
                         ForEach(store.history) { record in
                             NavigationLink {
-                                SessionReportView(record: record)
+                                SessionReportView(record: record, profile: profile)
                             } label: {
                                 ReportSessionCard(report: WorkoutReport(record: record))
                             }
@@ -54,7 +56,7 @@ struct WeeklyProgressView: View {
                             .accessibilityIdentifier("session-report")
                         }
                     }
-                    CoachSummaryCard(history: store.history.filter { $0.date >= week.interval.start && $0.date < week.interval.end }, kind: .weekly)
+                    CoachSummaryCard(history: store.history.filter { $0.date >= week.interval.start && $0.date < week.interval.end }, kind: .weekly, profile: profile)
                     if !week.categories.isEmpty {
                         VStack(alignment: .leading, spacing: 16) {
                             Text("This week’s mix").font(.headline)
@@ -107,6 +109,8 @@ private struct ReportSessionCard: View {
 
 struct SessionReportView: View {
     let record: SessionRecord
+    let profile: LocalProfile?
+    init(record: SessionRecord, profile: LocalProfile? = nil) { self.record = record; self.profile = profile }
     var body: some View {
         let report = WorkoutReport(record: record)
         ScrollView {
@@ -153,7 +157,7 @@ struct SessionReportView: View {
                     Text("Recorded time includes tracked sets, live manual set timers and logged hold durations. Bulk manual rep entries have no recorded duration.")
                         .font(.caption).foregroundStyle(.secondary)
                 }.padding(20).background(Palette.surface, in: RoundedRectangle(cornerRadius: 22))
-                CoachSummaryCard(record: record)
+                CoachSummaryCard(record: record, profile: profile)
                 CloudSyncCard(record: record)
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Watch heart rate").font(.headline)

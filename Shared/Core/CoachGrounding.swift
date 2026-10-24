@@ -1,13 +1,16 @@
 import Foundation
 
 public enum CoachGrounding {
-    public static func facts(history: [SessionRecord]) -> [CoachFact] {
+    public static func facts(history: [SessionRecord], profile: LocalProfile? = nil) -> [CoachFact] {
         var seen = Set<UUID>()
         let unique = history.filter { $0.date.timeIntervalSince1970.isFinite }
             .sorted { $0.date > $1.date }.filter { seen.insert($0.id).inserted }
         let reports = unique.map(WorkoutReport.init)
         let progress = SkillProgress.evaluate(history: unique)
         let context = CoachFact(id: "context", text: "\(unique.count) saved sessions in supplied history scope. Scope totals include every supplied session; detailed facts cover up to 8 recent sessions and 8 sets each. Manual rep counts and bulk entries are self-reported; manual hold timers record elapsed time between user start, pause and end actions; camera entries are CV observations; video entries are replay observations. Only recorded Watch summaries are shared. Raw sensor streams are not shared. No health status, recovery, calorie burn or fitness score is established. Wrist motion does not establish exercise form.")
+        let preferences = profile.map {
+            [CoachFact(id: "training-goals", text: "Current self-selected training goals: \($0.goals.map(\.title).sorted().joined(separator: ", ")). Desired routine: \($0.weeklyTarget) training days per week. These preferences are intentions, not recorded achievements and not a physical capability measurement.")]
+        } ?? []
         let sessions = reports.prefix(8).flatMap(sessionFacts)
         let skills = TrainingAttribute.allCases.map { attribute in
             CoachFact(id: "skill-\(attribute.rawValue)", text: "\(attribute.title): \(progress.points(for: attribute)) game points from goal-meeting recorded sets. Game points are not a physical capability measurement.")
@@ -16,7 +19,7 @@ public enum CoachGrounding {
             CoachFact(id: "node-\($0.exerciseID)", text: "\($0.exerciseID) challenge completed: \($0.qualifyingSets) qualifying sets across \($0.trainingDays) training days, including \($0.manualSets) manual and \($0.cameraSets) camera sets.")
         }
         var factIDs = Set<String>()
-        return ([context, scopeTotals(reports)] + scopeSignals(reports) + sessions + skills + nodes)
+        return ([context, scopeTotals(reports)] + preferences + scopeSignals(reports) + sessions + skills + nodes)
             .filter { factIDs.insert($0.id).inserted }
     }
 

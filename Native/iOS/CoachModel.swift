@@ -13,15 +13,23 @@ final class CoachModel {
     private var generation = UUID()
     private let configuration: @MainActor () throws -> CoachGatewayClient
     private var lastMessage = ""
+    private var profile: LocalProfile?
 
-    init(configuration: @escaping @MainActor () throws -> CoachGatewayClient = CoachSettings.client, savedPlanData: Data? = UserDefaults.standard.data(forKey: "coach.approvedPlan")) {
+    init(configuration: @escaping @MainActor () throws -> CoachGatewayClient = CoachSettings.client, savedPlanData: Data? = UserDefaults.standard.data(forKey: "coach.approvedPlan"), profile: LocalProfile? = nil) {
         self.configuration = configuration
+        self.profile = profile
         approvedPlan = savedPlanData.flatMap { try? JSONDecoder().decode(CoachSavedPlan.self, from: $0) }
     }
 
     func cancel() { generation = UUID(); isLoading = false }
 
     func invalidateContext() { cancel(); proposal = nil; proposalContext = nil; summary = nil }
+
+    func updateProfile(_ profile: LocalProfile?) {
+        let changed = self.profile?.goals != profile?.goals || self.profile?.weeklyTarget != profile?.weeklyTarget
+        self.profile = profile
+        if changed { invalidateContext() }
+    }
 
     func send(message: String, history: [SessionRecord], support: Set<String>, retry: Bool = false) async {
         let text = retry ? lastMessage : message.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -32,7 +40,7 @@ final class CoachModel {
         if !retry { turns.append(.init(role: .user, text: text)) }
         let token = begin()
         do {
-            let input = CoachRequest(generationID: token.uuidString, message: text, history: prior, facts: CoachGrounding.facts(history: history), availableSupport: support.sorted())
+            let input = CoachRequest(generationID: token.uuidString, message: text, history: prior, facts: CoachGrounding.facts(history: history, profile: profile), availableSupport: support.sorted())
             let answer = try await configuration().chat(input)
             guard generation == token, !Task.isCancelled else { return }
             turns.append(.init(role: .model, text: answer)); isLoading = false
@@ -43,7 +51,7 @@ final class CoachModel {
         guard !isLoading else { return }
         proposal = nil; proposalContext = nil
         let token = begin()
-        let input = CoachRequest(generationID: token.uuidString, facts: CoachGrounding.facts(history: history), availableSupport: support.sorted())
+        let input = CoachRequest(generationID: token.uuidString, facts: CoachGrounding.facts(history: history, profile: profile), availableSupport: support.sorted())
         do {
             let response = try await configuration().proposal(input)
             guard generation == token, !Task.isCancelled else { return }
@@ -55,7 +63,7 @@ final class CoachModel {
         guard !isLoading else { return }
         summary = nil
         let token = begin()
-        let input = CoachRequest(generationID: token.uuidString, facts: CoachGrounding.facts(history: history), kind: kind)
+        let input = CoachRequest(generationID: token.uuidString, facts: CoachGrounding.facts(history: history, profile: profile), kind: kind)
         do {
             let response = try await configuration().summary(input, kind: kind)
             guard generation == token, !Task.isCancelled else { return }

@@ -2,6 +2,22 @@ import XCTest
 @testable import SpottrCore
 
 final class CoachGroundingTests: XCTestCase {
+    func testTrainingPreferencesAreDeterministicAndDoNotShareTheOptionalNameOrImplyCapacity() throws {
+        let profile = try LocalProfile(name: "Private Optional Name", weeklyTarget: 4, goals: [.stamina, .mobility])
+        let renamed = try LocalProfile(name: "Different Private Name", weeklyTarget: 4, goals: [.mobility, .stamina])
+        let facts = CoachGrounding.facts(history: [], profile: profile)
+        let preference = try XCTUnwrap(facts.first { $0.id == "training-goals" })
+
+        XCTAssertTrue(preference.text.contains("Mobility, Stamina"))
+        XCTAssertTrue(preference.text.contains("4 training days per week"))
+        XCTAssertTrue(preference.text.contains("self-selected"))
+        XCTAssertTrue(preference.text.contains("not a physical capability measurement"))
+        XCTAssertEqual(facts, CoachGrounding.facts(history: [], profile: renamed))
+        XCTAssertFalse(facts.contains { $0.text.contains("Private Optional Name") })
+        XCTAssertFalse(CoachGrounding.facts(history: []).contains { $0.id == "training-goals" })
+        XCTAssertEqual(Set(facts.map(\.id)).count, facts.count)
+    }
+
     func testEmptyHistoryIsExplicitAndSkillPointsAreNotFitnessMeasurements() {
         let facts = CoachGrounding.facts(history: [])
         XCTAssertTrue(facts.contains { $0.id == "context" && $0.text.contains("0 saved sessions") })
