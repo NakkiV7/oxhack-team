@@ -30,13 +30,14 @@ public enum PoseGeometry {
             let positions = points.map { ($0.x * frame.width, $0.y * frame.height) }
             guard let angle = angle(positions[0], positions[1], positions[2]) else { continue }
             var aligned = true
+            var bodyAngle: Double?
             if exercise == .pushup {
                 guard abs(positions[0].0 - positions[4].0) > abs(positions[0].1 - positions[4].1),
-                      let bodyAngle = self.angle(positions[0], positions[3], positions[4]) else { continue }
-                aligned = bodyAngle >= 150
+                      let measuredBodyAngle = self.angle(positions[0], positions[3], positions[4]) else { continue }
+                bodyAngle = measuredBodyAngle; aligned = measuredBodyAngle >= 150
             }
             return .init(time: frame.time, angle: angle, confidence: points.map(\.confidence).min() ?? 0,
-                         side: side, aligned: aligned)
+                         side: side, aligned: aligned, bodyAngle: bodyAngle)
         }
         return nil
     }

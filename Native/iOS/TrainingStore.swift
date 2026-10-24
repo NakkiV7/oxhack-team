@@ -111,8 +111,11 @@ final class TrainingStore {
     }
     func finish() { session.finish(at: now); vision.stop(); frame = nil; save(); publish() }
     func save() {
+        persist(session.record)
+    }
+    func persist(_ record: SessionRecord) {
         do {
-            try historyStore.save(session.record); history = try historyStore.load().reversed(); error = nil
+            try historyStore.save(record); history = try historyStore.load().reversed(); error = nil
         } catch { self.error = "Couldn’t save this session. Try again." }
     }
     private func clearInput() {

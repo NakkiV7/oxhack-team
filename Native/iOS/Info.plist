@@ -11,5 +11,7 @@
 <key>UILaunchScreen</key><dict/>
 <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string></array>
 <key>NSCameraUsageDescription</key><string>Spottr uses your camera to count reps and show movement cues on this iPhone. Video stays on your device.</string>
+<key>NSLocalNetworkUsageDescription</key><string>Spottr connects to your local workout gateway and companion camera.</string>
+<key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
 <key>UIUserInterfaceStyle</key><string>Light</string>
 </dict></plist>

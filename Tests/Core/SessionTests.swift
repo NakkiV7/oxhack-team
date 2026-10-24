@@ -2,6 +2,27 @@ import Foundation
 import Testing
 @testable import SpottrCore
 
+@Test func savesObservedRepDurationsAndClearsThemForNextSet() {
+    var session = TrainingSession()
+    session.start(at: 0)
+    for (time, angle) in [(0.0, 170.0), (0.2, 170), (0.6, 90), (0.8, 90), (1.2, 170), (1.4, 170)] {
+        session.consume(.init(time: time, angle: angle), generation: session.generation)
+    }
+    session.endSet(at: 2)
+    #expect(session.sets.first?.repDurations?.count == 1)
+    #expect(abs((session.sets.first?.repDurations?.first ?? 0) - 1.2) < 0.001)
+    session.nextSet(at: 3)
+    session.endSet(at: 4)
+    #expect(session.sets.last?.repDurations?.isEmpty == true)
+}
+
+@Test func trackingLossTakesPriorityOverAnUncertainFormCue() {
+    var session = TrainingSession()
+    session.start(at: 0)
+    session.consume(.init(time: 0.1, angle: 90, confidence: 0.1, bodyAngle: 153), generation: session.generation)
+    #expect(session.cue == .tracking)
+}
+
 @Test func canStartWithPushupsAndThenSwitchToSquats() {
     var session = TrainingSession(firstExercise: .pushup)
     session.start(at: 0)

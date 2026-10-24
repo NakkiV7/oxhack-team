@@ -2,6 +2,7 @@
 .build/
 build/
 DerivedData/
+DerivedDataDevice/
 *.xcuserstate
 xcuserdata/
 .swiftpm/
@@ -10,3 +11,7 @@ xcuserdata/
 .env*
 Native/Vendor/
 !*.example
+
+.local/
+server/node_modules/
+__pycache__/

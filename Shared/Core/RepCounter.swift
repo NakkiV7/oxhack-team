@@ -23,7 +23,7 @@ public struct RepCounter: Sendable {
         defer { lastTime = sample.time; side = sample.side }
         if let lastTime, sample.time <= lastTime || sample.time - lastTime > 0.75 { resetMovement() }
         if let side, side != sample.side { resetMovement() }
-        guard sample.aligned else { resetMovement(); return .alignment }
+        guard sample.bodyLine != .reset else { resetMovement(); return .alignment }
         let zone = sample.angle >= 160 ? 1 : (sample.angle <= exercise.bottomAngle ? -1 : 0)
         if candidate != zone { candidate = zone; candidateAt = sample.time }
         guard let since = candidateAt, sample.time - since >= 0.15 else { return .lower }

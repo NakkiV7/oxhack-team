@@ -2,6 +2,23 @@ import XCTest
 @testable import Spottr
 
 final class VideoTests: XCTestCase {
+    func testCancelledVideoCannotResumeAsCamera() async throws {
+        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "blank", withExtension: "mp4"))
+        let worker = VisionWorker()
+        let result = expectation(description: "Video resumes or asks for a new clip")
+        worker.onState = { state, _ in
+            switch state {
+            case .camera, .unavailable, .denied: XCTFail("Video resume switched to the camera")
+            default: break
+            }
+            result.fulfill()
+        }
+        worker.video(url: url, token: UUID())
+        worker.pause()
+        worker.resume(token: UUID(), source: .video)
+        await fulfillment(of: [result], timeout: 5)
+        worker.stop()
+    }
     func testVideoPauseAndResumeContinueFromNextFrame() async throws {
         let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "blank", withExtension: "mp4"))
         let worker = VisionWorker()

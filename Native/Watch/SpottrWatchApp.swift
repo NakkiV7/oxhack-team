@@ -22,8 +22,8 @@ struct WatchTrainingView: View {
         NavigationStack {
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 ScrollView {
-                    VStack(spacing: 13) {
-                        Text("Spottr").font(.system(size: 18, weight: .bold, design: .rounded))
+                    VStack(spacing: 7) {
+                        Text("Spottr").font(.system(size: 15, weight: .bold, design: .rounded))
                         if let snapshot = store.state.snapshot, snapshot.isFresh(at: context.date), snapshot.phase != .idle {
                             content(snapshot, now: context.date)
                         } else {
@@ -33,6 +33,20 @@ struct WatchTrainingView: View {
                         }
                         if let status = store.status { Text(status).font(.caption2).foregroundStyle(.secondary) }
                     }.padding(.horizontal, 10).padding(.bottom, 15)
+                }
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    if let snapshot = store.state.snapshot, snapshot.isFresh(at: context.date),
+                       [.active, .paused, .rest].contains(snapshot.phase) {
+                        HStack(spacing: 5) {
+                            if snapshot.phase == .rest {
+                                Button("Next set") { store.command(.nextSet) }.buttonStyle(.borderedProminent)
+                            } else {
+                                Button(snapshot.phase == .paused ? "Resume" : "Pause") { store.command(snapshot.phase == .paused ? .resume : .pause) }
+                                    .buttonStyle(.borderedProminent)
+                                Button("End set") { store.command(.endSet) }.buttonStyle(.bordered)
+                            }
+                        }.font(.caption2).disabled(!store.reachable).padding(.horizontal, 6).padding(.vertical, 4).background(.white)
+                    }
                 }.foregroundStyle(.black).containerBackground(.white, for: .navigation)
             }
         }.tint(.black)
@@ -45,18 +59,11 @@ struct WatchTrainingView: View {
         } else {
             Text(snapshot.exercise.title).font(.subheadline.weight(.semibold))
             HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text("\(snapshot.reps)").font(.system(size: 52, weight: .semibold, design: .rounded)).monospacedDigit()
+                Text("\(snapshot.reps)").font(.system(size: 44, weight: .semibold, design: .rounded)).monospacedDigit()
                 Text("/ \(snapshot.target)").font(.subheadline).foregroundStyle(.secondary)
             }
-            Text(snapshot.phase == .rest ? "Take a breather." : snapshot.cue.text).font(.caption).multilineTextAlignment(.center)
-            Label(store.heart?.heartRate(at: now).map { "\(Int($0.rounded())) bpm" } ?? "— bpm", systemImage: "heart").font(.subheadline)
-            if snapshot.phase == .rest {
-                Button("Next set") { store.command(.nextSet) }.buttonStyle(.borderedProminent).disabled(!store.reachable)
-            } else {
-                Button(snapshot.phase == .paused ? "Resume" : "Pause") { store.command(snapshot.phase == .paused ? .resume : .pause) }
-                    .buttonStyle(.borderedProminent).disabled(!store.reachable)
-                Button("End set") { store.command(.endSet) }.buttonStyle(.bordered).disabled(!store.reachable)
-            }
+            Text(snapshot.phase == .rest ? "Take a breather." : snapshot.cue.text).font(.caption2).multilineTextAlignment(.center).lineLimit(2)
+            Label(store.heart?.heartRate(at: now).map { "\(Int($0.rounded())) bpm" } ?? "— bpm", systemImage: "heart").font(.caption)
             if !store.recording {
                 Button("Record workout") { store.record() }.font(.caption).buttonStyle(.bordered)
             }

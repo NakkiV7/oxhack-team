@@ -57,10 +57,11 @@ final class WorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBu
             let acceleration = data.userAcceleration, rotation = data.rotationRate
             let magnitude = sqrt(acceleration.x * acceleration.x + acceleration.y * acceleration.y + acceleration.z * acceleration.z)
             let angularSpeed = sqrt(rotation.x * rotation.x + rotation.y * rotation.y + rotation.z * rotation.z)
+            let sampledAt = Date(timeIntervalSinceNow: data.timestamp - ProcessInfo.processInfo.systemUptime)
             Task { @MainActor in
                 guard let self, self.workout != nil, Date().timeIntervalSince(self.lastMotion) >= 1 else { return }
                 self.lastMotion = Date()
-                self.onMotion?(.init(value: magnitude), .init(value: angularSpeed))
+                self.onMotion?(.init(value: magnitude, date: sampledAt), .init(value: angularSpeed, date: sampledAt))
             }
         }
     }
@@ -72,12 +73,13 @@ final class WorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBu
         self.workout = nil; self.builder = nil; workout.end()
         onStatus?("Ending workout…"); onRecording?(false)
         builder.endCollection(withEnd: Date()) { [weak self] success, _ in
+            guard let self else { return }
             guard success else {
                 builder.discardWorkout()
-                Task { @MainActor in self?.onStatus?("Couldn’t save workout.") }; return
+                Task { @MainActor in self.onStatus?("Couldn’t save workout.") }; return
             }
             builder.finishWorkout { workout, error in
-                Task { @MainActor in self?.onStatus?(workout != nil && error == nil ? "Workout saved" : "Couldn’t save workout.") }
+                Task { @MainActor in self.onStatus?(workout != nil && error == nil ? "Workout saved" : "Couldn’t save workout.") }
             }
         }
     }

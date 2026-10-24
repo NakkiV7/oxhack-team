@@ -5,8 +5,9 @@ struct SpottrRoot: View {
     var body: some View {
         TabView {
             TodayView(store: store).tabItem { Label("Today", systemImage: "house") }
-            ProgressView(store: store).tabItem { Label("Progress", systemImage: "chart.bar.xaxis") }
-            CoachView().tabItem { Label("Coach", systemImage: "bubble") }
+            WeeklyProgressView(store: store).tabItem { Label("Progress", systemImage: "chart.bar.xaxis") }
+            SkillsView(store: store).tabItem { Label("Skills", systemImage: "point.3.connected.trianglepath.dotted") }
+            CoachView(store: store).tabItem { Label("Coach", systemImage: "bubble") }
         }
         .fullScreenCover(isPresented: $store.presented) { SessionView(store: store).interactiveDismissDisabled() }
         .foregroundStyle(Palette.ink)
@@ -15,6 +16,7 @@ struct SpottrRoot: View {
 
 struct TodayView: View {
     @Bindable var store: TrainingStore
+    @State private var libraryPresented = false
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 25) {
@@ -62,71 +64,13 @@ struct TodayView: View {
                         Divider()
                     }
                 }
+                Button { libraryPresented = true } label: {
+                    Label("Exercise library", systemImage: "square.grid.2x2").font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity).padding(16).background(Palette.surface, in: RoundedRectangle(cornerRadius: 14))
+                }.buttonStyle(.plain)
                 Label("Keep your rhythm.", systemImage: "applewatch").font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity)
                 if let error = store.error { Text(error).font(.caption).foregroundStyle(Palette.red) }
             }.padding(24)
-        }.background(.white)
-    }
-}
-
-struct ProgressView: View {
-    let store: TrainingStore
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 25) {
-                    Text("Every rep adds up.").font(.system(size: 31, weight: .bold)).tracking(-1)
-                    if store.history.isEmpty {
-                        VStack(spacing: 18) {
-                            Image(systemName: "chart.xyaxis.line").font(.system(size: 38, weight: .light))
-                            Text("Your first session starts here.").font(.headline)
-                            Text("Finish a set to see your reps, time and effort in one place.").font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                        }.frame(maxWidth: .infinity).padding(30).background(Palette.surface, in: RoundedRectangle(cornerRadius: 24))
-                    }
-                    ForEach(store.history) { record in
-                        VStack(alignment: .leading, spacing: 16) {
-                            Label(record.date.formatted(date: .abbreviated, time: .shortened), systemImage: "calendar").font(.caption).foregroundStyle(.secondary)
-                            Text("\(record.sets.count) \(record.sets.count == 1 ? "set" : "sets") · \(record.reps) reps").font(.title3.weight(.semibold))
-                            Label(clockText(record.activeSeconds), systemImage: "clock").font(.subheadline)
-                            ForEach(record.sets) { set in
-                                HStack {
-                                    Text("\(set.exercise.title) · \(set.number)")
-                                    Spacer()
-                                    Text("\(set.reps) reps")
-                                }.font(.caption).foregroundStyle(.secondary)
-                            }
-                        }.padding(22).frame(maxWidth: .infinity, alignment: .leading).background(Palette.surface, in: RoundedRectangle(cornerRadius: 22))
-                    }
-                }.padding(24)
-            }.navigationTitle("Progress").navigationBarTitleDisplayMode(.inline)
-        }
-    }
-}
-
-struct CoachView: View {
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 25) {
-                    Text("Keep the control.").font(.system(size: 32, weight: .bold)).tracking(-1)
-                    Text("Set your iPhone to the side at hip height, with your whole body in view. Train one person at a time.")
-                        .foregroundStyle(.secondary)
-                    ForEach(Exercise.allCases, id: \.self) { exercise in
-                        VStack(alignment: .leading, spacing: 18) {
-                            Text(exercise.title).font(.title3.bold())
-                            HStack {
-                                ForEach(["top", "mid", "bottom"], id: \.self) { phase in
-                                    Image("\(exercise.rawValue)-\(phase)").resizable().scaledToFit().frame(maxWidth: .infinity).frame(height: 110)
-                                }
-                            }
-                            Text(exercise.guide).font(.subheadline.weight(.medium))
-                            Text(exercise == .squat ? "Choose a comfortable depth. Return to standing to complete the rep." : "Keep shoulders, hips and ankles in one line. Return to extended arms to complete the rep.")
-                                .font(.subheadline).foregroundStyle(.secondary)
-                        }.padding(20).background(Palette.surface, in: RoundedRectangle(cornerRadius: 23))
-                    }
-                    Label("Stop if you feel pain or discomfort.", systemImage: "hand.raised").font(.subheadline)
-                }.padding(24)
-            }.navigationTitle("Your coach").navigationBarTitleDisplayMode(.inline)
-        }
+        }.background(.white).sheet(isPresented: $libraryPresented) { ExerciseLibraryView(store: store) }
     }
 }

@@ -50,7 +50,10 @@ struct LiveSetView: View {
                             .accessibilityIdentifier("rep-count")
                         Text("/ \(store.session.exercise.target)").foregroundStyle(.secondary)
                         Spacer()
-                        Label(clockText(store.session.elapsed(at: store.now)), systemImage: "stopwatch").font(.caption).monospacedDigit().foregroundStyle(.secondary)
+                        VStack(alignment: .trailing, spacing: 8) {
+                            Label(store.heartRate(at: Date()), systemImage: "heart.fill").font(.caption.weight(.medium))
+                            Label(clockText(store.session.elapsed(at: store.now)), systemImage: "stopwatch").font(.caption).monospacedDigit().foregroundStyle(.secondary)
+                        }
                     }
                 }
                 ZStack(alignment: .topLeading) {

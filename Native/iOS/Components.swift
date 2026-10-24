@@ -56,12 +56,22 @@ struct PoseOverlay: View {
                 let from = CGPoint(x: p.x * frame.width * scale + offset.x, y: p.y * frame.height * scale + offset.y)
                 let to = CGPoint(x: q.x * frame.width * scale + offset.x, y: q.y * frame.height * scale + offset.y)
                 let bodyEdge = [23,24].contains(b) || [23,24].contains(a)
-                let color: Color = measurement == nil ? .gray : (measurement?.aligned == false && bodyEdge ? Palette.red : Palette.green)
+                let color: Color = edgeColor(measurement, bodyEdge: bodyEdge)
                 var path = Path(); path.move(to: from); path.addLine(to: to)
                 context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: 4, lineCap: .round))
                 context.fill(Path(ellipseIn: CGRect(x: from.x - 3, y: from.y - 3, width: 6, height: 6)), with: .color(.white))
             }
         }.accessibilityHidden(true)
+    }
+    private func edgeColor(_ sample: MovementSample?, bodyEdge: Bool) -> Color {
+        guard let sample else { return .gray }
+        guard exercise == .pushup, bodyEdge else { return Palette.green }
+        switch sample.bodyLine {
+        case .unknown: return .gray
+        case .steady: return Palette.green
+        case .adjust: return Palette.amber
+        case .reset: return Palette.red
+        }
     }
 }
 

@@ -9,14 +9,22 @@ public enum Exercise: String, Codable, CaseIterable, Sendable {
 }
 
 public struct MovementSample: Sendable {
+    public enum BodyLine: Sendable { case unknown, steady, adjust, reset }
     public let time: Double
     public let angle: Double
     public let confidence: Double
     public let side: Int
     public let aligned: Bool
-    public init(time: Double, angle: Double, confidence: Double = 1, side: Int = 0, aligned: Bool = true) {
+    public let bodyAngle: Double?
+    public var bodyLine: BodyLine {
+        guard aligned else { return .reset }
+        guard let bodyAngle, bodyAngle.isFinite else { return .unknown }
+        if bodyAngle < 150 { return .reset }
+        return bodyAngle < 165 ? .adjust : .steady
+    }
+    public init(time: Double, angle: Double, confidence: Double = 1, side: Int = 0, aligned: Bool = true, bodyAngle: Double? = nil) {
         self.time = time; self.angle = angle; self.confidence = confidence
-        self.side = side; self.aligned = aligned
+        self.side = side; self.aligned = aligned; self.bodyAngle = bodyAngle
     }
 }
 

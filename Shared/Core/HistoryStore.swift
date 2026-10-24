@@ -10,6 +10,6 @@ public struct HistoryStore {
     public func save(_ record: SessionRecord) throws {
         let records = try load().filter { $0.id != record.id } + [record]
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try JSONEncoder().encode(Array(records.suffix(100))).write(to: url, options: .atomic)
+        try JSONEncoder().encode(records).write(to: url, options: .atomic)
     }
 }

@@ -16,7 +16,7 @@ enum VisionState {
     }
 }
 
-final class VisionWorker: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
+final class VisionWorker: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
     let capture = AVCaptureSession()
     var onFrame: ((PoseFrame, UIImage, UUID) -> Void)?
     var onState: ((VisionState, UUID) -> Void)?
@@ -99,18 +99,33 @@ final class VisionWorker: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate
             self.capture.stopRunning(); self.closeVideo(); self.token = token
             self.videoURL = url; self.scoped = url.startAccessingSecurityScopedResource()
             let asset = AVURLAsset(url: url)
-            self.videoDuration = asset.duration.seconds
-            guard self.videoDuration.isFinite, self.videoDuration > 0, self.videoDuration <= 600 else {
-                self.onState?(.failed("Choose a video under 10 minutes."), token); self.closeVideo(); return
+            Task {
+                do {
+                    let duration = try await asset.load(.duration).seconds
+                    self.queue.async { self.prepareVideo(asset: asset, duration: duration, token: token) }
+                } catch {
+                    self.queue.async {
+                        guard self.hasIntent(token) else { return }
+                        self.onState?(.failed("Couldn’t open this video."), token); self.closeVideo()
+                    }
+                }
             }
-            let generator = AVAssetImageGenerator(asset: asset)
-            generator.appliesPreferredTrackTransform = true
-            generator.maximumSize = CGSize(width: 720, height: 720)
-            generator.requestedTimeToleranceBefore = .zero
-            generator.requestedTimeToleranceAfter = .zero
-            self.generator = generator; self.videoTime = 0
-            self.beginVideo(token: token)
         }
+    }
+
+    private func prepareVideo(asset: AVAsset, duration: Double, token: UUID) {
+        guard hasIntent(token) else { return }
+        guard duration.isFinite, duration > 0, duration <= 600 else {
+            onState?(.failed("Choose a video under 10 minutes."), token); closeVideo(); return
+        }
+        videoDuration = duration
+        let generator = AVAssetImageGenerator(asset: asset)
+        generator.appliesPreferredTrackTransform = true
+        generator.maximumSize = CGSize(width: 720, height: 720)
+        generator.requestedTimeToleranceBefore = .zero
+        generator.requestedTimeToleranceAfter = .zero
+        self.generator = generator; videoTime = 0
+        beginVideo(token: token)
     }
 
     private func beginVideo(token: UUID) {
@@ -120,14 +135,22 @@ final class VisionWorker: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate
     }
 
     private func stepVideo(token: UUID) {
-        guard self.token == token, let generator else { return }
+        guard self.token == token, hasIntent(token), let generator else { return }
         guard videoTime < videoDuration else { onState?(.finished, token); return }
-        do {
-            let image = UIImage(cgImage: try generator.copyCGImage(at: CMTime(seconds: videoTime, preferredTimescale: 600), actualTime: nil))
-            try process(image, at: videoTime, token: token)
-            videoTime += 0.1
-            queue.asyncAfter(deadline: .now() + 0.1) { self.stepVideo(token: token) }
-        } catch { onState?(.failed("Couldn’t read this video. Try another clip."), token) }
+        let time = videoTime
+        generator.generateCGImageAsynchronously(for: CMTime(seconds: time, preferredTimescale: 600)) { image, _, error in
+            self.queue.async {
+                guard self.token == token, self.hasIntent(token) else { return }
+                guard let image, error == nil else {
+                    self.onState?(.failed("Couldn’t read this video. Try another clip."), token); return
+                }
+                do {
+                    try self.process(UIImage(cgImage: image), at: time, token: token)
+                    self.videoTime += 0.1
+                    self.queue.asyncAfter(deadline: .now() + 0.1) { self.stepVideo(token: token) }
+                } catch { self.onState?(.failed("Couldn’t analyse this video."), token) }
+            }
+        }
     }
 
     func pause() { setIntent(nil); queue.async { self.token = nil; self.capture.stopRunning() } }
@@ -136,7 +159,11 @@ final class VisionWorker: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate
         queue.async {
             guard self.hasIntent(token) else { return }
             self.token = token
-            if source == .video, self.generator != nil { self.beginVideo(token: token); return }
+            if source == .video {
+                if self.generator != nil { self.beginVideo(token: token); return }
+                if let url = self.videoURL { self.video(url: url, token: token); return }
+                self.onState?(.failed("Choose a video to continue this set."), token); return
+            }
             self.startCamera(token: token)
         }
     }
