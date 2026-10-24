@@ -129,7 +129,7 @@ Third-party sources that informed the approach (no code copied): [MediaPipe pose
 
 ## Ask the coach (guardrails)
 
-Questions typed on the iPhone Coach page go to `POST /ask` on the Mac (`ask.mjs`). It is the only writable route open to the Wi-Fi, so it is rate limited (1 in flight, 3 s per device, 40 per hour).
+Questions typed on the iPhone Coach page go to `POST /ask` on the Mac (`ask.mjs`). Its model requests are rate limited (1 in flight, 3 s per device, 40 per hour). `POST /control` is also writable from Wi-Fi and has its own code check and failed-code lockout. The shared-chat entry is broadcast before the question guard runs, so refused or rate-limited questions can still appear on every connected screen.
 
 1. **Input**: max 256 characters; control, invisible and bidi characters and `< > ` { } [ ]` are stripped so the question cannot break out of its `<question>` delimiters.
 2. **Pre-filter**: obvious injection or secret requests ("ignore previous", "system prompt", "api key", ".env", roleplay, ...) are refused without calling the model.
