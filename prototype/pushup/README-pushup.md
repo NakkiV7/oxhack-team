@@ -19,7 +19,7 @@ Needs Node 20.17+ and a Mac webcam (or any video of a push-up filmed from the si
 cd prototype/pushup
 npm install
 npm run setup      # downloads the 9 MB pose model into models/
-npm test           # optional: 13 unit tests, no network
+npm test           # 19 offline behavior checks; no model download or provider calls
 npm run ui         # open http://localhost:3001
 ```
 
@@ -42,7 +42,7 @@ docs/             TUTORIAL, ALGORITHM (how it works + guardrails), TEST_PLAN
 ## Things worth knowing
 
 - Everything runs locally except the optional Gemini calls. No video leaves your network.
-- The server listens on your Wi-Fi so the phone can reach it. Only read-only state, camera frames and `POST /ask` are open to the network; use a network you trust. Details: [docs/ALGORITHM.md](docs/ALGORITHM.md#7-streaming-to-the-iphone).
+- The server listens on your Wi-Fi so the phone can reach it. State, camera frames, shared coach chat and `POST /ask` are accessible without a code; `POST /control` requires the control code. Use a network you trust. The code does not protect the video or chat. Details: [docs/ALGORITHM.md](docs/ALGORITHM.md#7-streaming-to-the-iphone).
 - Thresholds are untuned guesses. How to validate and tune them with real clips: [docs/TEST_PLAN.md](docs/TEST_PLAN.md).
 - Keep `GEMINI_API_KEY` in `.env` (gitignored), never in code.
 - Third-party: `@mediapipe/tasks-vision` and the pose model are Apache-2.0. See [docs/ALGORITHM.md](docs/ALGORITHM.md#licenses).
