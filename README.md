@@ -19,7 +19,7 @@ Start with the [morning handoff](docs/morning-handoff.md) for the current MVP, s
 
 - Local custom workouts with explicit manual reps, paused hold timing, optional base push-up/squat camera input, history and reports; connected grid/linear skill views; profile goals and weekly targets.
 - Nineteen exercise icons, six push-up/squat phase illustrations and recording guides. User-filmed demonstration videos remain to be recorded; illustrations and imported fixtures are not physical exercise evidence.
-- Optional grounded Gemini chat, two report types and selected workout proposals. Four local gateway requests returned 200 using synthetic inputs; one signed-simulator chat also reached Google and displayed its real response. Physical phone networking and live native proposal/report acceptance remain pending.
+- Optional grounded Gemini chat, two report types and selected workout proposals. Four local gateway requests returned 200 using synthetic inputs; two signed-simulator chat checks reached Google; the revised capability context correctly described camera versus manual/timed exercises. Physical phone networking and live native proposal/report acceptance remain pending.
 - Push-up prototype (`prototype/pushup`, web page plus iPhone display): rep counting with form cues and rep timing, a personal profile trained from past workouts, a choice between the default rule and a personal rule, and saving finished workouts to Tiger Data with visible sync status. The profile is trained on generated mock history so far; see [Push-up CV prototype](#push-up-cv-prototype) for exactly what is and is not established.
 - Opt-in standard local voice and a paired Pi side-camera path. Audible phone acceptance remains pending; the actual Pi camera disconnects after roughly two seconds, so sustained tracking is not established.
 
@@ -47,7 +47,7 @@ Current contributor boundaries:
 | Push-up personal profile, rule choice and Tiger storage (prototype) | @azhar-rafiq | Built; 92 offline checks and a browser mock-profile flow pass. Original contributor reports a separate trial-service check; corrected-path live SQL and real labelled sessions remain pending. Follow-up integrity work: [#60](https://github.com/NakkiV7/oxhack-team/issues/60) |
 | Squat counting | @NakkiV7 | ✅ baseline, 🚧 validation on labelled clips |
 | Manual/timed logging, profile, lessons, skill tree, reports | @omariosc | Merged local implementation |
-| Gemini chat, summaries, proposals | @omariosc | Merged native flow; live gateway synthetic checks and one signed-simulator chat passed; physical phone/proposal/report acceptance pending |
+| Gemini chat, summaries, proposals | @omariosc | Merged native flow; live gateway synthetic checks and two signed-simulator chat checks passed; physical phone/proposal/report acceptance pending |
 | Local voice | @omariosc | Merged; fake playback tests passed, audible acceptance pending |
 | ElevenLabs and landing page | @MishaGitnik | Local page work exists; remote synthesis and public deployment pending |
 | Pi side camera | @omariosc | Native client merged; companion deployed, sustained USB capture blocked |
