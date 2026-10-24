@@ -1,0 +1,60 @@
+# Datasets and models for Spottr
+
+Researched from primary sources on 24 October 2026. Nothing downloaded or trained. Large frame/row counts are not large participant counts.
+
+## Recommended order
+
+Start with **MM-Fit** for synchronised wrist/camera exercise data and **UI-PRMD** for small labelled squat-quality examples. **Fit3D** is much larger and relevant to geometry but restricted to non-commercial research/education and not a drop-in public product dataset. **CAPTURE-24** supplies scale for wrist activity representations, not gym-form or failure labels. **PAMAP2** supports HR/activity pipeline experiments. **PPG-DaLiA** is useful for understanding motion contamination but its raw PPG cannot be treated as data the ordinary Watch app exposes.
+
+| Dataset | Verified scale and signals | Role | Access, limits and download cost |
+|---|---|---|---|
+| [MM-Fit](https://mmfit.github.io/) | Over 800 minutes; synchronised smartwatch accelerometer/gyro at 100 Hz, HR at 1 Hz, phone/earbud IMUs, RGB-D and 2D/3D pose; includes squats/push-ups | Best first source for rep segmentation, sensor alignment and exercise recognition | [Starter code](https://github.com/KDMStromback/mm-fit) is MIT. [Video record](https://zenodo.org/records/7672767) metadata API declares CC BY 4.0; sensor archive notice must be checked separately. Video page lists 39.1 GB; avoid full download. Not expert-labelled safe-to-failure data. Zenodo description says 20 sessions but file list runs w00–w20: count the actual selected files rather than assuming descriptions agree |
+| [Fit3D / AIFit](https://fit3d.imar.ro/) | 611 multiview sequences; 2,964,236 3D skeletons; over 37 exercises; original paper describes 13 people including a fitness instructor | 3D geometry, rep/reference trajectories, robustness across exercise poses | [Original terms](https://fit3d.imar.ro/legal) restrict use to non-commercial scientific research, education or artistic projects; single-user/no redistribution terms. Commercial incorporation/training prohibited without licence. Download endpoint timed out; access/total size not verified. No need to ingest all images for a hackathon |
+| [CAPTURE-24](https://ora.ox.ac.uk/objects/uuid%3A99d7c092-d865-4a19-b096-cc16440cd001) | 151 people, nearly 4,000 hours of wrist accelerometry; over 2,500 annotated hours; daily life activities | Strong scale for activity representations and domain-shift experiments | Public research release, with [maintainer code](https://github.com/activityMonitoring/capture24). Archive page search metadata verified; direct page fetch returned 403. Verify current data licence and files before retrieval; do not infer it from code licence. No aligned workout HR/pose or form/failure targets |
+| [PAMAP2](https://archive.ics.uci.edu/dataset/231/pamap2+physical+activity+monitoring) | 9 participants, 18 activities, 3,850,505 rows; 3 IMUs at 100 Hz plus HR about 9 Hz | Lower-friction HR/motion ingestion and activity/intensity baseline | UCI CC BY 4.0; dataset ZIP 656.3 MB. Missing NaNs and transition label 0; orientation fields marked invalid. Only one wrist IMU maps approximately to Watch; chest/ankle features unavailable in app. No push-up/squat form labels |
+| [PPG-DaLiA](https://archive.ics.uci.edu/dataset/495/ppg+dalia) | 15 participants, 8.3 million listed instances; wrist BVP 64 Hz, acceleration 32 Hz, EDA/temp 4 Hz; chest ECG/respiration/acceleration 700 Hz | HR measurement robustness and motion/noise study; optional source of derived HR windows if ground truth processing is reproduced | CC BY 4.0; 2.7 GB ZIP. Small participant population despite row count. Watch ordinary app lacks matching raw PPG/EDA. No exercise failure target. Do not train a raw-BVP model and claim it can run on HealthKit HR alone |
+| [UI-PRMD](https://pmc.ncbi.nlm.nih.gov/articles/PMC5773117/) | 10 healthy people, 10 rehab movements, 10 reps per movement, correct and deliberately suboptimal examples; joint positions and angles from Vicon/Kinect; includes deep squat | Compact squat-quality benchmark and state-machine fixtures | Original publication states ODC PDDL 1.0. [Author deposit](https://zenodo.org/records/23104965) lists correct/incorrect segmented bundles and ~1.3 GB total. Small, staged rehabilitation data; not arbitrary gym footage, not push-ups, not injury prediction |
+
+Dataset sources should stay separate in storage with their own licence, collection device, participant IDs and label meaning. Do not merge unrelated people's HR and pose by timestamp or invent multimodal pairings.
+
+## Model shortlist
+
+| Model | What it supplies | Recommendation and limitation |
+|---|---|---|
+| [Apple Vision body pose](https://developer.apple.com/documentation/vision/identifying-3d-human-body-poses-in-images) | Native body landmarks; 3D API since iOS 17 has 17 joints and does not require depth input | First phone spike should use native 2D pose, fixed side view and transparent rep/angle/tempo logic; benchmark 3D before adding it. No external training/download needed. Landmarks are not fitness-quality or medical labels |
+| [MediaPipe Pose Landmarker](https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker) | 33 landmarks, image and estimated world coordinates; Lite/Full/Heavy bundles; asynchronous live-stream support | Portable candidate for server and UNO Q, or phone if Vision fails relevant views. Inspect chosen model card/bundle terms. Camera occlusion and inferred depth remain uncertain; do not call a 2D angle a precise anatomical measurement |
+| [Chronos](https://github.com/amazon-science/chronos-forecasting) | Apache-2.0 repository; Chronos-Bolt Tiny 9M, Mini 21M; Chronos-2 120M supports multivariate and covariate forecasts | Start with persistence and decay/EWMA; compare Bolt Tiny for univariate HR. Add Chronos-2 only if covariates improve held-out performance and runtime is acceptable. None is pretrained evidence for exertion safety or failure detection |
+| [Oxford SSL Wearables / HARNet](https://oxwearables.github.io/ssl-wearables/) | Accelerometer representation pretrained using over 700,000 person-days; HARNet10 expects 3-axis 30 Hz / 10-second windows | Strong relevant foundation-model candidate, not the first demo dependency. [Oxford group's page](https://github.com/OxWearables) states licensing is required for non-academic users. Verify exact model/weights licence and hackathon use before integrating. UK Biobank source data are not unrestricted public data. This is activity representation, not safe-effort prediction |
+
+Avoid copying an arbitrary “push-up detector” repo as the product core. A pretrained landmark model plus a small, tested exercise state machine is easier to inspect, calibrate and demonstrate than a large unverified classifier. Use full-body view and observed phase transitions, temporal smoothing, confidence gating, complete movement cycles and exercise-specific guidance. Preserve neutral/unknown state. Choose runtime/model by evidence on the actual demo phone and camera view.
+
+## HRT experiment: a prediction that can be checked
+
+Primary experiment: forecast **HR 30 seconds into a rest interval** from the preceding HR trajectory and known workout context. This makes observed future HR a measurable target; any suggestion to rest or resume remains subject to user feedback and conservative policy. Dataset must contain a documented rest phase and enough valid HR history/future samples; otherwise this experiment is not eligible for that segment. Do not infer physiological recovery labels just because activity stopped.
+
+1. Begin with documented MM-Fit rest segments after checking recording coverage; sensor-only subset first. PAMAP2 activity transitions can support a separate HR forecasting benchmark, not be passed off as strength-set recovery. Use PPG-DaLiA only after reproducing its ECG-derived HR ground truth and appropriate activity/rest labels.
+2. Align original timestamps/units and inspect missingness, motion artefacts, sensor rates and recording gaps. Record real participant/session counts, windows and ingested rows; never inflate scale by duplicating events.
+3. Split by participant before windowing, with all sessions/windows for a person confined to one split. Use a locked chronological held-out session for any later personal calibration. Tune thresholds/models on training/validation only. Overlapping windows, public-data subjects and Omar's demo are kept distinct.
+4. Compare last-value persistence, EWMA/decay and one small Chronos model under the same horizons, inputs and eligibility criteria. No future HR, future pose, eventual session summary or RPE collected after the target enters prediction features. Known future covariates must actually be known at the prediction time.
+5. Report MAE in bpm, per-person errors and sample counts; check prediction-interval coverage/width if shown. For dependent windows, uncertainty must respect participant/session grouping. Do not show an improvement if the pretrained model loses to baseline. Measure actual CPU/GPU latency and abstention coverage separately.
+6. Show a forecast band and observed future trajectory on an offline replay, then a plainly labelled prospective personal demo if feasible. Save model/data hashes and split definitions. Confidence estimates from a model are not automatically calibrated probabilities.
+
+Secondary hypothesis only: early within-set changes in pose range/tempo may predict subsequent **observable tempo deterioration**. Define the outcome and collect labels first; use no injury, physiological failure or safe-reps-left claims. Form annotations and repetition counts do not supply those targets.
+
+## Minimal download plan
+
+No bulk download is needed to approve designs. When modelling starts: inspect the MM-Fit sensor archive inventory and licence; choose mutually disjoint training, validation and locked test participants; enlarge that predefined split as practical; process the same small chosen list for every model. For an actual performance claim, one held-out person is exploratory only and must not be presented as a robust population estimate. Prefer adequate participant coverage over many frames from one person.
+
+Download only relevant UI-PRMD squat bundles if needed; check archive member names and checksums before extraction. Leave Fit3D images, full MM-Fit video and raw PPG corpora off the Mac until justified. Store larger approved subsets on available storage or a selected cloud bucket only after checking reuse/redistribution terms. A hosted API key is not evidence that restricted research data may be uploaded there.
+
+## Integration reference links
+
+- [Apple workout mirroring](https://developer.apple.com/documentation/healthkit/building-a-multidevice-workout-app)
+- [Apple Core Motion availability](https://developer.apple.com/documentation/coremotion/cmmotionmanager)
+- [Apple public explanation of SensorKit restrictions](https://images.apple.com/my/health/pdf/Heart_Rate_Calorimetry_Activity_on_Apple_Watch_November_2024.pdf)
+- [Presage physical-iPhone Swift quickstart](https://smartspectra.presagetech.com/rc/docs/swift/option-1-api-key/)
+- [Snowflake SQL REST API](https://docs.snowflake.com/en/developer-guide/sql-api) and [Cortex inference API](https://docs.snowflake.com/en/developer-guide/snowflake-rest-api/reference/cortex-inference)
+- [Tiger Data real-time aggregates](https://www.tigerdata.com/docs/learn/continuous-aggregates/real-time-aggregates): disabled by default in TimescaleDB 2.13+, so configure explicitly
+- [Vultr GPU provisioning](https://docs.vultr.com/products/compute/instances/cloud-gpu/provisioning): availability/cost must be checked; GPU is optional
+- [ElevenLabs voice consent](https://elevenlabs.io/docs/eleven-creative/voices/voice-cloning/instant-voice-cloning) and [policy](https://elevenlabs.io/use-policy): use a standard licensed voice; do not assume permission to impersonate a celebrity
+- [Arduino UNO Q manual](https://docs.arduino.cc/tutorials/uno-q/user-manual/) and [MLH hardware catalogue](https://www.mlh.com/resources/hardware)

@@ -1,0 +1,11 @@
+.DS_Store
+.build/
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.swiftpm/
+.superpowers/
+.xcodebuildmcp/
+.env*
+!*.example
