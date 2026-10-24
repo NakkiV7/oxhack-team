@@ -18,10 +18,9 @@ struct SpottrWatchApp: App {
 
 struct WatchTrainingView: View {
     let store: WatchStore
-    @ScaledMetric(relativeTo: .largeTitle) private var countFontSize: CGFloat = 36
+    @ScaledMetric(relativeTo: .largeTitle) private var countFontSize: CGFloat = 32
     var body: some View {
-        NavigationStack {
-            TimelineView(.periodic(from: .now, by: 1)) { context in
+        TimelineView(.periodic(from: .now, by: 1)) { context in
                 ScrollView {
                     VStack(spacing: 7) {
                         if let snapshot = store.state.snapshot, snapshot.isFresh(at: context.date), snapshot.phase != .idle {
@@ -33,7 +32,7 @@ struct WatchTrainingView: View {
                             Button("Reconnect") { store.link.request() }.buttonStyle(.bordered)
                         }
                         if let status = store.status { Text(status).font(.caption2).foregroundStyle(.secondary) }
-                    }.padding(.horizontal, 10).padding(.bottom, 15)
+                    }.padding(.horizontal, 10).padding(.bottom, 6)
                 }
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     if let snapshot = store.state.snapshot, snapshot.isFresh(at: context.date),
@@ -53,8 +52,7 @@ struct WatchTrainingView: View {
                             }
                         }.font(.caption2).disabled(!store.reachable).padding(.horizontal, 6).padding(.vertical, 4).background(.white)
                     }
-                }.foregroundStyle(.black).containerBackground(.white, for: .navigation)
-            }
+                }.foregroundStyle(.black).background(.white)
         }.tint(.black)
     }
     @ViewBuilder private func content(_ snapshot: CompanionSnapshot, now: Date) -> some View {
@@ -66,17 +64,20 @@ struct WatchTrainingView: View {
         } else {
             let exerciseName = snapshot.configured.flatMap { ExerciseCatalog.find($0.exerciseID)?.name } ?? snapshot.exercise?.title ?? "Workout"
             VStack(spacing: 3) {
-                Text("Spottr · \(exerciseName)").font(.caption2.weight(.semibold))
-                    .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 4) {
+                    Text(exerciseName).font(.caption2.weight(.semibold))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 2)
+                    Label(store.heart?.heartRate(at: now).map { "\(Int($0.rounded())) bpm" } ?? "— bpm", systemImage: "heart").font(.caption2)
+                }
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text(quantity(snapshot)).font(.system(size: countFontSize, weight: .semibold, design: .rounded)).monospacedDigit()
                     Text("/ \(snapshot.target)\(snapshot.configured?.unit == .seconds ? " s" : "")").font(.subheadline).foregroundStyle(.secondary)
                 }
-                Label(store.heart?.heartRate(at: now).map { "\(Int($0.rounded())) bpm" } ?? "— bpm", systemImage: "heart").font(.caption)
                 Text(instruction(snapshot)).font(.caption2).multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                 if !store.recording {
-                    Button("Record workout") { store.record() }.font(.caption).buttonStyle(.bordered)
+                    Button("Record workout") { store.record() }.font(.caption).buttonStyle(.bordered).padding(.top, 16)
                 }
                 if snapshot.configured != nil, snapshot.configured?.stoppedForDiscomfort != true {
                     Button("Finish session") { store.command(.finish) }.font(.caption2)
@@ -91,7 +92,17 @@ struct WatchTrainingView: View {
         return configured.enteredReps.map(String.init) ?? "—"
     }
     private func instruction(_ snapshot: CompanionSnapshot) -> String {
-        guard let configured = snapshot.configured else { return snapshot.phase == .rest ? "Take a breather." : snapshot.cue.text }
+        guard let configured = snapshot.configured else {
+            if snapshot.phase == .rest { return "Take a breather." }
+            switch snapshot.cue {
+            case .ready, .tracking: return "Show your full body."
+            case .lower: return "Lower with control."
+            case .rise: return "Drive back up."
+            case .alignment: return "Brace a straight body."
+            case .controlled: return "Strong rep. Stay steady."
+            case .paused: return "Paused. Take a breath."
+            }
+        }
         if configured.stoppedForDiscomfort { return "Stop here. Finish this session and recover." }
         if snapshot.phase == .rest { return "Rest \(Int(configured.restElapsed ?? 0)) s · suggested \(configured.restTarget) s" }
         if !configured.hasStarted { return "Start when you’re in position." }

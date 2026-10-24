@@ -34,3 +34,9 @@ Manual GREEN acceptance remains pending root's build and screenshots:
 - Footer command behavior remains consistent with the paired workflow above.
 
 HR is displayed as `— bpm` when no fresh valid Watch reading is available. That is missing data, not a zero reading or simulated biometrics. Simulator command/UI acceptance must not be presented as evidence of a real Watch recording heart rate or motion.
+
+## Follow-up acceptance, 24 October 2026 20:48 UTC
+
+A fresh Device Hub walkthrough exposed the complete ready cue falling below the footer at default size. The follow-up removes unused navigation, shares one header row between exercise and HR, uses a 32-point scalable count, and shows brief Watch-specific cues. The final default-size Squats screen now shows the exercise, missing-HR marker, count/target, entire cue and both readable footer controls without scrolling. Secondary recording remains below the first viewport. See [the actual simulator screenshot](evidence/watch-compact-2026-10-24.jpg).
+
+The exact staged Watch simulator build passed without warnings (`build_sim_2026-10-24T20-47-53-144Z_pid4129_422c5f40.log`). Configured timed-hold and larger Dynamic Type screenshots remain pending; the scrolling path is retained. The seven callback-lifecycle cases and 142-case shared suite pass separately; these do not substitute for physical HealthKit acceptance.
