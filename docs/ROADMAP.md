@@ -1,6 +1,6 @@
 # Roadmap and evidence gates
 
-Working handoff, 24 October 2026. “Implemented” means code exists; “verified” needs the named check. Local changes and integration work can be in progress on feature branches. Check the actual PR/branch before assuming a feature is merged. Priority: usable phone + Watch → landing page → optional Arduino. No CI/CD is planned.
+Working handoff, 24 October 2026. Native foundation merged through PR #16. “Implemented” means code exists; “verified” needs the named check. Local changes and integration work can be in progress on feature branches. Check the actual PR/branch before assuming a feature is merged. Priority: usable phone + Watch → landing page → optional Arduino. No CI/CD is planned.
 
 ## Current baseline
 
@@ -24,7 +24,7 @@ Gemini contracts/parsing and explicit proposal selection are implemented. Gatewa
 | Snowflake / `omariosc` | Planned batch evaluation/feature tables, separate from Tiger's operational time series. Needs actual exports or eligible public-data features and account/API access. | Real SQL API statement/results with dataset/split/model versions; one retrospective Cortex response traceable to those rows; measure usage and avoid duplicate live ingestion. |
 | HRT / `omariosc` | Forecast research target proposed, no trained/evaluated predictor established. Needs clear challenge requirements, eligible data and an observable endpoint. | Participant/session-held-out 30-second rest-HR forecast compared with persistence/EWMA baselines; error, coverage, abstention, real data size and leakage controls recorded. No claim of medically safe readiness or physiological capacity. |
 | Presage / `omariosc` | Late optional still-camera recovery check. Needs physical iPhone, explicit user start/permission and current service budget. Reported ~50-minute budget is unverified. | One bounded physical measurement with quality, timestamp and source distinct from Watch; stop/poor-signal/quota path works and actual usage recorded. No polling or indefinite retries. |
-| Arduino UNO Q / `omariosc` | Optional hardware after core demo. Existing board/app inventory and transport must be checked before firmware changes. Needs ordered expiring session messages. | A real phone/backend event changes planned reps/sets/message output; stop/stale/disconnect clears encouragement. Label display versus camera forwarding versus actual board inference accurately. No guaranteed capacity from planned reps left. |
+| Raspberry Pi camera / `omariosc` | Connected bootcamp Pi over the switch replaces Arduino for camera capture. Camera will be attached later. Preserve existing services/network; prepare authenticated capture/preview with expiring control leases. | A real phone/backend event changes planned reps/sets/message output; stop/stale/disconnect clears encouragement. Label display versus camera forwarding versus actual board inference accurately. No guaranteed capacity from planned reps left. |
 | Delta / `omariosc` | Prompt/evaluation plan prepared; Delta is installed/running in the desktop inventory; actual project collaboration/evaluation use remains pending. | Real Delta development/review threads, fixed fixtures, paired candidates, hard-failure checks and human review retained; claim only work actually performed there. See [evaluation plan](delta-prompt-evaluation.md). |
 | DEV + slides / `omariosc` | Draft after demonstrable core paths; depends on all owners' evidence. | Rehearsed physical set, rest, optional voice/question, report, network failure and user stop; slides/article clearly mark live, replayed and pending paths. Publish only after explicit publication approval. |
 
@@ -39,3 +39,7 @@ Gemini contracts/parsing and explicit proposal selection are implemented. Gatewa
 For Tiger account setup, start with the [Tiger Data account quickstart](https://www.tigerdata.com/docs/get-started/quickstart/create-account), then review [our SQL and execution gates](../integrations/tiger/README.md). Creating an account does not satisfy the database acceptance row.
 
 Keep secrets out of source, screenshots and evidence. Keep private biometric recordings private. Provider configuration, local mocks, passing tests, deployment and successful physical/live behavior are separate evidence states.
+
+Additional follow-ups: [body-landmark training #17](https://github.com/NakkiV7/oxhack-team/issues/17), [paused artwork #18](https://github.com/NakkiV7/oxhack-team/issues/18), and [configurable live plans #19](https://github.com/NakkiV7/oxhack-team/issues/19). All belong to @omariosc; teammate scopes #1–#4 are unchanged.
+
+Active next milestone: [statistical coaching #22](https://github.com/NakkiV7/oxhack-team/issues/22), using real rep/rest timing, personal mean/sample SD, observed form and fresh Watch context. No paid per-second calls.
