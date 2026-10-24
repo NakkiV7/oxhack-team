@@ -1,3 +1,5 @@
+> Current status: see [integration readiness](integration-readiness.md) and [work ownership](ISSUES.md). The milestone notes below retain their earlier planning context.
+
 # Roadmap and evidence gates
 
 Working handoff, 24 October 2026. Native foundation and adaptive coaching merged through PR #24. “Implemented” means code exists; “verified” needs the named check. Local changes and integration work can be in progress on feature branches. Check the actual PR/branch before assuming a feature is merged. Priority: usable phone + Watch → landing page → optional Pi camera. No CI/CD is planned.
