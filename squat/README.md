@@ -29,7 +29,9 @@ cd squat && ../.venv/bin/python main.py            # webcam
 | Knee width / ankle width | front | ≥ 0.85 | ≥ 0.70 | less | "Knees out" |
 | Hip tilt minus shoulder tilt (weight shift) | front | < 12° | < 18° | more | "Even weight on both feet" |
 
-A side-view rep with torso lean over 65° is treated as a hinge or pick-up and not counted.
+A rep with torso lean over 80° (side view) is treated as a hinge or pick-up and not counted. A rep
+needs every visible leg to bend, so a single-leg lift is not a squat, and the hip must be inside the
+frame, so someone leaning into the camera is not one either.
 | Descent time | both | | | < 0.45 s | "Control the way down" |
 | Ascent time | both | | | > 2.2 s or 1.6× your fastest | "You're slowing down" |
 

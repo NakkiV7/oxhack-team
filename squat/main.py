@@ -58,24 +58,30 @@ def main():
             writers[key] = w
             w.write(img)
 
-    while True:
-        ok, img = cap.read()
-        if not ok:
-            break
-        write("raw", args.record, img)
-        t = time.time() - t0 if live else n / fps
-        lm = pose(img, int(t * 1000))
-        if lm is not None:
-            f = analyzer.update(lm, t)
-            coach.handle(f.events, t)
-            draw(img, lm, f, coach.showing(t))
-        img = np.hstack([img, panel(f, img.shape[0]) if f else np.full((img.shape[0], W, 3), BG, np.uint8)])
-        write("out", args.out, img)
-        if not args.headless:
-            cv2.imshow("squat tracker", img)
-            if cv2.waitKey(1) & 0xFF in (27, ord("q")):
+    try:
+        while True:
+            ok, img = cap.read()
+            if not ok:
                 break
-        n += 1
+            write("raw", args.record, img)
+            t = time.time() - t0 if live else n / fps
+            lm = pose(img, int(t * 1000))
+            if lm is not None:
+                f = analyzer.update(lm, t, img.shape[0])
+                coach.handle(f.events, t)
+                draw(img, lm, f, coach.showing(t))
+            img = np.hstack([img, panel(f, img.shape[0]) if f else np.full((img.shape[0], W, 3), BG, np.uint8)])
+            write("out", args.out, img)
+            if not args.headless:
+                cv2.imshow("squat tracker", img)
+                if cv2.waitKey(1) & 0xFF in (27, ord("q")) or cv2.getWindowProperty("squat tracker", cv2.WND_PROP_VISIBLE) < 1:
+                    break
+            n += 1
+    except KeyboardInterrupt:
+        pass
+    finally:
+        for w in writers.values():          # unfinished mp4s are unreadable, so always finalise them
+            w.release()
 
     reps = analyzer.reps
     print(f"\n{n} frames, {len(reps)} reps, {analyzer.dips} shallow dips not counted")
@@ -84,8 +90,6 @@ def main():
     if args.log:
         json.dump([vars(r) for r in reps], open(args.log, "w"), indent=1, default=float)
     cap.release(), pose.close()
-    for w in writers.values():
-        w.release()
 
 
 if __name__ == "__main__":

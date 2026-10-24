@@ -27,7 +27,7 @@ def run(path: Path, model: str):
         lm = pose(img, int(n * 1000 / fps))
         if lm is not None:
             before = len(an.reps)
-            f = an.update(lm, n / fps)
+            f = an.update(lm, n / fps, img.shape[0])
             trace.append(f.drop)
             if len(an.reps) > before:
                 marks.append(n)
@@ -66,8 +66,8 @@ def main():
     for p in clips:
         an, trace, marks, n, fps = run(p, args.model)
         print(f"{p.name:34s} reps {len(an.reps):2d} dips {an.dips:2d}  {n:5d}f {fps:4.0f}fps  {spark(trace)}")
-        for r in an.reps:
-            print(f"    #{r.n:<2} drop {r.drop:.2f} depth {r.worst['depth']:+.2f} lean {r.worst['lean']:3.0f}"
+        for r, m in zip(an.reps, marks):
+            print(f"    #{r.n:<2} @{m:<5d} drop {r.drop:.2f} depth {r.worst['depth']:+.2f} lean {r.worst['lean']:3.0f}"
                   f"  {r.t_down:.1f}/{r.t_up:.1f}s  {', '.join(r.faults) or 'clean'}")
         if args.plots:
             Path(args.plots).mkdir(exist_ok=True)
