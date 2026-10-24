@@ -18,15 +18,16 @@ struct SpottrWatchApp: App {
 
 struct WatchTrainingView: View {
     let store: WatchStore
+    @ScaledMetric(relativeTo: .largeTitle) private var countFontSize: CGFloat = 36
     var body: some View {
         NavigationStack {
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 ScrollView {
                     VStack(spacing: 7) {
-                        Text("Spottr").font(.system(size: 15, weight: .bold, design: .rounded))
                         if let snapshot = store.state.snapshot, snapshot.isFresh(at: context.date), snapshot.phase != .idle {
                             content(snapshot, now: context.date)
                         } else {
+                            Text("Spottr").font(.system(size: 15, weight: .bold, design: .rounded))
                             Image(systemName: "iphone.and.arrow.forward").font(.system(size: 33, weight: .light)).padding(.vertical, 10)
                             Text("Open Spottr on iPhone").font(.headline)
                             Button("Reconnect") { store.link.request() }.buttonStyle(.bordered)
@@ -39,14 +40,14 @@ struct WatchTrainingView: View {
                        [.active, .paused, .rest].contains(snapshot.phase) {
                         HStack(spacing: 5) {
                             if snapshot.configured?.stoppedForDiscomfort == true {
-                                Button("Finish") { store.command(.finish) }.buttonStyle(.borderedProminent)
+                                Button("Finish") { store.command(.finish) }.buttonStyle(.borderedProminent).foregroundStyle(.white)
                             } else if snapshot.phase == .rest {
-                                Button("Next set") { store.command(.nextSet) }.buttonStyle(.borderedProminent)
+                                Button("Next set") { store.command(.nextSet) }.buttonStyle(.borderedProminent).foregroundStyle(.white)
                             } else if snapshot.configured?.hasStarted == false {
-                                Button("Start set") { store.command(.startSet) }.buttonStyle(.borderedProminent)
+                                Button("Start set") { store.command(.startSet) }.buttonStyle(.borderedProminent).foregroundStyle(.white)
                             } else {
                                 Button(snapshot.phase == .paused ? "Resume" : "Pause") { store.command(snapshot.phase == .paused ? .resume : .pause) }
-                                    .buttonStyle(.borderedProminent)
+                                    .buttonStyle(.borderedProminent).foregroundStyle(.white)
                                 Button("End set") { store.command(.endSet) }.buttonStyle(.bordered)
                                     .disabled(snapshot.configured?.canEndSet == false)
                             }
@@ -58,24 +59,29 @@ struct WatchTrainingView: View {
     }
     @ViewBuilder private func content(_ snapshot: CompanionSnapshot, now: Date) -> some View {
         if snapshot.phase == .finished {
+            Text("Spottr").font(.system(size: 15, weight: .bold, design: .rounded))
             Image(systemName: "checkmark.circle").font(.largeTitle)
             Text("Session complete").font(.headline)
             Text("Your review is on iPhone.").font(.caption)
         } else {
-            Text(snapshot.configured.flatMap { ExerciseCatalog.find($0.exerciseID)?.name } ?? snapshot.exercise?.title ?? "Workout")
-                .font(.subheadline.weight(.semibold))
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(quantity(snapshot)).font(.system(size: 44, weight: .semibold, design: .rounded)).monospacedDigit()
-                Text("/ \(snapshot.target)\(snapshot.configured?.unit == .seconds ? " s" : "")").font(.subheadline).foregroundStyle(.secondary)
-            }
-            Text(instruction(snapshot)).font(.caption2).multilineTextAlignment(.center).lineLimit(3)
-            Label(store.heart?.heartRate(at: now).map { "\(Int($0.rounded())) bpm" } ?? "— bpm", systemImage: "heart").font(.caption)
-            if !store.recording {
-                Button("Record workout") { store.record() }.font(.caption).buttonStyle(.bordered)
-            }
-            if snapshot.configured != nil, snapshot.configured?.stoppedForDiscomfort != true {
-                Button("Finish session") { store.command(.finish) }.font(.caption2)
-                Text("Only ended sets are saved.").font(.caption2).foregroundStyle(.secondary)
+            let exerciseName = snapshot.configured.flatMap { ExerciseCatalog.find($0.exerciseID)?.name } ?? snapshot.exercise?.title ?? "Workout"
+            VStack(spacing: 3) {
+                Text("Spottr · \(exerciseName)").font(.caption2.weight(.semibold))
+                    .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(quantity(snapshot)).font(.system(size: countFontSize, weight: .semibold, design: .rounded)).monospacedDigit()
+                    Text("/ \(snapshot.target)\(snapshot.configured?.unit == .seconds ? " s" : "")").font(.subheadline).foregroundStyle(.secondary)
+                }
+                Label(store.heart?.heartRate(at: now).map { "\(Int($0.rounded())) bpm" } ?? "— bpm", systemImage: "heart").font(.caption)
+                Text(instruction(snapshot)).font(.caption2).multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                if !store.recording {
+                    Button("Record workout") { store.record() }.font(.caption).buttonStyle(.bordered)
+                }
+                if snapshot.configured != nil, snapshot.configured?.stoppedForDiscomfort != true {
+                    Button("Finish session") { store.command(.finish) }.font(.caption2)
+                    Text("Only ended sets are saved.").font(.caption2).foregroundStyle(.secondary)
+                }
             }
         }
     }
