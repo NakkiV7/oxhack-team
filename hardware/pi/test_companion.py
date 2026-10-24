@@ -8,6 +8,10 @@ import subprocess
 import socket
 import sys
 import time
+import ssl
+import tempfile
+from pathlib import Path
+import shutil
 from datetime import datetime, timezone
 
 from companion import make_server
@@ -57,11 +61,81 @@ class FakeProcess:
 
 
 class CaptureDriverTests(unittest.TestCase):
+    def test_cli_requires_both_tls_files_when_tls_is_requested(self):
+        result = subprocess.run([sys.executable, companion.__file__, "--tls-cert", "missing.pem"],
+                                capture_output=True, text=True, timeout=3)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("TLS requires both certificate and key", result.stderr)
+
+    def test_incomplete_tls_configuration_cannot_fall_back_to_plain_http(self):
+        for options in ({"tls_cert": "missing.pem"}, {"tls_key": "missing.key"}):
+            with self.subTest(options=options), self.assertRaises(ValueError):
+                make_server(port=0, **options)
+
+    @unittest.skipUnless(shutil.which("openssl"), "TLS check requires existing openssl")
+    def test_tls_endpoint_uses_a_verifiable_certificate_without_global_trust_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cert = Path(directory) / "cert.pem"
+            key = Path(directory) / "key.pem"
+            subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
+                            "-keyout", str(key), "-out", str(cert), "-days", "1",
+                            "-subj", "/CN=localhost", "-addext", "subjectAltName=IP:127.0.0.1"],
+                           check=True, capture_output=True)
+            server = make_server(host="127.0.0.1", port=0, token="test-token",
+                                 capture=FakeCapture(), tls_cert=str(cert), tls_key=str(key))
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            connection = http.client.HTTPSConnection(*server.server_address,
+                                                     context=ssl.create_default_context(cafile=str(cert)), timeout=2)
+            try:
+                connection.request("GET", "/health")
+                response = connection.getresponse()
+                self.assertEqual(response.status, 200)
+                self.assertEqual(json.loads(response.read())["camera"], "stopped")
+            finally:
+                connection.close()
+                server.shutdown()
+                server.server_close()
+                thread.join(2)
+
+    def test_capture_mode_rejects_invalid_sizes_rates_and_filter_expressions(self):
+        for options in ({"input_size": "640x480,other"}, {"input_size": "9999x9999"},
+                        {"output_size": "640x0"}, {"output_size": "640:360"},
+                        {"input_fps": 0}, {"input_fps": 61}, {"output_fps": -1},
+                        {"output_fps": True}, {"input_format": "unsupported"}):
+            with self.subTest(options=options), self.assertRaises(ValueError):
+                companion.FFmpegCapture(**options)
+
+    def test_explicit_elgato_mode_captures_mjpeg_and_emits_small_low_rate_frames(self):
+        launches = []
+        process = FakeProcess([JPEG])
+
+        def launch(argv, **kwargs):
+            launches.append(argv)
+            return process
+
+        capture = companion.FFmpegCapture(process_factory=launch,
+                                          input_format="mjpeg", input_size="1920x1080",
+                                          input_fps=30, output_size="640x360", output_fps=10)
+        frames = queue.Queue()
+        capture.start(frames.put)
+        self.assertEqual(frames.get(timeout=1), JPEG)
+        capture.stop()
+        argv = launches[0]
+        before_input = argv[:argv.index("-i")]
+        self.assertIn("mjpeg", before_input)
+        self.assertIn("1920x1080", before_input)
+        self.assertIn("30", before_input)
+        self.assertEqual(argv[argv.index("-vf") + 1], "fps=10,scale=640:360")
+        self.assertIn("-threads", argv)
+
     def test_cli_starts_health_without_opening_camera_and_accepts_termination(self):
         with socket.socket() as reservation:
             reservation.bind(("127.0.0.1", 0))
             port = reservation.getsockname()[1]
-        process = subprocess.Popen([sys.executable, companion.__file__, "--port", str(port)],
+        process = subprocess.Popen([sys.executable, companion.__file__, "--port", str(port),
+                                    "--input-format", "mjpeg", "--input-size", "1920x1080",
+                                    "--input-fps", "30", "--output-size", "640x360", "--output-fps", "10"],
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         health = None
         try:

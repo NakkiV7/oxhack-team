@@ -24,6 +24,9 @@ final class TrainingStore {
     var hasInput = false
     var selectedExercise: Exercise = .squat
     let vision = VisionWorker()
+    let secondaryVision: SecondaryCameraVisionWorker
+    private(set) var usingSecondaryCamera = false
+    private let secondaryCameraClient: @MainActor () throws -> SecondaryCameraClient
     let companion = CompanionLink()
     var watchReachable = false
     private(set) var reportedDiscomfort = false
@@ -84,7 +87,10 @@ final class TrainingStore {
         return Array(distinct.values.sorted { $0.date < $1.date }.suffix(60))
     }
 
-    init(historyURL: URL? = nil) {
+    init(historyURL: URL? = nil, secondaryVision: SecondaryCameraVisionWorker? = nil,
+         secondaryCameraClient: @escaping @MainActor () throws -> SecondaryCameraClient = { try SecondaryCameraSettings.client() }) {
+        self.secondaryVision = secondaryVision ?? SecondaryCameraVisionWorker()
+        self.secondaryCameraClient = secondaryCameraClient
         let root = URL.applicationSupportDirectory.appendingPathComponent("Spottr")
         let namespace = ProcessInfo.processInfo.environment["SPOTTR_DATA_NAMESPACE"].flatMap(UUID.init(uuidString:))
         let folder = namespace.map { root.appendingPathComponent($0.uuidString) } ?? root
@@ -92,14 +98,31 @@ final class TrainingStore {
         do { history = try historyStore.load().reversed() }
         catch { self.error = "Couldn’t read your saved sessions." }
         vision.onFrame = { [weak self] frame, image, generation in
-            Task { @MainActor in self?.receive(frame, image: image, generation: generation) }
+            Task { @MainActor in
+                guard let self, !self.usingSecondaryCamera else { return }
+                self.receive(frame, image: image, generation: generation)
+            }
         }
         vision.onState = { [weak self] state, generation in
             Task { @MainActor in
-                guard let self, self.configured == nil, self.session.generation == generation, self.session.phase == .active else { return }
+                guard let self, !self.usingSecondaryCamera, self.configured == nil, self.session.generation == generation, self.session.phase == .active else { return }
                 self.visionState = state
                 if case .finished = state { self.pause() }
                 if case .failed = state { self.pause() }
+            }
+        }
+        self.secondaryVision.onFrame = { [weak self] frame, image, generation in
+            guard let self, self.usingSecondaryCamera else { return }
+            self.receive(frame, image: image, generation: generation)
+        }
+        self.secondaryVision.onState = { [weak self] state, generation in
+            guard let self, self.usingSecondaryCamera, self.configured == nil,
+                  self.session.generation == generation, self.session.phase == .active else { return }
+            switch state {
+            case .idle: break
+            case .starting: self.visionState = .idle
+            case .tracking: self.visionState = .camera
+            case .failed(let message): self.visionState = .failed(message); self.pause()
             }
         }
         companion.onCommand = { [weak self] command in
@@ -143,7 +166,7 @@ final class TrainingStore {
     func start() {
         defer { publish() }
         configured = nil
-        vision.stop(); session = TrainingSession(firstExercise: selectedExercise)
+        vision.stop(); secondaryVision.stop(); session = TrainingSession(firstExercise: selectedExercise)
         coachingPolicy = CoachingPolicy(history: history)
         reportedDiscomfort = false
         session.start(at: now); presented = true; error = nil; clearInput()
@@ -152,7 +175,7 @@ final class TrainingStore {
         do {
             var run = try ConfigurableSession(plan: plan, availableSupport: availableSupport)
             run.start(at: now)
-            vision.stop(); clearInput(); configured = run
+            vision.stop(); secondaryVision.stop(); clearInput(); configured = run
             reportedDiscomfort = false; presented = true; error = nil; publish()
         } catch { self.error = "This plan needs valid exercises and its required support selected in Coach before it can start." }
     }
@@ -161,12 +184,27 @@ final class TrainingStore {
     func stopConfiguredForDiscomfort() { configured?.stopForDiscomfort(at: now); cancelCoaching(); publish() }
     func camera() {
         defer { publish() }
-        vision.stop(); session.restartSet(source: .camera, at: now); clearInput()
+        vision.stop(); secondaryVision.stop(); session.restartSet(source: .camera, at: now); clearInput()
         source = .camera; hasInput = true; vision.camera(token: session.generation)
+    }
+    func secondaryCamera() {
+        guard configured == nil, session.phase == .active || session.phase == .paused else { return }
+        defer { publish() }
+        vision.stop(); secondaryVision.stop()
+        session.restartSet(source: .camera, at: now); clearInput()
+        usingSecondaryCamera = true; source = .camera; hasInput = true
+        startSecondaryCamera()
+    }
+    private func startSecondaryCamera() {
+        do { secondaryVision.start(client: try secondaryCameraClient(), generation: session.generation) }
+        catch {
+            visionState = .failed("Pair your side camera in Camera settings before starting capture.")
+            pause()
+        }
     }
     func video(_ url: URL) {
         defer { publish() }
-        vision.stop(); session.restartSet(source: .video, at: now); clearInput()
+        vision.stop(); secondaryVision.stop(); session.restartSet(source: .video, at: now); clearInput()
         source = .video; hasInput = true; vision.video(url: url, token: session.generation)
     }
     private func receive(_ frame: PoseFrame, image: UIImage, generation: UUID) {
@@ -183,14 +221,16 @@ final class TrainingStore {
     }
     func pause() {
         if configured != nil { configured?.pause(at: now); cancelCoaching(); publish(); return }
-        session.pause(at: now); vision.pause(); frame = nil
+        session.pause(at: now); vision.pause(); secondaryVision.stop(); frame = nil; image = nil
         cancelCoaching()
         publish()
     }
     func resume() {
         if configured != nil { configured?.resume(at: now); publish(); return }
+        guard session.phase == .paused else { return }
         session.resume(at: now)
-        if hasInput { vision.resume(token: session.generation, source: source) }
+        if usingSecondaryCamera { startSecondaryCamera() }
+        else if hasInput { vision.resume(token: session.generation, source: source) }
         publish()
     }
     func endSet() {
@@ -202,7 +242,7 @@ final class TrainingStore {
         guard session.phase == .active || session.phase == .paused else { return }
         let time = now
         session.endSet(at: time, reason: session.counter.reps >= session.exercise.target ? .target : .voluntary)
-        vision.stop(); frame = nil; restStartedAt = time
+        vision.stop(); secondaryVision.stop(); frame = nil; image = nil; restStartedAt = time
         restGeneration = session.generation
         cancelCoaching()
         publish()
@@ -226,7 +266,7 @@ final class TrainingStore {
     }
     func finish() {
         if configured != nil { configured?.finish(at: now); cancelCoaching(); save(); publish(); return }
-        session.finish(at: now); vision.stop(); frame = nil; cancelCoaching(); save(); publish()
+        session.finish(at: now); vision.stop(); secondaryVision.stop(); frame = nil; image = nil; cancelCoaching(); save(); publish()
     }
     func save() {
         if let configured {
@@ -267,6 +307,7 @@ final class TrainingStore {
     }
     private func clearInput() {
         frame = nil; image = nil; preferredSide = nil; hasInput = false; visionState = .idle; source = .camera
+        usingSecondaryCamera = false
         cancelCoaching()
     }
 }

@@ -47,6 +47,8 @@ struct LiveSetView: View {
     @State private var importing = false
     @State private var pendingImport: URL?
     @State private var replaceCamera = false
+    @State private var replaceSecondaryCamera = false
+    @State private var pairingPresented = false
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 23) {
@@ -64,7 +66,7 @@ struct LiveSetView: View {
                 }
                 ZStack(alignment: .topLeading) {
                     Palette.surface
-                    if case .camera = store.visionState, store.session.phase == .active {
+                    if case .camera = store.visionState, store.session.phase == .active, !store.usingSecondaryCamera {
                         CameraPreview(session: store.vision.capture)
                     } else if let image = store.image {
                         Image(uiImage: image).resizable().scaledToFit()
@@ -72,7 +74,7 @@ struct LiveSetView: View {
                         Image("\(store.session.exercise.rawValue)-\(guide)").resizable().scaledToFit().padding(27)
                     }
                     if let frame = store.frame { PoseOverlay(frame: frame, exercise: store.session.exercise) }
-                    Text(store.session.phase == .paused ? "Paused" : (store.hasInput ? store.visionState.message : "Movement guide"))
+                    Text(store.session.phase == .paused ? "Paused" : (store.hasInput ? inputStatus : "Movement guide"))
                         .font(.caption.weight(.medium)).padding(8).background(.white.opacity(0.9), in: Capsule()).padding(12)
                 }.frame(height: 295).clipShape(RoundedRectangle(cornerRadius: 23))
                 if !store.hasInput {
@@ -88,7 +90,24 @@ struct LiveSetView: View {
                     Spacer()
                     Button("Import video", systemImage: "film") { importing = true }
                 }.font(.subheadline.weight(.medium)).buttonStyle(.plain)
-                if !store.hasInput { Text(store.visionState.message).font(.caption).foregroundStyle(.secondary) }
+                Menu {
+                    Button("Start side camera", systemImage: "video") {
+                        if store.hasInput || store.session.counter.reps > 0 { replaceSecondaryCamera = true; return }
+                        store.secondaryCamera()
+                    }
+                    Button("Pair side camera", systemImage: "link") {
+                        store.pause()
+                        pairingPresented = true
+                    }
+                } label: {
+                    Label("Side camera", systemImage: "network").font(.subheadline.weight(.medium))
+                }.accessibilityIdentifier("secondary-camera-menu")
+                if case .failed(let message) = store.visionState {
+                    Text(message).font(.caption).foregroundStyle(Palette.red)
+                        .accessibilityIdentifier("camera-tracking-error")
+                } else if !store.hasInput {
+                    Text(store.visionState.message).font(.caption).foregroundStyle(.secondary)
+                }
                 HStack(alignment: .top, spacing: 13) {
                     Image(systemName: store.session.phase == .paused ? "pause" : "arrow.down")
                         .padding(12).background(Palette.surface, in: RoundedRectangle(cornerRadius: 12))
@@ -131,6 +150,19 @@ struct LiveSetView: View {
         .confirmationDialog("Start a fresh camera set?", isPresented: $replaceCamera) {
             Button("Start fresh set") { store.camera() }
         } message: { Text("The current set’s count will reset.") }
+        .confirmationDialog("Start a fresh side camera set?", isPresented: $replaceSecondaryCamera) {
+            Button("Start fresh set") { store.secondaryCamera() }
+        } message: { Text("The current set’s count will reset.") }
+        .sheet(isPresented: $pairingPresented) { SecondaryCameraSettingsView() }
+    }
+    private var inputStatus: String {
+        guard store.usingSecondaryCamera else { return store.visionState.message }
+        switch store.secondaryVision.state {
+        case .starting: return "Connecting to side camera…"
+        case .tracking: return "Side camera"
+        case .idle: return store.visionState.message
+        case .failed(let message): return message
+        }
     }
 }
 
