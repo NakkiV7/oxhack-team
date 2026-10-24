@@ -4,6 +4,12 @@ import UniformTypeIdentifiers
 struct SessionView: View {
     @Bindable var store: TrainingStore
     var body: some View {
+        Group {
+            if store.configured != nil { ConfiguredSessionView(store: store) }
+            else { legacySession }
+        }
+    }
+    private var legacySession: some View {
         VStack(spacing: 0) {
             HStack {
                 Button { store.finish() } label: { Image(systemName: "xmark").frame(width: 40, height: 40) }

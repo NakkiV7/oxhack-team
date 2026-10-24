@@ -175,3 +175,57 @@ test('Tiger preserves actual rest intervals while accepting legacy sets without 
   await second.ingest({ installationID, record: { ...record, sets: [legacy] } });
   await assert.rejects(createTigerStore({ pool: database().pool, installationID }).ingest({ installationID, record: { ...record, sets: [{ ...set, restSecondsBefore: -1 }] } }), error => error.status === 422);
 });
+
+test('Tiger round-trips ordered manual plan metadata and a 730-second observed hold without changing legacy records', async () => {
+  const loggedSets = [
+    { id: 'f17e0000-0000-4000-8000-000000000011', exerciseID: 'squat', reps: 8, seconds: 0, source: 'manual', reason: 'target', number: 1, target: 12, activeSeconds: 17.5, restSecondsBefore: 47.25, reserve: 3, quantityOrigin: 'selfReport' },
+    { id: 'f17e0000-0000-4000-8000-000000000012', exerciseID: 'plank', reps: 0, seconds: 730, source: 'manual', reason: 'voluntary', number: 2, target: 20, activeSeconds: 730, restSecondsBefore: 0, reserve: null, quantityOrigin: 'activeTimer' },
+    { id: 'f17e0000-0000-4000-8000-000000000013', exerciseID: 'plank', reps: 0, seconds: 30, source: 'manual', reason: 'voluntary' },
+    { id: 'f17e0000-0000-4000-8000-000000000014', exerciseID: 'squat', reps: 4, seconds: 0, source: 'camera', reason: 'voluntary', number: null, target: null, activeSeconds: null, restSecondsBefore: null, reserve: null, quantityOrigin: null }
+  ];
+  const snapshot = { ...record, loggedSets };
+  const store = createTigerStore({ pool: database().pool, installationID });
+  await store.ingest({ installationID, record: snapshot });
+  const restored = (await store.read(workoutID)).record;
+  assert.deepEqual(restored, snapshot);
+  assert.equal(restored.loggedSets[1].seconds, 730);
+  assert.equal(restored.loggedSets[1].target, 20);
+  assert.equal(Object.hasOwn(restored.loggedSets[2], 'activeSeconds'), false);
+  assert.equal((await store.ingest({ installationID, record: snapshot })).replayed, true);
+});
+
+test('Tiger rejects invalid manual origins, timer claims, quantities and metadata before database access', async () => {
+  const hold = { id: 'f17e0000-0000-4000-8000-000000000015', exerciseID: 'plank', reps: 0, seconds: 730, source: 'manual', reason: 'voluntary', number: 1, target: 20, activeSeconds: 730, quantityOrigin: 'activeTimer' };
+  const reps = { ...hold, exerciseID: 'squat', reps: 8, seconds: 0, target: 12, activeSeconds: 17.5, quantityOrigin: 'selfReport' };
+  const invalid = [
+    { ...hold, quantityOrigin: 'invented' }, { ...hold, source: 'camera' },
+    { ...reps, source: 'camera' }, { ...reps, quantityOrigin: 'activeTimer' },
+    { ...hold, activeSeconds: undefined }, { ...hold, activeSeconds: null }, { ...hold, activeSeconds: 729.9 },
+    { ...hold, reps: 1 }, { ...reps, seconds: 1 }, { ...hold, reserve: 0 },
+    { ...hold, quantityOrigin: 'selfReport' }, { ...hold, quantityOrigin: undefined }, { ...hold, quantityOrigin: null },
+    { ...hold, seconds: 86400.1, activeSeconds: 86400.1 },
+    { ...reps, number: 0 }, { ...reps, number: 11 }, { ...reps, number: 1.5 },
+    { ...reps, target: 0 }, { ...reps, target: 201 }, { ...hold, target: 601 }, { ...hold, target: 1.5 },
+    { ...reps, reserve: -1 }, { ...reps, reserve: 4 }, { ...reps, reserve: 1.5 },
+    { ...reps, activeSeconds: -1 }, { ...reps, activeSeconds: 86400.1 }, { ...reps, activeSeconds: Infinity },
+    { ...reps, restSecondsBefore: -1 }, { ...reps, restSecondsBefore: Infinity },
+    { ...hold, seconds: NaN, activeSeconds: NaN }, { ...reps, extra: 'unknown' }
+  ];
+  let connections = 0;
+  const store = createTigerStore({ installationID, pool: { connect: async () => { connections += 1; throw Error('must not connect'); } } });
+  for (const set of invalid) await assert.rejects(store.ingest({ installationID, record: { ...record, loggedSets: [set] } }), error => error.status === 422);
+  assert.equal(connections, 0);
+});
+
+test('Tiger accepts explicit metadata bounds while keeping self-reported holds at 600 seconds', async () => {
+  const loggedSets = [
+    { id: 'f17e0000-0000-4000-8000-000000000016', exerciseID: 'plank', reps: 0, seconds: 86400, source: 'manual', reason: 'voluntary', number: 10, target: 600, activeSeconds: 86400, quantityOrigin: 'activeTimer' },
+    { id: 'f17e0000-0000-4000-8000-000000000017', exerciseID: 'plank', reps: 0, seconds: 600, source: 'manual', reason: 'target', target: 600, quantityOrigin: 'selfReport' },
+    { id: 'f17e0000-0000-4000-8000-000000000018', exerciseID: 'squat', reps: 200, seconds: 0, source: 'manual', reason: 'target', number: 10, target: 200, activeSeconds: 0, restSecondsBefore: 86401, reserve: 0, quantityOrigin: 'selfReport' }
+  ];
+  const store = createTigerStore({ pool: database().pool, installationID });
+  await store.ingest({ installationID, record: { ...record, loggedSets } });
+  const restored = (await store.read(workoutID)).record.loggedSets;
+  assert.deepEqual(restored, loggedSets);
+  assert.equal(Object.hasOwn(restored[1], 'activeSeconds'), false);
+});

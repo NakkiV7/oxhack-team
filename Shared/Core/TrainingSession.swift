@@ -49,7 +49,7 @@ public struct SessionRecord: Codable, Identifiable, Equatable, Sendable {
     }
     public var setCount: Int { sets.count + loggedSets.count }
     public var reps: Int { sets.reduce(0) { $0 + $1.reps } + loggedSets.reduce(0) { $0 + $1.reps } }
-    public var activeSeconds: Double { sets.reduce(0) { $0 + $1.activeSeconds } + loggedSets.reduce(0) { $0 + $1.seconds } }
+    public var activeSeconds: Double { sets.reduce(0) { $0 + $1.activeSeconds } + loggedSets.reduce(0) { $0 + ($1.activeSeconds ?? $1.seconds) } }
 }
 
 public struct TrainingSession: Sendable {

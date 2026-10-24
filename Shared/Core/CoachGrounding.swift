@@ -7,7 +7,7 @@ public enum CoachGrounding {
             .sorted { $0.date > $1.date }.filter { seen.insert($0.id).inserted }
         let reports = unique.map(WorkoutReport.init)
         let progress = SkillProgress.evaluate(history: unique)
-        let context = CoachFact(id: "context", text: "\(unique.count) saved sessions in supplied history scope. Scope totals include every supplied session; detailed facts cover up to 8 recent sessions and 8 sets each. Manual entries are self-reported; camera entries are CV observations; video entries are replay observations. Only recorded Watch summaries are shared. Raw sensor streams are not shared. No health status, recovery, calorie burn or fitness score is established. Wrist motion does not establish exercise form.")
+        let context = CoachFact(id: "context", text: "\(unique.count) saved sessions in supplied history scope. Scope totals include every supplied session; detailed facts cover up to 8 recent sessions and 8 sets each. Manual rep counts and bulk entries are self-reported; manual hold timers record elapsed time between user start, pause and end actions; camera entries are CV observations; video entries are replay observations. Only recorded Watch summaries are shared. Raw sensor streams are not shared. No health status, recovery, calorie burn or fitness score is established. Wrist motion does not establish exercise form.")
         let sessions = reports.prefix(8).flatMap(sessionFacts)
         let skills = TrainingAttribute.allCases.map { attribute in
             CoachFact(id: "skill-\(attribute.rawValue)", text: "\(attribute.title): \(progress.points(for: attribute)) game points from goal-meeting recorded sets. Game points are not a physical capability measurement.")
@@ -27,7 +27,7 @@ public enum CoachGrounding {
         let sets = report.sets.prefix(8).map { set in
             let rest = set.restSecondsBefore.map { " Recorded rest before this set: \(number($0)) seconds." } ?? " Rest before this set not recorded."
             let tempo = set.averageRepSeconds.map { " Recorded rep mean \(number($0)) seconds across \(set.repDurations.count) timed reps." } ?? " Rep timing not recorded."
-            return CoachFact(id: "set-\(set.id.uuidString)", text: "Session date \(report.date.ISO8601Format()); \(set.exerciseName): \(set.quantityText); source \(set.source.rawValue); \(number(set.activeSeconds)) recorded active seconds; stop reason: \(set.reason.title)." + (set.reserve.map { " Self-reported reps in reserve: \($0)." } ?? " Reps in reserve not supplied.") + tempo + rest)
+            return CoachFact(id: "set-\(set.id.uuidString)", text: "Session date \(report.date.ISO8601Format()); \(set.exerciseName): \(set.quantityText); source \(set.source.rawValue) (\(set.sourceLabel)); \(number(set.activeSeconds)) recorded active seconds; stop reason: \(set.reason.title)." + (set.reserve.map { " Self-reported reps in reserve: \($0)." } ?? " Reps in reserve not supplied.") + tempo + rest)
         }
         return [session] + sets + signals(prefix: "watch", suffix: report.id.uuidString, reports: [report])
     }

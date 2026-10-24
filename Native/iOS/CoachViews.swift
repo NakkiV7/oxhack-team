@@ -123,7 +123,11 @@ struct CoachView: View {
                     Button("Log") { logItem = item }.font(.subheadline.weight(.semibold)).accessibilityLabel("Log \(ExerciseCatalog.find(item.exerciseID)?.name ?? item.exerciseID)")
                 }
             }
-            Text("Saved on this iPhone. Log each exercise after you complete it.").font(.caption).foregroundStyle(.secondary)
+            PrimaryButton(title: "Start saved workout", symbol: "play") { store.startPlan(plan, availableSupport: support) }
+                .accessibilityIdentifier("start-saved-workout")
+            Text("Follow the saved order with manual reps and active hold timers. Log is also available after training.")
+                .font(.caption).foregroundStyle(.secondary)
+            if let error = store.error { Text(error).font(.caption).foregroundStyle(Palette.red) }
         }.padding(19).background(Palette.surface, in: RoundedRectangle(cornerRadius: 20))
     }
 

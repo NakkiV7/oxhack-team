@@ -133,7 +133,7 @@ struct SessionReportView: View {
                                     Text(set.quantityText).font(.subheadline).monospacedDigit()
                                 }
                                 Spacer(minLength: 0)
-                                ReportSourceBadge(source: set.source)
+                                ReportSourceBadge(source: set.source, origin: set.quantityOrigin)
                             }
                             if let average = set.averageRepSeconds {
                                 Text("Tempo · \(average, format: .number.precision(.fractionLength(1))) sec per rep")
@@ -150,7 +150,7 @@ struct SessionReportView: View {
                         }
                         if index < report.setCount - 1 { Divider() }
                     }
-                    Text("Manual rep sets have no recorded duration. Timed holds and tracked active time contribute to recorded time.")
+                    Text("Recorded time includes tracked sets, live manual set timers and logged hold durations. Bulk manual rep entries have no recorded duration.")
                         .font(.caption).foregroundStyle(.secondary)
                 }.padding(20).background(Palette.surface, in: RoundedRectangle(cornerRadius: 22))
                 CoachSummaryCard(record: record)
@@ -203,7 +203,12 @@ struct SessionReportView: View {
 
 private struct ReportSourceBadge: View {
     let source: InputSource
+    let origin: LoggedSet.QuantityOrigin?
+    init(source: InputSource, origin: LoggedSet.QuantityOrigin? = nil) {
+        self.source = source; self.origin = origin
+    }
     private var title: String {
+        if origin == .activeTimer { return "Manual hold timer" }
         switch source {
         case .camera: return "Camera"
         case .manual: return "Manual"

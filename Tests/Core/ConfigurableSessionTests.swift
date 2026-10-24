@@ -1,0 +1,271 @@
+import Foundation
+import Testing
+@testable import SpottrCore
+
+private func customPlan(_ items: String = """
+{"exerciseID":"wallPushup","sets":2,"target":8,"unit":"reps","restSeconds":30},
+{"exerciseID":"plank","sets":1,"target":20,"unit":"seconds","restSeconds":45}
+""") throws -> CoachSavedPlan {
+    try JSONDecoder().decode(CoachSavedPlan.self, from: Data("""
+    {"items":[\(items)],"approvedAt":0,"rationale":"Offline test fixture"}
+    """.utf8))
+}
+
+@Test func configuredQueuePreservesApprovedOrderQuantitiesAndUnitsWithoutCompletedWork() throws {
+    let run = try ConfigurableSession(plan: customPlan(), availableSupport: ["Wall"])
+    #expect(run.steps.map(\.exerciseID) == ["wallPushup", "wallPushup", "plank"])
+    #expect(run.steps.map(\.target) == [8, 8, 20])
+    #expect(run.steps.map(\.unit) == [.reps, .reps, .seconds])
+    #expect(run.record.setCount == 0)
+    #expect(run.phase == .idle)
+}
+
+@Test func mixedRunRecordsOnlyExplicitRepsAndActiveHoldSecondsWithActualRest() throws {
+    var run = try ConfigurableSession(plan: customPlan(), availableSupport: ["Wall"])
+    run.start(at: 0)
+    #expect(run.elapsed(at: 10) == 0)
+    let unstarted = run.endSet(at: 10)
+    #expect(!unstarted)
+    run.beginSet(at: 10)
+    let missingReps = run.endSet(at: 11)
+    #expect(!missingReps)
+    run.setReps(5)
+    let first = run.endSet(at: 14)
+    #expect(first)
+    #expect(run.record.loggedSets.first?.reps == 5)
+    #expect(run.record.loggedSets.first?.target == 8)
+    #expect(run.record.loggedSets.first?.activeSeconds == 4)
+    #expect(run.record.loggedSets.first?.restSecondsBefore == nil)
+    run.nextSet(at: 25)
+    #expect(run.current.number == 2)
+    #expect(run.record.setCount == 1)
+    run.beginSet(at: 30)
+    run.setReps(8)
+    let second = run.endSet(at: 34)
+    #expect(second)
+    run.nextSet(at: 50)
+    #expect(run.current.exerciseID == "plank")
+    run.beginSet(at: 60)
+    run.pause(at: 65)
+    run.resume(at: 100)
+    let hold = run.endSet(at: 110)
+    #expect(hold)
+    #expect(run.record.loggedSets.map(\.reps) == [5, 8, 0])
+    #expect(run.record.loggedSets.map(\.restSecondsBefore) == [nil, 16, 26])
+    #expect(run.record.loggedSets.last?.seconds == 15)
+    #expect(run.record.loggedSets.last?.quantityOrigin == .activeTimer)
+    #expect(WorkoutReport(record: run.record).sets.last?.sourceLabel == "Manual hold timer")
+    #expect(CoachGrounding.facts(history: [run.record]).contains { $0.text.contains("Manual hold timer") })
+    #expect(run.record.activeSeconds == 23)
+    run.nextSet(at: 120)
+    #expect(run.phase == .finished)
+    #expect(run.record.setCount == 3)
+}
+
+@Test func configuredDiscomfortLatchesAndFinishNeverInventsRemainingSets() throws {
+    var run = try ConfigurableSession(plan: customPlan(), availableSupport: ["Wall"])
+    run.start(at: 0); run.beginSet(at: 1); run.setReps(3); run.endSet(at: 4)
+    run.feedback(reserve: 1, reason: .discomfort)
+    run.feedback(reserve: 2, reason: .target)
+    run.nextSet(at: 10)
+    #expect(run.phase == .rest)
+    #expect(run.stoppedForDiscomfort)
+    #expect(run.completed.first?.reason == .discomfort)
+    #expect(run.completed.first?.reserve == 2)
+    run.finish(at: 20)
+    #expect(run.record.setCount == 1)
+    #expect(run.phase == .finished)
+    let data = try JSONEncoder().encode(run.record)
+    #expect(try JSONDecoder().decode(SessionRecord.self, from: data) == run.record)
+}
+
+@Test func configuredReportsKeepActualActiveTimeRestAndManualSource() throws {
+    var run = try ConfigurableSession(plan: customPlan(), availableSupport: ["Wall"])
+    run.start(at: 0); run.beginSet(at: 10); run.setReps(4); run.endSet(at: 14)
+    run.nextSet(at: 24); run.beginSet(at: 30); run.setReps(7); run.endSet(at: 33)
+    run.finish(at: 34)
+    let report = WorkoutReport(record: run.record)
+    #expect(report.activeSeconds == 7)
+    #expect(report.recordedRestSeconds == 16)
+    #expect(report.sets.map(\.exerciseID) == ["wallPushup", "wallPushup"])
+    #expect(report.sets.allSatisfy { $0.source == .manual })
+    #expect(report.sets.last?.reserve == nil)
+}
+
+@Test func configuredTelemetryRejectsOtherSessionsAndPreservesOnlyReceivedObservations() throws {
+    var run = try ConfigurableSession(plan: customPlan(), availableSupport: ["Wall"])
+    run.start(at: 0)
+    let date = Date(timeIntervalSince1970: 100)
+    let observed = WatchTelemetry(sessionID: run.id, sentAt: date,
+        heartRate: .init(value: 85, date: date), accelerationG: nil, rotationRadiansPerSecond: nil)
+    run.receiveTelemetry(observed, now: date)
+    run.receiveTelemetry(observed, now: date)
+    run.receiveTelemetry(.init(sessionID: UUID(), sentAt: date.addingTimeInterval(1),
+        heartRate: .init(value: 86, date: date), accelerationG: nil, rotationRadiansPerSecond: nil), now: date)
+    #expect(run.record.telemetry == [observed])
+}
+
+@Test func configuredWatchUsesGenericIdentityAndCannotSubmitAnUnenteredRepTarget() throws {
+    var run = try ConfigurableSession(plan: customPlan(), availableSupport: ["Wall"])
+    var watch = CompanionState()
+    let date = Date(timeIntervalSince1970: 100)
+    run.start(at: 0)
+    let ready = CompanionSnapshot(session: run, at: 0, sentAt: date)
+    #expect(ready.exercise == nil)
+    #expect(ready.configured?.exerciseID == "wallPushup")
+    watch.receive(ready, now: date)
+    #expect(watch.command(.startSet, now: date) != nil)
+    #expect(watch.command(.endSet, now: date) == nil)
+    run.beginSet(at: 1)
+    watch.receive(.init(session: run, at: 1, sentAt: date.addingTimeInterval(1)), now: date.addingTimeInterval(1))
+    #expect(watch.command(.endSet, now: date.addingTimeInterval(1)) == nil)
+    run.setReps(4)
+    watch.receive(.init(session: run, at: 2, sentAt: date.addingTimeInterval(2)), now: date.addingTimeInterval(2))
+    #expect(watch.command(.endSet, now: date.addingTimeInterval(2)) != nil)
+    run.endSet(at: 3); run.feedback(reserve: nil, reason: .discomfort)
+    watch.receive(.init(session: run, at: 3, sentAt: date.addingTimeInterval(3)), now: date.addingTimeInterval(3))
+    #expect(watch.command(.nextSet, now: date.addingTimeInterval(3)) == nil)
+    #expect(watch.command(.finish, now: date.addingTimeInterval(3)) != nil)
+    let data = try JSONEncoder().encode(ready)
+    #expect(try JSONDecoder().decode(CompanionSnapshot.self, from: data).configured?.exerciseID == "wallPushup")
+}
+
+@Test func discomfortBeforeAnyCompletedSetStopsWithoutCreatingWorkOrRest() throws {
+    var run = try ConfigurableSession(plan: customPlan(), availableSupport: ["Wall"])
+    run.start(at: 0); run.beginSet(at: 1)
+    run.stopForDiscomfort(at: 5)
+    run.nextSet(at: 20)
+    #expect(run.stoppedForDiscomfort)
+    #expect(run.phase == .rest)
+    #expect(run.record.setCount == 0)
+    #expect(run.restElapsed(at: 20) == nil)
+    run.finish(at: 25)
+    #expect(run.phase == .finished)
+    #expect(run.record.setCount == 0)
+}
+
+@Test(arguments: [true, false])
+func explicitDiscomfortStopRetainsAnEnteredActualCountAndBlocksFurtherSets(useStopAction: Bool) throws {
+    var run = try ConfigurableSession(plan: customPlan(), availableSupport: ["Wall"])
+    run.start(at: 0); run.beginSet(at: 1); run.setReps(3)
+    if useStopAction { run.stopForDiscomfort(at: 5) }
+    else { run.endSet(at: 5, reason: .discomfort) }
+    run.nextSet(at: 20)
+    #expect(run.phase == .rest)
+    #expect(run.stoppedForDiscomfort)
+    #expect(run.record.loggedSets.first?.reps == 3)
+    #expect(run.record.loggedSets.first?.reason == .discomfort)
+}
+
+@Test func configuredPlanRejectsOversizedCountsWithoutIntegerOverflow() throws {
+    let plan = try customPlan("""
+    {"exerciseID":"wallPushup","sets":\(Int.max),"target":8,"unit":"reps","restSeconds":30},
+    {"exerciseID":"plank","sets":1,"target":20,"unit":"seconds","restSeconds":30}
+    """)
+    #expect(throws: ConfigurableSession.Invalid.self) {
+        try ConfigurableSession(plan: plan, availableSupport: ["Wall"])
+    }
+}
+
+@Test(arguments: [
+    "{\"exerciseID\":\"unknown\",\"sets\":1,\"target\":8,\"unit\":\"reps\",\"restSeconds\":30}",
+    "{\"exerciseID\":\"plank\",\"sets\":1,\"target\":8,\"unit\":\"reps\",\"restSeconds\":30}",
+    "{\"exerciseID\":\"squat\",\"sets\":0,\"target\":8,\"unit\":\"reps\",\"restSeconds\":30}",
+    "{\"exerciseID\":\"squat\",\"sets\":11,\"target\":8,\"unit\":\"reps\",\"restSeconds\":30}",
+    "{\"exerciseID\":\"squat\",\"sets\":1,\"target\":201,\"unit\":\"reps\",\"restSeconds\":30}",
+    "{\"exerciseID\":\"plank\",\"sets\":1,\"target\":601,\"unit\":\"seconds\",\"restSeconds\":30}",
+    "{\"exerciseID\":\"squat\",\"sets\":1,\"target\":8,\"unit\":\"reps\",\"restSeconds\":-1}",
+    "{\"exerciseID\":\"squat\",\"sets\":1,\"target\":8,\"unit\":\"reps\",\"restSeconds\":601}"
+])
+func configuredPlanRevalidatesSavedCatalogueAndBoundedQuantities(items: String) throws {
+    let plan = try customPlan(items)
+    #expect(throws: ConfigurableSession.Invalid.self) { try ConfigurableSession(plan: plan, availableSupport: ["Wall"]) }
+}
+
+@Test func configuredPlanRequiresCurrentSupportAndPreservesItsOriginalSelection() throws {
+    let plan = try customPlan()
+    #expect(throws: ConfigurableSession.Invalid.self) { try ConfigurableSession(plan: plan, availableSupport: []) }
+    let run = try ConfigurableSession(plan: plan, availableSupport: ["Wall"])
+    #expect(plan.items.map(\.exerciseID) == ["wallPushup", "plank"])
+    #expect(run.steps.count == 3)
+}
+
+@Test(arguments: [0, -1, 201])
+func configuredManualTargetsNeverFillMissingOrInvalidActualReps(reps: Int) throws {
+    var run = try ConfigurableSession(plan: customPlan(), availableSupport: ["Wall"])
+    run.start(at: 0); run.beginSet(at: 1); run.setReps(reps)
+    let result = run.endSet(at: 30)
+    #expect(!result)
+    #expect(run.manualReps == nil)
+    #expect(run.record.setCount == 0)
+    #expect(run.phase == .active)
+}
+
+@Test func configuredHoldKeepsObservedTimePastItsTargetAndDoesNotCompleteItself() throws {
+    var run = try ConfigurableSession(plan: customPlan("""
+    {"exerciseID":"plank","sets":1,"target":20,"unit":"seconds","restSeconds":0}
+    """), availableSupport: [])
+    run.start(at: 0); run.beginSet(at: 10)
+    #expect(run.elapsed(at: 30) == 20)
+    #expect(run.record.setCount == 0)
+    #expect(run.phase == .active)
+    run.pause(at: 40); run.resume(at: 100); run.endSet(at: 800)
+    #expect(run.record.loggedSets.first?.seconds == 730)
+    #expect(run.record.loggedSets.first?.target == 20)
+    #expect(run.record.loggedSets.first?.activeSeconds == 730)
+}
+
+@Test func finishDropsAnUnendedSetAndRepeatedFinishKeepsCompletedIdentities() throws {
+    var run = try ConfigurableSession(plan: customPlan(), availableSupport: ["Wall"])
+    run.start(at: 0); run.beginSet(at: 1); run.setReps(3); run.endSet(at: 5)
+    let firstID = run.completed.first?.id
+    run.nextSet(at: 10); run.beginSet(at: 20); run.setReps(8); run.finish(at: 30)
+    let generation = run.generation
+    run.finish(at: 40)
+    #expect(run.generation == generation)
+    #expect(run.completed.map(\.id) == [firstID])
+    #expect(run.record.reps == 3)
+    #expect(run.record.setCount == 1)
+}
+
+@Test func legacyManualSetWithoutExecutionMetadataStillDecodes() throws {
+    let data = Data("""
+    {"id":"00000000-0000-0000-0000-000000000001","exerciseID":"squat","reps":12,
+    "seconds":0,"source":"manual","reason":"voluntary"}
+    """.utf8)
+    let set = try JSONDecoder().decode(LoggedSet.self, from: data)
+    #expect(set.number == nil)
+    #expect(set.activeSeconds == nil)
+    #expect(set.restSecondsBefore == nil)
+    #expect(set.quantityOrigin == nil)
+    #expect(set.reps == 12)
+}
+
+@Test func configuredWatchKeepsPausedAndEndedHoldTimesInsteadOfShowingZeroDuringRest() throws {
+    var run = try ConfigurableSession(plan: customPlan("""
+    {"exerciseID":"plank","sets":1,"target":20,"unit":"seconds","restSeconds":45}
+    """), availableSupport: [])
+    run.start(at: 0); run.beginSet(at: 1); run.pause(at: 11)
+    #expect(CompanionSnapshot(session: run, at: 100).configured?.activeSeconds == 10)
+    run.resume(at: 101); run.endSet(at: 106)
+    let resting = CompanionSnapshot(session: run, at: 110)
+    #expect(resting.configured?.activeSeconds == 15)
+    #expect(resting.configured?.restElapsed == 4)
+    #expect(resting.configured?.unit == .seconds)
+}
+
+@Test(arguments: ["activeSeconds", "restElapsed"])
+func configuredWatchRejectsUnrenderableOrNegativeClockValues(field: String) throws {
+    var run = try ConfigurableSession(plan: customPlan(), availableSupport: ["Wall"])
+    run.start(at: 0)
+    let now = Date()
+    let snapshot = CompanionSnapshot(session: run, at: 1, sentAt: now)
+    for invalid in [-1.0, 1e100] {
+        var json = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(snapshot)) as? [String: Any])
+        var configured = try #require(json["configured"] as? [String: Any])
+        configured[field] = invalid
+        json["configured"] = configured
+        let decoded = try JSONDecoder().decode(CompanionSnapshot.self, from: JSONSerialization.data(withJSONObject: json))
+        #expect(decoded.isFresh(at: now) == false)
+    }
+}

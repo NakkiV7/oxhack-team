@@ -13,8 +13,22 @@ const trackedSet = z.strictObject({
 });
 const loggedSet = z.strictObject({
   id: z.uuid(), exerciseID: z.enum(catalog.map(item => item.id)), reps: quantity(200).int(),
-  seconds: quantity(600), source, reason
-}).refine(set => catalog.some(exercise => exercise.id === set.exerciseID && (exercise.unit === 'reps' ? set.seconds === 0 : set.reps === 0)));
+  seconds: quantity(86400), source, reason,
+  number: z.number().int().min(1).max(10).nullable().optional(),
+  target: z.number().int().min(1).max(600).nullable().optional(),
+  activeSeconds: quantity(86400).nullable().optional(),
+  restSecondsBefore: z.number().finite().nonnegative().nullable().optional(),
+  reserve: quantity(3).int().nullable().optional(),
+  quantityOrigin: z.enum(['selfReport', 'activeTimer']).nullable().optional()
+}).refine(set => {
+  const exercise = catalog.find(exercise => exercise.id === set.exerciseID);
+  if (!exercise || (exercise.unit === 'reps' ? set.seconds !== 0 : set.reps !== 0)) return false;
+  if (set.quantityOrigin != null && set.source !== 'manual') return false;
+  if (set.target != null && set.target > (exercise.unit === 'reps' ? 200 : 600)) return false;
+  if (exercise.unit === 'seconds' && set.reserve != null) return false;
+  if (set.quantityOrigin === 'activeTimer') return exercise.unit === 'seconds' && set.activeSeconds != null && set.activeSeconds === set.seconds;
+  return set.seconds <= 600;
+});
 const telemetry = z.strictObject({
   sessionID: z.uuid(), sentAt: date,
   heartRate: reading(300).refine(reading => reading.value >= 1).nullable().optional(),
