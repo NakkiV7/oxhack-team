@@ -8,7 +8,7 @@ Build from the repository root using `server/Dockerfile`. The image pins officia
 
 `deploy/compose.yaml` runs the gateway with a read-only root, no Linux capabilities, a 256 MB memory limit and no published gateway port. Caddy is the sole public service on TCP 80/443; its certificate/configuration volumes persist across restarts. The two image pins were checked against their official registry metadata. Updating them is an explicit maintenance step, followed by validation.
 
-The Caddy configuration restricts callers to an explicit public client IP/CIDR allowlist, caps request bodies at 2 MiB, headers at 16 KB, header/body reads at 10/15 seconds and upstream response headers at 65 seconds. It admits at most four concurrent upstream requests and configures no proxy retries. Existing gateway limits remain stricter for coaching: 64 KiB input, 20-second default provider timeout (maximum 60 seconds), schema validation and no automatic paid retry. Proxy overload can return 503; these controls do not constitute a requests-per-minute or monetary budget.
+The Caddy configuration restricts callers to an explicit public client IP/CIDR allowlist, caps request bodies at 2 MiB, headers at 16 KB, header/body reads at 10/15 seconds and upstream response headers at 65 seconds. It uses an approximate overload threshold of four in-flight upstream requests and configures no proxy retries. Existing gateway limits remain stricter for coaching: 64 KiB input, 20-second default provider timeout (maximum 60 seconds), schema validation and no automatic paid retry. Proxy overload can return 503; these controls do not constitute a requests-per-minute or monetary budget.
 
 ## Authentication and data responsibility
 
