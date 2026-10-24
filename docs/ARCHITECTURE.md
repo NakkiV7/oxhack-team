@@ -36,7 +36,7 @@ All four gateway request types returned real Gemini responses from synthetic inp
 
 ## Persistence, research and deployment
 
-The phone stores local profile/history. Explicit Tiger sync uses immutable installation/workout UUID snapshots and content hashes, plus observed scalars at their measurement times. Identical retries return the same receipt; changed content conflicts. The adapter/migration are offline-tested, but the current private-CA endpoint fails strict TLS: no successful live migration, persistence or query is accepted. [Tiger diagnosis](tiger-live-readiness.md).
+The phone stores local profile/history. Explicit Tiger sync uses immutable installation/workout UUID snapshots and content hashes, plus observed scalars at their measurement times. Identical retries return the same receipt; changed content conflicts. The adapter is offline-tested. The authenticated provider console separately accepted the gateway schema and its empty tables/hypertable; [receipt](evidence/tiger-console-2026-10-24.md). The Node connection still fails strict TLS against the private-CA endpoint, so gateway persistence and native sync remain unverified. [Tiger diagnosis](tiger-live-readiness.md).
 
 The public PAMAP2 experiment has frozen participant-held-out 10/30-second HR forecasts, sparse coverage and a retained losing adaptation. It does not validate Watch transfer, capacity/readiness or reps-to-failure. Snowflake now implements pinned public-artifact import, immutable run/payload lineage and fixed SQL reconciliation against local metrics. Dry-run/fake-network checks passed; actual warehouse execution remains pending. [Research](public-data-benchmark.md), [analytics](snowflake-analytics.md).
 

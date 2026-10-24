@@ -1,6 +1,8 @@
 # Tiger live readiness — 24 October 2026
 
-**Live database integration is blocked by certificate-chain trust. Offline gateway behavior passes.** This review was recorded at **20:17:57 UTC**. It performed one bounded strict PostgreSQL connection attempt and one strict TLS-only certificate inspection, with no database authentication success, SQL execution, migration, synthetic insertion or credential output. No trust store, connection string or service setting was changed.
+**Gateway persistence remains blocked by certificate-chain trust. The development schema has separate provider-console acceptance.** By **23:37:35 UTC**, the authenticated console applied the exact gateway migration and read-only catalogue checks accepted its two empty tables, constraints, hypertable and indexes. No workout or sensor data was inserted. This does not establish a trusted Node connection or app writes. [Console receipt](evidence/tiger-console-2026-10-24.md).
+
+The historical strict-connection review below was recorded at **20:17:57 UTC**. It performed one bounded strict PostgreSQL connection attempt and one strict TLS-only certificate inspection, with no database authentication success, SQL execution, migration, synthetic insertion or credential output at that checkpoint. No trust store, connection string or service setting was changed.
 
 ## Current service and endpoint
 
@@ -33,7 +35,7 @@ Tiger's [strict SSL guidance](https://www.tigerdata.com/docs/use-timescale/lates
 1. Complete the authenticated service Security/Operations inspection already owned by the parent task. Look for certificate/provisioning status or an authenticated provider CA download/fingerprint; do not reset credentials or alter service resources merely to retry.
 2. If no supported trust source exists there, prepare a provider support request through the existing authenticated console: identify the service/project, conversion time, confirmed endpoint, strict error 19 / `SELF_SIGNED_CERT_IN_CHAIN`, Timescale CA issuer and leaf issuance time. Ask Tiger to finish the public certificate deployment or provide its supported CA chain and SHA-256 fingerprint through an authenticated provider channel. Sending that request remains a separate external action.
 3. If Tiger provides an authenticated CA bundle, validate its provenance/fingerprint and hostname coverage, then configure that server's PostgreSQL client with the supported CA while retaining full chain and hostname verification. Do not install the observed chain solely because a socket presented it. No supported authenticated CA bundle was found in this review; no CA was installed.
-4. After a provider-confirmed change, run one bounded read-only version/TLS query. Only a successful, authorized TLS connection advances this to migration readiness. The migration and explicitly opted-in isolated synthetic smoke command are later acceptance steps, not evidence already obtained.
+4. After a provider-confirmed change, run one bounded read-only version/TLS query. Only a successful, authorized strict Node connection advances the gateway to smoke-test readiness. The existing development schema was separately accepted through the console; inspect it rather than blindly rerunning the migration. The explicitly opted-in isolated synthetic smoke command remains a later acceptance step.
 
 The [connection-details documentation](https://www.tigerdata.com/docs/integrate/find-connection-details) identifies the authenticated Connect dialog and separately provisioned API credentials. No Tiger connector, configured API credentials or installed Tiger CLI was available to this review. No account or new credentials were created.
 

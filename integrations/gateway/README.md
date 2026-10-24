@@ -1,6 +1,6 @@
 # Local Spottr integration gateway
 
-Runnable Node gateway in `server/`, with Gemini REST coaching, a Tiger PostgreSQL/TimescaleDB session adapter and an explicit Snowflake SQL API connection-check command. Tests use mocked provider responses and a mocked PostgreSQL boundary; no paid provider request or database migration has been executed by the gateway implementation task. Configuration presence is separate from a verified connection. No deployment or CI/CD is included.
+Runnable Node gateway in `server/`, with Gemini REST coaching, a Tiger PostgreSQL/TimescaleDB session adapter and an explicit Snowflake SQL API connection-check command. Tests use mocked provider responses and a mocked PostgreSQL boundary. Current live/provider-console acceptance is recorded separately in the [integration ledger](../../docs/integration-readiness.md). Configuration presence is separate from a verified connection. No deployment or CI/CD is included.
 
 From the repository root, copy `.env.example` to `.env`, fill values privately, then:
 
@@ -48,13 +48,13 @@ Provider refusals, safety blocks, truncated responses and malformed results fail
 
 ## Tiger
 
-Set `TIGER_DATABASE_URL` using the provider's TLS connection string and set `SPOTTR_INSTALLATION_ID` to the persistent installation UUID displayed in the app's explicit Sync card. Use the provider's trusted certificate configuration; the gateway does not disable certificate verification. It creates no database resources on startup. Apply the migration explicitly once with:
+Set `TIGER_DATABASE_URL` using the provider's TLS connection string and set `SPOTTR_INSTALLATION_ID` to the persistent installation UUID displayed in the app's explicit Sync card. Use the provider's trusted certificate configuration; the gateway does not disable certificate verification. It creates no database resources on startup. For a fresh database, apply the reviewed migration explicitly once with:
 
 ```sh
 npm run migrate
 ```
 
-`server/migrations/001_workouts.sql` requires TimescaleDB with `create_hypertable`/`by_range` support (target ≥2.18). It creates the separate `spottr_gateway` schema, immutable session snapshots, and a scalar sample hypertable partitioned on `measured_at`, with that timestamp included in the primary key. It does not apply or depend on the earlier review-only `integrations/tiger/001_schema.sql` proposal. No retention, rollup policy or destructive cleanup is enabled. The migration has not been executed against a real database by this task.
+`server/migrations/001_workouts.sql` requires TimescaleDB with `create_hypertable`/`by_range` support (target ≥2.18). It creates the separate `spottr_gateway` schema, immutable session snapshots, and a scalar sample hypertable partitioned on `measured_at`, with that timestamp included in the primary key. It does not apply or depend on the earlier review-only `integrations/tiger/001_schema.sql` proposal. No retention, rollup policy or destructive cleanup is enabled. On the existing development service, this exact migration was accepted through the authenticated provider console on 24 October, with read-only checks of its empty schema. Do not blindly rerun it there; inspect the existing objects. [Console receipt](../../docs/evidence/tiger-console-2026-10-24.md). This does not resolve the Node client’s certificate-chain failure.
 
 | Endpoint | Input / scope | Response |
 |---|---|---|
@@ -68,7 +68,7 @@ Configured `loggedSets` may include optional `repDurations` for observed base `s
 
 Only observed scalar values are inserted: `heartRate` in bpm (1–300), `accelerationMagnitude` in g, and `rotationMagnitude` in rad/s (both 0–1000). Watch scalar magnitudes are not raw three-axis vectors. Missing readings produce no scalar row and remain missing in the preserved snapshot; no interpolation or recovery inference is performed. Queries return at most the full session limit of 21600 scalar rows. Readback is currently developer tooling; this gateway does not merge remote records back into the native library.
 
-PostgreSQL pool connection timeout is five seconds; each statement is limited to ten seconds. The adapter does not retry a failed transaction. An uncertain network result can be explicitly retried using the identical snapshot; the receipt hash prevents overwriting a committed different snapshot. Actual migration, ingest/replay/conflict, readback and measured latency on Tiger remain to be verified live.
+PostgreSQL pool connection timeout is five seconds; each statement is limited to ten seconds. The adapter does not retry a failed transaction. An uncertain network result can be explicitly retried using the identical snapshot; the receipt hash prevents overwriting a committed different snapshot. Console schema acceptance is separate; actual Node ingest/replay/conflict, readback and measured ingestion latency on Tiger remain to be verified live.
 
 ### Opt-in Tiger smoke test
 
