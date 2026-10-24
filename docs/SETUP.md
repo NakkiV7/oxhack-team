@@ -4,17 +4,21 @@
 
 A Mac with Xcode and the installed iOS/watchOS SDKs can build the phone and Watch targets. Follow the root README and `scripts/bootstrap.sh`; reuse existing simulators. Native camera preview needs a physical device or imported video. Simulator transport tests exercise message behavior, not physiological sensors.
 
+### Simulator signing and Keychain
+
+For actual Coach connection or camera-pairing Keychain acceptance, build the simulator app with `CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=-` and install that ad-hoc-signed build. Unsigned compilation or tests with `CODE_SIGNING_ALLOWED=NO` do not establish Keychain access. On 24 October 2026, Coach settings failed to save in the unsigned install, then saved successfully through the UI after the signed simulator build (MCP build log `21-20-32…8fa1267f`). No app, profile or Keychain-sharing change was needed. Simulator entitlement metadata can live in the executable's `__TEXT.__entitlements` section even when `codesign` prints no entitlements; verify runtime behavior before diagnosing a missing entitlement.
+
 Run `./scripts/local-config.py` to create ignored `.env` and a random gateway token. Set a secret privately with `./scripts/local-config.py VARIABLE_NAME`. Restart the gateway after changes. Each collaborator uses their own configuration. Never copy provider keys into the app bundle or repository.
 
 ## Optional services
 
 | Service/account | Configuration | Product role | Current acceptance |
 |---|---|---|---|
-| Google AI Studio / Gemini | Server `GEMINI_API_KEY`, `GEMINI_MODEL` | Chat, grounded workout/week explanations and catalogue proposals | Four local live synthetic request types returned 200; native UI tests passed, native provider networking and real-user entailment pending |
+| Google AI Studio / Gemini | Server `GEMINI_API_KEY`, `GEMINI_MODEL` | Chat, grounded workout/week explanations and catalogue proposals | Four local live synthetic request types returned 200. One signed-simulator native chat reached the localhost gateway and Google and displayed a real answer; native proposals/reports, physical phone networking and real-user entailment remain pending |
 | Tiger Cloud | Server `TIGER_DATABASE_URL`, `SPOTTR_INSTALLATION_ID` | Explicit immutable workout sync and observed scalar time series | Current endpoint verified, private-CA TLS blocked; no live persistence accepted |
 | ElevenLabs | `ELEVENLABS_API_KEY`; future adapter voice/model settings | Optional remote spoken cues | Local Apple speech needs no key. ElevenLabs secret/synthesis and audible acceptance remain pending |
 | Vultr | `VULTR_API_KEY` for deployment tooling only | Host the small authenticated gateway | Packaging ready, Docker daemon unavailable, no VM; agree credits/ceiling/hostname before provisioning |
-| Snowflake | Variables listed in `.env.example` for account, token type/token and optional warehouse/role | Fixed SQL API check, later batch feature evaluation | Offline adapter tests passed; live SQL/analytics pending |
+| Snowflake | Server `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_TOKEN`, `SNOWFLAKE_TOKEN_TYPE`; live analytics also requires existing `SNOWFLAKE_WAREHOUSE`, `SNOWFLAKE_DATABASE`, `SNOWFLAKE_SCHEMA` | Fixed SQL API check and [pinned public forecast import/evaluation](snowflake-analytics.md); benchmark defaults to local dry-run, live requests require `--allow-live-public-data` | Offline adapter/analytics tests and artifact dry-run passed; no live SQL/import/warehouse execution accepted |
 | Presage | Native SDK authentication choice pending; server key is only a placeholder | Optional front-camera measurement distinct from Watch | Proposal only; resolve SDK automatic derived-vitals LLM transmission and verify credits before one explicit bounded physical check |
 | Delta + supported provider | Configure privately in the actual Delta app | Development/prompt evaluation threads | App missing/not launchable; official download/legal action and actual judge run pending |
 | GitHub | Collaborator access and `gh auth login` if using CLI | Branches, PRs and issues | Repo: `NakkiV7/oxhack-team` |
