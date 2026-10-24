@@ -167,7 +167,7 @@
       cursor: default;
       opacity: 1;
     }
-    .availability-note, .preview-caption { margin-top: 16px; color: var(--gray); font-size: 13px; text-align: center; }
+    .availability-note, .capture-caption { margin-top: 16px; color: var(--gray); font-size: 13px; text-align: center; }
     .cta .availability-button { background: rgba(255,255,255,0.12); color: var(--white); border: 1px solid rgba(255,255,255,0.35); }
     .cta .availability-note { color: rgba(255,255,255,0.7); position: relative; }
 
@@ -188,18 +188,19 @@
       background: var(--surface);
     }
 
-    /* ───── Phone mockup / hero image area ───── */
+    /* ───── Native simulator captures ───── */
     .hero__visual {
-      margin-top: 64px;
+      max-width: 520px;
+      margin: 64px auto 0;
       display: flex;
       justify-content: center;
-      gap: 24px;
+      gap: 32px;
       align-items: flex-end;
-      flex-wrap: wrap;
     }
 
     .phone-mock {
-      width: 260px;
+      flex: 0 1 280px;
+      min-width: 0;
       background: var(--surface);
       border-radius: 36px;
       padding: 12px;
@@ -209,95 +210,22 @@
         0 0 0 1px rgba(0,0,0,0.04);
     }
 
-    .phone-mock__screen {
-      width: 100%;
-      background: var(--white);
-      border-radius: 26px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-    }
-
-    .phone-mock__screen img {
+    .phone-mock img, .watch-mock img {
       width: 100%;
       height: auto;
-      object-fit: contain;
-    }
-
-    /* Placeholder screen content (used when images can't load) */
-    .phone-placeholder {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      padding: 24px;
-      text-align: center;
-      color: var(--gray);
-    }
-
-    .phone-placeholder__icon {
-      width: 48px; height: 48px;
-      border-radius: 12px;
-      background: var(--surface);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .phone-placeholder__label {
-      font-size: 13px;
-      font-weight: 600;
+      border-radius: 24px;
     }
 
     .watch-mock {
-      width: 120px;
-      background: var(--black);
+      flex: 0 1 200px;
+      min-width: 0;
+      background: var(--surface);
       border-radius: 28px;
       padding: 8px;
       box-shadow:
         0 4px 6px rgba(0,0,0,0.06),
         0 20px 40px rgba(0,0,0,0.1);
       margin-bottom: 30px;
-    }
-
-    .watch-mock__screen {
-      width: 100%;
-      aspect-ratio: 1 / 1.15;
-      background: #1a1a1a;
-      border-radius: 22px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 14px;
-      color: #fff;
-      gap: 6px;
-    }
-
-    .watch-mock__hr {
-      font-size: 28px;
-      font-weight: 700;
-      letter-spacing: -1px;
-      line-height: 1;
-    }
-
-    .watch-mock__label {
-      font-size: 9px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      opacity: 0.6;
-    }
-
-    .watch-mock__reps {
-      font-size: 15px;
-      font-weight: 600;
-      color: #3da37a;
     }
 
     /* ───── Features ───── */
@@ -416,36 +344,6 @@
       font-weight: 800;
       margin-bottom: 24px;
     }
-
-    .step__image {
-      width: 100%;
-      aspect-ratio: 4 / 3;
-      background: var(--white);
-      border-radius: 12px;
-      margin-bottom: 20px;
-      overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    }
-
-    .step__image img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-
-    /* Placeholder inside step images */
-    .step__placeholder {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      color: var(--gray);
-    }
-
-    .step__placeholder svg { opacity: 0.4; }
 
     .step__name {
       font-size: 20px;
@@ -591,10 +489,10 @@
 
       .hero { padding: 110px 0 60px; }
 
-      .hero__visual { gap: 16px; }
-
-      .phone-mock { width: 200px; }
-      .watch-mock { width: 100px; margin-bottom: 20px; }
+      .hero__visual { max-width: 420px; gap: 16px; }
+      .phone-mock { padding: 8px; border-radius: 28px; }
+      .watch-mock { padding: 6px; border-radius: 22px; margin-bottom: 20px; }
+      .phone-mock img, .watch-mock img { border-radius: 18px; }
 
       .features__grid {
         grid-template-columns: 1fr;
@@ -667,45 +565,15 @@
       </div>
       <p class="availability-note" id="hero-availability">A public test link is not available yet.</p>
 
-      <!-- Hero visual — phone mockups + watch -->
       <div class="hero__visual">
-        <!-- Phone: Today screen -->
         <div class="phone-mock">
-          <div class="phone-mock__screen">
-            <img src="assets/phone-today.png" width="351" height="958" alt="Design preview of the Spottr Today screen" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-            <div class="phone-placeholder" style="display:none;">
-              <div class="phone-placeholder__icon">
-                <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#737373" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-              </div>
-              <span class="phone-placeholder__label">Today</span>
-            </div>
-          </div>
+          <img src="assets/today-simulator.jpg" width="368" height="800" alt="Spottr Today on the iPhone simulator, with a weekly target and Start session button.">
         </div>
-
-        <!-- Watch -->
-        <div class="watch-mock" role="img" aria-label="Watch design preview: sample 142 BPM and 8 reps">
-          <div class="watch-mock__screen">
-            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="#ac3535"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-            <span class="watch-mock__hr">142</span>
-            <span class="watch-mock__label">BPM</span>
-            <span class="watch-mock__reps">8 reps</span>
-          </div>
-        </div>
-
-        <!-- Phone: Train screen -->
-        <div class="phone-mock">
-          <div class="phone-mock__screen">
-            <img src="assets/phone-train.png" width="351" height="838" alt="Design preview of the Spottr training screen" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-            <div class="phone-placeholder" style="display:none;">
-              <div class="phone-placeholder__icon">
-                <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#737373" stroke-width="1.5"><path d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8zM6 1v3M10 1v3M14 1v3"/></svg>
-              </div>
-              <span class="phone-placeholder__label">Live Training</span>
-            </div>
-          </div>
+        <div class="watch-mock">
+          <img src="assets/watch-simulator.jpg" width="671" height="800" alt="Spottr on the Apple Watch simulator: Squats, zero of twelve reps, no heart-rate reading, and Pause and End set controls.">
         </div>
       </div>
-      <p class="preview-caption">Design previews with sample data.</p>
+      <p class="capture-caption">iPhone and Watch simulator captures</p>
     </div>
   </section>
 
@@ -781,19 +649,11 @@
       <div class="how__header">
         <p class="how__kicker">How It Works</p>
         <h2 class="how__title">Set up. Show up. Get stronger.</h2>
-        <p class="preview-caption">Illustrations and interface concepts shown below.</p>
       </div>
 
       <div class="how__steps">
         <!-- Step 1 -->
         <div class="step">
-          <div class="step__image">
-            <img src="assets/landing-studio.png" width="1056" height="1100" alt="Earlier design concept for the Spottr training experience" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-            <div class="step__placeholder" style="display:none;">
-              <svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#737373" stroke-width="1.5"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="18" r="1"/></svg>
-              <span style="font-size:12px; font-weight:600;">Position</span>
-            </div>
-          </div>
           <div class="step__number">1</div>
           <h3 class="step__name">Position Your Phone</h3>
           <p class="step__desc">Place your phone side-on, about 2–3 m away. Full body in frame, good lighting.</p>
@@ -801,13 +661,6 @@
 
         <!-- Step 2 -->
         <div class="step">
-          <div class="step__image">
-            <img src="assets/landing-field.png" width="1056" height="1246" alt="Earlier design concept for a Spottr push-up screen" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-            <div class="step__placeholder" style="display:none;">
-              <svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#737373" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-              <span style="font-size:12px; font-weight:600;">Train</span>
-            </div>
-          </div>
           <div class="step__number">2</div>
           <h3 class="step__name">Train</h3>
           <p class="step__desc">Spottr tracks your reps, monitors your form and delivers one coaching cue at a time.</p>
@@ -815,13 +668,6 @@
 
         <!-- Step 3 -->
         <div class="step">
-          <div class="step__image">
-            <img src="assets/phone-review.png" width="351" height="893" alt="Design preview of a session report" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-            <div class="step__placeholder" style="display:none;">
-              <svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#737373" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-              <span style="font-size:12px; font-weight:600;">Review</span>
-            </div>
-          </div>
           <div class="step__number">3</div>
           <h3 class="step__name">Review & Improve</h3>
           <p class="step__desc">Review recorded reps and tempo, with Watch data when available. Choose what to work on&nbsp;next.</p>
