@@ -1,0 +1,71 @@
+{
+  "archive_url": "https://archive.ics.uci.edu/static/public/231/pamap2+physical+activity+monitoring.zip",
+  "archive_bytes": 688226940,
+  "archive_sha256": "76b3580bd5a804121f507717cb498c66a312ef5c774f4a78ac470e6558add352",
+  "readme_sha256": "99a0339f1d754089fc2f7f2c24f5a47888a51dc0646a8b210af60358c00da30d",
+  "source_license": "CC BY4.0 per UCI dataset DOI10.24432/C5NW2H",
+  "attribution": "Reiss, A. (2012). PAMAP2 Physical Activity Monitoring [Dataset]. UCI Machine Learning Repository. DOI10.24432/C5NW2H.",
+  "outer_members": [
+    {
+      "name": "PAMAP2_Dataset.zip",
+      "bytes": 688167640,
+      "compressed_bytes": 688167640,
+      "crc32": "cddb7e68"
+    },
+    {
+      "name": "readme.pdf",
+      "bytes": 59070,
+      "compressed_bytes": 59070,
+      "crc32": "3e140780"
+    }
+  ],
+  "data_zip": ".local/research/PAMAP2/PAMAP2_Dataset.zip",
+  "data_zip_sha256": "6c2282b5b52775cd0588d450d10a315260c94fa3228b9fe453f48c47fda106f4",
+  "protocol_members": [
+    {
+      "name": "PAMAP2_Dataset/Protocol/subject101.dat",
+      "bytes": 141698539,
+      "crc32": "0f2b670a"
+    },
+    {
+      "name": "PAMAP2_Dataset/Protocol/subject102.dat",
+      "bytes": 207349310,
+      "crc32": "038c96e0"
+    },
+    {
+      "name": "PAMAP2_Dataset/Protocol/subject103.dat",
+      "bytes": 117863364,
+      "crc32": "3e780cdd"
+    },
+    {
+      "name": "PAMAP2_Dataset/Protocol/subject104.dat",
+      "bytes": 153227482,
+      "crc32": "37238300"
+    },
+    {
+      "name": "PAMAP2_Dataset/Protocol/subject105.dat",
+      "bytes": 173773599,
+      "crc32": "fcafa15f"
+    },
+    {
+      "name": "PAMAP2_Dataset/Protocol/subject106.dat",
+      "bytes": 168263273,
+      "crc32": "60b600c2"
+    },
+    {
+      "name": "PAMAP2_Dataset/Protocol/subject107.dat",
+      "bytes": 145823268,
+      "crc32": "f429bf32"
+    },
+    {
+      "name": "PAMAP2_Dataset/Protocol/subject108.dat",
+      "bytes": 190019653,
+      "crc32": "0284deaa"
+    },
+    {
+      "name": "PAMAP2_Dataset/Protocol/subject109.dat",
+      "bytes": 3891140,
+      "crc32": "18bd062c"
+    }
+  ]
+}

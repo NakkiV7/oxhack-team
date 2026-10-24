@@ -1,0 +1,297 @@
+[
+  {
+    "subject": 101,
+    "group": "train",
+    "status": "loaded",
+    "rows": 376417,
+    "first_timestamp": 8.38,
+    "last_timestamp": 3772.54,
+    "valid_hr_observations": 34389,
+    "raw_hr_missing_fraction": 0.9086412143978619,
+    "coverage": {
+      "10": {
+        "planned_origins": 753,
+        "hr_input_eligible": 742,
+        "wrist_input_eligible": 741,
+        "target_observed": 751,
+        "hr_scored": 740,
+        "wrist_scored": 739
+      },
+      "30": {
+        "planned_origins": 753,
+        "hr_input_eligible": 742,
+        "wrist_input_eligible": 741,
+        "target_observed": 747,
+        "hr_scored": 736,
+        "wrist_scored": 735
+      }
+    },
+    "input_abstention_reasons": {
+      "hr:insufficient_history": 10,
+      "hr:history_coverage": 1,
+      "wrist:wrist_coverage": 1
+    }
+  },
+  {
+    "subject": 102,
+    "group": "train",
+    "status": "loaded",
+    "rows": 447000,
+    "first_timestamp": 5.64,
+    "last_timestamp": 4475.63,
+    "valid_hr_observations": 40795,
+    "raw_hr_missing_fraction": 0.9087360178970917,
+    "coverage": {
+      "10": {
+        "planned_origins": 894,
+        "hr_input_eligible": 883,
+        "wrist_input_eligible": 879,
+        "target_observed": 890,
+        "hr_scored": 880,
+        "wrist_scored": 876
+      },
+      "30": {
+        "planned_origins": 894,
+        "hr_input_eligible": 883,
+        "wrist_input_eligible": 879,
+        "target_observed": 886,
+        "hr_scored": 876,
+        "wrist_scored": 872
+      }
+    },
+    "input_abstention_reasons": {
+      "hr:insufficient_history": 10,
+      "hr:history_coverage": 1,
+      "wrist:wrist_coverage": 4
+    }
+  },
+  {
+    "subject": 103,
+    "group": "train",
+    "status": "loaded",
+    "rows": 252833,
+    "first_timestamp": 5.64,
+    "last_timestamp": 2533.96,
+    "valid_hr_observations": 23096,
+    "raw_hr_missing_fraction": 0.90865116499824,
+    "coverage": {
+      "10": {
+        "planned_origins": 505,
+        "hr_input_eligible": 494,
+        "wrist_input_eligible": 494,
+        "target_observed": 503,
+        "hr_scored": 492,
+        "wrist_scored": 492
+      },
+      "30": {
+        "planned_origins": 505,
+        "hr_input_eligible": 494,
+        "wrist_input_eligible": 494,
+        "target_observed": 499,
+        "hr_scored": 488,
+        "wrist_scored": 488
+      }
+    },
+    "input_abstention_reasons": {
+      "hr:insufficient_history": 10,
+      "hr:history_gap": 1
+    }
+  },
+  {
+    "subject": 104,
+    "group": "train",
+    "status": "loaded",
+    "rows": 329576,
+    "first_timestamp": 5.71,
+    "last_timestamp": 3301.46,
+    "valid_hr_observations": 30115,
+    "raw_hr_missing_fraction": 0.9086250212394107,
+    "coverage": {
+      "10": {
+        "planned_origins": 659,
+        "hr_input_eligible": 648,
+        "wrist_input_eligible": 636,
+        "target_observed": 657,
+        "hr_scored": 646,
+        "wrist_scored": 634
+      },
+      "30": {
+        "planned_origins": 659,
+        "hr_input_eligible": 648,
+        "wrist_input_eligible": 636,
+        "target_observed": 653,
+        "hr_scored": 642,
+        "wrist_scored": 630
+      }
+    },
+    "input_abstention_reasons": {
+      "hr:insufficient_history": 10,
+      "hr:history_gap": 1,
+      "wrist:wrist_coverage": 12
+    }
+  },
+  {
+    "subject": 105,
+    "group": "train",
+    "status": "loaded",
+    "rows": 374783,
+    "first_timestamp": 5.7,
+    "last_timestamp": 3753.52,
+    "valid_hr_observations": 34223,
+    "raw_hr_missing_fraction": 0.9086858261980932,
+    "coverage": {
+      "10": {
+        "planned_origins": 749,
+        "hr_input_eligible": 738,
+        "wrist_input_eligible": 732,
+        "target_observed": 746,
+        "hr_scored": 735,
+        "wrist_scored": 729
+      },
+      "30": {
+        "planned_origins": 749,
+        "hr_input_eligible": 738,
+        "wrist_input_eligible": 732,
+        "target_observed": 742,
+        "hr_scored": 731,
+        "wrist_scored": 725
+      }
+    },
+    "input_abstention_reasons": {
+      "hr:insufficient_history": 10,
+      "hr:history_gap": 1,
+      "wrist:wrist_coverage": 6
+    }
+  },
+  {
+    "subject": 106,
+    "group": "validation",
+    "status": "loaded",
+    "rows": 361817,
+    "first_timestamp": 5.89,
+    "last_timestamp": 3624.05,
+    "valid_hr_observations": 33049,
+    "raw_hr_missing_fraction": 0.9086582443610997,
+    "coverage": {
+      "10": {
+        "planned_origins": 723,
+        "hr_input_eligible": 712,
+        "wrist_input_eligible": 712,
+        "target_observed": 722,
+        "hr_scored": 711,
+        "wrist_scored": 711
+      },
+      "30": {
+        "planned_origins": 723,
+        "hr_input_eligible": 712,
+        "wrist_input_eligible": 712,
+        "target_observed": 718,
+        "hr_scored": 707,
+        "wrist_scored": 707
+      }
+    },
+    "input_abstention_reasons": {
+      "hr:insufficient_history": 10,
+      "hr:history_gap": 1
+    }
+  },
+  {
+    "subject": 107,
+    "group": "validation",
+    "status": "loaded",
+    "rows": 313599,
+    "first_timestamp": 5.92,
+    "last_timestamp": 3141.9,
+    "valid_hr_observations": 28646,
+    "raw_hr_missing_fraction": 0.908654045452951,
+    "coverage": {
+      "10": {
+        "planned_origins": 627,
+        "hr_input_eligible": 616,
+        "wrist_input_eligible": 611,
+        "target_observed": 625,
+        "hr_scored": 614,
+        "wrist_scored": 609
+      },
+      "30": {
+        "planned_origins": 627,
+        "hr_input_eligible": 616,
+        "wrist_input_eligible": 611,
+        "target_observed": 621,
+        "hr_scored": 610,
+        "wrist_scored": 605
+      }
+    },
+    "input_abstention_reasons": {
+      "hr:insufficient_history": 10,
+      "hr:history_gap": 1,
+      "wrist:wrist_coverage": 5
+    }
+  },
+  {
+    "subject": 108,
+    "group": "test",
+    "status": "loaded",
+    "rows": 408031,
+    "first_timestamp": 5.89,
+    "last_timestamp": 4086.19,
+    "valid_hr_observations": 37179,
+    "raw_hr_missing_fraction": 0.9088819231872088,
+    "coverage": {
+      "10": {
+        "planned_origins": 816,
+        "hr_input_eligible": 805,
+        "wrist_input_eligible": 801,
+        "target_observed": 814,
+        "hr_scored": 803,
+        "wrist_scored": 799
+      },
+      "30": {
+        "planned_origins": 816,
+        "hr_input_eligible": 805,
+        "wrist_input_eligible": 801,
+        "target_observed": 810,
+        "hr_scored": 799,
+        "wrist_scored": 795
+      }
+    },
+    "input_abstention_reasons": {
+      "hr:insufficient_history": 10,
+      "hr:history_gap": 1,
+      "wrist:wrist_coverage": 4
+    }
+  },
+  {
+    "subject": 109,
+    "group": "test",
+    "status": "loaded",
+    "rows": 8477,
+    "first_timestamp": 15.47,
+    "last_timestamp": 100.23,
+    "valid_hr_observations": 776,
+    "raw_hr_missing_fraction": 0.9084581809602453,
+    "coverage": {
+      "10": {
+        "planned_origins": 17,
+        "hr_input_eligible": 6,
+        "wrist_input_eligible": 6,
+        "target_observed": 15,
+        "hr_scored": 4,
+        "wrist_scored": 4
+      },
+      "30": {
+        "planned_origins": 17,
+        "hr_input_eligible": 6,
+        "wrist_input_eligible": 6,
+        "target_observed": 11,
+        "hr_scored": 0,
+        "wrist_scored": 0
+      }
+    },
+    "input_abstention_reasons": {
+      "hr:insufficient_history": 8,
+      "hr:history_coverage": 2,
+      "hr:history_gap": 1
+    }
+  }
+]

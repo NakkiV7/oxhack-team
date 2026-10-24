@@ -1,0 +1,53 @@
+{
+  "protocol_id": "pamap2-hr-forecast-v1",
+  "locked_at_utc": "2026-10-24T20:39:59Z",
+  "status": "locked before data fitting; source metadata inspected only",
+  "dataset": {
+    "name": "PAMAP2 Physical Activity Monitoring",
+    "doi": "10.24432/C5NW2H",
+    "url": "https://archive.ics.uci.edu/dataset/231/pamap2+physical+activity+monitoring",
+    "archive_url": "https://archive.ics.uci.edu/static/public/231/pamap2+physical+activity+monitoring.zip",
+    "license": "UCI declares CC BY 4.0; retain archive notices and attribution",
+    "sessions": "Protocol only; Optional excluded before inspection",
+    "train": [101, 102, 103, 104, 105],
+    "validation": [106, 107],
+    "test": [108, 109],
+    "missing_subject_rule": "Report absent/short/zero-eligible participants; never replace after outcomes. Test is exploratory with two participants."
+  },
+  "task": {
+    "horizons_seconds": [10, 30],
+    "origin_stride_seconds": 5,
+    "history_seconds": 60,
+    "target": "Arithmetic mean of five observed 1-second HR-bin means in (origin+horizon-5, origin+horizon]. All five bins must have actual finite positive observations; no target interpolation.",
+    "inputs": "Actual recorded HR and optional wrist 16g acceleration only at timestamps <= origin. Exclude activity IDs, chest/ankle IMUs, demographics, future observations and session summaries.",
+    "one_second_bins": "Right closed (end-1,end]; computed from actual samples; no interpolation or forward fill. Nonfinite and nonpositive HR are missing.",
+    "input_eligibility": "At least54/60 observed HR bins; latest actual HR age <=2s; no gap >4s including history edges. Negative/nonmonotonic/duplicate timestamps invalidate the source session rather than silently reorder it.",
+    "wrist_eligibility": "Optional wrist model needs >=90% finite acceleration triads of expected100Hz samples in past10s. HR-only model remains separately reportable.",
+    "abstention": "Reject ineligible input before target lookup. Keep target-missing separate from input abstention. Report every planned origin, input-eligible count, target-observed count, scored count and their denominators. No residual-based rejection."
+  },
+  "models": {
+    "persistence": "Latest actual valid HR available at origin, held constant for each horizon.",
+    "hr_ridge_features": ["latest_hr", "latest_age_seconds", "observed_hr_bin_fraction", "mean_10s", "std_10s", "mean_30s", "std_30s", "mean_60s", "std_60s", "min_60s", "max_60s", "slope_30s", "latest_minus_mean_60s"],
+    "wrist_extra_features": ["norm_mean_10s", "norm_std_10s", "norm_95th_percentile_10s", "norm_first_difference_rms_10s"],
+    "ridge_target": "Future target HR minus latest_hr; add latest_hr back after regression.",
+    "alphas": [0.1, 1.0, 10.0],
+    "normalization": "Fit feature mean/SD on training participants only; zero-SD features scale1. No per-test-person centering. Standardized ridge with intercept.",
+    "selection": "For each horizon choose among persistence and six ridge variants by validation participant-macro MAE on common wrist-eligible observed-target origins. Tie within1e-9: persistence, HR-only, HR+wrist, then larger alpha. Retain all prespecified candidates for transparent results; selected primary remains fixed before test scoring.",
+    "training_weight": "Each training participant has equal total fit weight, so long sessions do not dominate.",
+    "empty_common_validation": "If no common validation opportunities, omit wrist variants and select persistence/HR-only on common HR-eligible validation origins; explicitly report this fallback. No test selection."
+  },
+  "secondary_adaptation": {
+    "status": "Separate from frozen primary, fixed before test",
+    "model": "Selected frozen model plus per-participant per-horizon bias. Initial bias0; once each target matures, update bias=clip(0.95*bias+0.05*(observed_target-frozen_prediction),-10,10).",
+    "ordering": "At an origin, issue prediction using bias from previously matured labels only. Process current-time mature labels after issuing current-origin prediction. Each prediction outcome updates once; no label/target lookup may affect earlier predictions. Reset bias per participant; do not tune on test.",
+    "report": "Score before update, report frozen vs adaptive on same delivered origins, cold-start first10 matured outcomes separately, and full chronological traces. A losing adapter remains a reported negative result."
+  },
+  "metrics": {
+    "primary": "Participant-macro MAE in bpm at each horizon; paired per-participant delta versus persistence.",
+    "secondary": ["per-participant MAE/RMSE/signed bias", "pooled window MAE explicitly labeled dependent windows", "coverage with counts and denominators", "frozen/adaptive same-origin comparison", "actual wall/CPU time and peak RSS"],
+    "uncertainty": "No window-wise confidence intervals or significance claims. With two held-out people report both outcomes; no population precision claim or calibrated prediction band.",
+    "success": "A reproducible completed benchmark is success; lower error is a hypothesis. Report persistence winning and any zero-coverage participant."
+  },
+  "budget": {"download_limit_bytes": 800000000, "cpu_threads": 2, "memory_bytes": 4294967296, "compute_wall_seconds": 600, "derived_artifact_bytes": 100000000, "gpu": false, "hpc": false},
+  "claim_limits": ["No Apple Watch transfer or real-device validation", "No clinical or recovery/readiness claim", "No reps-to-failure/RIR labels or prediction", "No app integration or personalized model deployment"]
+}

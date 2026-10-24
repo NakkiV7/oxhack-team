@@ -1,0 +1,18 @@
+test_adaptation_predicts_before_matured_update_and_never_reuses_outcome (test_contract.ForecastContractTests.test_adaptation_predicts_before_matured_update_and_never_reuses_outcome) ... ok
+test_future_outcome_cannot_update_adaptation_and_bias_is_bounded (test_contract.ForecastContractTests.test_future_outcome_cannot_update_adaptation_and_bias_is_bounded) ... ok
+test_future_samples_cannot_change_origin_features (test_contract.ForecastContractTests.test_future_samples_cannot_change_origin_features) ... ok
+test_missing_target_bin_is_not_filled_or_interpolated (test_contract.ForecastContractTests.test_missing_target_bin_is_not_filled_or_interpolated) ... ok
+test_negative_nonfinite_hr_and_missing_wrist_are_not_measurements (test_contract.ForecastContractTests.test_negative_nonfinite_hr_and_missing_wrist_are_not_measurements) ... ok
+test_nonmonotonic_duplicate_or_negative_timestamps_rejected (test_contract.ForecastContractTests.test_nonmonotonic_duplicate_or_negative_timestamps_rejected) ... ok
+test_participants_have_one_locked_group_unknown_and_overlap_rejected (test_contract.ForecastContractTests.test_participants_have_one_locked_group_unknown_and_overlap_rejected) ... ok
+test_scaling_uses_training_only_and_handles_constant_feature (test_contract.ForecastContractTests.test_scaling_uses_training_only_and_handles_constant_feature) ... ok
+test_stale_or_gappy_history_abstains_even_when_target_exists (test_contract.ForecastContractTests.test_stale_or_gappy_history_abstains_even_when_target_exists) ... ok
+test_target_is_only_five_observed_seconds_ending_at_horizon (test_contract.ForecastContractTests.test_target_is_only_five_observed_seconds_ending_at_horizon) ... ok
+test_changed_archive_cannot_be_used_with_original_provenance (test_training_boundary.SourceIntegrityTests.test_changed_archive_cannot_be_used_with_original_provenance) ... ok
+test_held_out_labels_and_features_cannot_affect_fitted_models (test_training_boundary.TrainingBoundaryTests.test_held_out_labels_and_features_cannot_affect_fitted_models) ... ok
+test_model_selection_refuses_test_rows (test_training_boundary.TrainingBoundaryTests.test_model_selection_refuses_test_rows) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 1.394s
+
+OK
