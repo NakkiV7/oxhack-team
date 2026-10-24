@@ -35,9 +35,11 @@ export function pickSide(lm) {
   return score(0) >= score(1) ? 0 : 1;
 }
 
-export function measure(lm, side, variation) {
+// aspect = image width / height. MediaPipe x and y are normalized separately, so x is scaled by it to get
+// square units before measuring angles; without it a horizontal body on a wide video looks more bent.
+export function measure(lm, side, variation, aspect = 1) {
   const cfg = VARIATIONS[variation];
-  const p = (j) => lm[JOINTS[j][side]];
+  const p = (j) => { const q = lm[JOINTS[j][side]]; return { x: q.x * aspect, y: q.y, visibility: q.visibility }; };
   const [sh, el, wr, hip, ref] = [p('shoulder'), p('elbow'), p('wrist'), p('hip'), p(cfg.lineRef)];
   const elbow = angle(sh, el, wr);
   const line = angle(sh, hip, ref);
@@ -84,8 +86,9 @@ export class RepCounter {
     this.sawIssue = null;
   }
 
-  // m = measure(...) output; returns the rep record when a rep completes, else null.
-  update(m) {
+  // m = measure(...) output, t = clock in seconds (optional, only used for rep timing);
+  // returns the rep record when a rep completes, else null.
+  update(m, t = null) {
     if (m.minVis < 0.5 || Number.isNaN(m.elbow)) return null;
     const cfg = VARIATIONS[this.variation];
     // Light smoothing: landmarks jitter frame to frame.
@@ -101,6 +104,7 @@ export class RepCounter {
     if (this.state === 'up' && this.elbow < cfg.up - 10) {
       this.state = 'down'; // lowering started
       this.#resetRep();
+      this.startT = t;
     }
     if (this.state === 'down') {
       this.minElbow = Math.min(this.minElbow, this.elbow);
@@ -110,13 +114,13 @@ export class RepCounter {
       }
       if (this.elbow >= cfg.up) {
         this.state = 'up';
-        return this.#finish(cfg);
+        return this.#finish(cfg, t);
       }
     }
     return null;
   }
 
-  #finish(cfg) {
+  #finish(cfg, t) {
     const reachedDepth = this.minElbow <= cfg.down;
     const straight = this.minLine >= cfg.minLine;
     const issue = !reachedDepth
@@ -130,6 +134,7 @@ export class RepCounter {
       good: reachedDepth && straight,
       minElbow: Math.round(this.minElbow),
       minLine: Math.round(this.minLine),
+      secs: t != null && this.startT != null && t >= this.startT ? Math.round((t - this.startT) * 10) / 10 : null, // lowering start -> back up
       issue,
     };
     this.reps.push(rep);

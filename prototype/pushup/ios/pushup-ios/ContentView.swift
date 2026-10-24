@@ -4,8 +4,12 @@ import SwiftUI
 struct ContentView: View {
     @AppStorage("macHost") private var host = ""
     @AppStorage("voice") private var voiceOn = true
+    @AppStorage("controlCode") private var controlCode = ""
+    @State private var confirmStop = false
+    @State private var controlError: String?
     @State private var client = PushupClient()
     @State private var showSettings = false
+    @State private var summaryDismissed = false // 'Done' on the phone; resets when the next workout starts
     private let speaker = Speaker()
 
     var body: some View {
@@ -32,6 +36,7 @@ struct ContentView: View {
             if host.isEmpty { showSettings = true } else { client.connect(to: host) }
         }
         .onChange(of: client.state?.total) { _, _ in announceRep() }
+        .onChange(of: client.state?.summary != nil) { _, shown in if !shown { summaryDismissed = false } }
     }
 
     // MARK: Header
@@ -90,6 +95,13 @@ struct ContentView: View {
                 .foregroundStyle(toneColor(s.tone))
 
             PoseView(state: s, image: client.frame)
+                .overlay {
+                    if let summary = s.summary, !summaryDismissed {
+                        summaryCard(summary)
+                    }
+                }
+
+            if s.active == true { controlBar(s) }
 
             coachBubble
 
@@ -99,8 +111,11 @@ struct ContentView: View {
                         .minimumScaleFactor(0.5).lineLimit(1)
                     Text("reps").font(.footnote).foregroundStyle(.secondary)
                     Text("\(s.good) good form").font(.footnote.weight(.medium)).foregroundStyle(.green)
+                    Label(formatClock(s.clockMs ?? 0), systemImage: "stopwatch")
+                        .font(.footnote.monospacedDigit()).foregroundStyle(.secondary)
+                    paceLabel(s)
                 }
-                .frame(width: 110, alignment: .leading)
+                .frame(width: 120, alignment: .leading)
 
                 VStack(spacing: 8) {
                     gauge("Elbow angle", value: s.elbow, caption: "down ≤ \(Int(s.down))°, up ≥ \(Int(s.up))°",
@@ -112,6 +127,105 @@ struct ContentView: View {
 
             history(s.reps)
         }
+    }
+
+    /// Pause / Resume (uploaded video only) and Stop. Commands go to the Mac, which does the work and echoes the new state back.
+    private func controlBar(_ s: PushupState) -> some View {
+        VStack(spacing: 4) {
+            HStack(spacing: 10) {
+                if s.canPause == true {
+                    Button { send(s.paused == true ? "resume" : "pause") } label: {
+                        Label(s.paused == true ? "Resume" : "Pause", systemImage: s.paused == true ? "play.fill" : "pause.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                }
+                Button(role: .destructive) { confirmStop = true } label: {
+                    Label("Stop", systemImage: "stop.fill").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent).tint(.red)
+            }
+            .controlSize(.large)
+            if let controlError {
+                Text(controlError).font(.caption).foregroundStyle(.red).multilineTextAlignment(.center)
+            }
+        }
+        .confirmationDialog("End this workout?", isPresented: $confirmStop, titleVisibility: .visible) {
+            Button("End workout", role: .destructive) { send("stop") }
+            Button("Keep going", role: .cancel) {}
+        } message: {
+            Text("Your reps and time so far will be summarised.")
+        }
+    }
+
+    private func send(_ cmd: String) {
+        Task {
+            controlError = await client.control(cmd, code: controlCode)
+            if controlError != nil { showSettingsIfCodeMissing() }
+        }
+    }
+
+    private func showSettingsIfCodeMissing() {
+        if controlCode.trimmingCharacters(in: .whitespaces).isEmpty { showSettings = true }
+    }
+
+    /// "1.9 s/rep ▲ slowing": orange when slowing down (tiring), green when faster.
+    private func paceLabel(_ s: PushupState) -> some View {
+        let trend: (text: String, color: Color) = switch s.pace {
+        case "slowing": (" ▲ slowing", .orange)
+        case "faster": (" ▼ faster", .green)
+        case "steady": (" – steady", .secondary)
+        default: ("", .secondary)
+        }
+        return Text("\(s.avgSecs.map { String(format: "%.1f", $0) } ?? "–") s/rep\(trend.text)")
+            .font(.caption).foregroundStyle(trend.color).lineLimit(2).minimumScaleFactor(0.8)
+    }
+
+    /// Time colour for a rep that was slower / faster than the average so far.
+    private func paceColor(_ pace: String?) -> Color {
+        switch pace {
+        case "slow": .yellow
+        case "fast": .green
+        default: .secondary
+        }
+    }
+
+    /// Mirrors the Mac's end-of-workout panel; stays up until the Mac hides it or you tap Done.
+    private func summaryCard(_ sm: WorkoutSummary) -> some View {
+        ScrollView {
+            VStack(spacing: 10) {
+                Text("Workout summary").font(.headline)
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
+                    tile(formatClock(sm.timeMs), "Total time")
+                    tile("\(sm.reps)", "Reps")
+                    tile("\(sm.good)", "Good form")
+                    tile(formatSeconds(sm.avg), "Avg / rep")
+                    tile(formatSeconds(sm.fastest), "Fastest")
+                    tile(formatSeconds(sm.slowest), "Slowest")
+                }
+                Text("\(sm.label)\(sm.notCounted > 0 ? " · \(sm.notCounted) not counted" : "")")
+                    .font(.caption).foregroundStyle(.secondary)
+                if let issue = sm.topIssue {
+                    Text("Most common issue: \(issue) (×\(sm.topIssueCount))").font(.caption).multilineTextAlignment(.center)
+                } else if sm.reps > 0 {
+                    Text("Clean form all the way. Nice.").font(.caption)
+                }
+                Button("Done") { summaryDismissed = true }.buttonStyle(.borderedProminent)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity)
+        }
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func tile(_ value: String, _ label: String) -> some View {
+        VStack(spacing: 2) {
+            Text(value).font(.title3.bold().monospacedDigit()).minimumScaleFactor(0.6).lineLimit(1)
+            Text(label).font(.caption2).foregroundStyle(.secondary).textCase(.uppercase)
+        }
+        .padding(.vertical, 8).frame(maxWidth: .infinity)
+        .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 10))
     }
 
     private func toneColor(_ tone: String) -> Color {
@@ -164,6 +278,15 @@ struct ContentView: View {
         }
     }
 
+    /// "Rep 3: elbow 85°, line 176°, ⏱ 2.4 s" with the time tinted when the rep was slower or faster than average.
+    private func repTitle(_ rep: Rep) -> Text {
+        let time = rep.secs.map { String(format: "%.1f s", $0) }
+        guard rep.counted else { return Text("Not counted\(time.map { " (\($0))" } ?? "")") }
+        let base = "Rep \(rep.n): elbow \(rep.minElbow)°, line \(rep.minLine)°"
+        guard let time else { return Text(base) }
+        return Text("\(base), \(Text("⏱ \(time)").foregroundStyle(paceColor(rep.pace)))")
+    }
+
     /// Fixed-size frame: only the list inside scrolls, so the rest of the dashboard stays put.
     private func history(_ reps: [Rep]) -> some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -177,8 +300,7 @@ struct ContentView: View {
                         HStack(alignment: .top) {
                             Text(rep.counted ? (rep.good ? "✅" : "⚠️") : "✖️")
                             VStack(alignment: .leading) {
-                                Text(rep.counted ? "Rep \(rep.n): elbow \(rep.minElbow)°, line \(rep.minLine)°" : "Not counted")
-                                    .font(.subheadline)
+                                repTitle(rep).font(.subheadline)
                                 if let issue = rep.issue { Text(issue).font(.caption).foregroundStyle(.secondary) }
                             }
                         }
@@ -207,6 +329,16 @@ struct ContentView: View {
                     Text("Mac address")
                 } footer: {
                     Text("The IP printed by `npm run ui` in the pushup folder (same Wi-Fi). Add :port if you changed PORT.")
+                }
+                Section {
+                    TextField("e.g. 3fa91c07", text: $controlCode)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .font(.body.monospaced())
+                } header: {
+                    Text("Control code")
+                } footer: {
+                    Text("Shown at the top of the Mac page and printed by `npm run ui`. Lets this phone pause and stop the workout.")
                 }
                 Section {
                     Toggle("Speak reps and advice", isOn: $voiceOn)
@@ -258,7 +390,7 @@ struct CoachLogView: View {
         var date: Date {
             switch self {
             case .tip(let m): m.date
-            case .qa(let q): q.time
+            case .qa(let q): q.date
             }
         }
     }
@@ -347,7 +479,7 @@ struct CoachLogView: View {
             }
             .padding(12)
             .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 16))
-            timestamp(q.time)
+            timestamp(q.date)
         }
     }
 
