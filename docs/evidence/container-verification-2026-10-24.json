@@ -1,0 +1,120 @@
+{
+  "date": "2026-10-24",
+  "sourceCommit": "777a388",
+  "scope": "Local Linux/arm64 container verification; no hosted deployment or provider requests.",
+  "image": {
+    "id": "sha256:1f59556a4b1bb2885e548a9cdf56c49f1f7835ee309eb7e0bb0f358c52ffa38e",
+    "architecture": "arm64",
+    "os": "linux",
+    "sizeBytes": 82640575,
+    "user": "node"
+  },
+  "build": {
+    "exitCode": 0,
+    "seconds": 17.12,
+    "contextBytesReported": "68.57kB"
+  },
+  "runtime": {
+    "user": "node",
+    "network": "none",
+    "readOnly": true,
+    "publishedPorts": {},
+    "mounts": [],
+    "capDrop": [
+      "ALL"
+    ],
+    "securityOpt": [
+      "no-new-privileges:true"
+    ],
+    "imageFilesMatch": 19
+  },
+  "uid": 1000,
+  "readOnlyWriteFailure": "EROFS",
+  "dockerHealth": "healthy",
+  "httpStatuses": {
+    "health": 200,
+    "unauthenticated": 401,
+    "wrongToken": 401,
+    "unknownRoute": 404,
+    "missingProvider": 503,
+    "malformedWithoutProvider": 503
+  },
+  "injectedProviderBoundary": {
+    "statuses": {
+      "malformedJSON": 400,
+      "unknownField": 422,
+      "blankMessage": 422
+    },
+    "providerCalls": 0,
+    "scope": "built-image HTTP boundary with in-memory fake provider configuration; real container provider env stays blank"
+  },
+  "caddy": {
+    "image": "caddy:2.11.7-alpine@sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f",
+    "validationExit": 0,
+    "network": "none",
+    "source": "deploy/Caddyfile",
+    "examplesOnly": true,
+    "seconds": 0.25,
+    "testHarnessFirstAttempt": "Extra cap_drop ALL beyond actual Compose caused pre-exec EPERM; committed Compose has no such Caddy setting."
+  },
+  "cleanup": {
+    "remainingTaskContainers": [],
+    "taskVMStopped": true,
+    "defaultDockerContextPreserved": "desktop-linux"
+  },
+  "sourceSHA256": {
+    "server/Dockerfile": "4fb4849b8d8c15c506c9089477b613051fe48fd71149272c41d4bdae62ca5cfe",
+    "server/Dockerfile.dockerignore": "fd46535c781225cb1ffeda56697c61e30bfd6f908128ca7736320a421f27ddd1",
+    "server/package.json": "1ff4399653c5fe71e61d569a029e968d62600f5c1de17d62583e9ae9ab89a769",
+    "server/package-lock.json": "6ee16005a25ae87723c0c92f5dd9cc85cf267ec484dfec2e6e700d821dc15fc3",
+    "Shared/Core/ExerciseCatalog.swift": "e979c2a0d1b800ccc82d29aadafd93eaf30a629df810d5e31de1c439c09c3f1d",
+    "server/src/contracts.mjs": "3d7813a2c3e5a21051e528271ae79a093da38888a903aceb7741ce8ad2683e57",
+    "server/src/errors.mjs": "fa3940f3f24d73c9e2093134f3b42712677d2394109ff6d95b985db8714c0a73",
+    "server/src/gateway.mjs": "7aa19029fc963d31e2dd08620cc73bdf1f3a99a58136475277d3a206f7b00251",
+    "server/src/migrate.mjs": "04ea9abc70908d8a3d09c459b9e343f4ae67c37d05f1d553ee06826c8b8363b1",
+    "server/src/snowflake-benchmark-cli.mjs": "4c58da6940d290f7180cb4352eb7bba242f1d6fb49e1d9339f214fab19530e90",
+    "server/src/snowflake-benchmark-client.mjs": "11686856f8e32b3f31f8f4af6591b0a4f17b3281e20fe14507affb4f079ea6e0",
+    "server/src/snowflake-benchmark.mjs": "544c9862e9b806785b88103ee78e3894a298e12ed64d998ea09a3047d46add72",
+    "server/src/snowflake-check.mjs": "c5fff27a781afe46dbd665542b4a5671df584c037638619b84074a2edd344f93",
+    "server/src/snowflake-transport.mjs": "a7981fa1d7547b4056c4125ae7a6f352a4494ea972f477e42dd98d2cbcf58337",
+    "server/src/snowflake.mjs": "eb3575f14d0b7a1467e1a488f8d2a83cc0fb71a450cde047bf0bbbc22491dd2d",
+    "server/src/start.mjs": "148ef7a089bd32ace0752890b2b2a0c62af675c75f3911e7bc77eb5d7d4bdaa0",
+    "server/src/tiger-contracts.mjs": "1cb2f4454b19dcdeb66c880458721dacd0dca99382977a29ffabbc58ba2e2122",
+    "server/src/tiger-smoke-cli.mjs": "136e5fdebbcc76dd99514743204d55c3b2f83b86086b9d8a455657bc1296de93",
+    "server/src/tiger-smoke.mjs": "ae49a84a3dca12b4dc8701bbebb077c05fceee9c58f36976a4754f5bf75cb5a1",
+    "server/src/tiger.mjs": "b97e8831bb695de3ec87aecec8d7d72f1bd8f3edaa774e4396003c39352681ee",
+    "server/migrations/001_workouts.sql": "229c3e7ff228e7ea07224496b20840ca2f8d40100c84a97a26572b1aae07f18a",
+    "deploy/Caddyfile": "bf5fe1aae1ec5d636d14c94c6fc93229337e8ab664fc94aec34025462a316628",
+    "deploy/compose.yaml": "9c89967f78dc82ee202a4d7af985c8914034b2fed76d5430c71cf265a0f28939",
+    "deploy/deployment.env.example": "f3d780b26eae394232f55a28d565f0882eca863e6614e2c0ff7057da35d83c5d",
+    "deploy/gateway.env.example": "c284c970245b03873fa6053242aa832fdfb9b2b90ae155717445b7af0f30008e"
+  },
+  "imageFileSHA256": {
+    "server/package.json": "1ff4399653c5fe71e61d569a029e968d62600f5c1de17d62583e9ae9ab89a769",
+    "server/package-lock.json": "6ee16005a25ae87723c0c92f5dd9cc85cf267ec484dfec2e6e700d821dc15fc3",
+    "Shared/Core/ExerciseCatalog.swift": "e979c2a0d1b800ccc82d29aadafd93eaf30a629df810d5e31de1c439c09c3f1d",
+    "server/src/contracts.mjs": "3d7813a2c3e5a21051e528271ae79a093da38888a903aceb7741ce8ad2683e57",
+    "server/src/errors.mjs": "fa3940f3f24d73c9e2093134f3b42712677d2394109ff6d95b985db8714c0a73",
+    "server/src/gateway.mjs": "7aa19029fc963d31e2dd08620cc73bdf1f3a99a58136475277d3a206f7b00251",
+    "server/src/migrate.mjs": "04ea9abc70908d8a3d09c459b9e343f4ae67c37d05f1d553ee06826c8b8363b1",
+    "server/src/snowflake-benchmark-cli.mjs": "4c58da6940d290f7180cb4352eb7bba242f1d6fb49e1d9339f214fab19530e90",
+    "server/src/snowflake-benchmark-client.mjs": "11686856f8e32b3f31f8f4af6591b0a4f17b3281e20fe14507affb4f079ea6e0",
+    "server/src/snowflake-benchmark.mjs": "544c9862e9b806785b88103ee78e3894a298e12ed64d998ea09a3047d46add72",
+    "server/src/snowflake-check.mjs": "c5fff27a781afe46dbd665542b4a5671df584c037638619b84074a2edd344f93",
+    "server/src/snowflake-transport.mjs": "a7981fa1d7547b4056c4125ae7a6f352a4494ea972f477e42dd98d2cbcf58337",
+    "server/src/snowflake.mjs": "eb3575f14d0b7a1467e1a488f8d2a83cc0fb71a450cde047bf0bbbc22491dd2d",
+    "server/src/start.mjs": "148ef7a089bd32ace0752890b2b2a0c62af675c75f3911e7bc77eb5d7d4bdaa0",
+    "server/src/tiger-contracts.mjs": "1cb2f4454b19dcdeb66c880458721dacd0dca99382977a29ffabbc58ba2e2122",
+    "server/src/tiger-smoke-cli.mjs": "136e5fdebbcc76dd99514743204d55c3b2f83b86086b9d8a455657bc1296de93",
+    "server/src/tiger-smoke.mjs": "ae49a84a3dca12b4dc8701bbebb077c05fceee9c58f36976a4754f5bf75cb5a1",
+    "server/src/tiger.mjs": "b97e8831bb695de3ec87aecec8d7d72f1bd8f3edaa774e4396003c39352681ee",
+    "server/migrations/001_workouts.sql": "229c3e7ff228e7ea07224496b20840ca2f8d40100c84a97a26572b1aae07f18a"
+  },
+  "unverified": [
+    "Hosted HTTPS and ACME",
+    "External allowlist and port exposure",
+    "Physical phone access",
+    "Linux/amd64 image build",
+    "Vultr account resources and credit eligibility"
+  ]
+}

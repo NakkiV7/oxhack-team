@@ -1,6 +1,6 @@
 # Release packaging
 
-Status checked on 24 October 2026. Source checks and simulator tests do not establish archive validation, App Store processing or TestFlight availability.
+Current checkpoint, 24 October 2026: build **0.1 (1)** is available to the owner’s internal TestFlight group; external access is waiting for Apple beta review. See [installation instructions](testflight.md) and the final beta-distribution section below. Earlier sections preserve the audit history and do not describe the current distribution state. Source checks and simulator tests alone do not establish archive validation, processing or availability.
 
 ## First-party privacy manifests
 
@@ -60,7 +60,7 @@ Independent staged-source review confirmed those settings, valid shared-scheme t
 
 The final native source at merge commit `3117ac1` archived and exported successfully using the existing distribution identity and explicit profiles. Both built apps contain version **0.1**, build **1**. Apple's `altool --validate-app` returned `VERIFY SUCCEEDED with no errors`; upload then returned `UPLOAD SUCCEEDED with no errors`. The 24,772,054-byte IPA has SHA-256 `90a35ee9c5c222326195338e1ebf06272369a9124e48e0d7a69f9007c17985eb`. Delivery/build ID: `c0ae3b81-9bd6-4e1a-9e95-a7cf9fba27be`. Private artifacts/logs remain under ignored `.local/release/mvp-build-1/`.
 
-The App Store Connect API subsequently reported `processingState: VALID`. Both beta states currently require export-compliance information; no usable public TestFlight invitation is claimed. The external **OxHack** group exists with its public link disabled. Beta description/test instructions and the existing owner's review contact are configured; no demo account is required. This does not submit the app for public App Store release. The SDK audit above remains a separate engineering concern: successful Apple processing is not proof of vendor privacy practices or signatures.
+The App Store Connect API subsequently reported `processingState: VALID`. At that upload checkpoint both beta states required export-compliance information and the external **OxHack** link was disabled. The beta-distribution checkpoint below supersedes those states. Beta description/test instructions and the existing owner's review contact were configured, with no demo account required. This did not submit the app for public App Store release. The SDK audit above remains a separate engineering concern: successful Apple processing is not proof of vendor privacy practices or signatures.
 
 ## Beta distribution checkpoint
 
