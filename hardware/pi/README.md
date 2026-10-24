@@ -2,11 +2,11 @@
 
 This companion captures and forwards camera JPEGs. The iPhone remains the training-session owner and runs pose inference and rep counting. This is preparation for replacing the Arduino hardware role with a Pi and a side camera; it does not implement onboard inference, Bluetooth, sensors, a display, workout state, or motor control.
 
-Nothing here has been copied to or started on the bootcamp Pi. Its current hostname, OS, camera support and available resources are unverified. Preserve the existing bootcamp/LAVA setup. Do not replace its network profile, autostart services, packages or working camera processes to try this adapter.
+The isolated companion was configured on the bootcamp Pi on 24 October 2026. Initial real camera JPEGs and authenticated HTTPS work, but the attached Elgato repeatedly disconnects over USB during capture; sustained capture is blocked. The companion is left running with the camera stopped. See [the hardware evidence](EVIDENCE-2026-10-24.md) for the verified endpoint, measurements and limits. Preserve the existing bootcamp/LAVA setup; no network, boot, package or existing service configuration was changed.
 
 ## Prerequisites and initial health check
 
-Use Python 3.10+ on Linux. Python dependencies are standard library only. Actual capture additionally needs an existing `ffmpeg` installation with the `v4l2` input and MJPEG encoder, a USB/V4L2 camera accessible to the current user, and support for 640×480 at 10 fps. Check the camera's actual modes before adapting those defaults. CSI/libcamera cameras need a separate driver and are not supported by this adapter.
+Use Python 3.10+ on Linux. Python dependencies are standard library only. Actual capture additionally needs an existing `ffmpeg` installation with the `v4l2` input and MJPEG encoder, and a USB/V4L2 camera accessible to the current user. The generic default is 640×480 at 10 fps; explicit input format, size and rate options support cameras with other advertised modes. CSI/libcamera cameras need a separate driver and are not supported by this adapter.
 
 When the Pi and camera are ready, manually copy only this directory to a separate checkout or folder. Check `python3 --version`, `command -v ffmpeg` and the camera device without installing anything automatically. If a prerequisite is absent, agree the installation or driver change with the owner of the existing Pi workload first.
 
@@ -27,7 +27,18 @@ export SPOTTR_PI_TOKEN
 python3 hardware/pi/companion.py --device /dev/video0
 ```
 
-For eventual network access, `--host <verified-Pi-interface-address>` binds the chosen interface and refuses to run without a token. This small development server supplies plain HTTP. Protect bearer tokens and camera images with a trusted HTTPS proxy or private encrypted tunnel before phone access. Native phone ingestion, its HTTPS endpoint, pairing UI and ATS/network acceptance are still outstanding. No port forwarding, DNS or service configuration is included here.
+For network access, `--host <verified-Pi-interface-address>` binds the chosen interface and refuses to run without a token. Set both `--tls-cert <certificate.pem>` and `--tls-key <private-key.pem>` for built-in HTTPS. Supplying only one TLS file fails closed. Without those options this small development server supplies plain HTTP; keep that mode on loopback or behind a private encrypted tunnel. Use a separate per-device certificate and explicitly verified certificate pin in the phone client; never disable TLS verification globally or expose the private key. No port forwarding, DNS or service configuration is included here.
+
+The verified Elgato advertises MJPEG 1920×1080 at 30 fps, rather than the generic defaults. This mode limits ffmpeg decode/encode threads and emits smaller, lower-rate frames:
+
+```bash
+python3 hardware/pi/companion.py --device /dev/video0 \
+  --input-format mjpeg --input-size 1920x1080 --input-fps 30 \
+  --output-size 640x360 --output-fps 10 \
+  --tls-cert /private/device-cert.pem --tls-key /private/device-key.pem
+```
+
+These options select supported modes; they do not resolve the observed USB disconnects. Do not start a second instance on the live companion's port.
 
 ## HTTP contract
 
@@ -54,8 +65,12 @@ FFmpeg runs only after authenticated explicit start, using a fixed argv list wit
 
 An ordinary browser `<img>` URL cannot attach a bearer header. Use a client that sends the header, or an authenticated fetch client for the MJPEG parts. Do not work around that by putting the token in a preview URL.
 
+## Native phone adapter
+
+The new native client and manual Keychain pairing form are described in [the native handoff](NATIVE-HANDOFF.md). Phone session integration and physical iPhone acceptance remain separate from this transport implementation.
+
 ## Acceptance still needed with the real camera
 
-The tests exercise real localhost HTTP and an injected capture/process boundary. Their test byte fixtures are never available in the runnable server. They establish HTTP behavior, authentication, framing, expiry and lifecycle handling; they do not establish Pi capture, resolution support, image orientation, exposure, clock quality, latency, side-view pose accuracy or iPhone ingestion.
+The tests exercise real localhost HTTP/HTTPS and an injected capture/process boundary. Their test byte fixtures are never available in the runnable server. They establish HTTP behavior, authentication, framing, expiry, explicit camera modes and lifecycle handling. The separate live observation establishes initial 640×360 camera JPEGs and secure LAN reachability; it does not establish sustained capture, image orientation, exposure quality, sensor timing, side-view pose accuracy or iPhone ingestion.
 
 Once the actual camera is connected, explicitly start it and verify a real JPEG, preview, timestamps, stop, missing-camera response and lease expiry. Measure end-to-end delay and dropped frames, confirm the iPhone rejects stale/duplicate side frames, and validate the side-view exercise tracking before counting reps from this source. Keep the phone's own session and inference as the authority throughout that integration.
