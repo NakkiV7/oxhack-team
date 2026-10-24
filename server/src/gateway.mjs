@@ -112,6 +112,18 @@ export function createGateway({ env = process.env, fetchImpl = fetch, pool } = {
         try {
           if (requiredMethod === 'GET') {
             const url = new URL(request.url, 'http://localhost');
+            if (url.pathname === '/v1/workouts/calendar') {
+              return send(response, 200, await store.calendar({
+                year: url.searchParams.get('year'),
+                month: url.searchParams.get('month')
+              }));
+            }
+            if (url.pathname === '/v1/workouts/statistics') {
+              return send(response, 200, await store.statistics({
+                days: url.searchParams.get('days'),
+                exercise: url.searchParams.get('exercise')
+              }));
+            }
             const segments = url.pathname.split('/');
             if (segments.length === 4) return send(response, 200, await store.read(segments[3]));
             if (segments.length !== 5 || segments[4] !== 'telemetry') throw new GatewayError(404, 'not_found', 'Endpoint not found.');

@@ -66,6 +66,42 @@ export function createTigerStore({ pool, installationID }) {
         FROM spottr_gateway.scalar_sample WHERE installation_id = $1 AND workout_id = $2 AND measured_at >= $3 AND measured_at < $4
         ORDER BY measured_at, sample_index, kind LIMIT 21600`, [owner, workoutID.toLowerCase(), from, to]);
       return { workoutID: workoutID.toLowerCase(), samples: result.rows };
+    },
+    async calendar({ year, month } = {}) {
+      const y = Number(year) || new Date().getFullYear();
+      const m = Number(month) || (new Date().getMonth() + 1);
+      const start = new Date(Date.UTC(y, m - 1, 1)).toISOString();
+      const end = new Date(Date.UTC(y, m, 1)).toISOString();
+      const result = await pool.query(
+        `SELECT workout_date::text AS date, workout_id AS "workoutID", total_reps AS "totalReps",
+                total_active_seconds AS "activeSeconds", tracked_sets_count AS "setsCount"
+         FROM spottr_gateway.daily_workout_summary
+         WHERE installation_id = $1 AND workout_date >= $2::date AND workout_date < $3::date
+         ORDER BY workout_date ASC`,
+        [owner, start, end]
+      );
+      return { year: y, month: m, days: result.rows };
+    },
+    async statistics({ days = 30, exercise = 'all' } = {}) {
+      const dayWindow = Math.min(Math.max(Number(days) || 30, 1), 365);
+      const params = [owner, `${dayWindow} days`];
+      let exerciseClause = '';
+      if (exercise && exercise !== 'all') {
+        params.push(exercise);
+        exerciseClause = 'AND exercise = $3';
+      }
+      const result = await pool.query(
+        `SELECT session_date::date::text AS date, exercise,
+                SUM(reps)::int AS reps,
+                ROUND(AVG(cadence_seconds_per_rep)::numeric, 2) AS avg_cadence,
+                ROUND(AVG(reps_in_reserve)::numeric, 1) AS avg_reserve
+         FROM spottr_gateway.set_progression
+         WHERE installation_id = $1 AND session_date >= (now() - $2::interval) ${exerciseClause}
+         GROUP BY session_date::date, exercise
+         ORDER BY session_date::date ASC`,
+        params
+      );
+      return { rangeDays: dayWindow, series: result.rows };
     }
   };
 }
