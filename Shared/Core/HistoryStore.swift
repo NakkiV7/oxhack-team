@@ -12,4 +12,15 @@ public struct HistoryStore {
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try JSONEncoder().encode(records).write(to: url, options: .atomic)
     }
+    public func export(to destination: URL) throws {
+        guard destination.standardizedFileURL != url.standardizedFileURL else { throw CocoaError(.fileWriteInvalidFileName) }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let data = try encoder.encode(load())
+        try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try data.write(to: destination, options: .atomic)
+    }
+    public func clear() throws {
+        if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
+    }
 }

@@ -3,10 +3,11 @@ import SwiftUI
 @main
 struct SpottrApp: App {
     @State private var store = TrainingStore()
+    @State private var profileStore = NativeProfileStore()
     @Environment(\.scenePhase) private var scenePhase
     var body: some Scene {
         WindowGroup {
-            SpottrRoot(store: store).preferredColorScheme(.light).tint(.black)
+            SpottrRoot(store: store, profileStore: profileStore).preferredColorScheme(.light).tint(.black)
                 .task {
                     defer { store.cancelCoaching() }
                     var publishSnapshot = true
