@@ -20,7 +20,9 @@ final class TrainingStore {
     private var preferredSide: Int?
 
     init() {
-        let folder = URL.applicationSupportDirectory.appendingPathComponent("Spottr")
+        let root = URL.applicationSupportDirectory.appendingPathComponent("Spottr")
+        let namespace = ProcessInfo.processInfo.environment["SPOTTR_DATA_NAMESPACE"].flatMap(UUID.init(uuidString:))
+        let folder = namespace.map { root.appendingPathComponent($0.uuidString) } ?? root
         historyStore = HistoryStore(url: folder.appendingPathComponent("history.json"))
         do { history = try historyStore.load().reversed() }
         catch { self.error = "Couldn’t read your saved sessions." }

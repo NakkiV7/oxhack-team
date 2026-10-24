@@ -1,8 +1,16 @@
 import XCTest
 
 final class SpottrFlowTests: XCTestCase {
+    @MainActor func testSeparateStorageNamespaceStartsWithEmptyHistory() {
+        let app = XCUIApplication()
+        app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
+        app.launch()
+        app.tabBars.buttons["Progress"].tap()
+        XCTAssertTrue(app.staticTexts["Your first session starts here."].waitForExistence(timeout: 3))
+    }
     @MainActor func testUnavailableCameraLeavesVideoAndStopControlsUsable() {
         let app = XCUIApplication()
+        app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
         app.launch()
         app.buttons["Start session"].tap()
         app.buttons["Use camera"].tap()
@@ -12,6 +20,7 @@ final class SpottrFlowTests: XCTestCase {
     }
     @MainActor func testSessionCanPauseFinishAndPersist() {
         let app = XCUIApplication()
+        app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
         app.launch()
         XCTAssertTrue(app.buttons["Start session"].waitForExistence(timeout: 10))
         app.buttons["Start session"].tap()
