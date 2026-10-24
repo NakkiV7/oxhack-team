@@ -2,6 +2,79 @@ import Foundation
 import Testing
 @testable import SpottrCore
 
+@Test func recordsActualRestBetweenCompletedSetsWithoutInitialPreparation() {
+    var session = TrainingSession()
+    session.start(at: 100)
+    session.endSet(at: 102)
+    session.nextSet(at: 113)
+    session.endSet(at: 115)
+    #expect(session.sets.first?.restSecondsBefore == nil)
+    #expect(session.sets.last?.restSecondsBefore == 11)
+}
+
+@Test(arguments: [Double.nan, Double.infinity, -Double.infinity])
+func rejectsNonFiniteSetTransitionTimes(time: Double) {
+    var session = TrainingSession()
+    session.start(at: 0)
+    session.endSet(at: time)
+    #expect(session.phase == .active)
+    #expect(session.sets.isEmpty)
+    session.endSet(at: 2)
+    session.nextSet(at: time)
+    #expect(session.phase == .rest)
+    session.nextSet(at: 13)
+    session.endSet(at: 14)
+    #expect(session.sets.last?.restSecondsBefore == 11)
+}
+
+@Test func activeSetPausesDoNotBecomeRestBeforeTheNextSet() {
+    var session = TrainingSession()
+    session.start(at: 0)
+    session.pause(at: 1)
+    session.resume(at: 100)
+    session.endSet(at: 102)
+    session.nextSet(at: 113)
+    session.pause(at: 114)
+    session.resume(at: 200)
+    session.endSet(at: 201)
+    #expect(session.sets.first?.restSecondsBefore == nil)
+    #expect(session.sets.last?.restSecondsBefore == 11)
+    #expect(session.sets.last?.activeSeconds == 2)
+}
+
+@Test func restartingAnInputSourcePreservesPreviousRestWithoutCountingStaging() {
+    var session = TrainingSession()
+    session.start(at: 0)
+    session.restartSet(source: .video, at: 50)
+    session.endSet(at: 52)
+    session.nextSet(at: 63)
+    session.restartSet(source: .video, at: 100)
+    session.endSet(at: 102)
+    #expect(session.sets.first?.restSecondsBefore == nil)
+    #expect(session.sets.last?.restSecondsBefore == 11)
+    #expect(session.sets.last?.activeSeconds == 2)
+}
+
+@Test(arguments: [2.0, 1.0])
+func immediateOrBackwardsSetTransitionsRecordZeroRest(nextStart: Double) {
+    var session = TrainingSession()
+    session.start(at: 0)
+    session.endSet(at: 2)
+    session.nextSet(at: nextStart)
+    session.endSet(at: 3)
+    #expect(session.sets.last?.restSecondsBefore == 0)
+}
+
+@Test func legacySetJSONWithoutRestTimingRemainsReadable() throws {
+    let json = """
+    {"id":"00000000-0000-0000-0000-000000000001","exercise":"squat","number":1,
+     "reps":4,"target":12,"activeSeconds":20,"source":"camera","reason":"voluntary"}
+    """
+    let record = try JSONDecoder().decode(SetRecord.self, from: Data(json.utf8))
+    #expect(record.restSecondsBefore == nil)
+    #expect(record.reps == 4)
+}
+
 @Test func savesObservedRepDurationsAndClearsThemForNextSet() {
     var session = TrainingSession()
     session.start(at: 0)

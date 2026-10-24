@@ -74,7 +74,7 @@ struct CoachView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Your next move.").font(.system(size: 32, weight: .bold)).tracking(-1)
             Text("Ask about your training, or build a session you can make your own.").font(.subheadline).foregroundStyle(.secondary)
-            Text("Your message and recent training are shared with Gemini when you send or request a workout.")
+            Text("Your message, training sets and recorded Watch summaries are shared with Gemini when you tap Send or Propose.")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }
@@ -173,7 +173,7 @@ struct CoachSummaryCard: View {
                 Text(summary.focus.text).font(.subheadline).foregroundStyle(.secondary)
                 Text("Generated with Gemini from the recorded facts shared for this report.").font(.caption2).foregroundStyle(.secondary)
             } else {
-                Text("Generate a short summary from this \(kind == .weekly ? "week’s" : "session’s") saved sets. This shares recorded sets and skill game points with your gateway and Gemini when you tap.").font(.caption).foregroundStyle(.secondary)
+                Text("Share this \(kind == .weekly ? "week’s" : "session’s") training sets and recorded Watch summaries with Gemini when you tap.").font(.caption).foregroundStyle(.secondary)
             }
             if model.isLoading {
                 HStack { ProgressView(); Text("Thinking…").font(.caption); Spacer(); Button("Cancel") { task?.cancel(); model.cancel() } }

@@ -162,3 +162,16 @@ test('retained Watch readings are inserted once per sensor kind and observation 
   assert.equal(db.samples[0].sent_at, first.sentAt);
   assert.deepEqual((await store.read(workoutID)).record, snapshot);
 });
+
+
+test('Tiger preserves actual rest intervals while accepting legacy sets without them', async () => {
+  const set = { id: '3d861a67-a632-4dca-a64a-4b7c75137d67', exercise: 'squat', number: 1, reps: 1, target: 12, activeSeconds: 8, source: 'camera', reason: 'voluntary', repDurations: [2.5], restSecondsBefore: 47.25 };
+  const db = database();
+  const store = createTigerStore({ pool: db.pool, installationID });
+  await store.ingest({ installationID, record: { ...record, sets: [set] } });
+  assert.equal((await store.read(workoutID)).record.sets[0].restSecondsBefore, 47.25);
+  const legacy = { ...set }; delete legacy.restSecondsBefore;
+  const second = createTigerStore({ pool: database().pool, installationID });
+  await second.ingest({ installationID, record: { ...record, sets: [legacy] } });
+  await assert.rejects(createTigerStore({ pool: database().pool, installationID }).ingest({ installationID, record: { ...record, sets: [{ ...set, restSecondsBefore: -1 }] } }), error => error.status === 422);
+});

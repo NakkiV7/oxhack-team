@@ -59,7 +59,7 @@ Status per track, with the acceptance gate for each, is in [docs/ROADMAP.md](doc
 
 ## Start locally
 
-Use a Mac with Xcode and installed iOS 26/watchOS 26 SDKs, Ruby with the `xcodeproj` gem, and the Xcode command-line tools selected. The Foundation-only package needs Swift 6. The optional gateway needs Node 22.9+ and npm. Bootstrap checks prerequisites and explains missing ones; it never installs packages, uses sudo, creates simulators or erases devices.
+Use a Mac with Xcode and installed iOS 26/watchOS 26 SDKs, Ruby with the `xcodeproj` gem, and the Xcode command-line tools selected. The Foundation-only package needs Swift 6. The optional gateway needs Node 22.9+ and npm; the prepared Pi companion checks use Python 3.10+. Bootstrap checks prerequisites and explains missing ones; it never installs packages, uses sudo, creates simulators or erases devices.
 
 ```bash
 git clone https://github.com/NakkiV7/oxhack-team.git
@@ -75,7 +75,7 @@ Bootstrap downloads only missing, pinned MediaPipe 1.1.1 XCFrameworks, verifies 
 
 In Xcode, select `Spottr` and an **existing** iPhone simulator. Use `xcrun simctl list devices available` to find your own device; for Watch work select an existing paired Watch and `SpottrWatch`. Reuse installed devices; do not automatically create or erase them. Physical phone/Watch builds need your own signing team and a matching phone/Watch bundle-ID pair. Coordinate generator changes before sharing signing edits.
 
-The generated targets currently require iOS/watchOS 26; the standalone shared package supports older platforms. `./scripts/check.sh --static` checks shell/Ruby/JSON/JavaScript syntax only. Normal `check.sh` additionally runs the offline Swift and gateway tests and requires installed gateway dependencies. Native XCTest/UI checks are manual in Xcode (`Product → Test`) against your selected existing simulator. No CI/CD is configured.
+The generated targets currently require iOS/watchOS 26; the standalone shared package supports older platforms. `./scripts/check.sh --static` checks shell/Ruby/JSON/JavaScript and Python syntax only. Normal `check.sh` additionally runs the offline Swift, gateway and Pi companion tests and requires installed gateway dependencies. Native XCTest/UI checks are manual in Xcode (`Product → Test`) against your selected existing simulator. No CI/CD is configured.
 
 ## Optional local gateway and keys
 
@@ -94,7 +94,11 @@ Use the variable descriptions in [.env.example](.env.example) and the [gateway s
 
 The gateway defaults to `http://127.0.0.1:8787`; `GET /health` reports configuration without a provider call. Health readiness and a configured key do not prove a provider request succeeded. In **Coach → Coach settings** (sliders), enter the gateway URL and gateway access token, then save. The app stores the token in this-device Keychain. It accepts HTTPS and permits HTTP for localhost development; a physical phone needs a reachable HTTPS gateway. A remote deployment must provide its own authentication and transport hardening.
 
-Use Send, Propose or Generate summary to explicitly share recent saved sets and skill game points; raw sensor telemetry is not part of that request. Proposals start unselected: choose exercises, then **Approve & save selected exercises** to save a checklist. Each checklist item's Log action opens the manual logger; the camera foundation session remains a separate flow. Cancel/failure/invalid coaching preserves local reports and the current plan. See the gateway README for current routes and restrictions.
+Use Send, Propose or Generate summary to explicitly share saved training, skill game points and recorded Watch summaries; raw sensor streams are not sent. Proposals start unselected: choose exercises, then **Approve & save selected exercises** to save a checklist. Each checklist item's Log action opens the manual logger; the camera foundation session remains a separate flow. Cancel/failure/invalid coaching preserves local reports and the current plan. See the gateway README for current routes and restrictions.
+
+The local coaching policy evaluates form and pacing every second and at rep boundaries, using personal mean/sample SD from valid observed camera reps. It records actual rest between sets and emits expiring, prioritized text events for later voice playback. It makes no per-second provider call. See [coaching policy](docs/coaching-policy.md).
+
+The [Pi camera companion](hardware/pi/README.md) is prepared for a later attached USB camera, with explicit authenticated capture and stale-frame/lease handling. It has not been deployed to the Pi or connected to iPhone inference.
 
 ## Push-up CV prototype
 
