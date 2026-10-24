@@ -40,6 +40,8 @@ def main():
 
     live = args.source.isdigit()
     cap = cv2.VideoCapture(int(args.source) if live else args.source)
+    if not cap.isOpened():
+        raise SystemExit(f"cannot open {args.source!r}" + (" (grant camera access to your terminal app)" if live else ""))
     fps = cap.get(cv2.CAP_PROP_FPS) or 30
     pose, analyzer, coach = Pose(), SquatAnalyzer(), Coach()
     writer, n, t0 = None, 0, time.time()
