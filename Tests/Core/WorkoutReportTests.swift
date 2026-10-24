@@ -172,3 +172,23 @@ func reportRejectsInvalidOrIncompleteRecordedTempo(durations: [Double]) {
     #expect(report.averageRepSeconds == 7.8)
     #expect(report.timedRepCount == 2)
 }
+
+@Test func configuredCameraTimingsRequireSupportedSourceAndCompleteValidObservationArray() {
+    let cases: [(InputSource, String, Int, [Double]?, LoggedSet.QuantityOrigin?, Int)] = [
+        (.camera, "squat", 2, [1, 2], nil, 2),
+        (.camera, "pushup", 2, [1], nil, 0),
+        (.camera, "wallPushup", 2, [1, 2], nil, 0),
+        (.manual, "squat", 2, [1, 2], .selfReport, 0),
+        (.video, "squat", 2, [1, 2], nil, 0),
+        (.camera, "squat", 2, [1, .infinity], nil, 0),
+        (.camera, "squat", 2, [0.1, 2], nil, 0),
+        (.camera, "squat", 2, nil, nil, 0)
+    ]
+    for (source, exerciseID, reps, durations, origin, expected) in cases {
+        let set = LoggedSet(id: UUID(), exerciseID: exerciseID, reps: reps, seconds: 0,
+            source: source, reason: .voluntary, quantityOrigin: origin, repDurations: durations)
+        let report = WorkoutReport(record: .init(id: UUID(), date: Date(), sets: [], loggedSets: [set]))
+        #expect(report.timedRepCount == expected)
+        #expect(report.sets.first?.source == source)
+    }
+}

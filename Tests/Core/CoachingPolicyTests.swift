@@ -246,3 +246,28 @@ final class CoachingPolicyTests: XCTestCase {
     }
 
 }
+
+extension CoachingPolicyTests {
+    func testConfiguredCameraHistorySeedsRhythmButManualReplayAndInvalidTimingDoNot() {
+        let cases: [(InputSource, StopReason, [Double], String, Bool)] = [
+            (.camera, .voluntary, [1, 1, 1, 1, 1], "squat", true),
+            (.manual, .voluntary, [1, 1, 1, 1, 1], "squat", false),
+            (.video, .voluntary, [1, 1, 1, 1, 1], "squat", false),
+            (.camera, .discomfort, [1, 1, 1, 1, 1], "squat", false),
+            (.camera, .form, [1, 1, 1, 1, 1], "squat", false),
+            (.camera, .voluntary, [1, 1, 1, 1], "squat", false),
+            (.camera, .voluntary, [1, 1, 1, 1, .nan], "squat", false),
+            (.camera, .voluntary, [1, 1, 1, 1, 16], "squat", false),
+            (.camera, .voluntary, [1, 1, 1, 1, 1], "wallPushup", false)
+        ]
+        for (source, reason, durations, exerciseID, eligible) in cases {
+            let set = LoggedSet(id: UUID(), exerciseID: exerciseID, reps: 5, seconds: 0,
+                source: source, reason: reason, repDurations: durations)
+            let record = SessionRecord(id: UUID(), date: wallTime, sets: [], loggedSets: [set, set])
+            var policy = CoachingPolicy(history: [record, record])
+            let decision = policy.evaluate(input(now: 1, reps: 1, duration: 2))
+            XCTAssertEqual(decision?.reason, eligible ? CoachingReason.slowerRep : nil)
+            if eligible { XCTAssertTrue(decision?.facts.contains { $0.contains("5 prior reps") } == true) }
+        }
+    }
+}

@@ -89,24 +89,29 @@ struct WatchTrainingView: View {
     private func quantity(_ snapshot: CompanionSnapshot) -> String {
         guard let configured = snapshot.configured else { return "\(snapshot.reps)" }
         if configured.unit == .seconds { return "\(Int(configured.activeSeconds))" }
+        if configured.source == .camera { return "\(snapshot.reps)" }
         return configured.enteredReps.map(String.init) ?? "—"
     }
     private func instruction(_ snapshot: CompanionSnapshot) -> String {
         guard let configured = snapshot.configured else {
             if snapshot.phase == .rest { return "Take a breather." }
-            switch snapshot.cue {
-            case .ready, .tracking: return "Show your full body."
-            case .lower: return "Lower with control."
-            case .rise: return "Drive back up."
-            case .alignment: return "Brace a straight body."
-            case .controlled: return "Strong rep. Stay steady."
-            case .paused: return "Paused. Take a breath."
-            }
+            return shortCue(snapshot.cue)
         }
         if configured.stoppedForDiscomfort { return "Stop here. Finish this session and recover." }
         if snapshot.phase == .rest { return "Rest \(Int(configured.restElapsed ?? 0)) s · suggested \(configured.restTarget) s" }
-        if !configured.hasStarted { return "Start when you’re in position." }
+        if !configured.hasStarted { return "Start when ready." }
         if snapshot.phase == .paused { return "Paused. Resume when you’re ready." }
-        return configured.unit == .reps ? "Enter actual reps on iPhone before ending this set." : "Active hold timer. End the set when you stop."
+        if configured.source == .camera { return shortCue(snapshot.cue) }
+        return configured.unit == .reps ? "Enter reps on iPhone." : "Hold timer running."
+    }
+    private func shortCue(_ cue: Cue) -> String {
+        switch cue {
+        case .ready, .tracking: return "Show your full body."
+        case .lower: return "Lower with control."
+        case .rise: return "Drive back up."
+        case .alignment: return "Brace a straight body."
+        case .controlled: return "Strong rep. Stay steady."
+        case .paused: return "Paused. Take a breath."
+        }
     }
 }

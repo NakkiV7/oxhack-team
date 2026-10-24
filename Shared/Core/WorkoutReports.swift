@@ -88,7 +88,7 @@ public struct WorkoutReport: Identifiable, Sendable {
                 exerciseName: entry?.name ?? "Unknown exercise",
                 category: entry.map { WorkoutCategory(family: $0.family) } ?? .other,
                 reps: set.reps, holdSeconds: set.seconds, activeSeconds: set.activeSeconds ?? set.seconds,
-                source: set.source, reserve: set.reserve, reason: set.reason, repDurations: [],
+                source: set.source, reserve: set.reserve, reason: set.reason, repDurations: Self.recordedRepDurations(for: set),
                 restSecondsBefore: set.restSecondsBefore.flatMap { $0.isFinite && $0 >= 0 ? $0 : nil }, quantityOrigin: set.quantityOrigin)
         }
         sets = projectedSets.reduce(into: [ReportSet]()) { unique, set in
@@ -98,6 +98,13 @@ public struct WorkoutReport: Identifiable, Sendable {
 
     private static func recordedRepDurations(for set: SetRecord) -> [Double] {
         guard let durations = set.repDurations, set.reps > 0, durations.count == set.reps,
+              durations.allSatisfy({ $0.isFinite && (0.6...15).contains($0) }) else { return [] }
+        return durations
+    }
+    private static func recordedRepDurations(for set: LoggedSet) -> [Double] {
+        guard set.source == .camera, Exercise(rawValue: set.exerciseID) != nil,
+              set.seconds == 0, set.quantityOrigin == nil,
+              let durations = set.repDurations, set.reps > 0, durations.count == set.reps,
               durations.allSatisfy({ $0.isFinite && (0.6...15).contains($0) }) else { return [] }
         return durations
     }

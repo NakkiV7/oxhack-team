@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createTigerStore } from '../src/tiger.mjs';
 import { createGateway } from '../src/gateway.mjs';
+import { catalog } from '../src/contracts.mjs';
 import { once } from 'node:events';
 import { spawnSync } from 'node:child_process';
 
@@ -228,4 +229,42 @@ test('Tiger accepts explicit metadata bounds while keeping self-reported holds a
   const restored = (await store.read(workoutID)).record.loggedSets;
   assert.deepEqual(restored, loggedSets);
   assert.equal(Object.hasOwn(restored[1], 'activeSeconds'), false);
+});
+
+test('Tiger round-trips ordered mixed camera and manual plan sets with exact observed rep timing and legacy omissions', async () => {
+  const loggedSets = [
+    { id: 'f17e0000-0000-4000-8000-000000000019', exerciseID: 'squat', reps: 2, seconds: 0, source: 'camera', reason: 'target', number: 1, target: 2, activeSeconds: 16, repDurations: [0.6, 15] },
+    { id: 'f17e0000-0000-4000-8000-000000000020', exerciseID: 'plank', reps: 0, seconds: 30, source: 'manual', reason: 'voluntary', number: 1, target: 30, activeSeconds: 30, quantityOrigin: 'activeTimer' },
+    { id: 'f17e0000-0000-4000-8000-000000000021', exerciseID: 'pushup', reps: 0, seconds: 0, source: 'camera', reason: 'voluntary', quantityOrigin: null, repDurations: [] },
+    { id: 'f17e0000-0000-4000-8000-000000000022', exerciseID: 'squat', reps: 4, seconds: 0, source: 'camera', reason: 'voluntary', repDurations: null },
+    { id: 'f17e0000-0000-4000-8000-000000000023', exerciseID: 'squat', reps: 8, seconds: 0, source: 'manual', reason: 'target', quantityOrigin: 'selfReport' },
+    { id: 'f17e0000-0000-4000-8000-000000000024', exerciseID: 'pushup', reps: 200, seconds: 0, source: 'camera', reason: 'discomfort', repDurations: Array(200).fill(2) }
+  ];
+  const snapshot = { ...record, loggedSets, telemetry: [] };
+  const db = database();
+  const store = createTigerStore({ pool: db.pool, installationID });
+  await store.ingest({ installationID, record: snapshot });
+  assert.deepEqual((await store.read(workoutID)).record, snapshot);
+  assert.equal(Object.hasOwn((await store.read(workoutID)).record.loggedSets[4], 'repDurations'), false);
+  assert.equal((await store.ingest({ installationID, record: snapshot })).replayed, true);
+  assert.deepEqual(db.samples, []);
+});
+
+test('Tiger rejects unsupported camera timing provenance, mismatched counts and invalid durations before database access', async () => {
+  const camera = { id: 'f17e0000-0000-4000-8000-000000000025', exerciseID: 'squat', reps: 2, seconds: 0, source: 'camera', reason: 'voluntary', repDurations: [1, 2] };
+  const variant = catalog.find(exercise => exercise.unit === 'reps' && !['squat', 'pushup'].includes(exercise.id));
+  assert.ok(variant);
+  const invalid = [
+    { ...camera, source: 'manual' }, { ...camera, source: 'video' },
+    { ...camera, quantityOrigin: 'selfReport' }, { ...camera, exerciseID: variant.id },
+    { ...camera, exerciseID: 'plank', reps: 0, seconds: 30, repDurations: [] },
+    { ...camera, seconds: 1 }, { ...camera, repDurations: [1] }, { ...camera, repDurations: [1, 2, 3] },
+    { ...camera, reps: 0 }, { ...camera, reps: 201, repDurations: Array(201).fill(1) },
+    ...[0, -1, 0.5999, 15.0001, NaN, Infinity, -Infinity, '1', null].map(value => ({ ...camera, repDurations: [value, 2] })),
+    { ...camera, repDurations: '1,2' }, { ...camera, untrustedTiming: [1, 2] }
+  ];
+  let connections = 0;
+  const store = createTigerStore({ installationID, pool: { connect: async () => { connections += 1; throw Error('must not connect'); } } });
+  for (const set of invalid) await assert.rejects(store.ingest({ installationID, record: { ...record, loggedSets: [set] } }), error => error.status === 422);
+  assert.equal(connections, 0);
 });

@@ -60,13 +60,16 @@ public struct CoachingPolicy: Sendable {
         var sets = Set<UUID>()
         let uniqueSets = history.sorted { $0.date > $1.date }
             .filter { sessions.insert($0.id).inserted }
-            .map { $0.sets.filter { sets.insert($0.id).inserted } }
+            .map { WorkoutReport(record: $0).sets.filter { sets.insert($0.id).inserted } }
             .reversed().flatMap { $0 }
         seedBaseline = uniqueSets.reduce(into: [Exercise: [Double]]()) { baseline, set in
             guard set.source == .camera, set.reason != .discomfort, set.reason != .form,
-                  set.reps > 0, let durations = set.repDurations, durations.count == set.reps,
-                  durations.allSatisfy({ $0.isFinite && (0.6...15).contains($0) }) else { return }
-            baseline[set.exercise] = Array(((baseline[set.exercise] ?? []) + durations).suffix(60))
+                  set.reps > 0, let exercise = Exercise(rawValue: set.exerciseID),
+                  !set.repDurations.isEmpty, set.repDurations.count == set.reps,
+                  set.repDurations.count <= 200 else { return }
+            let durations = set.repDurations
+            guard durations.allSatisfy({ $0.isFinite && (0.6...15).contains($0) }) else { return }
+            baseline[exercise] = Array(((baseline[exercise] ?? []) + durations).suffix(60))
         }
         repBaseline = seedBaseline
     }

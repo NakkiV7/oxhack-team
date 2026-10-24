@@ -3,6 +3,47 @@ import XCTest
 
 @MainActor
 final class CoachFlowTests: XCTestCase {
+    func testDebugApprovedPlanFixtureRequiresAnIsolatedUUIDAndNeverPersists() throws {
+        let suite = "CoachPlanFixtureTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let stored = Data("original plan bytes".utf8)
+        defaults.set(stored, forKey: "coach.approvedPlan")
+        let fixture = #"{"items":[{"exerciseID":"squat","sets":1,"target":2,"unit":"reps","restSeconds":30}],"approvedAt":0,"rationale":"Synthetic fixture"}"#
+        let namespace = UUID().uuidString
+        let supplied = CoachSettings.planData(environment: ["SPOTTR_DATA_NAMESPACE": namespace, "SPOTTR_APPROVED_PLAN_FIXTURE": fixture], defaults: defaults)
+        #if DEBUG
+        let decoded = try JSONDecoder().decode(CoachSavedPlan.self, from: XCTUnwrap(supplied))
+        XCTAssertEqual(decoded.items.map(\.exerciseID), ["squat"])
+        XCTAssertNotNil(CoachModel(savedPlanData: supplied).approvedPlan)
+        #else
+        XCTAssertEqual(supplied, stored)
+        #endif
+        XCTAssertEqual(defaults.data(forKey: "coach.approvedPlan"), stored)
+
+        for environment in [[:], ["SPOTTR_APPROVED_PLAN_FIXTURE": fixture],
+                            ["SPOTTR_DATA_NAMESPACE": "not-a-uuid", "SPOTTR_APPROVED_PLAN_FIXTURE": fixture],
+                            ["SPOTTR_DATA_NAMESPACE": namespace, "SPOTTR_APPROVED_PLAN_FIXTURE": "{}"],
+                            ["SPOTTR_DATA_NAMESPACE": namespace]] {
+            XCTAssertEqual(CoachSettings.planData(environment: environment, defaults: defaults), stored)
+            XCTAssertEqual(defaults.data(forKey: "coach.approvedPlan"), stored)
+        }
+    }
+
+    func testDebugApprovedPlanFixtureDoesNotCreateAStoredPlan() throws {
+        let suite = "CoachPlanFixtureTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let fixture = #"{"items":[{"exerciseID":"pushup","sets":1,"target":2,"unit":"reps","restSeconds":30}],"approvedAt":0,"rationale":"Synthetic fixture"}"#
+        let supplied = CoachSettings.planData(environment: ["SPOTTR_DATA_NAMESPACE": UUID().uuidString, "SPOTTR_APPROVED_PLAN_FIXTURE": fixture], defaults: defaults)
+        #if DEBUG
+        XCTAssertNotNil(supplied)
+        #else
+        XCTAssertNil(supplied)
+        #endif
+        XCTAssertNil(defaults.data(forKey: "coach.approvedPlan"))
+    }
+
     private nonisolated static func response(for request: URLRequest) throws -> (Data, URLResponse) {
         let body = try XCTUnwrap(try JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any])
         let generation = try XCTUnwrap(body["generationID"] as? String)
