@@ -117,12 +117,19 @@ final class PushupClient {
             guard let text = String(data: message, encoding: .utf8) else { continue }
             let isFrame = text.hasPrefix("event: frame")
             let isCoach = text.hasPrefix("event: coach")
+            let isQA = text.hasPrefix("event: qa")
             for line in text.split(separator: "\n") where line.hasPrefix("data: ") {
                 if isFrame {
                     if let jpeg = Data(base64Encoded: String(line.dropFirst(6))) { frame = UIImage(data: jpeg) }
                     continue
                 }
                 let json = Data(line.dropFirst(6).utf8)
+                if isQA {
+                    if let qa = try? JSONDecoder().decode(QA.self, from: json) {
+                        if let i = chat.firstIndex(where: { $0.id == qa.id }) { chat[i] = qa } else { chat.append(qa) }
+                    }
+                    continue
+                }
                 if isCoach {
                     if let msg = try? JSONDecoder().decode(CoachMessage.self, from: json),
                        !coach.contains(where: { $0.time == msg.time }) { coach.append(msg) }
@@ -135,27 +142,41 @@ final class PushupClient {
         }
     }
 
+    private var localErrorId = 0
+
     /// Sends a question (max 256 characters) to the Mac, which answers from official health sources only.
+    /// The question and answer come back through the shared chat (`event: qa`), so every device sees them.
+    /// Only failures that never reached the Mac's log are shown locally.
     @MainActor func ask(_ question: String) async {
         let q = String(question.trimmingCharacters(in: .whitespacesAndNewlines).prefix(maxQuestionLength))
         guard !q.isEmpty else { return }
-        var item = QA(question: q)
-        chat.append(item)
-        let index = chat.count - 1
-        func finish(_ answer: String, sources: [Source] = [], failed: Bool = false) {
-            guard chat.indices.contains(index), chat[index].id == item.id else { return }
-            item.answer = answer; item.sources = sources; item.failed = failed
-            chat[index] = item
+        func localError(_ text: String) {
+            localErrorId -= 1 // negative ids never clash with server ids
+            chat.append(QA(id: localErrorId, time: Date().timeIntervalSince1970 * 1000, question: q, answer: text, sources: [], failed: true))
         }
-        guard let target else { return finish("Not connected to the Mac.", failed: true) }
+        guard let target else { return localError("Not connected to the Mac.") }
         do {
             let body = try JSONSerialization.data(withJSONObject: ["q": q])
             let data = try await HTTPPost.send(host: target.host, port: target.port, path: "/ask", body: body)
             let response = try JSONDecoder().decode(AskResponse.self, from: data)
-            if let answer = response.answer { finish(answer, sources: response.sources ?? []) }
-            else { finish(response.error ?? "No answer.", failed: true) }
+            if response.id == nil { localError(response.error ?? "No answer.") }
         } catch {
-            finish("Couldn't reach the coach. Check the connection and try again.", failed: true)
+            localError("Couldn't reach the coach. Check the connection and try again.")
+        }
+    }
+
+    /// Pause / resume / stop the workout on the Mac. `code` is shown on the Mac page. Returns an error text, or nil on success.
+    @MainActor func control(_ cmd: String, code: String) async -> String? {
+        guard let target else { return "Not connected to the Mac." }
+        let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "Enter the control code in settings (shown on the Mac page)." }
+        do {
+            let body = try JSONSerialization.data(withJSONObject: ["cmd": cmd, "token": trimmed])
+            let data = try await HTTPPost.send(host: target.host, port: target.port, path: "/control", body: body, timeout: 10)
+            let r = try JSONDecoder().decode(AskResponse.self, from: data)
+            return r.error
+        } catch {
+            return "Couldn't reach the Mac."
         }
     }
 

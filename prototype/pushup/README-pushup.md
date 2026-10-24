@@ -5,7 +5,9 @@ Counts push-up reps and checks posture from a webcam or a video, in the browser,
 Optional extras:
 
 - **iPhone display**: the Mac is the camera, an iPhone in front of you shows the count, live video with the body-line drawing, gauges and history, and speaks the reps.
-- **AI coach (Gemini)**: a short pep talk or tip every few reps, plus a Q&A box that answers only from official health pages (WHO, CDC, NHS, NIH) with citations.
+- **Workout timer and summary**: total workout time (frozen while paused), time per rep with the average and a slowing-down warning, a confirm step before **Stop**, and a summary over the video when you end the workout. Standard push-up is the default variation.
+- **Phone remote control**: pause, resume and stop from the iPhone using a control code shown on the Mac page.
+- **AI coach (Gemini)**: a short pep talk or tip every few reps, plus a Q&A box that answers only from official health pages (WHO, CDC, NHS, NIH) with citations. Questions and answers are shared between the Mac page and the iPhone.
 
 Not a medical or form-certified tool: a 2D side view cannot judge elbow flare or scapular issues.
 

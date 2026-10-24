@@ -4,3 +4,4 @@ models/*.task
 .DS_Store
 ios/**/xcuserdata/
 ios/build/
+.control-token

@@ -42,6 +42,17 @@ test('measure: straight body line, elbow angle follows the pose', () => {
   assert.ok(m.line > 175);
 });
 
+test('measure: corrects for image aspect ratio', () => {
+  // 1920x1080 frame, pixel coords shoulder (0,0), hip (100,10), ankle (200,0): true body line is about 168.6 deg
+  const lm = pose(170);
+  const px = (i, x, y) => { lm[i] = { x: (500 + x) / 1920, y: (500 + y) / 1080, visibility: 1 }; };
+  px(11, 0, 0); px(23, 100, 10); px(27, 200, 0);
+  const raw = measure(lm, 0, 'standard');
+  const fixed = measure(lm, 0, 'standard', 1920 / 1080);
+  assert.ok(Math.abs(fixed.line - 168.6) < 0.5);
+  assert.ok(raw.line < 161);
+});
+
 test('full reps with a straight body are counted and good', () => {
   const c = new RepCounter('standard');
   const reps = run(c, 'standard', cycle(70, 3));
@@ -85,4 +96,14 @@ test('changing the variation resets the count', () => {
   run(c, 'standard', cycle(70, 2));
   c.setVariation('knee');
   assert.equal(c.count, 0);
+});
+
+test('rep time: seconds from start of lowering to back up, null without a clock', () => {
+  const frames = [[170, 0], [170, 1], [120, 1.5], [70, 2.2], [70, 2.5], [120, 2.8], [170, 3.4], [170, 3.5], [170, 3.6]];
+  const f = (e) => ({ elbow: e, line: 178, hipDrop: 0, minVis: 1 });
+  const timed = new RepCounter('standard'), untimed = new RepCounter('standard');
+  let a, b;
+  for (const [e, t] of frames) { a = timed.update(f(e), t) || a; b = untimed.update(f(e)) || b; }
+  assert.ok(a.secs > 0 && a.secs < 3);
+  assert.equal(b.secs, null);
 });

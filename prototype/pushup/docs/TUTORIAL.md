@@ -25,7 +25,9 @@ Open <http://localhost:3001> (allow camera access for your browser in macOS Priv
 2. **Choose a variation** (easiest first): Wall, Incline (hands on a bench), Knee, Standard.
 3. Click **Start camera**. Get into the start position (arms extended) until the message says you are in position.
 4. Do reps. A rep counts only if your elbow bends below the variation's depth threshold and comes back up. The page shows reps, good-form count, live advice, elbow angle, body-line (straightness) and a per-rep history.
-5. **No camera?** Use "or video" to analyse a recorded side-view clip. **Reset reps** clears the count. **Stop** ends the session.
+5. **No camera?** Click **Upload video** to analyse a recorded side-view clip. It loops and keeps counting until you press **Pause** (then **Resume**) or **Stop**. If the browser says it cannot play the file, convert it to .mp4 (H.264); some iPhone .mov files do not play in Chrome.
+6. **Timer and pace:** the ⏱ clock is your total workout time and stops while paused. The history shows how long each rep took, tinted yellow if it was more than 15% slower than your average so far and green if more than 15% faster (needs 2 earlier reps). **s/rep** is the average; after 6 reps it shows **▲ slowing** (last 3 reps more than 15% slower, a sign of tiring), **▼ faster** or **steady**.
+7. **Stop** asks "End this workout?" first. After you end it, a **Workout summary** (total time, reps, good form, average / fastest / slowest rep, most common issue) appears over the video. **Start again**, Esc, or starting the camera / uploading a video hides it and begins a fresh workout. **Reset reps** clears the count, history and timer.
 
 What the messages mean:
 
@@ -66,6 +68,8 @@ Every session after that no cable is needed:
 1. Mac and iPhone on the same Wi-Fi. `npm run ui` running.
 2. In the app enter the Mac address (for example `192.168.1.23`, add `:3002` if you set `PORT`) and tap **Connect**. Allow the **Local Network** prompt.
 3. On the Mac page click **Start camera**.
+
+**Pause and stop from the phone:** the Mac page shows a **Phone code** at the top (also printed by `npm run ui`). In the app settings type it under **Control code** (once). While a workout runs, **Pause / Resume** (uploaded video only) and a red **Stop** appear under the video. Stop asks "End this workout?" first. The Mac page must stay open. The phone also shows the clock, average rep time, tinted rep times and the workout summary.
 
 Place the iPhone on the floor in front of you. The status dot is green when live, orange when connected but the Mac camera is off, red when disconnected (it reconnects by itself). The app keeps the screen awake; the speaker icon toggles voice.
 

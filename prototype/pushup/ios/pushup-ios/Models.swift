@@ -19,6 +19,14 @@ struct PushupState: Decodable, Equatable {
     var aspect: Double
     var pose: Pose?
     var reps: [Rep]
+    // Added later; optional so an older Mac page still decodes.
+    var clockMs: Double?   // workout time (frozen while paused or stopped)
+    var avgSecs: Double?   // average seconds per counted rep
+    var pace: String?      // "slowing" | "faster" | "steady" (needs 6 timed reps)
+    var active: Bool?      // a workout is running or paused (so Pause / Stop make sense)
+    var paused: Bool?
+    var canPause: Bool?    // only an uploaded video can be paused, not the live camera
+    var summary: WorkoutSummary? // non-nil while the Mac shows the end-of-workout summary
 
     var lineOK: Bool { (line ?? 0) >= minLine }
 }
@@ -39,7 +47,32 @@ struct Rep: Decodable, Equatable {
     var minElbow: Int
     var minLine: Int
     var issue: String?
+    var secs: Double?  // seconds from starting to lower until back up
+    var pace: String?  // "slow" | "fast" vs the average of earlier reps (nil = about average or too early to tell)
 }
+
+/// End-of-workout numbers, computed on the Mac (see summaryStats() in pushup/index.html).
+struct WorkoutSummary: Decodable, Equatable {
+    var timeMs: Double
+    var reps: Int
+    var good: Int
+    var avg: Double?
+    var fastest: Double?
+    var slowest: Double?
+    var notCounted: Int
+    var label: String
+    var topIssue: String?
+    var topIssueCount: Int
+}
+
+/// "05:07", or "1:05:07" past an hour. Same format as the Mac page.
+func formatClock(_ ms: Double) -> String {
+    let s = Int((ms / 1000).rounded()), h = s / 3600
+    let mmss = String(format: "%02d:%02d", (s / 60) % 60, s % 60)
+    return h > 0 ? "\(h):\(mmss)" : mmss
+}
+
+func formatSeconds(_ v: Double?) -> String { v.map { String(format: "%.1f s", $0) } ?? "–" }
 
 /// A pep talk or tip from the Gemini coach (generated on the Mac, see maybeCoach() in pushup/server.mjs).
 struct CoachMessage: Decodable, Equatable, Identifiable {
@@ -62,16 +95,18 @@ struct AskResponse: Decodable {
     var answer: String?
     var sources: [Source]?
     var error: String?
+    var id: Int? // set when the Mac logged the question (so it arrives through the shared chat instead)
 }
 
-/// One question the user typed and the coach's answer.
-struct QA: Identifiable, Equatable {
-    let id = UUID()
-    let time = Date()
+/// One question and the coach's answer. Lives on the Mac server, so it shows on every device (see `event: qa`).
+struct QA: Decodable, Identifiable, Equatable {
+    let id: Int
+    let time: Double // ms since 1970
     let question: String
     var answer: String?
     var sources: [Source] = []
     var failed = false // `answer` then holds the error text
+    var date: Date { Date(timeIntervalSince1970: time / 1000) }
     var pending: Bool { answer == nil }
 }
 

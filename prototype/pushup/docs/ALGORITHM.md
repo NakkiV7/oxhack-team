@@ -43,7 +43,7 @@ computed in 2D image coordinates (`angle()`). Two angles are used:
 | Elbow angle | shoulder - elbow - wrist | ~170-180 arms straight, small = deep |
 | Body line | shoulder - hip - ankle (knee for knee push-ups) | ~180 = perfectly straight body |
 
-Note: x and y are normalized separately, so on a non-square image angles are slightly distorted. This is acceptable for thresholds with margins, but it is a known approximation.
+Note: x and y are normalized separately, so `measure()` scales x by the image aspect ratio (width / height) before measuring angles; the page passes `video.videoWidth / video.videoHeight`. Without this a horizontal body on a wide video looks more bent than it is.
 
 ## 4. Hip offset (sag vs pike)
 
@@ -88,11 +88,11 @@ These are untuned starting points chosen by reasoning about range of motion, not
 
 ## 7. Streaming to the iPhone
 
-- The Mac page POSTs a JSON snapshot to `/state` about 10 times per second (immediately when a rep finishes). Fields: running, variation, count, good, total reps, feedback text and tone, phase, smoothed elbow and body-line angles, thresholds, video aspect ratio, normalized tracked-side joint positions, and the last 30 reps. The shape is mirrored by `ios/pushup-ios/Models.swift`: change both together.
+- The Mac page POSTs a JSON snapshot to `/state` about 10 times per second (immediately when a rep finishes). Fields: running, variation, count, good, total reps, feedback text and tone, phase, smoothed elbow and body-line angles, thresholds, video aspect ratio, normalized tracked-side joint positions, and the last 30 reps (each with `secs`, the seconds from starting to lower until back up, and `pace`, `slow` or `fast` against the average of earlier reps). It also carries the workout clock (`clockMs`), average rep time (`avgSecs`), trend (`pace`: slowing / faster / steady after 6 timed reps), `active` / `paused` / `canPause`, and `summary` (non-null while the Mac shows the end-of-workout summary). The shape is mirrored by `ios/pushup-ios/Models.swift`: change both together.
 - It also POSTs a 480 px JPEG of the camera (base64, about 8 per second) to `/frame`. Frames are forwarded, never stored, and only while a phone is connected.
-- `server.mjs` keeps the latest snapshot and fans state, frames and coach messages out over **Server-Sent Events** at `/events` (a `: ping` comment every 3 s as heartbeat). Frames use `event: frame`, coach messages `event: coach`.
+- `server.mjs` keeps the latest snapshot and fans state, frames and coach messages out over **Server-Sent Events** at `/events` (a `: ping` comment every 3 s as heartbeat). Frames use `event: frame`, coach messages `event: coach`, and coach questions and answers `event: qa` (the server keeps the last 50 and replays them on connect, so a question asked on either device shows on both).
 - The iOS app opens a raw TCP connection (`Network.framework`) and sends an HTTP/1.0 `GET /events`. HTTP/1.0 makes Node skip chunked encoding, so the body is plain `data: ...` blocks to parse. Raw TCP also avoids App Transport Security blocking plain `http://` to a LAN IP. If no bytes arrive for 8 s the app reconnects. Questions to the coach use a raw HTTP/1.0 `POST /ask` the same way (`ios/pushup-ios/HTTPPost.swift`).
-- Security: the server listens on all interfaces, but only `GET /events`, `GET /state` and `POST /ask` are served to non-loopback clients. The page, assets, `POST /state`, `POST /frame` and `GET /coach-events` return 403 unless the request comes from the Mac itself. Anyone on the same Wi-Fi can read the live state **and the camera frames** while a phone session is open, and can ask questions (rate limited). Use a network you trust.
+- Security: the server listens on all interfaces, but only `GET /events`, `GET /state`, `POST /ask` and `POST /control` are served to non-loopback clients. `POST /control` (`{cmd: pause|resume|stop, token}`) needs the 8-hex control code generated into `.control-token` (gitignored) and shown on the Mac page; it is compared in constant time and 5 wrong codes lock an IP for 60 s. The server only forwards the command to the Mac page (`event: control` on `/coach-events`), which does the same thing as its buttons. The page, assets, `POST /state`, `POST /frame` and `GET /coach-events` return 403 unless the request comes from the Mac itself. Anyone on the same Wi-Fi can read the live state **and the camera frames** while a phone session is open, and can ask questions (rate limited). Use a network you trust.
 - The Mac page shows coach messages through `GET /coach-events` (coach text only).
 
 ## 8. Live feedback
