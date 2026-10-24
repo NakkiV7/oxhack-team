@@ -1,6 +1,6 @@
 # Vultr gateway deployment
 
-Prepared 24 October 2026. Packaging is ready for a supervised single-owner hackathon deployment. No VM, account resource, credential, DNS record or TLS certificate was created, and nothing was deployed. A spending ceiling, approved hostname and account credit eligibility remain to be confirmed before provisioning.
+Prepared 24 October 2026. Packaging is ready for a supervised single-owner hackathon deployment. No Vultr VM, account resource, credential, DNS record or public TLS certificate was created, and nothing was hosted. A spending ceiling, approved hostname and account credit eligibility remain to be confirmed before provisioning.
 
 ## What is packaged
 
@@ -88,9 +88,14 @@ docker compose --env-file deploy/deployment.env -f deploy/compose.yaml down
 
 ## Verification performed and remaining limits
 
-- Docker CLI and Compose are installed locally; the `desktop-linux` daemon is unavailable. No daemon, VM or package was installed/started for this task.
-- Compose configuration validation passed against blank nonsecret example files. Real Caddy parsing, image build, image dependency installation, nonroot execution, container health and HTTPS remain unexecuted until an engine is available.
-- An isolated copy of the exact runtime source/catalogue layout loaded successfully and returned health 200, protected 401, malformed 422 and unknown-route 404 with **zero provider calls**. It reused local dependencies; it was not a container-image test.
-- Existing gateway tests passed **36/36**, offline, on 24 October 2026. No schema, gateway handler, CI/CD, provider endpoint or infrastructure provisioning logic was added.
+On 24 October 2026 the actual image and Caddy configuration passed local container checks. A task-specific Colima profile supplied the engine; the existing `desktop-linux` context was preserved. The profile was stopped and its test containers removed afterward. No Vultr resource, public certificate or paid provider call was involved.
+
+- The root Dockerfile built in 17.12 seconds from a 68.57 kB context with locked production dependencies. Image `sha256:1f59556a4b1bb2885e548a9cdf56c49f1f7835ee309eb7e0bb0f358c52ffa38e` is Linux/arm64, 82,640,575 bytes. All 19 copied runtime/catalogue files matched source hashes; private configuration, native assets and tests were excluded.
+- With networking disabled, the gateway ran as UID 1000 with a read-only filesystem, no Linux capabilities and no published ports. Docker health passed. HTTP checks returned 200 for health, 401 for missing/wrong tokens, 404 for an unknown route and 503 for an unconfigured provider.
+- A separate built-image HTTP check injected an in-memory fake provider configuration: malformed JSON returned 400; unknown fields and blank messages returned 422. There were **zero provider calls**. The actual container's provider settings stayed blank.
+- The pinned Caddy image parsed the actual `deploy/Caddyfile` with blank example configuration and networking disabled: exit 0, valid configuration. Compose validation also passed. This verifies parsing, not certificate issuance, external CIDR enforcement or hosted HTTPS.
+- The current gateway suite passed **51/51** offline tests, including the server-owned catalogue context used by chat. The [container receipt](evidence/container-verification-2026-10-24.json) records the image and checked source hashes.
+
+Hosted acceptance remains: approved account/credit/hostname scope, an actual deployment, trusted HTTPS on the phone, allowlist/external-port checks and one deliberate authenticated request. The local ARM64 image check does not establish an AMD64 build or Vultr host behavior.
 
 References: [Node release index](https://nodejs.org/dist/index.json), [official Node image](https://hub.docker.com/_/node), [Dockerfile-specific context exclusions](https://docs.docker.com/build/concepts/context/#dockerignore-files), [Caddy proxy limits](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy), [Caddy request size](https://caddyserver.com/docs/caddyfile/directives/request_body), [Vultr compute overview](https://docs.vultr.com/product-overviews/cloud-compute).

@@ -13,7 +13,7 @@ Native iPhone + Apple Watch training companion for OxHack 2026. Repository: [Nak
 
 The working baseline includes on-device MediaPipe push-up/squat tracking, manual and timed custom workouts, a 19-exercise library with lessons and private demo-video imports, local profiles/goals, connected skill progression and deterministic session/week reports. Most exercises use manual logging or a timer; only push-ups and squats currently have camera tracking. Attribute points are game progress, not measured physiology. Local training needs no sign-in or cloud sync.
 
-Start with the [morning handoff](docs/morning-handoff.md) for the current MVP, startup steps, owners and device checks. Merged milestones through [PR #48](https://github.com/NakkiV7/oxhack-team/pull/48) include profile-aware Coach, Pi/local voice, mixed camera/manual workout plans, public-data research and the judges' guide. Provider integrations and physical-device evidence have separate acceptance gates. A passing simulator test does not establish rep accuracy or real Watch sensor capture. The [current evidence ledger](docs/integration-readiness.md) distinguishes implemented, offline-tested, live and pending paths.
+Start with the [morning handoff](docs/morning-handoff.md) for the current MVP, startup steps, owners and device checks. Merged milestones through [PR #51](https://github.com/NakkiV7/oxhack-team/pull/51) include profile-aware Coach, Pi/local voice, mixed camera/manual workout plans, public-data research and the judges' guide. Provider integrations and physical-device evidence have separate acceptance gates. A passing simulator test does not establish rep accuracy or real Watch sensor capture. The [current evidence ledger](docs/integration-readiness.md) distinguishes implemented, offline-tested, live and pending paths.
 
 ## What the demo can show
 
@@ -22,7 +22,7 @@ Start with the [morning handoff](docs/morning-handoff.md) for the current MVP, s
 - Optional grounded Gemini chat, two report types and selected workout proposals. Four local gateway requests returned 200 using synthetic inputs; one signed-simulator chat also reached Google and displayed its real response. Physical phone networking and native proposal/report acceptance remain pending.
 - Opt-in standard local voice and a paired Pi side-camera path. Audible phone acceptance remains pending; the actual Pi camera disconnects after roughly two seconds, so sustained tracking is not established.
 
-For judges, distinguish these paths from the pending Tiger persistence, hosted Vultr gateway, physical Watch sensors, Presage measurement and Delta review. There is no public TestFlight build yet. See [release readiness](docs/release-readiness.md) and the [integration ledger](docs/integration-readiness.md).
+For judges, distinguish these paths from the pending Tiger persistence, hosted Vultr gateway, physical Watch sensors, Presage measurement and Delta review. Build **0.1 (1)** is available to the owner’s internal TestFlight group; the external invitation is waiting for Apple beta review. Follow the [iPhone/Watch installation guide](docs/testflight.md). See [release readiness](docs/release-readiness.md) and the [integration ledger](docs/integration-readiness.md).
 
 How the pieces connect (offline-first; gateway and providers are optional):
 
@@ -86,7 +86,7 @@ For hidden key entry, run `./scripts/local-config.py GEMINI_API_KEY` (Python 3).
 
 Use the variable descriptions in [.env.example](.env.example) and the [gateway setup](integrations/gateway/README.md). `.env` is ignored. Keep Gemini, database and other provider credentials on the server. The app receives only the gateway base URL and its separate gateway access token through local settings. Do not put provider keys in Swift, Xcode build settings, a committed plist, screenshots or PR text. Use a per-developer local token; a shared hackathon token is not production identity management.
 
-The gateway defaults to `http://127.0.0.1:8787`; `GET /health` reports configuration without a provider call. Health readiness and a configured key do not prove a provider request succeeded. In **Coach → Coach settings** (sliders), enter the gateway URL and gateway access token, then save. The app stores the token in this-device Keychain. It accepts HTTPS and permits HTTP for localhost development; a physical phone needs a reachable HTTPS gateway. [Vultr packaging](docs/vultr-deployment.md) is prepared with bounded HTTPS proxying, but no VM is deployed and the bearer token remains a single-owner demo boundary.
+The gateway defaults to `http://127.0.0.1:8787`; `GET /health` reports configuration without a provider call. Health readiness and a configured key do not prove a provider request succeeded. In **Coach → Coach settings** (sliders), enter the gateway URL and gateway access token, then save. The app stores the token in this-device Keychain. It accepts HTTPS and permits HTTP for localhost development; a physical phone needs a reachable HTTPS gateway. The current development gateway on Omar’s Mac uses **8788** because another process occupies 8787; do not stop an unrelated service. [Vultr packaging](docs/vultr-deployment.md) passed local image, nonroot runtime and Caddy parsing checks. Hosted HTTPS is pending, no VM is deployed and the bearer token remains a single-owner demo boundary.
 
 Use Send, Propose or Generate summary to explicitly share saved training, skill game points, recorded Watch summaries and saved goals/weekly target; raw sensor streams and the optional profile name are not sent. Proposals start unselected: choose exercises, then **Approve & save selected exercises**. **Start saved workout** runs the approved plan with explicit set controls; base push-up/squat additionally offer opt-in phone/Pi camera tracking. See [custom workouts](docs/custom-workouts.md). Cancel/failure/invalid coaching preserves local reports and the current plan. See [goals and privacy](docs/coach-goals.md) and the gateway README.
 
@@ -157,8 +157,8 @@ These are targets, not claims of completed sponsor acceptance.
 | Best Use of Tiger Data (MLH) | Time-series ingestion and rollups |
 | Best Use of Snowflake API, Vultr, Presage (MLH) | Optional tracks, see roadmap |
 | DEV Writing Challenge (MLH) | Write-up, after the evidence ledger |
-| HRT: Best of Data for Predictions and Decision Making | Rest-HR forecast research |
+| HRT: Best of Data for Predictions and Decision Making | [Held-out public wearable HR forecast](docs/public-data-benchmark.md), with coverage and negative results retained |
 | Zed: Built with Delta | Delta prompt evaluation, see [plan](docs/delta-prompt-evaluation.md) |
-| Best Handmade Project, overall prizes | Arduino companion, whole demo |
+| Best Handmade Project, overall prizes | Pi camera companion, whole demo |
 
 Event: [OxHack 26](https://26.oxhack.net) and [Devpost](https://oxhack-2026.devpost.com/).
