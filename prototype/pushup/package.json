@@ -6,10 +6,18 @@
   "scripts": {
     "setup": "sh scripts/fetch-model.sh",
     "ui": "node --env-file-if-exists=.env server.mjs",
-    "test": "node --test"
+    "test": "node --test",
+    "history": "node data/make-history.mjs",
+    "train": "node train.mjs",
+    "train:tiger": "node --env-file-if-exists=.env train.mjs --tiger",
+    "db:migrate": "node --env-file-if-exists=.env db.mjs migrate",
+    "db:load": "node --env-file-if-exists=.env db.mjs load",
+    "db:stats": "node --env-file-if-exists=.env db.mjs stats",
+    "history:demo": "node data/make-history.mjs --sessions 100 --start 2026-07-15 --step 1 --out history-demo.csv"
   },
   "dependencies": {
-    "@mediapipe/tasks-vision": "^1.1.1"
+    "@mediapipe/tasks-vision": "^1.1.1",
+    "pg": "^8.23.1"
   },
   "engines": {
     "node": ">=20.17"

@@ -42,7 +42,7 @@ Run the tests any time: `npm test` (rep counting, cues, and the Q&A safety filte
 
 ## 2. iPhone display (optional)
 
-The Mac stays the camera. The iPhone shows the count, the live video with the body-line drawing, gauges and the history, and speaks reps. The Mac and the iPhone (or Simulator) must be on the **same network**; only the one-time install needs a cable.
+The Mac stays the camera. The iPhone shows the count, the live video with the body-line drawing, gauges and the history, and speaks reps. A thin line under the advice banner says which rule is judging (default, or your personal rule with its limits), and after a workout ends a cloud status row shows the Tiger Data save (saving, saved, or not saved and retrying). The Mac and the iPhone (or Simulator) must be on the **same network**; only the one-time install needs a cable.
 
 Start the server first (`npm run ui`). It prints lines like `iPhone: enter 192.168.1.23 in the pushup-ios app`. Use the address on your Wi-Fi (ignore `169.254.x.x`).
 
@@ -97,6 +97,18 @@ What you get:
 If the model is busy you may see `gemini: ... 503` in the server log; it falls back to a lighter model and the coach simply skips a turn if both fail. Set `GEMINI_MODEL` in `.env` to change the main model.
 
 Without a key everything else works; the coach panel says it is off.
+
+## Try the personal profile (optional)
+
+```bash
+npm run train
+```
+
+Reads the mock past workouts in `data/history.csv`, prints your usual elbow angle, body line and rep time, and the if/then rules a small decision tree learned, then saves them to `data/profile.json`. Not used by the live app yet.
+
+In the web page, **My profile** does the same from the browser: it checks there is enough history, trains, and shows the result.
+
+To keep the history in Tiger Data instead, add `TIGER_DATABASE_URL` and `PUSHUP_USER_ID` to `.env` (your own connection string), then run `npm run db:migrate`, `npm run db:load`, `npm run db:stats` and `npm run train:tiger`.
 
 ## Stopping and cleaning up
 

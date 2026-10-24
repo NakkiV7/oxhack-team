@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { angle, measure, RepCounter } from '../pushup.mjs';
+import { angle, measure, RepCounter, VARIATIONS } from '../pushup.mjs';
 
 // Builds 33 MediaPipe-style landmarks for a person seen from the side (facing right).
 // elbowDeg sets the shoulder-elbow-wrist angle; hipY moves the hip up or down (0.5 = straight line).
@@ -106,4 +106,62 @@ test('rep time: seconds from start of lowering to back up, null without a clock'
   for (const [e, t] of frames) { a = timed.update(f(e), t) || a; b = untimed.update(f(e)) || b; }
   assert.ok(a.secs > 0 && a.secs < 3);
   assert.equal(b.secs, null);
+});
+
+// --- personal rule ---
+import { personalRule } from '../pushup.mjs';
+
+const profile = (over = {}) => ({ baselines: { goodReps: 100, elbow: { typical: 64.5, spread: 1.8 }, body_line: { typical: 171.4, spread: 0.6 }, ...over } });
+
+test('personal rule tightens, never loosens, and only exists for standard push-ups', () => {
+  const r = personalRule(profile());
+  assert.equal(r.warnElbow, 73.5); // 64.5 + 3 * max(1.8, 3)
+  assert.equal(r.minLine, 165.4); // 171.4 - 3 * max(0.6, 2), above the default 165
+  assert.equal(personalRule(profile(), 'knee'), null);
+  assert.equal(personalRule(profile({ goodReps: 10 })), null);
+  assert.equal(personalRule({}), null);
+  const loose = personalRule(profile({ elbow: { typical: 120, spread: 5 }, body_line: { typical: 150, spread: 9 } }));
+  assert.equal(loose.warnElbow, VARIATIONS.standard.down);
+  assert.equal(loose.minLine, VARIATIONS.standard.minLine);
+});
+
+// Drives one rep: top -> bottom (elbow `bottom`, body line `line`) -> top.
+function oneRep(counter, bottom, line) {
+  const f = (elbow, l = line) => ({ elbow, line: l, hipDrop: 0.1, minVis: 1 });
+  counter.update(f(170, 175), 0);
+  for (const e of [140, 110, ...Array(8).fill(bottom), 110, 140, 170, 170]) counter.update(f(e), 1); // the counter smooths, so hold the bottom
+  return counter.update(f(172, 175), 2) ?? counter.reps.at(-1);
+}
+
+test('with the personal rule a counted but shallow rep is not good, and says so', () => {
+  const c = new RepCounter('standard');
+  c.setPersonal(personalRule(profile()));
+  const rep = oneRep(c, 85, 172); // counts (<= 95) but is shallower than the personal 73.5
+  assert.equal(rep.counted, true);
+  assert.equal(rep.good, false);
+  assert.match(rep.issue, /Shallower than your usual/);
+  assert.equal(rep.baseGood, true); // the default rule would have called it good
+});
+
+test('without the personal rule the same rep is good', () => {
+  const c = new RepCounter('standard');
+  const rep = oneRep(c, 85, 172);
+  assert.equal(rep.good, true);
+  assert.equal(rep.issue, null);
+});
+
+test('personal body-line limit flags a rep the default rule accepts', () => {
+  const c = new RepCounter('standard');
+  c.setPersonal(personalRule(profile({ body_line: { typical: 175, spread: 0.5 } }))); // personal minLine 169
+  const rep = oneRep(c, 70, 167); // above the default 165, below the personal 169
+  assert.equal(rep.baseGood, true);
+  assert.equal(rep.good, false);
+  assert.match(rep.issue, /Hips/);
+});
+
+test('a rep that does not reach the default depth is still not counted under the personal rule', () => {
+  const c = new RepCounter('standard');
+  c.setPersonal(personalRule(profile()));
+  const rep = oneRep(c, 110, 172);
+  assert.equal(rep.counted, false);
 });
