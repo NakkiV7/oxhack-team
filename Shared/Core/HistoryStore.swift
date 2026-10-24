@@ -7,10 +7,12 @@ public struct HistoryStore {
         guard FileManager.default.fileExists(atPath: url.path) else { return [] }
         return try JSONDecoder().decode([SessionRecord].self, from: Data(contentsOf: url))
     }
-    public func save(_ record: SessionRecord) throws {
+    @discardableResult
+    public func save(_ record: SessionRecord) throws -> [SessionRecord] {
         let records = try load().filter { $0.id != record.id } + [record]
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try JSONEncoder().encode(records).write(to: url, options: .atomic)
+        return records
     }
     public func export(to destination: URL) throws {
         guard destination.standardizedFileURL != url.standardizedFileURL else { throw CocoaError(.fileWriteInvalidFileName) }

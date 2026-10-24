@@ -9,7 +9,7 @@ struct WeeklyProgressView: View {
         let week = WeekReport(history: store.history)
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                LazyVStack(alignment: .leading, spacing: 24) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("This week").font(.system(size: 32, weight: .bold)).tracking(-1)
                         Text("\(week.interval.start.formatted(.dateTime.day().month(.abbreviated))) – \(week.interval.end.addingTimeInterval(-1).formatted(.dateTime.day().month(.abbreviated))) · week so far")
