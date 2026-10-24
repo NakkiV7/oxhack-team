@@ -49,3 +49,9 @@ The read-only local signing inventory found an Apple Distribution identity and 7
 ## Packaging checkpoint, 24 October 2026 20:34 UTC
 
 The exact staged project passed all three native release-packaging checks without warnings, including the embedded Watch manifest and companion identity (`test_sim_2026-10-24T20-34-11-129Z_pid4129_fd84a039.xcresult`). A temporary local Mach-O probe signed and verified using the existing Omar Apple Distribution identity without a password or Keychain access change. This establishes unattended access to that signing identity; it does not establish archive/export/upload acceptance. Both explicit App Store profiles are installed and documented in [provisioning](testflight-provisioning.md). No Spottr build has been uploaded to TestFlight at this checkpoint.
+
+## Version metadata follow-up, 24 October 2026
+
+The release operator reported an Apple validator `MissingBundleVersion` failure, captured a failing built-bundle regression, then passed all four `ReleasePackagingTests` after the fix. Both app plists now resolve `CFBundleShortVersionString` from `MARKETING_VERSION` and `CFBundleVersion` from `CURRENT_PROJECT_VERSION`. The generator supplies defaults of `0.1` and `1` for every target in Debug and Release. Update those generator defaults for later releases/builds, regenerate the project, and keep the iPhone and embedded Watch values equal. The new regression checks the actual bundled values and their equality.
+
+Independent staged-source review confirmed those settings, valid shared-scheme target references, unchanged build phases/dependencies, and no committed signing team, identity or profile. No archive or upload was performed by that review. Rebuild and validate the corrected release archive before treating the original validator failure as resolved for distribution.

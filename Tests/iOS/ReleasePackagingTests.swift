@@ -1,6 +1,18 @@
 import XCTest
 
 final class ReleasePackagingTests: XCTestCase {
+    func testInstallableHostAndWatchHaveMatchingReleaseAndBuildVersions() throws {
+        let release = try XCTUnwrap(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
+        let build = try XCTUnwrap(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String)
+        XCTAssertNotNil(release.range(of: #"^\d+(\.\d+){0,2}$"#, options: .regularExpression))
+        XCTAssertNotNil(build.range(of: #"^\d+(\.\d+){0,2}$"#, options: .regularExpression))
+        let watch = Bundle.main.bundleURL.appendingPathComponent("Watch/SpottrWatch.app/Info.plist")
+        let info = try XCTUnwrap(try PropertyListSerialization.propertyList(from: Data(contentsOf: watch), format: nil) as? [String: Any])
+        XCTAssertEqual(info["CFBundleShortVersionString"] as? String, release)
+        XCTAssertEqual(info["CFBundleVersion"] as? String, build)
+        XCTAssertEqual(info["WKApplication"] as? Bool, true)
+    }
+
     private func privacyReasons(in bundle: URL) throws -> [String: Set<String>] {
         let file = bundle.appendingPathComponent("PrivacyInfo.xcprivacy")
         let manifest = try XCTUnwrap(try PropertyListSerialization.propertyList(from: Data(contentsOf: file), format: nil) as? [String: Any])
