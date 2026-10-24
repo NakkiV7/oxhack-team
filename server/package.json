@@ -1,0 +1,18 @@
+{
+  "name": "spottr-gateway",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.9"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=../.env src/start.mjs",
+    "migrate": "node --env-file-if-exists=../.env src/migrate.mjs",
+    "snowflake:check": "node --env-file-if-exists=../.env src/snowflake-check.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "pg": "^8.23.1",
+    "zod": "^4.1.0"
+  }
+}

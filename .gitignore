@@ -1,0 +1,17 @@
+.DS_Store
+.build/
+build/
+DerivedData/
+DerivedDataDevice/
+*.xcuserstate
+xcuserdata/
+.swiftpm/
+.superpowers/
+.xcodebuildmcp/
+.env*
+Native/Vendor/
+!*.example
+
+.local/
+server/node_modules/
+__pycache__/
