@@ -1,6 +1,6 @@
 # Release packaging
 
-Current checkpoint, 24 October 2026: build **0.1 (1)** is available to the owner’s internal TestFlight group; external access is waiting for Apple beta review. See [installation instructions](testflight.md) and the final beta-distribution section below. Earlier sections preserve the audit history and do not describe the current distribution state. Source checks and simulator tests alone do not establish archive validation, processing or availability.
+Current checkpoint, 25 October 2026 (verified 24 October 23:10 UTC): build **0.1 (2)** is available to the owner’s internal TestFlight group; external build **0.1 (1)** is waiting for Apple beta review. See [installation instructions](testflight.md) and the final beta-distribution section below. Earlier sections preserve the audit history and do not describe the current distribution state. Source checks and simulator tests alone do not establish archive validation, processing or availability.
 
 ## First-party privacy manifests
 
@@ -70,4 +70,8 @@ Both source app plists now carry the same audited classification for future buil
 
 ## Native source after build 1
 
-The manual-set confirmation wording and configured manual/hold discomfort-cue correction were added after the frozen `3117ac1` upload. The cue correction passed 23 native checks, 26 core checks and a Watch simulator build; its voice bridge uses fake playback in tests. These changes are not present in TestFlight **0.1 (1)**. A new archive/upload is required before a tester can accept them through TestFlight; the existing recovery-screen stop and next-set block already work in build 1.
+The manual-set confirmation wording and configured manual/hold discomfort-cue correction were added after the frozen `3117ac1` upload. The cue correction passed 23 native checks, 26 core checks and a Watch simulator build; its voice bridge uses fake playback in tests. These changes are not present in TestFlight **0.1 (1)**. The internal build 2 checkpoint below records their later distribution; the existing recovery-screen stop and next-set block already work in build 1.
+
+## Internal update — build 2
+
+The exact `b7bf563dc8c2e93a0f4e72d84de1cf7837a26749` snapshot archived and exported as **0.1 (2)** using the existing distribution identity/profiles. Independent archive/IPA checks passed for both apps, their code sections, resources and signatures. Apple validation returned `VERIFY SUCCEEDED with no errors` at **24 October 2026 23:06:21 UTC**. Upload returned `UPLOAD SUCCEEDED with no errors` at **23:08:00 UTC**. At **23:10:33 UTC**, App Store Connect reported `VALID`, encryption classification `false`, and `IN_BETA_TESTING` after explicit assignment to the existing internal group. Both builds remain internal; only build 1 remains assigned externally, still `WAITING_FOR_BETA_REVIEW`. Build 2 was not submitted for external review. [Artifact and distribution receipt](evidence/testflight-build-2-2026-10-24.md).

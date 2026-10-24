@@ -1,6 +1,6 @@
-# Integration readiness — 24 October 2026
+# Integration readiness — 25 October 2026
 
-Current evidence ledger, with changes merged through [PR #51](https://github.com/NakkiV7/oxhack-team/pull/51). Historical build notes describe earlier snapshots. Local profile/onboarding is not cloud identity; the gateway remains a single-owner prototype and optional sync is explicit.
+Current evidence ledger, with changes merged through [PR #64](https://github.com/NakkiV7/oxhack-team/pull/64). Historical build notes describe earlier snapshots. Local profile/onboarding is not cloud identity; the gateway remains a single-owner prototype and optional sync is explicit.
 
 ## Merged native milestones
 
@@ -31,7 +31,7 @@ Current evidence ledger, with changes merged through [PR #51](https://github.com
 | Pi camera | Companion deployed; real authenticated HTTPS start/frames/stop and exact native transport trust checks succeeded. | USB camera disconnects after roughly two seconds; sustained iPhone capture/counting is unverified. Phone performs pose inference; no Pi inference claim. See [physical evidence](../hardware/pi/EVIDENCE-2026-10-24.md). |
 | Watch | Companion transport, sensor adapter and merged contrast/layout exist. | Physical HealthKit/Core Motion recording, permission/source/freshness acceptance and compact-screen visual review. Simulator values cannot establish physiology. |
 | Delta | Synthetic five-case judge packet and blocked run record prepared; zero judge/provider requests. | App was not found/launchable in filesystem checks. Official installation/download/legal step requires operator action; actual thread, review and iteration remain pending. See [packet](../evaluations/delta/2026-10-24/README.md). |
-| App Store / TestFlight | Build 0.1 (1) archived/exported, passed Apple validation/upload and is VALID. Export compliance is saved; owner membership and internal build access are verified. Five actual-bundle packaging checks passed for the source metadata follow-up. | External access is WAITING_FOR_BETA_REVIEW; the enabled 25-person link is not yet a usable external download. Actual phone/Watch install and vendor SDK privacy/signature acceptance remain separate. [Installation](testflight.md), [release audit](release-readiness.md). |
+| App Store / TestFlight | Builds 0.1 (1) and 0.1 (2) are `VALID` and `IN_BETA_TESTING` in the owner's Spottr Internal group. Build 2, staged source `b7bf563dc8c2e93a0f4e72d84de1cf7837a26749`, passed independent host/Watch archive/export inspection and Apple validation/upload. ASC verified build ID `ba329de6-2a44-4c8b-b2d5-31841fad0f05`, encryption false and explicit internal assignment at 24 October 23:10:33 UTC. [Build 2 evidence](evidence/testflight-build-2-2026-10-24.md). | External OxHack contains only build 1, still `WAITING_FOR_BETA_REVIEW`; the enabled 25-person link is not yet a usable external download. Build 2 was not submitted externally (`READY_FOR_BETA_SUBMISSION`). Actual phone/Watch installation and physical behavior remain unverified. [Installation and receipts](testflight.md), [release audit](release-readiness.md). |
 | Landing / DEV / slides | Landing improvements and an editable ten-slide judges’ deck with PDF/previews are merged. Deck rendering and image/metric checks passed; slides state their snapshot date. | Actual demo rehearsal, final landing mobile/link/accessibility review and explicit publication. DEV writing remains deferred. See [judges’ guide](judges-guide.md). |
 
 ## Reading the evidence
