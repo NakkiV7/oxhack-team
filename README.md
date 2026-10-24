@@ -19,11 +19,11 @@ Start with the [morning handoff](docs/morning-handoff.md) for the current MVP, s
 
 - Local custom workouts with explicit manual reps, paused hold timing, optional base push-up/squat camera input, history and reports; connected grid/linear skill views; profile goals and weekly targets.
 - Nineteen exercise icons, six push-up/squat phase illustrations and recording guides. User-filmed demonstration videos remain to be recorded; illustrations and imported fixtures are not physical exercise evidence.
-- Optional grounded Gemini chat, two report types and selected workout proposals. Four local gateway requests returned 200 using synthetic inputs; one signed-simulator chat also reached Google and displayed its real response. Physical phone networking and native proposal/report acceptance remain pending.
+- Optional grounded Gemini chat, two report types and selected workout proposals. Four local gateway requests returned 200 using synthetic inputs; one signed-simulator chat also reached Google and displayed its real response. Physical phone networking and live native proposal/report acceptance remain pending.
 - Push-up prototype (`prototype/pushup`, web page plus iPhone display): rep counting with form cues and rep timing, a personal profile trained from past workouts, a choice between the default rule and a personal rule, and saving finished workouts to Tiger Data with visible sync status. The profile is trained on generated mock history so far; see [Push-up CV prototype](#push-up-cv-prototype) for exactly what is and is not established.
 - Opt-in standard local voice and a paired Pi side-camera path. Audible phone acceptance remains pending; the actual Pi camera disconnects after roughly two seconds, so sustained tracking is not established.
 
-For judges, distinguish these paths from the pending Tiger persistence for the native app and gateway (the push-up prototype writes to its own Tiger schema, see below), hosted Vultr gateway, physical Watch sensors, Presage measurement and Delta review. Build **0.1 (1)** is available to the owner’s internal TestFlight group; the external invitation is waiting for Apple beta review. Follow the [iPhone/Watch installation guide](docs/testflight.md). See [release readiness](docs/release-readiness.md) and the [integration ledger](docs/integration-readiness.md).
+For judges, distinguish these paths from the pending Tiger persistence for the native app and gateway (the push-up prototype targets its own Tiger schema; contributor-reported trial checks are separate from pending corrected-path acceptance below), hosted Vultr gateway, physical Watch sensors, Presage measurement and Delta review. Build **0.1 (1)** is available to the owner’s internal TestFlight group; the external invitation is waiting for Apple beta review. Follow the [iPhone/Watch installation guide](docs/testflight.md). See [release readiness](docs/release-readiness.md) and the [integration ledger](docs/integration-readiness.md).
 
 How the pieces connect (offline-first; gateway and providers are optional):
 
@@ -44,7 +44,7 @@ Current contributor boundaries:
 | Track | Owner | State |
 |---|---|---|
 | Push-up counting | @azhar-rafiq | ✅ baseline, 🚧 validation on labelled clips (test plan in `prototype/pushup/docs/TEST_PLAN.md`, no accuracy claim yet) |
-| Push-up personal profile, rule choice and Tiger storage (prototype) | @azhar-rafiq | ✅ built and unit-tested (41 node tests, iOS target builds); live-checked against a Tiger Cloud trial service on 24 Oct 2026 (migration, mock load, query, read-back training, one synthetic save). 🚧 trained on mock data only; no real labelled sessions or held-out real-data result yet |
+| Push-up personal profile, rule choice and Tiger storage (prototype) | @azhar-rafiq | Built; 92 offline checks and a browser mock-profile flow pass. Original contributor reports a separate trial-service check; corrected-path live SQL and real labelled sessions remain pending. Follow-up integrity work: [#60](https://github.com/NakkiV7/oxhack-team/issues/60) |
 | Squat counting | @NakkiV7 | ✅ baseline, 🚧 validation on labelled clips |
 | Manual/timed logging, profile, lessons, skill tree, reports | @omariosc | Merged local implementation |
 | Gemini chat, summaries, proposals | @omariosc | Merged native flow; live gateway synthetic checks and one signed-simulator chat passed; physical phone/proposal/report acceptance pending |
@@ -104,7 +104,7 @@ The personal-profile/cloud extension now has explicit owner-bound uploads, immut
 
 ```bash
 cd prototype/pushup
-npm install
+npm ci
 npm run setup   # downloads the pose model into models/ (gitignored)
 npm test        # offline tests: rep counter, guardrails, profile, Tiger access, sync
 npm run ui      # http://localhost:3001
@@ -113,9 +113,9 @@ npm run ui      # http://localhost:3001
 **What it does today**
 
 - **Counting and cues:** on-device MediaPipe pose, standard/knee/incline/wall variations, elbow and body-line angles, sag/pike cues, rep timing and pace, workout summary, optional iPhone display with voice, and a Gemini coach with cited Q&A (separate from the app's gateway).
-- **Personal profile:** `npm run train` (or **My profile** on the web page) builds a profile from past reps: the user's usual elbow angle, body line and rep time, plus a small decision tree shown as readable if/then rules. It trains only when there is enough history (300+ reps, 5+ sessions, 50+ bad-form reps) and reports its accuracy on sessions it did not train on.
+- **Personal profile:** `npm run train` (or **My profile** on the web page) builds a profile from past reps: the user's usual elbow angle, body line and rep time, plus a small decision tree shown as readable if/then rules. It trains only when there is enough history (300 usable reps, 5 sessions, 50 bad-form reps and 30 good-form reps) and reports stored-label agreement on held-out sessions. Owner/source provenance and validation apply equally to CLI and browser training.
 - **Default rule or personal rule:** chosen before a workout. The personal rule tightens "good form" and the cues to the user's own usual rep (never looser than the default); reps still count by the default depth line. The page and the iPhone show which rule is active, and the References page compares the two.
-- **Tiger Data:** reps are stored in their own `pushup` schema (a hypertable `pushup.rep` plus a continuous aggregate `pushup.session_stats`), separate from the gateway's tables. Each rep is marked `mock` or `real`. A finished camera workout is saved as `real` reps; the web page and the iPhone show saving, saved or not saved, and failed saves are retried. Only standard push-ups are saved, and the default rule's judgement is stored so the profile never trains on its own labels.
+- **Tiger Data:** reps are stored in their own `pushup` schema (a hypertable `pushup.rep` plus a continuous aggregate `pushup.session_stats`), separate from the gateway's tables. Each rep is marked `mock` or `real`. A finished standard camera workout can be explicitly uploaded as `real` reps. The web page and iPhone show its status; a durable owner-bound outbox supports explicit retries, immutable receipts and conflict handling. Replay videos stay local. Only standard push-ups are saved, and the default rule's judgement is stored so the profile never trains on its own labels.
 
 ```bash
 npm run db:migrate    # create the schema (needs TIGER_DATABASE_URL in prototype/pushup/.env)
@@ -129,8 +129,8 @@ npm run train:tiger   # train from Tiger instead of the CSV
 - The history in `prototype/pushup/data/` is **generated mock data** (300 and 3000 reps, seeded script). Its labels come from the generator, so accuracy on it (about 97 to 100%) only shows that the pipeline works. It is not a measured result. No real labelled sessions have been recorded yet, so there is no held-out real-data accuracy.
 - Real-session labels come from the app's own cues, not from a person. A profile trained on them mostly learns those cues back. A one-tap "form broke" label is the planned fix.
 - The decision tree is shown and evaluated but not used live. Only the baseline-derived limits of the personal rule affect a workout.
-- Verified: 41 node tests pass and the iOS target builds for the simulator. The Tiger path was run against a Tiger Cloud trial service on 24 Oct 2026 (migration, mock load, session query, training from Tiger, one synthetic save with a throwaway user, since deleted). Not yet established: on-device acceptance of the new iPhone rows and a reviewed browser walk-through of the new dialogs.
-- Tiger needs your own connection string in `prototype/pushup/.env` (gitignored). Its certificate is checked in full; an optional CA file in `certs/` is trusted on top of the normal roots.
+- Verified in the corrective pass: 92 offline checks and a browser walk-through of model startup, mock-profile training/reload and explicit personal-rule selection. The original contributor reports a trial-service migration, mock load, query, training and synthetic save on 24 October; these were not independently reproduced. The corrected migration and live SQL remain pending, as does physical acceptance of the separate iPhone display rows.
+- Tiger needs your connection string in `prototype/pushup/.env` (gitignored), full certificate/hostname verification and migration `004_immutable_workouts.sql`. Only an explicitly configured `TIGER_CA_CERT` with authenticated provenance augments the normal roots. The main app’s configured endpoint still failed certificate-chain verification; no bypass was used.
 
 **Supported setup:** camera side-on to the user, one person in frame, whole body visible, about 2 to 3 m away.
 
@@ -180,7 +180,7 @@ These are targets, not claims of completed sponsor acceptance.
 |---|---|
 | Best Use of Gemini API (MLH) | Gemini chat, summaries, proposals |
 | Best Use of ElevenLabs (MLH) | Voice cues |
-| Best Use of Tiger Data (MLH) | Time-series ingestion and rollups. Push-up prototype: per-rep hypertable plus continuous aggregate, live-checked on a trial service (mock load, query, training from Tiger, one synthetic save); native-app persistence still pending |
+| Best Use of Tiger Data (MLH) | Time-series ingestion and rollups. Push-up prototype: per-rep hypertable, continuous aggregate and immutable workout receipts. Original contributor reports a trial-service check; corrected-path live SQL and native-app persistence remain pending |
 | Best Use of Snowflake API, Vultr, Presage (MLH) | Optional tracks, see roadmap |
 | DEV Writing Challenge (MLH) | Write-up, after the evidence ledger |
 | HRT: Best of Data for Predictions and Decision Making | [Held-out public wearable HR forecast](docs/public-data-benchmark.md), with coverage and negative results retained. Secondary: the push-up personal profile and rule choice (data-driven decision, trained on mock history so far; no real-data result yet) |
