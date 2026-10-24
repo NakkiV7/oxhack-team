@@ -240,6 +240,31 @@ final class TrainingStore {
             try historyStore.save(record); history = try historyStore.load().reversed(); error = nil
         } catch { self.error = "Couldn’t save this session. Try again." }
     }
+    func exportHistory() throws -> URL {
+        var exportDirectory = historyStore.url.appendingPathExtension("exports")
+        try FileManager.default.createDirectory(at: exportDirectory, withIntermediateDirectories: true)
+        var resourceValues = URLResourceValues()
+        resourceValues.isExcludedFromBackup = true
+        try exportDirectory.setResourceValues(resourceValues)
+        let destination = exportDirectory
+            .appendingPathComponent(UUID().uuidString).appendingPathComponent("spottr-history.json")
+        try historyStore.export(to: destination)
+        return destination
+    }
+    func clearHistory() throws {
+        guard sessionPhase == .idle || sessionPhase == .finished else { throw DataControlError.workoutInProgress }
+        try historyStore.clear()
+        history = []
+        error = nil
+        let exportDirectory = historyStore.url.appendingPathExtension("exports")
+        if FileManager.default.fileExists(atPath: exportDirectory.path) {
+            try FileManager.default.removeItem(at: exportDirectory)
+        }
+    }
+    enum DataControlError: LocalizedError {
+        case workoutInProgress
+        var errorDescription: String? { "Finish your current workout before deleting training history." }
+    }
     private func clearInput() {
         frame = nil; image = nil; preferredSide = nil; hasInput = false; visionState = .idle; source = .camera
         cancelCoaching()

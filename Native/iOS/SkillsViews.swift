@@ -238,8 +238,7 @@ private struct ExerciseDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                ExerciseArtwork(entry: entry).frame(maxWidth: .infinity).frame(height: 200)
-                    .padding(20).background(Palette.surface, in: RoundedRectangle(cornerRadius: 23))
+                DemonstrationComparisonView(exerciseID: entry.id)
                 VStack(alignment: .leading, spacing: 9) {
                     Text(entry.name).font(.system(size: 28, weight: .bold)).tracking(-0.8)
                     Label(entry.attribute.title, systemImage: "sparkles").font(.caption).foregroundStyle(.secondary)
