@@ -2,41 +2,143 @@ import SwiftUI
 
 struct SkillsView: View {
     @Bindable var store: TrainingStore
+    @AppStorage("skills.layout") private var layout = "grid"
     private var progress: SkillProgress { .evaluate(history: store.history) }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 26) {
-                    Text("Build your real-life stats.").font(.system(size: 31, weight: .bold)).tracking(-1)
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Your skill tree.").font(.system(size: 32, weight: .bold)).tracking(-1)
+                        Text("\(progress.nodes.filter(\.isComplete).count) of \(ExerciseCatalog.all.count) challenges earned")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                         ForEach(TrainingAttribute.allCases, id: \.self) { attribute in
-                            VStack(alignment: .leading, spacing: 7) {
-                                Text(attribute.title).font(.caption).foregroundStyle(.secondary)
-                                Text("\(progress.points(for: attribute)) XP").font(.title2.weight(.semibold)).monospacedDigit()
-                            }.frame(maxWidth: .infinity, alignment: .leading).padding(18)
-                                .background(Palette.surface, in: RoundedRectangle(cornerRadius: 18))
+                            HStack {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(attribute.title).font(.caption).foregroundStyle(.secondary)
+                                    Text("\(progress.points(for: attribute)) XP").font(.title3.weight(.semibold)).monospacedDigit()
+                                }
+                                Spacer(minLength: 4)
+                                Image(systemName: attributeSymbol(attribute)).font(.title3).foregroundStyle(.secondary)
+                            }.padding(17).background(Palette.surface, in: RoundedRectangle(cornerRadius: 17))
                         }
                     }
-                    Text("Game points earned through training. They aren’t a measurement of physical capability.")
+                    Picker("Skill view", selection: $layout) {
+                        Text("Grid").tag("grid")
+                        Text("Linear").tag("linear")
+                    }.pickerStyle(.segmented).accessibilityIdentifier("skill-layout")
+                    if layout == "grid" { SkillGraphView(store: store, progress: progress) }
+                    else { linearTree }
+                    Text("Earn each challenge with 3 goal sets across 2 days. Connected challenges unlock together. You can practise every exercise at any time.")
                         .font(.caption).foregroundStyle(.secondary)
-                    ForEach(ExerciseFamily.allCases, id: \.self) { family in
-                        VStack(alignment: .leading, spacing: 14) {
-                            Text(family.title).font(.title3.bold())
-                            ForEach(ExerciseCatalog.all.filter { $0.family == family }) { entry in
-                                NavigationLink {
-                                    ExerciseDetailView(store: store, entry: entry)
-                                } label: {
-                                    SkillRow(entry: entry, node: progress.node(exerciseID: entry.id))
-                                }.buttonStyle(.plain).accessibilityIdentifier("skill-\(entry.id)")
-                            }
-                        }
-                    }
-                    Text("Each goal-meeting set earns 10 XP, up to 3 sets per exercise each day. Manual and camera sets count. Video replay points are paused until replay identity is supported.")
+                    Text("Each goal set earns 10 XP, up to 3 sets per exercise each day. Manual and camera sets count; video replays don’t. XP and unlocks are game progress.")
                         .font(.caption).foregroundStyle(.secondary)
                 }.padding(24)
             }.background(.white).navigationTitle("Skills").navigationBarTitleDisplayMode(.inline)
         }
+    }
+
+    private var linearTree: some View {
+        ForEach(ExerciseFamily.allCases, id: \.self) { family in
+            VStack(alignment: .leading, spacing: 14) {
+                Text(family.title).font(.title3.bold())
+                ForEach(ExerciseCatalog.all.filter { $0.family == family }) { entry in
+                    NavigationLink { ExerciseDetailView(store: store, entry: entry) } label: {
+                        SkillRow(entry: entry, node: progress.node(exerciseID: entry.id))
+                    }.buttonStyle(.plain).accessibilityIdentifier("skill-\(entry.id)")
+                }
+            }
+        }
+    }
+
+    private func attributeSymbol(_ attribute: TrainingAttribute) -> String {
+        switch attribute {
+        case .strength: return "dumbbell"
+        case .stamina: return "bolt.heart"
+        case .mobility: return "figure.flexibility"
+        case .balance: return "figure.mind.and.body"
+        }
+    }
+}
+
+private struct SkillGraphView: View {
+    let store: TrainingStore
+    let progress: SkillProgress
+    private let column = 154.0
+    private let row = 174.0
+    private let nodeWidth = 132.0
+    private let nodeHeight = 146.0
+
+    var body: some View {
+        ScrollView(.horizontal) {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 22) {
+                    ForEach(ExerciseFamily.allCases, id: \.self) { family in
+                        Text(family.title.uppercased()).font(.system(size: 10, weight: .bold)).tracking(1)
+                            .frame(width: nodeWidth).padding(.vertical, 10)
+                            .background(Palette.surface, in: Capsule())
+                    }
+                }
+                ZStack(alignment: .topLeading) {
+                    ForEach(SkillGraph.edges, id: \.self) { edge in
+                        let from = position(edge.from)
+                        let to = position(edge.to)
+                        Path { path in
+                            let start = CGPoint(x: from.x + nodeWidth / 2, y: from.y + nodeHeight)
+                            let end = CGPoint(x: to.x + nodeWidth / 2, y: to.y)
+                            path.move(to: start)
+                            let bend = (start.y + end.y) / 2
+                            path.addCurve(to: end, control1: CGPoint(x: start.x, y: bend), control2: CGPoint(x: end.x, y: bend))
+                        }.stroke(progress.node(exerciseID: edge.from)?.isComplete == true ? Palette.green.opacity(0.7) : Color.black.opacity(0.12),
+                                 style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                            .accessibilityHidden(true)
+                    }
+                    ForEach(ExerciseCatalog.all) { entry in
+                        let point = position(entry.id)
+                        NavigationLink { ExerciseDetailView(store: store, entry: entry) } label: {
+                            SkillGraphNode(entry: entry, node: progress.node(exerciseID: entry.id))
+                                .frame(width: nodeWidth, height: nodeHeight)
+                        }.buttonStyle(.plain).accessibilityIdentifier("skill-\(entry.id)")
+                            .offset(x: point.x, y: point.y)
+                    }
+                }.frame(width: column * Double(ExerciseFamily.allCases.count) - 22,
+                         height: row * Double((ExerciseCatalog.all.map { SkillGraph.tier(of: $0.id) }.max() ?? 0) + 1) - 28)
+            }.padding(.vertical, 4)
+        }.scrollIndicators(.visible).accessibilityIdentifier("skill-graph")
+    }
+
+    private func position(_ id: String) -> CGPoint {
+        guard let entry = ExerciseCatalog.find(id), let index = ExerciseFamily.allCases.firstIndex(of: entry.family) else { return .zero }
+        return CGPoint(x: Double(index) * column, y: Double(SkillGraph.tier(of: id)) * row)
+    }
+}
+
+private struct SkillGraphNode: View {
+    let entry: ExerciseEntry
+    let node: SkillNodeProgress?
+    private var complete: Bool { node?.isComplete == true }
+    private var available: Bool { node?.isAvailable == true }
+    private var tint: Color { complete ? Palette.green : (available ? Palette.ink : .secondary) }
+
+    var body: some View {
+        VStack(spacing: 5) {
+            ExerciseArtwork(entry: entry).frame(height: 60).padding(.top, 8)
+            Text(entry.levelName).font(.system(size: 11, weight: .bold)).lineLimit(1).minimumScaleFactor(0.8)
+            Text(entry.name).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8)
+            Text(complete ? "COMPLETE" : "\(min(3, node?.qualifyingSets ?? 0))/3 sets · \(min(2, node?.trainingDays ?? 0))/2 days")
+                .font(.system(size: 9, weight: .semibold)).foregroundStyle(tint)
+        }.frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(complete ? Palette.green.opacity(0.07) : .white, in: RoundedRectangle(cornerRadius: 20))
+            .overlay { RoundedRectangle(cornerRadius: 20).stroke(tint.opacity(available || complete ? 0.45 : 0.18), lineWidth: complete ? 2 : 1) }
+            .overlay(alignment: .topTrailing) {
+                Image(systemName: complete ? "checkmark.circle.fill" : (available ? "circle.fill" : "lock.fill"))
+                    .font(.system(size: 12, weight: .medium)).foregroundStyle(tint).padding(10)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(entry.levelName), \(entry.name), \(complete ? "complete" : (available ? "available" : "prerequisites pending")), \(node?.qualifyingSets ?? 0) goal sets")
     }
 }
 
@@ -113,7 +215,7 @@ struct ExerciseLibraryView: View {
     }
 }
 
-private struct ExerciseArtwork: View {
+struct ExerciseArtwork: View {
     let entry: ExerciseEntry
     var body: some View {
         Group {
@@ -153,8 +255,24 @@ private struct ExerciseDetailView: View {
                     Text("Manual: \(node?.manualSets ?? 0) sets").font(.caption).foregroundStyle(.secondary)
                     Text("Camera: \(node?.cameraSets ?? 0) sets").font(.caption).foregroundStyle(.secondary)
                     if node?.isComplete == true { Label("Challenge complete", systemImage: "checkmark.circle.fill").font(.subheadline).foregroundStyle(Palette.green) }
+                    let parents = SkillGraph.prerequisites(for: entry.id)
+                    if !parents.isEmpty {
+                        Text("Builds on").font(.caption.weight(.semibold)).padding(.top, 6)
+                        ForEach(parents, id: \.self) { id in
+                            if let parent = ExerciseCatalog.find(id) {
+                                Label(parent.name, systemImage: SkillProgress.evaluate(history: store.history).node(exerciseID: id)?.isComplete == true ? "checkmark.circle.fill" : "circle")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    let next = SkillGraph.dependents(of: entry.id)
+                    if !next.isEmpty {
+                        Text("Opens the path to").font(.caption.weight(.semibold)).padding(.top, 6)
+                        Text(next.compactMap { ExerciseCatalog.find($0)?.name }.joined(separator: " · "))
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                     if node?.isAvailable == false {
-                        Text("Complete the previous level to earn this achievement. You can practise and log this exercise now.")
+                        Text("Complete the connected challenges to earn this achievement. You can practise and log this exercise now.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     Text("Only goal-meeting sets without pain or discomfort count toward the challenge.")

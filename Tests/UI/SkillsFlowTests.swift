@@ -1,6 +1,26 @@
 import XCTest
 
 final class SkillsFlowTests: XCTestCase {
+    @MainActor func testTreeAndLinearViewsShareExerciseDetailsAndRememberSelection() {
+        let app = XCUIApplication()
+        app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
+        app.launch()
+        app.tabBars.buttons["Skills"].tap()
+        let grid = app.segmentedControls.buttons["Grid"]
+        XCTAssertTrue(grid.waitForExistence(timeout: 5))
+        grid.tap()
+        XCTAssertTrue(app.buttons["skill-wallPushup"].waitForExistence(timeout: 3))
+        app.buttons["skill-wallPushup"].tap()
+        XCTAssertTrue(app.staticTexts["Wall push-ups"].waitForExistence(timeout: 3))
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.segmentedControls.buttons["Linear"].tap()
+        XCTAssertTrue(app.buttons["skill-wallPushup"].waitForExistence(timeout: 3))
+        app.terminate()
+        app.launch()
+        app.tabBars.buttons["Skills"].tap()
+        XCTAssertTrue(app.segmentedControls.buttons["Linear"].isSelected)
+    }
+
     @MainActor func testManualTrainingEarnsVisibleProgressAndPersists() {
         let app = XCUIApplication()
         app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
