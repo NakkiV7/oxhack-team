@@ -2,9 +2,59 @@
 
 Native iPhone + Apple Watch training companion for OxHack 2026. Repository: [NakkiV7/oxhack-team](https://github.com/NakkiV7/oxhack-team).
 
+<!-- NEW: badges. Only things that exist in the repo today; see docs/ROADMAP.md for what is verified. -->
+![Swift](https://img.shields.io/badge/Swift-SwiftUI-F05138?logo=swift&logoColor=white)
+![iOS](https://img.shields.io/badge/iOS-26-000000?logo=apple&logoColor=white)
+![watchOS](https://img.shields.io/badge/watchOS-26-000000?logo=apple&logoColor=white)
+![MediaPipe](https://img.shields.io/badge/MediaPipe-Pose_Landmarker-0097A7?logo=google&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-gateway-339933?logo=nodedotjs&logoColor=white)
+![Gemini](https://img.shields.io/badge/Gemini-API-8E75B2?logo=googlegemini&logoColor=white)
+![Tiger Data](https://img.shields.io/badge/Tiger_Data-SQL_proposal-FDB515)
+![Status](https://img.shields.io/badge/status-hackathon_prototype-orange)
+
+<!-- NEW: hero. Replace with a real recording (5 to 10 s: live camera, skeleton, rep count). Put it in docs/media/. -->
+<p align="center"><img src="https://placehold.co/900x420?text=Demo+GIF+goes+here" alt="Demo placeholder"></p>
+
 The working baseline includes on-device MediaPipe push-up/squat tracking, camera and imported-video sessions, manual workout logging, timed holds, a 19-exercise library, local history, skill progression and deterministic session/week reports. Most exercises use manual logging or a timer; only push-ups and squats currently have camera tracking. Attribute points are game progress, not measured physiology. There is no sign-in or cloud sync requirement for the local demo.
 
 Provider integrations and physical-device evidence have separate acceptance gates. A passing simulator test does not establish rep accuracy or real Watch sensor capture. See [roadmap and evidence gates](docs/ROADMAP.md) before describing a sponsor integration as connected.
+
+## At a glance
+
+<!-- NEW. Screenshots: replace the placeholders with real images in docs/media/. -->
+| Today / session | Camera tracking | Coach |
+|---|---|---|
+| ![Today](https://placehold.co/200x400?text=Today) | ![Camera](https://placehold.co/200x400?text=Camera) | ![Coach](https://placehold.co/200x400?text=Coach) |
+| TODO caption | TODO caption | TODO caption |
+
+| Apple Watch | Hardware / landing page |
+|---|---|
+| ![Watch](https://placehold.co/200x200?text=Watch) | ![Extra](https://placehold.co/300x200?text=Arduino+or+landing) |
+| TODO caption | TODO caption |
+
+How the pieces connect (offline-first; gateway and providers are optional):
+
+```mermaid
+flowchart LR
+  Cam[Camera or imported video] --> Pose[MediaPipe pose, on device]
+  Pose --> Reps[Rep counters and form checks]
+  Reps --> Store[Local history, progression, reports]
+  Watch[Apple Watch sensors] --> Store
+  Store -. optional, explicit share .-> GW[Local gateway]
+  GW --> Gem[Gemini: chat, summaries, proposals]
+  GW -. optional .-> Tiger[(Tiger Data)]
+  Store --> Voice[Voice cues]
+```
+
+Status per track, with the acceptance gate for each, is in [docs/ROADMAP.md](docs/ROADMAP.md). Short version (✅ implemented, 🚧 in progress, ⏳ not started; "verified" still needs its named check):
+
+| Track | Owner | State |
+|---|---|---|
+| Push-up and squat counting | @azhar-rafiq, @NakkiV7 | ✅ baseline, 🚧 validation on labelled clips |
+| Manual/timed logging, progression, reports | @omariosc | ✅ local implementation |
+| Gemini chat, summaries, proposals | @omariosc | 🚧 gateway and contracts, live provider run pending |
+| Voice (ElevenLabs) and landing page | @MishaGitnik | ⏳ |
+| Physical Watch, Vultr, Tiger, Snowflake, HRT, Presage, Arduino | @omariosc | 🚧 / ⏳ see roadmap |
 
 ## Start locally
 
@@ -65,6 +115,23 @@ Push-up CV belongs to [@azhar-rafiq](https://github.com/azhar-rafiq); squat CV t
 | `server` | Optional local gateway; credentials stay here at runtime |
 | `integrations` | Provider contracts, schemas, SQL preparation and integration setup |
 | `scripts` | Pinned SDK fetch, Xcode generator and local checks |
+| `prototype/pushup` | Standalone web + iPhone push-up prototype (Node), used to explore the counter, plus Gemini coach and cited-Q&A experiments. Not part of the native build. See `README-pushup.md` there. |
 | `design`, `research`, `docs` | Existing approved graphics, research and historical design notes |
 
 Historical design documents describe intentions at their recorded date; source and the current evidence ledger take precedence for implementation status. Existing images are available for the demo; generation of additional images is paused.
+
+## Prizes we are aiming for
+
+<!-- NEW. Targets, not claims: claim a sponsor integration only once its roadmap row is verified. -->
+| Prize | Track |
+|---|---|
+| Best Use of Gemini API (MLH) | Gemini chat, summaries, proposals |
+| Best Use of ElevenLabs (MLH) | Voice cues |
+| Best Use of Tiger Data (MLH) | Time-series ingestion and rollups |
+| Best Use of Snowflake API, Vultr, Presage (MLH) | Optional tracks, see roadmap |
+| DEV Writing Challenge (MLH) | Write-up, after the evidence ledger |
+| HRT: Best of Data for Predictions and Decision Making | Rest-HR forecast research |
+| Zed: Built with Delta | Delta prompt evaluation, see [plan](docs/delta-prompt-evaluation.md) |
+| Best Handmade Project, overall prizes | Arduino companion, whole demo |
+
+Event: [OxHack 26](https://26.oxhack.net) and [Devpost](https://oxhack-2026.devpost.com/).
