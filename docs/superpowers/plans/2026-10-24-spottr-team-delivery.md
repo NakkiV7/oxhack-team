@@ -15,10 +15,12 @@
 5. [ ] Inspect/install downloaded Delta and prepare a real prompt/evaluation collaboration workflow. Never claim Codex work as Delta evidence.
 6. [x] Create assigned GitHub issues with scope, branch/files, dependencies and acceptance. Voice+landing MishaGitnik; push-up azhar-rafiq; squat NakkiV7; everything else omariosc.
 7. [x] Run combined core/server/native checks, review immutable patch, fix important findings. Preserve original remote history when integrating foundation branch.
-8. [ ] Push feature branch, open PR, attach it to this chat and publish exact status/remaining issue links. Make getting-started path immediately usable by collaborators.
+8. [x] Push feature branch, open PR, attach it to this chat and publish exact status/remaining issue links. Make getting-started path immediately usable by collaborators.
 
 ## Remaining ownership
 
 Teammates: David Goggins ElevenLabs voice and cue integration; landing page; push-up CV validation/refinement; squat CV validation/refinement.
 
 Omar: Gemini chat/reports/plans; shared app/progression/reporting; Watch physical sensor validation; Tiger ingestion/analytics; Vultr deployment; Snowflake batch analytics; HRT adaptive prediction and public-data evaluation; Presage final recovery check; Arduino transport/display; Delta judge workflow; demo/deck/DEV. Each gets an open issue until its acceptance evidence exists. No integration is called live solely because a schema or adapter exists.
+
+Published: PR #16 merged to main at 52ca5a0. Safari credential copying failed with elementHasNoFrame/noWindowsAvailable; Omar then supplied the Gemini key directly. Live gateway chat, session/weekly summary and a structured proposal subsequently returned HTTP200. These protocol checks used synthetic integration facts, not measured training. Tiger still needs a real connection/migration. An ignored .env and gateway token exist, and local gateway health works on port8788 (port8787 was already occupied by another service). Delta inventory shows it running, but actual collaboration remains unverified.
