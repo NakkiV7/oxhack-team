@@ -87,7 +87,9 @@ struct LiveSetView: View {
                     Image(systemName: store.session.phase == .paused ? "pause" : "arrow.down")
                         .padding(12).background(Palette.surface, in: RoundedRectangle(cornerRadius: 12))
                     VStack(alignment: .leading, spacing: 7) {
-                        Text(store.session.cue.text).font(.system(size: 19, weight: .semibold)).fixedSize(horizontal: false, vertical: true)
+                        Text(store.coachingEvent?.decision.text ?? store.session.cue.text)
+                            .font(.system(size: 19, weight: .semibold)).fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("coaching-cue")
                         Text(store.session.phase == .paused ? "Your set is on hold." : "\(store.session.exercise.guide)").font(.caption).foregroundStyle(.secondary)
                     }
                 }
@@ -133,10 +135,10 @@ struct RecoveryView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
-                TimelineView(.periodic(from: .now, by: 1)) { context in
+                TimelineView(.periodic(from: .now, by: 1)) { _ in
                     VStack(spacing: 9) {
                         Text("Suggested rest").font(.caption).foregroundStyle(.secondary)
-                        Text(clockText(max(0, 45 - context.date.timeIntervalSince(store.restStarted))))
+                        Text(clockText(max(0, 45 - (store.actualRestElapsed() ?? 0))))
                             .font(.system(size: 69, weight: .medium, design: .rounded)).tracking(-3).monospacedDigit()
                         Text("Take longer if you need it.").font(.caption).foregroundStyle(.secondary)
                     }.frame(maxWidth: .infinity).padding(.vertical, 30)
@@ -161,12 +163,15 @@ struct RecoveryView: View {
                     Text("Why did you stop?").font(.headline)
                     Picker("Why did you stop?", selection: $reason) {
                         ForEach(StopReason.allCases, id: \.self) { Text($0.title).tag($0) }
-                    }.pickerStyle(.menu).padding(10).frame(maxWidth: .infinity, alignment: .leading)
+                    }.disabled(store.reportedDiscomfort)
+                        .pickerStyle(.menu).padding(10).frame(maxWidth: .infinity, alignment: .leading)
                         .background(Palette.surface, in: RoundedRectangle(cornerRadius: 12))
                 }
-                if reason == .discomfort {
-                    Label("Call it here. Give yourself time to recover.", systemImage: "hand.raised").font(.subheadline)
-                } else {
+                if let text = store.coachingEvent?.decision.text ?? (store.reportedDiscomfort ? "Call it here. Give yourself time to recover." : nil) {
+                    Label(text, systemImage: store.reportedDiscomfort ? "hand.raised" : "wind")
+                        .font(.subheadline).accessibilityIdentifier("coaching-cue")
+                }
+                if reason != .discomfort && !store.reportedDiscomfort {
                     PrimaryButton(title: store.session.sets.count == 6 ? "Review session" : "Ready for the next set", symbol: "arrow.right") { feedback(); store.next() }
                 }
                 Button("Finish session") { feedback(); store.finish() }.font(.subheadline).foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.bottom, 15)
@@ -175,7 +180,7 @@ struct RecoveryView: View {
         .onAppear { reason = store.session.sets.last?.reason ?? .voluntary }
         .onChange(of: reason) { _, _ in feedback() }
     }
-    private func feedback() { store.session.feedback(reserve: reserve, reason: reason) }
+    private func feedback() { store.feedback(reserve: reserve, reason: reason) }
 }
 
 struct FinishedView: View {

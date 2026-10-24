@@ -15,6 +15,10 @@ if [[ -f server/package.json ]]; then
     [[ ! -f "$source" ]] || node --check "$source"
   done
 fi
+if [[ -d hardware/pi ]]; then
+  command -v python3 >/dev/null 2>&1 || { printf 'Python 3.10+ is needed for Pi companion checks.\n' >&2; exit 1; }
+  python3 -c 'import ast, pathlib, sys; assert sys.version_info >= (3, 10), "Python 3.10+ required"; [ast.parse(p.read_text()) for p in pathlib.Path("hardware/pi").glob("*.py")]'
+fi
 [[ "$mode" != --static ]] || { printf 'Static checks passed. No builds, tests or network requests run.\n'; exit 0; }
 
 command -v swift >/dev/null 2>&1 || { printf 'Swift 6 is required for the shared behavior tests.\n' >&2; exit 1; }
@@ -24,4 +28,5 @@ if [[ -f server/package.json && ! -d server/node_modules/zod ]]; then
 fi
 swift test
 if [[ -f server/package.json ]]; then (cd server && npm test); fi
+if [[ -d hardware/pi ]]; then python3 -m unittest discover -s hardware/pi -v; fi
 printf 'Offline checks passed. Run relevant native/device smoke tests in Xcode; no native build or live provider call was run here.\n'

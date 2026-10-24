@@ -2,6 +2,45 @@ import Foundation
 import Testing
 @testable import SpottrCore
 
+@Test func reportProjectsOnlyObservedRestAndTotalsItWithoutDuplicatingSets() {
+    let first = SetRecord(id: UUID(), exercise: .squat, number: 1, reps: 4, target: 12,
+                          activeSeconds: 20, source: .camera, reason: .voluntary)
+    let second = SetRecord(id: UUID(), exercise: .squat, number: 2, reps: 4, target: 12,
+                           activeSeconds: 20, source: .camera, reason: .voluntary, restSecondsBefore: 11)
+    let third = SetRecord(id: UUID(), exercise: .squat, number: 3, reps: 4, target: 12,
+                          activeSeconds: 20, source: .camera, reason: .voluntary, restSecondsBefore: 0)
+    let report = WorkoutReport(record: .init(id: UUID(), date: Date(), sets: [first, second, second, third]))
+    #expect(report.sets.map(\.restSecondsBefore) == [nil, 11, 0])
+    #expect(report.recordedRestSeconds == 11)
+}
+
+@Test(arguments: [-1.0, Double.nan, Double.infinity, -Double.infinity])
+func reportKeepsInvalidRecordedRestUnknown(rest: Double) {
+    let set = SetRecord(id: UUID(), exercise: .squat, number: 1, reps: 4, target: 12,
+                        activeSeconds: 20, source: .camera, reason: .voluntary, restSecondsBefore: rest)
+    let report = WorkoutReport(record: .init(id: UUID(), date: Date(), sets: [set]))
+    #expect(report.sets.first?.restSecondsBefore == nil)
+    #expect(report.recordedRestSeconds == nil)
+}
+
+@Test func reportPreservesLongAndZeroRestsAfterReopeningWhileMissingRestStaysUnknown() throws {
+    let legacy = SetRecord(id: UUID(), exercise: .squat, number: 1, reps: 4, target: 12,
+                           activeSeconds: 20, source: .camera, reason: .voluntary)
+    let longRest = SetRecord(id: UUID(), exercise: .squat, number: 2, reps: 4, target: 12,
+                             activeSeconds: 20, source: .camera, reason: .voluntary, restSecondsBefore: 3600)
+    let immediate = SetRecord(id: UUID(), exercise: .squat, number: 3, reps: 4, target: 12,
+                              activeSeconds: 20, source: .camera, reason: .voluntary, restSecondsBefore: 0)
+    let manual = try LoggedWorkout.make(exerciseID: "wallPushup", count: 8, sets: 1)
+    let record = SessionRecord(id: UUID(), date: Date(), sets: [legacy, longRest, immediate], loggedSets: manual.loggedSets)
+    let reopened = try JSONDecoder().decode(SessionRecord.self, from: JSONEncoder().encode(record))
+    let report = WorkoutReport(record: reopened)
+    #expect(report.sets.map(\.restSecondsBefore) == [nil, 3600, 0, nil])
+    #expect(report.recordedRestSeconds == 3600)
+    #expect(WorkoutReport(record: manual).recordedRestSeconds == nil)
+    #expect(WorkoutReport(record: .init(id: UUID(), date: Date(), sets: [legacy])).recordedRestSeconds == nil)
+    #expect(WorkoutReport(record: .init(id: UUID(), date: Date(), sets: [immediate])).recordedRestSeconds == 0)
+}
+
 @Test func reportUsesActualExercisesAndManualHoldUnits() throws {
     let manual = try LoggedWorkout.make(exerciseID: "plank", count: 25, sets: 2)
     let report = WorkoutReport(record: manual)

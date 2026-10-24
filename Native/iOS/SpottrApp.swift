@@ -8,9 +8,13 @@ struct SpottrApp: App {
         WindowGroup {
             SpottrRoot(store: store).preferredColorScheme(.light).tint(.black)
                 .task {
+                    defer { store.cancelCoaching() }
+                    var publishSnapshot = true
                     while !Task.isCancelled {
-                        store.publish()
-                        try? await Task.sleep(for: .seconds(2))
+                        store.coachingTick()
+                        if publishSnapshot { store.publish() }
+                        publishSnapshot.toggle()
+                        try? await Task.sleep(for: .seconds(1))
                     }
                 }
                 .onChange(of: scenePhase) { _, phase in

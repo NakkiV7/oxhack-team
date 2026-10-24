@@ -26,6 +26,7 @@ public struct SetRecord: Codable, Identifiable, Equatable, Sendable {
     public var reserve: Int?
     public var reason: StopReason
     public var repDurations: [Double]? = nil
+    public var restSecondsBefore: Double? = nil
 }
 
 public struct SessionRecord: Codable, Identifiable, Equatable, Sendable {
@@ -66,6 +67,8 @@ public struct TrainingSession: Sendable {
     private var accumulated = 0.0
     private var source: InputSource = .camera
     private var repDurations: [Double] = []
+    private var currentRestBefore: Double?
+    private var restStartedAt: Double?
     private let firstExercise: Exercise
     public init(firstExercise: Exercise = .squat) {
         self.firstExercise = firstExercise
@@ -86,8 +89,10 @@ public struct TrainingSession: Sendable {
         sets[sets.count - 1].reason = reason
     }
     public mutating func nextSet(at time: Double) {
-        guard phase == .rest else { return }
+        guard phase == .rest, time.isFinite else { return }
         guard sets.count < 6, sets.last?.reason != .discomfort else { phase = .finished; return }
+        currentRestBefore = restStartedAt.map { max(0, time - $0) }
+        restStartedAt = nil
         counter = RepCounter(exercise: sets.count < 3 ? firstExercise : (firstExercise == .squat ? .pushup : .squat))
         accumulated = 0; activeStarted = time; phase = .active; generation = UUID(); cue = .ready
         source = .camera; repDurations = []
@@ -123,9 +128,11 @@ public struct TrainingSession: Sendable {
         phase = .active; activeStarted = time; generation = UUID(); cue = .ready
     }
     public mutating func endSet(at time: Double, reason: StopReason = .voluntary) {
-        guard phase == .active || phase == .paused else { return }
+        guard time.isFinite, phase == .active || phase == .paused else { return }
         sets.append(.init(id: UUID(), exercise: exercise, number: setNumber, reps: counter.reps,
-                          target: exercise.target, activeSeconds: elapsed(at: time), source: source, reason: reason, repDurations: repDurations))
+                          target: exercise.target, activeSeconds: elapsed(at: time), source: source, reason: reason,
+                          repDurations: repDurations, restSecondsBefore: currentRestBefore))
+        restStartedAt = time
         phase = .rest; activeStarted = nil; accumulated = 0; generation = UUID(); cue = .ready
     }
 }

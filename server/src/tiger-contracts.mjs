@@ -9,7 +9,7 @@ const reading = max => z.strictObject({ value: quantity(max), date });
 const trackedSet = z.strictObject({
   id: z.uuid(), exercise: z.enum(['squat', 'pushup']), number: z.number().int().min(1).max(200),
   reps: quantity(200).int(), target: quantity(200).int(), activeSeconds: quantity(86400), source,
-  reserve: quantity(20).int().nullable().optional(), reason, repDurations: z.array(quantity(600)).max(200).nullable().optional()
+  reserve: quantity(20).int().nullable().optional(), reason, restSecondsBefore: z.number().nonnegative().nullable().optional(), repDurations: z.array(quantity(600)).max(200).nullable().optional()
 });
 const loggedSet = z.strictObject({
   id: z.uuid(), exerciseID: z.enum(catalog.map(item => item.id)), reps: quantity(200).int(),

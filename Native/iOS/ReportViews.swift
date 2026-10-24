@@ -139,6 +139,10 @@ struct SessionReportView: View {
                                 Text("Tempo · \(average, format: .number.precision(.fractionLength(1))) sec per rep")
                                     .font(.caption).foregroundStyle(.secondary)
                             }
+                            if let rest = set.restSecondsBefore {
+                                Text("Rest before · \(rest, format: .number.precision(.fractionLength(0...1))) sec")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
                             Text(set.reason.title).font(.caption).foregroundStyle(.secondary)
                             if let reserve = set.reserve {
                                 Text("\(reserve == 3 ? "3+" : "\(reserve)") reps in reserve").font(.caption).foregroundStyle(.secondary)

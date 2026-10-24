@@ -1,5 +1,14 @@
 import SwiftUI
 
+struct CoachingEvent: Identifiable, Equatable {
+    let id = UUID()
+    let sessionID: UUID
+    let generation: UUID
+    let decision: CoachingDecision
+    let issuedAt: Double
+    let expiresAt: Double?
+}
+
 @MainActor @Observable
 final class TrainingStore {
     var session = TrainingSession()
@@ -11,13 +20,66 @@ final class TrainingStore {
     var image: UIImage?
     var source: InputSource = .camera
     var hasInput = false
-    var restStarted = Date()
     var selectedExercise: Exercise = .squat
     let vision = VisionWorker()
     let companion = CompanionLink()
     var watchReachable = false
+    private(set) var reportedDiscomfort = false
     private let historyStore: HistoryStore
     private var preferredSide: Int?
+    private var coachingPolicy = CoachingPolicy()
+    private var activeCoachingEvent: CoachingEvent?
+    private var restGeneration: UUID?
+    private var restStartedAt: Double?
+
+    var coachingEvent: CoachingEvent? {
+        guard let event = activeCoachingEvent,
+              event.sessionID == session.id, event.generation == session.generation,
+              session.phase == .active || session.phase == .rest else { return nil }
+        return event
+    }
+
+    func cancelCoaching() { activeCoachingEvent = nil }
+
+    func actualRestElapsed(at time: Double? = nil) -> Double? {
+        let time = time ?? now
+        guard time.isFinite, session.phase == .rest, restGeneration == session.generation,
+              let restStartedAt else { return nil }
+        return max(0, time - restStartedAt)
+    }
+
+    func coachingTick(at time: Double? = nil, wallTime: Date = Date()) {
+        let time = time ?? now
+        guard time.isFinite else { return }
+        if coachingEvent == nil || activeCoachingEvent?.expiresAt.map({ time >= $0 }) == true {
+            activeCoachingEvent = nil
+        }
+        if let event = coachingEvent, event.decision.priority == .form,
+           (event.decision.reason == .alignment && session.cue != .alignment)
+            || (event.decision.reason == .tracking && session.cue != .tracking) {
+            activeCoachingEvent = nil
+        }
+        guard let decision = coachingPolicy.evaluate(.init(
+            sessionID: session.id, generation: session.generation, phase: session.phase,
+            now: time, exercise: session.exercise, repCount: session.counter.reps,
+            lastRepDuration: session.counter.lastRepDuration, cue: session.cue,
+            heartRate: recentHeartRate(at: wallTime), wallTime: wallTime,
+            restElapsed: actualRestElapsed(at: time),
+            target: session.exercise.target, stopReason: session.phase == .rest ? session.sets.last?.reason : nil, source: source
+        )) else { return }
+        activeCoachingEvent = CoachingEvent(sessionID: session.id, generation: session.generation,
+                                           decision: decision, issuedAt: time,
+                                           expiresAt: decision.priority == .stop ? nil : time + 6)
+    }
+
+    private func recentHeartRate(at date: Date) -> [SensorReading] {
+        let readings = session.telemetry.suffix(120).compactMap(\.heartRate).filter {
+            let age = date.timeIntervalSince($0.date)
+            return $0.value.isFinite && (1...300).contains($0.value) && age >= -2 && age <= 30
+        }
+        let distinct = readings.reduce(into: [Date: SensorReading]()) { $0[$1.date] = $1 }
+        return Array(distinct.values.sorted { $0.date < $1.date }.suffix(60))
+    }
 
     init() {
         let root = URL.applicationSupportDirectory.appendingPathComponent("Spottr")
@@ -69,6 +131,8 @@ final class TrainingStore {
     func start() {
         defer { publish() }
         vision.stop(); session = TrainingSession(firstExercise: selectedExercise)
+        coachingPolicy = CoachingPolicy(history: history)
+        reportedDiscomfort = false
         session.start(at: now); presented = true; error = nil; clearInput()
     }
     func camera() {
@@ -88,10 +152,14 @@ final class TrainingStore {
         preferredSide = sample?.side
         let previousReps = session.counter.reps, previousCue = session.cue
         session.consume(sample ?? .init(time: frame.time, angle: .nan, confidence: 0), generation: generation)
-        if previousReps != session.counter.reps || previousCue != session.cue { publish() }
+        if previousReps != session.counter.reps || previousCue != session.cue {
+            coachingTick()
+            publish()
+        }
     }
     func pause() {
         session.pause(at: now); vision.pause(); frame = nil
+        cancelCoaching()
         publish()
     }
     func resume() {
@@ -100,16 +168,26 @@ final class TrainingStore {
         publish()
     }
     func endSet() {
-        session.endSet(at: now, reason: session.counter.reps >= session.exercise.target ? .target : .voluntary)
-        vision.stop(); frame = nil; restStarted = Date()
+        guard session.phase == .active || session.phase == .paused else { return }
+        let time = now
+        session.endSet(at: time, reason: session.counter.reps >= session.exercise.target ? .target : .voluntary)
+        vision.stop(); frame = nil; restStartedAt = time
+        restGeneration = session.generation
+        cancelCoaching()
         publish()
     }
+    func feedback(reserve: Int?, reason: StopReason) {
+        if session.phase == .rest, reason == .discomfort { reportedDiscomfort = true }
+        session.feedback(reserve: reserve, reason: reportedDiscomfort ? .discomfort : reason)
+        coachingTick()
+    }
     func next() {
+        guard !reportedDiscomfort else { publish(); return }
         session.nextSet(at: now); clearInput()
         if session.phase == .finished { save() }
         publish()
     }
-    func finish() { session.finish(at: now); vision.stop(); frame = nil; save(); publish() }
+    func finish() { session.finish(at: now); vision.stop(); frame = nil; cancelCoaching(); save(); publish() }
     func save() {
         persist(session.record)
     }
@@ -119,6 +197,7 @@ final class TrainingStore {
         } catch { self.error = "Couldn’t save this session. Try again." }
     }
     private func clearInput() {
-        frame = nil; image = nil; preferredSide = nil; hasInput = false; visionState = .idle
+        frame = nil; image = nil; preferredSide = nil; hasInput = false; visionState = .idle; source = .camera
+        cancelCoaching()
     }
 }

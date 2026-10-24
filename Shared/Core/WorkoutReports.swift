@@ -29,6 +29,7 @@ public struct ReportSet: Identifiable, Sendable {
     public let reserve: Int?
     public let reason: StopReason
     public let repDurations: [Double]
+    public let restSecondsBefore: Double?
     public var averageRepSeconds: Double? { repDurations.isEmpty ? nil : repDurations.reduce(0, +) / Double(repDurations.count) }
     public var quantityText: String { holdSeconds > 0 ? "\(Int(holdSeconds)) sec" : "\(reps) reps" }
 }
@@ -49,6 +50,10 @@ public struct WorkoutReport: Identifiable, Sendable {
     public var reps: Int { sets.reduce(0) { $0 + $1.reps } }
     public var holdSeconds: Double { sets.reduce(0) { $0 + $1.holdSeconds } }
     public var activeSeconds: Double { sets.reduce(0) { $0 + $1.activeSeconds } }
+    public var recordedRestSeconds: Double? {
+        let rests = sets.compactMap(\.restSecondsBefore)
+        return rests.isEmpty ? nil : rests.reduce(0, +)
+    }
     public var category: WorkoutCategory {
         let categories = Set(sets.map(\.category))
         return categories.count > 1 ? .fullBody : categories.first ?? .empty
@@ -65,14 +70,16 @@ public struct WorkoutReport: Identifiable, Sendable {
                 exerciseName: entry?.name ?? set.exercise.title,
                 category: entry.map { WorkoutCategory(family: $0.family) } ?? .other,
                 reps: set.reps, holdSeconds: 0, activeSeconds: set.activeSeconds,
-                source: set.source, reserve: set.reserve, reason: set.reason, repDurations: Self.recordedRepDurations(for: set))
+                source: set.source, reserve: set.reserve, reason: set.reason,
+                repDurations: Self.recordedRepDurations(for: set),
+                restSecondsBefore: set.restSecondsBefore.flatMap { $0.isFinite && $0 >= 0 ? $0 : nil })
         } + record.loggedSets.map { set in
             let entry = ExerciseCatalog.find(set.exerciseID)
             return ReportSet(id: set.id, exerciseID: set.exerciseID,
                 exerciseName: entry?.name ?? "Unknown exercise",
                 category: entry.map { WorkoutCategory(family: $0.family) } ?? .other,
                 reps: set.reps, holdSeconds: set.seconds, activeSeconds: set.seconds,
-                source: set.source, reserve: nil, reason: set.reason, repDurations: [])
+                source: set.source, reserve: nil, reason: set.reason, repDurations: [], restSecondsBefore: nil)
         }
         sets = projectedSets.reduce(into: [ReportSet]()) { unique, set in
             if !unique.contains(where: { $0.id == set.id }) { unique.append(set) }

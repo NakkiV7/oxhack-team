@@ -30,4 +30,21 @@ Verified locally on 24 October 2026:
 - Unsigned `generic/platform=iOS` Debug build including embedded Watch: succeeded. This does not establish signing, physical install or exercise accuracy.
 - Reused Musalli-Test phone and TinyTaps-Watch: both build/launch successfully. Earlier phone-to-Watch snapshot receipt was observed; latest manual command acceptance and physical sensors remain pending.
 
-Local evidence: `/tmp/spottr-publish-checks.log`, `/tmp/spottr-publish-device-build.log`, XcodeBuildMCP result bundles referenced by the final delivery note. Provider keys have not been committed. At this stage no Gemini response, Tiger migration/persistence, Snowflake statement, Vultr deployment, Presage measurement or Arduino transport has been verified live. Delta is running in the desktop inventory; no actual Delta evaluation thread has been completed.
+Local evidence: `/tmp/spottr-publish-checks.log`, `/tmp/spottr-publish-device-build.log`, XcodeBuildMCP result bundles referenced by the final delivery note. Provider keys have not been committed. At that milestone no provider had been verified live; see the later evidence below for Gemini. Tiger persistence, Snowflake, Vultr and Presage remain unverified live. Delta is running in the desktop inventory; no actual Delta evaluation thread has been completed.
+
+## Adaptive coaching milestone
+
+Local decisions run once per second and on completed reps/form changes. Per-exercise history seeds a previous-mean + sample-SD tempo threshold after five valid camera observations. Camera form cues, actual rest and fresh Watch summaries feed generation-scoped, expiring events. Discomfort remains latched until the workout ends. Video/manual inputs cannot contaminate personal timing or create coaching interjections. Actual rest uses monotonic time and is recorded for reports and optional Tiger snapshots.
+
+Gemini grounding now includes bounded Watch, tempo/rest and complete-history totals. The Pi USB camera companion requires explicit authenticated capture, fresh frames and a renewable lease. No Pi service, network profile or hardware was changed.
+
+Verified on 24 October 2026 after independent review (approved code tree `022133eede4e04b5880c8a2c54e8650efe91a00e`):
+
+- `./scripts/check.sh`: 88 shared tests (37 XCTest + 51 Swift Testing), 28 gateway tests and 18 Pi tests passed. Evidence: `/tmp/spottr-adaptive-final-checks.log`.
+- Combined native suite: 28/28 passed, no warnings; result `test_sim_2026-10-24T18-19-19-371Z_pid4129_47cf10a1.xcresult`.
+- After the final source-binding regression fix, the focused native `CoachingFlowTests` suite passed 11/11, no warnings; result `test_sim_2026-10-24T18-26-32-337Z_pid4129_26ae0124.xcresult`.
+- Final unsigned `generic/platform=iOS` Debug build succeeded, including Watch; evidence `/tmp/spottr-adaptive-device-build.log`. Signing, physical installation and exercise accuracy remain pending.
+- Local live Gemini protocol checks returned HTTP 200 for chat (3520 ms), session summary (4385 ms), weekly summary (4477 ms) and proposal (diagnostic retry following a 502). Synthetic fixtures establish protocol connectivity, not real-user coaching quality. No usage/cost metadata was available.
+- ElevenLabs read-only voice lookup rejected the supplied key ID. No synthesis ran. Native speech and provider cancellation behavior remain for #1.
+
+Physical Watch/CV calibration, Pi camera transport and native Coach/provider acceptance remain open. See `docs/coaching-policy.md` and `docs/integration-readiness.md` for the implemented boundaries.
