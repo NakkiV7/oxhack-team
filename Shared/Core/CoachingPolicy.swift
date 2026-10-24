@@ -35,6 +35,10 @@ public struct CoachingDecision: Sendable, Equatable {
     public let reason: CoachingReason
     public let facts: [String]
     public let elapsed: Double?
+
+    public static let discomfort = CoachingDecision(
+        text: "Stop here. Do not continue through pain or discomfort.", priority: .stop,
+        reason: .discomfort, facts: ["Pain or discomfort reported."], elapsed: nil)
 }
 
 public struct CoachingPolicy: Sendable {
@@ -77,8 +81,7 @@ public struct CoachingPolicy: Sendable {
         guard acceptContext(input), !stopped else { return nil }
         if input.stopReason == .discomfort {
             stopped = true
-            return .init(text: "Stop here. Do not continue through pain or discomfort.", priority: .stop,
-                         reason: .discomfort, facts: ["Pain or discomfort reported."], elapsed: nil)
+            return .discomfort
         }
         guard input.source == .camera else { return nil }
         if input.phase == .rest {
