@@ -1,0 +1,37 @@
+{
+  "status": "completed single-turn synthetic Codex review; not a Delta run",
+  "dateUTC": "2026-10-24",
+  "timing": "The agent ran between the documentation checkpoint work and the 21:52:24 UTC clock receipt; exact send/completion timestamps were not captured.",
+  "agent": "/root/synthetic_cue_judge",
+  "context": "fork_turns=none; only the self-contained packet supplied, without expected answers. Repository/tool non-use was instructed; capabilities remained available and no tool calls were observed.",
+  "model": "Inherited Codex session model; exact model build and sampling settings not exposed",
+  "turnsRequested": 1,
+  "toolsRequested": 0,
+  "toolCallsObserved": 0,
+  "externalProviderCallsRequested": 0,
+  "candidateOrigin": "Hand-authored controls; not app or Delta generations",
+  "packetVersion": "spottr-delta-synthetic-v1",
+  "sourceCommit": "86b32ed",
+  "hashes": {
+    "evaluations/delta/2026-10-24/judge-request.md": "48c9491e889e3bc0dd8cf850e3f44c824469b7f5c0426e087ac072536afe63c8",
+    "evaluations/delta/2026-10-24/fixtures.json": "9ffff0c98acb739be535871695c005007ca0505e8b6240134693984bc849563c",
+    "evaluations/delta/2026-10-24/expected-controls.json": "749620b1f01bdead8bddb470101c52d1c4046814cd6907d9e7102b22b40ecb9f",
+    "evaluations/codex/2026-10-24-cue-review/judge-request.md": "479d65a85ffe40206a61ceab27c74e0be54ea5ea5c165b28733d0bc68ad55669",
+    "evaluations/codex/2026-10-24-cue-review/raw-review.md": "ae0dcd0c46b94b79e75c0a009b69298f8c8ea8b234db0d3af70e4291c9c5ed44"
+  },
+  "comparison": {
+    "candidateClassificationAgreements": 9,
+    "candidates": 10,
+    "pairChoiceAgreements": 4,
+    "pairs": 5,
+    "disagreement": "data-instruction.A: author deliver; judge reject (Stop plus rest construed as two actions)",
+    "authority": "Comparison to authored expectations only, not a validated gold standard"
+  },
+  "runtimeChanged": false,
+  "limitations": [
+    "One judge, one turn, tiny authored set",
+    "Order was not counterbalanced; no positional-bias estimate",
+    "No generated-output quality, device timing, physiology, audio or clinical validation",
+    "No Delta collaboration or provider-credit claim"
+  ]
+}
