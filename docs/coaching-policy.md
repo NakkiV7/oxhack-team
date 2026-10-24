@@ -10,7 +10,7 @@ The result contains `text`, `priority` (`stop`, `form`, `pacing`, `rest`), `reas
 
 ## Communication rules
 
-- Reported discomfort produces an immediate stop cue once, and suppresses further coaching for that session, including after generation changes.
+- Reported discomfort produces an immediate stop cue once, and suppresses further coaching for that session, including after generation changes. Native configured rep/hold workouts route the reported stop before tracking-only guards, using the same decision without assigning a fictitious camera exercise. A per-session issued marker prevents repeated actions or foreground return from restarting the event. Ordinary manual coaching remains silent.
 - Non-camera input is otherwise silent: video replays and manual input cannot add personal baseline samples, produce coaching/rest interjections, or attach Watch facts. The ordinary replay camera-cue UI remains separate. Returning to a real camera generation retains the user's genuine observed baseline.
 - Camera tracking loss or an alignment cue interrupts immediately, ahead of ordinary pacing or target messages. The same unresolved camera cue is not repeated. Clearing the cue allows a later recurrence to speak again.
 - Ordinary cues have a ten-second cooldown. A form cue also reserves this cooldown; a new form/tracking problem or discomfort can still interrupt it. Paused, idle, and finished sessions receive no ordinary cues.
@@ -41,3 +41,7 @@ Five or more unique valid observations in the last 30 seconds permit a mean and 
 ## Verification
 
 `Tests/Core/CoachingPolicyTests.swift` exercises discomfort, camera priority/deduplication, cooldown, target boundaries, actual rest timing, sample SD and minimum noise margin, personal-history seeding and eligibility, saved-session/set deduplication, the latest-60 per-exercise limit, invalid durations, replay/manual stream exclusion, real-camera baseline retention across replay, duplicate rep observations, set/pause/session lifecycle, stale generations, invalid/backwards clocks, and Watch freshness/uniqueness. Run `swift test --scratch-path /tmp/spottr-cue-tests` for the core suite. Native presentation and device behavior require separate verification.
+
+The configured manual/hold integration is covered by three native regressions in `Tests/iOS/CoachingFlowTests.swift`; they first reproduced the missing event, then passed with 20 existing coaching/voice/configured-flow checks (23 total). No camera, provider or physical audio was used. The unchanged recovery UI already blocked continuation; the correction connects the stop event and optional voice bridge.
+
+The helper extraction also passed 26 focused core policy/playback checks. The existing TinyTaps-Watch target then built successfully in 2.95 seconds with no warnings (`build_sim_2026-10-24T22-56-22-507Z_pid4129_d53d0faf.log`). This verifies watchOS compilation of the shared decision; it does not exercise physical Watch sensors or audible speech.

@@ -4,7 +4,7 @@ Tracked camera workouts have an explicit **Voice feedback** toggle. It starts of
 
 Playback uses Apple's standard local `AVSpeechSynthesizer`, with the system managing its audio session. It sends no text to a provider and requires no API key. Stop cues interrupt ordinary coaching. Lower priority speech is dropped rather than queued, and expired or repeated events do not replay. The controller also prevents future chat speech from interrupting active coaching.
 
-This first integration speaks existing deterministic coaching events for tracked workouts. Configured manual workouts, chat replies, historical reports, and Watch audio are outside its current scope. There is no gateway voice endpoint or ElevenLabs adapter.
+This first integration speaks existing deterministic coaching events for tracked workouts. Ordinary manual-workout coaching, chat replies, historical reports and Watch audio are outside its current scope. An explicitly reported discomfort stop is the exception: configured rep/hold sets create the same persistent stop event without camera tracking. It reaches the voice bridge only if feedback was already enabled. The toggle remains on camera sets; this does not add a manual-only opt-in screen. There is no gateway voice endpoint or ElevenLabs adapter.
 
 ## Acceptance
 
@@ -13,6 +13,8 @@ Offline controller tests use fake playback. Native tests use fake playback and a
 On 24 October 2026, the eight voice controller tests passed after observed RED failures for missing contracts, cancellation/priority/expiry behavior, and malformed text/time. The full SwiftPM core suite also passed. Following a separate lifecycle compile RED, the parent task ran all seven native voice tests successfully: two local-driver tests and five TrainingStore tests, including background cancellation and blocked rest coaching, in 15.5 seconds, with no warnings. Rest timing continues while the scene is nonactive; coaching and speech wait for the foreground. These checks verify fake playback behavior; audible acceptance and actual audio-route interruptions remain pending.
 
 Audible acceptance requires an iPhone or simulator check: start a tracked workout, confirm voice is off, enable it, cause a new tracking or alignment cue, and confirm it speaks once. Pause or mute during speech and confirm immediate silence. Start another workout and confirm the toggle is off again. Replay/video input must not speak personal coaching. Verify music and other app audio behavior on a physical iPhone before describing audio coexistence as device-tested.
+
+Configured discomfort regression (24 October): three native tests first failed because manual rep/hold stops had no coaching event. After the focused correction, 23 native coaching/voice/configured-flow checks passed in 27.1 seconds on the existing Musalli-Test simulator. The fixtures verify one stop event/speech request, stable context, no ordinary manual cues, no invented completed work, blocked continuation, repeated-stop idempotence and no replay after backgrounding. Fake playback does not establish audible device behavior. Result: `test_sim_2026-10-24T22-54-43-869Z_pid35007_a4052087.xcresult`.
 
 ## Proposed optional gateway contract
 

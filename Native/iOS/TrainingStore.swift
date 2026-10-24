@@ -46,6 +46,7 @@ final class TrainingStore {
     private var preferredSide: Int?
     private var coachingPolicy = CoachingPolicy()
     private var activeCoachingEvent: CoachingEvent?
+    private var configuredDiscomfortCueSessionID: UUID?
     private(set) var voiceFeedbackEnabled = false
     private var appActive = true
     private let coachingVoice: CoachingVoiceBridge
@@ -99,6 +100,13 @@ final class TrainingStore {
         let context = feedbackContext
         defer { coachingVoice.update(context: context, event: coachingEvent, enabled: voiceFeedbackEnabled, now: time) }
         guard time.isFinite else { return }
+        if configured?.stoppedForDiscomfort == true {
+            guard context.phase == .rest, configuredDiscomfortCueSessionID != context.sessionID else { return }
+            configuredDiscomfortCueSessionID = context.sessionID
+            activeCoachingEvent = CoachingEvent(sessionID: context.sessionID, generation: context.generation,
+                decision: .discomfort, issuedAt: time, expiresAt: nil)
+            return
+        }
         if let run = configured, run.source != .camera || run.trackingExercise == nil || (!run.hasStarted && !run.stoppedForDiscomfort) {
             cancelCoaching(); return
         }
@@ -262,7 +270,7 @@ final class TrainingStore {
     }
     func setConfiguredReps(_ reps: Int?) { configured?.setReps(reps); publish() }
     func stopConfiguredForDiscomfort() {
-        guard configured != nil else { return }
+        guard let run = configured, !run.stoppedForDiscomfort else { return }
         configured?.stopForDiscomfort(at: now)
         vision.stop(); secondaryVision.stop(); frame = nil; image = nil; cancelCoaching()
         coachingTick(); publish()
