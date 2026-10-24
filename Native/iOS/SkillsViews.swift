@@ -315,7 +315,7 @@ struct ManualWorkoutView: View {
                     VStack(spacing: 20) {
                         Image(systemName: "checkmark.circle").font(.system(size: 48, weight: .light)).foregroundStyle(Palette.green)
                         Text("Workout saved").font(.title2.bold())
-                        Text("\(sets) sets · \(quantity) \(entry.unit == .reps ? "reps" : "sec") per set")
+                        Text("\(sets) \(Int(sets) == 1 ? "set" : "sets") · \(quantity) \(entry.unit == .reps ? (Int(quantity) == 1 ? "rep" : "reps") : "sec") per set")
                         Text("Manual self-report").font(.caption).foregroundStyle(.secondary)
                         PrimaryButton(title: "Done", symbol: "checkmark") { dismiss() }
                     }.padding(28)
