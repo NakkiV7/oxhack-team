@@ -1,12 +1,19 @@
 # Squat form tracker
 
-MediaPipe pose → joint angles → green / amber / red skeleton, a side panel with reps, live
-metric bars, tempo, fault tally and per-rep log, and text cues from a single non-interrupting
-coach channel (swap `Coach(speak=...)` for ElevenLabs later). `--log reps.json` dumps every
-rep's worst values, timings and faults; this is the record that goes to Tiger Data.
+MediaPipe pose → hip travel + joint geometry → green / amber / red skeleton, a side panel with
+reps, live metric bars, tempo, fault tally and per-rep log, and text cues from a single
+non-interrupting coach channel (swap `Coach(speak=...)` for ElevenLabs later). `--log reps.json`
+dumps every rep's worst values, timings and faults; this is the record that goes to Tiger Data.
 
-Side view uses 2D angles; front view uses MediaPipe's 3D landmarks, because 2D knee angles
-collapse when the thigh points at the camera.
+**Rep counting** uses vertical hip travel as a fraction of standing leg length (hip height above
+the ankle, so camera pans cancel), which works from any angle. The 2D knee angle only confirms a
+descent, so walking toward the camera is not a rep. Shallow dips are shown but not counted.
+Joints below 50% visibility are ignored; with feet out of frame the tracker still counts but
+warns and skips the knee metrics.
+
+`eval.py CLIP_DIR --plots out/` scores every clip in a folder and prints a hip-travel sparkline
+per clip; use it after changing any threshold. `main.py --record raw.mp4` saves the raw camera
+feed so a failing session can be replayed with `--source raw.mp4`.
 
 ```bash
 python -m venv .venv && .venv/bin/pip install -r requirements.txt
@@ -17,10 +24,10 @@ cd squat && ../.venv/bin/python main.py            # webcam
 
 | Signal | View | Green | Amber | Red | Cue |
 |---|---|---|---|---|---|
-| Depth (min knee angle per rep) | both | ≤ 95° | ≤ 115° | shallower | "Deeper…" |
+| Depth: hip below knee, in thigh lengths | both | ≥ -0.10 (parallel) | ≥ -0.35 | shallower | "Deeper…" |
 | Torso lean from vertical | side | < 40° | < 55° | more | "Chest up" |
 | Knee width / ankle width | front | ≥ 0.85 | ≥ 0.70 | less | "Knees out" |
-| Hip tilt minus shoulder tilt (weight shift) | front | < 10° | < 16° | more | "Even weight on both feet" |
+| Hip tilt minus shoulder tilt (weight shift) | front | < 12° | < 18° | more | "Even weight on both feet" |
 
 A side-view rep with torso lean over 65° is treated as a hinge or pick-up and not counted.
 | Descent time | both | | | < 0.45 s | "Control the way down" |

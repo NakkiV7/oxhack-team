@@ -6,7 +6,7 @@ import mediapipe as mp
 import numpy as np
 from mediapipe.tasks.python import BaseOptions, vision
 
-MODEL = Path(__file__).parent / "models" / "pose_landmarker_lite.task"
+MODELS = {m: Path(__file__).parent / "models" / f"pose_landmarker_{m}.task" for m in ("lite", "full", "heavy")}
 
 # Landmark indices we use (MediaPipe BlazePose, 33 points).
 NOSE, L_SHO, R_SHO, L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANK, R_ANK = 0, 11, 12, 23, 24, 25, 26, 27, 28
@@ -15,7 +15,7 @@ NOSE, L_SHO, R_SHO, L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANK, R_ANK = 0, 11, 12, 23, 
 class Pose:
     """Returns (33, 4) float32 array: x, y in pixels, z, visibility. None if no person."""
 
-    def __init__(self, model: Path = MODEL):
+    def __init__(self, model: Path = MODELS["full"]):
         opts = vision.PoseLandmarkerOptions(
             base_options=BaseOptions(model_asset_path=str(model)),
             running_mode=vision.RunningMode.VIDEO,

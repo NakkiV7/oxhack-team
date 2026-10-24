@@ -1,4 +1,7 @@
-"""Squat form tracker. Usage: python main.py [--source 0|video.mp4] [--out out.mp4] [--log reps.json] [--headless]"""
+"""Squat form tracker.
+
+Usage: python main.py [--source 0|video.mp4] [--model full] [--out annotated.mp4] [--record raw.mp4] [--log reps.json] [--headless]
+"""
 import argparse
 import json
 import time
@@ -8,8 +11,8 @@ import numpy as np
 
 from analyzer import SquatAnalyzer
 from coach import Coach
-from panel import COLOUR, panel, text
-from pose import L_ANK, L_HIP, L_KNEE, L_SHO, Pose, R_ANK, R_HIP, R_KNEE, R_SHO
+from panel import BG, COLOUR, W, panel, text
+from pose import L_ANK, L_HIP, L_KNEE, L_SHO, MODELS, Pose, R_ANK, R_HIP, R_KNEE, R_SHO
 
 SEGMENTS = {  # skeleton segment -> landmark pairs, coloured by the analyzer's grade for that segment
     "torso": [(L_SHO, R_SHO), (L_SHO, L_HIP), (R_SHO, R_HIP), (L_HIP, R_HIP)],
@@ -26,7 +29,7 @@ def draw(img, lm, f, cue):
     if f.view == "front":
         cv2.line(img, pt(L_KNEE), pt(R_KNEE), COLOUR[f.segments["knees"]], 2)
     for i in (L_SHO, R_SHO, L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANK, R_ANK):
-        cv2.circle(img, pt(i), 6, (255, 255, 255), -1)
+        cv2.circle(img, pt(i), 6, (255, 255, 255) if lm[i][3] >= 0.5 else (0, 0, 255), -1)
     if cue:
         text(img, cue, (20, img.shape[0] - 30), 1.0, (255, 255, 255), 2, cv2.FONT_HERSHEY_DUPLEX)
 
@@ -34,7 +37,9 @@ def draw(img, lm, f, cue):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--source", default="0", help="camera index or video path")
+    ap.add_argument("--model", default="full", choices=list(MODELS))
     ap.add_argument("--out", help="write annotated video here")
+    ap.add_argument("--record", help="write the raw camera feed here (to share a failing session)")
     ap.add_argument("--log", help="write per-rep JSON here")
     ap.add_argument("--headless", action="store_true", help="no window (CI / remote)")
     args = ap.parse_args()
@@ -44,24 +49,28 @@ def main():
     if not cap.isOpened():
         raise SystemExit(f"cannot open {args.source!r}" + (" (grant camera access to your terminal app)" if live else ""))
     fps = cap.get(cv2.CAP_PROP_FPS) or 30
-    pose, analyzer, coach = Pose(), SquatAnalyzer(), Coach()
-    writer, f, n, t0 = None, None, 0, time.time()
+    pose, analyzer, coach = Pose(MODELS[args.model]), SquatAnalyzer(), Coach()
+    writers, f, n, t0 = {}, None, 0, time.time()
+
+    def write(key, path, img):
+        if path:
+            w = writers.get(key) or cv2.VideoWriter(path, cv2.VideoWriter_fourcc(*"mp4v"), fps, img.shape[1::-1])
+            writers[key] = w
+            w.write(img)
 
     while True:
         ok, img = cap.read()
         if not ok:
             break
+        write("raw", args.record, img)
         t = time.time() - t0 if live else n / fps
         lm = pose(img, int(t * 1000))
         if lm is not None:
             f = analyzer.update(lm, t)
             coach.handle(f.events, t)
             draw(img, lm, f, coach.showing(t))
-        if f:
-            img = np.hstack([img, panel(f, img.shape[0])])
-        if args.out:
-            writer = writer or cv2.VideoWriter(args.out, cv2.VideoWriter_fourcc(*"mp4v"), fps, img.shape[1::-1])
-            writer.write(img)
+        img = np.hstack([img, panel(f, img.shape[0]) if f else np.full((img.shape[0], W, 3), BG, np.uint8)])
+        write("out", args.out, img)
         if not args.headless:
             cv2.imshow("squat tracker", img)
             if cv2.waitKey(1) & 0xFF in (27, ord("q")):
@@ -69,14 +78,14 @@ def main():
         n += 1
 
     reps = analyzer.reps
-    print(f"\n{n} frames, {len(reps)} reps")
+    print(f"\n{n} frames, {len(reps)} reps, {analyzer.dips} shallow dips not counted")
     for r in reps:
-        print(f"#{r.n:<3} depth {r.worst['depth']:3.0f}  down {r.t_down:.2f}s  up {r.t_up:.2f}s  {', '.join(r.faults) or 'clean'}")
+        print(f"#{r.n:<3} travel {r.drop:.2f}  depth {r.worst['depth']:+.2f}  down {r.t_down:.2f}s  up {r.t_up:.2f}s  {', '.join(r.faults) or 'clean'}")
     if args.log:
         json.dump([vars(r) for r in reps], open(args.log, "w"), indent=1, default=float)
     cap.release(), pose.close()
-    if writer:
-        writer.release()
+    for w in writers.values():
+        w.release()
 
 
 if __name__ == "__main__":
