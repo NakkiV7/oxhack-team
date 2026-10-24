@@ -17,9 +17,9 @@ Needs Node 20.17+ and a Mac webcam (or any video of a push-up filmed from the si
 
 ```bash
 cd prototype/pushup
-npm install
+npm ci
 npm run setup      # downloads the 9 MB pose model into models/
-npm test           # 19 offline behavior checks; no model download or provider calls
+npm test           # offline behavior checks; no model download or provider calls
 npm run ui         # open http://localhost:3001
 ```
 
@@ -29,6 +29,7 @@ Pick a variation, click **Start camera**, put the camera at your **side** 2 to 3
 
 ```
 pushup.mjs        pure logic: angles, variation thresholds, RepCounter (no DOM, tested in node)
+client-workout.mjs owner-bound workout snapshots and explicit durable upload/retry
 index.html        camera/video input, pose loop, overlay, feedback UI, coach panel
 server.mjs        local server: static files, state/frames to the phone (SSE), coach, /ask
 ask.mjs           guarded Q&A (official-source grounding, injection and leak filters)
@@ -46,27 +47,33 @@ docs/             TUTORIAL, ALGORITHM (how it works + guardrails), TEST_PLAN
 
 ## Personal profile (mock history)
 
-`data/history.csv` is mock past workout data (300 reps, 10 sessions, labels good / shallow / sagging / fatigued) for developing and testing the training. `npm run train` writes `data/profile.json` (gitignored): usual elbow angle, body line and rep time, plus a small decision tree as if/then rules. Not loaded by the live app yet.
+`data/history.csv` is mock past workout data (300 reps, 10 sessions, labels good / shallow / sagging / fatigued) for developing and testing the training. `npm run train` writes `data/profile.json` (gitignored): usual elbow angle, body line and rep time, plus a small decision tree as if/then rules. This is the standalone browser prototype, separate from native Spottr. Its optional personal baseline rule only tightens the default form limits; counting keeps the default thresholds. The fitted tree is explanatory and is not used by the live counter.
 
 `data/history-demo.csv` is a bigger mock history (3000 reps, 100 sessions) for demoing "enough data, training now". Regenerate with `npm run history:demo`; load it with `npm run db:load data/history-demo.csv`. It is mock: accuracy on it (about 100%) only shows the code works, because the generator wrote the labels.
 
 ### Tiger Data (your own database)
 
-Rep history can live in Tiger Data instead of the CSV. Put your own connection string in `.env` (gitignored; see `.env.example`: `TIGER_DATABASE_URL`, `PUSHUP_USER_ID`), then `npm run db:migrate`, `npm run db:load` (CSV, marked `source=mock`), `npm run db:stats` and `npm run train:tiger` (`PUSHUP_SOURCES=real` ignores mock rows). **Certificate:** Tiger first signed with its own CA (`ca.timescale.com`, Node says "self-signed certificate in certificate chain") and later switched to a public CA, which Node trusts by default, so no file is needed any more. If you still see that error, save the CA file from your service's connection page as `certs/tiger-ca.pem` (or set `TIGER_CA_CERT`); it is trusted in addition to the normal roots and verification stays on. `TIGER_DB_ADDRESS` is accepted as an alias for `TIGER_DATABASE_URL`. `certs/` is gitignored.
+Rep history can live in Tiger Data instead of the CSV. Put your own connection string in `.env` (gitignored; see `.env.example`: `TIGER_DATABASE_URL`, `PUSHUP_USER_ID`), then `npm run db:migrate`, `npm run db:load` (CSV, marked `source=mock`), `npm run db:stats` and `npm run train:tiger` (`PUSHUP_SOURCES=real` ignores mock rows). **TLS:** hostname and certificate-chain verification are always required, including when no custom CA is configured. Weakening connection-string modes are rejected. If the endpoint has a private CA, obtain its CA bundle and fingerprint through an authenticated official service/support channel, verify that provenance, and set `TIGER_CA_CERT` to the local PEM file. No CA is automatically trusted and certificate errors are not bypassed. `TIGER_DB_ADDRESS` is an alias for `TIGER_DATABASE_URL`; `certs/` is gitignored.
 
-Everything is in its own `pushup` schema, separate from the gateway's `spottr_gateway` tables. Migration, load and stats have been run against a live instance.
+The prototype uses its own `pushup` schema, separate from the gateway's `spottr_gateway` tables. Run every migration, including `004_immutable_workouts.sql`, before enabling uploads. The contributor reported migration/load/stats on a live service; this was not independently verified. On 24 October the main app's configured Tiger endpoint still failed strict certificate-chain verification. Offline fake-database tests verify the code paths, not deployment or live SQL acceptance.
 
 ### "My profile" in the app
 
-Open the web page and press **My profile**. It asks the server how many reps you have (from Tiger Data when `TIGER_DATABASE_URL` is set, otherwise from the mock CSV), says whether that is enough (at least 300 reps, 5 sessions and 50 bad-form reps), and if so lets you press **Train from my history**. The stages are listed as they finish, then your usual elbow angle, body line and rep time, the tree's accuracy on sessions it had not seen, and the if/then rules. Mock data is tagged **demo data**. The profile is saved to `data/profile.json`; the live rep counter does not use it yet.
+Open the web page and press **My profile**. It asks the server how many reps you have (from Tiger Data when `TIGER_DATABASE_URL` is set, otherwise from the mock CSV), says whether that is enough (at least 300 usable reps, 5 sessions, 50 bad-form reps and 30 good-form reps), and if so lets you press **Train from my history**. After the request completes, the page displays its completed stages, then your usual elbow angle, body line and rep time, the tree's accuracy on sessions it had not seen, and the if/then rules. Mock data is tagged **demo data**. Missing rep durations are disclosed and excluded from fitting; malformed or nonfinite rows reject training without replacing an existing profile. Both the CLI and browser use the same readiness gate. The saved profile includes its owner, selected sources, training-data digest and immutable mock-data share. Another owner/source selection or a legacy artifact requires retraining. New rows can make the history newer than the saved profile without changing its training label.
 
 ### Rule and cloud status on the iPhone
 
-a line under the advice banner says which rule judges the workout (default, or your personal rule with its depth and body-line limits, tagged demo data for mock history). After a workout ends, a status row shows the Tiger Data save: saving, saved, or not saved (the Mac keeps it and retries). The gauges follow the active rule, and the summary card names it.
+a line under the advice banner says which rule judges the workout (default, or your personal rule with its depth and body-line limits, tagged demo data for mock history). After an explicitly approved upload, a status row shows whether the workout is saving, saved or still pending. Retrying requires another explicit action. The gauges follow the active rule, and the summary card names it.
 
 ### Saving workouts to the cloud
 
-When you end a **camera** workout, the summary shows the cloud status: "☁ Saving to Tiger Data…", then "✓ Saved 28 reps to Tiger Data". Each rep is stored with `source = real`, its elbow and body-line angles, seconds, and a label taken from the app's cue (good, shallow, sagging, piking, other). If the save fails (offline, Tiger down), it says so, keeps the workout in this browser (localStorage) and retries when the page next opens or when you press **Retry now**. Sending the same workout twice adds nothing, because the session id is the start time. Uploaded videos are not saved, so test clips do not end up as real data. Cloud sync needs `TIGER_DATABASE_URL` (or `TIGER_DB_ADDRESS`) in `.env`; without it the summary says sync is off. The labels come from the app's own rules, not from a person, so a profile trained on them mostly learns those rules back.
+After a **standard camera** workout, choose **Upload workout** to send rep angles, durations, completion timestamps and rule-derived labels to your configured Tiger service. Ending a workout never uploads it automatically. Video replays and other variations cannot be uploaded as real standard-push-up history. Changing camera/video/variation starts a fresh workout.
+
+Approval first persists an owner-bound workout snapshot in this browser's versioned local outbox. Only then does the request start. The workout has a stable UUID and a server-computed content hash: an exact retry adds no rows, while changed content returns a conflict. The database receipt and rep inserts use one transaction. Profile splits group new workouts by UUID; the older continuous aggregate still groups by integer start-second session and can combine two workouts begun in the same second. Rep completion times are observed by the page; they are not inferred from total workout duration.
+
+Use **Retry pending uploads** explicitly after a failure or page reload. A different configured owner cannot send another owner's pending items. The browser never stores the server session token in the outbox. Conflicting snapshots require inspection/discard rather than silently overwriting cloud history. Local browser storage can be cleared by the browser or user and is not an account backup. Ownerless queues from the earlier prototype are not silently adopted.
+
+Cloud actions are loopback-only and require the current local session token, an allowed Host/Origin and JSON requests. The token is obtained from the local page and stays in memory. This protects the new cloud/training routes; it does not add authentication to the existing LAN video/chat display routes. Cloud sync needs `TIGER_DATABASE_URL` (or `TIGER_DB_ADDRESS`) in `.env`. Labels come from the default angle rules rather than a human annotation, so training on them does not independently validate form.
 
 ### Default rule or your personal rule
 
@@ -74,7 +81,7 @@ Next to the push-up type there is a rule selector. **Default rule** uses the fix
 
 ## Things worth knowing
 
-- Everything runs locally except the optional Gemini calls. No video leaves your network.
+- Pose inference runs in the browser. Optional Gemini requests send workout metrics/questions; explicitly approved Tiger uploads send rep metrics. This implementation does not send video to those providers.
 - The server listens on your Wi-Fi so the phone can reach it. State, camera frames, shared coach chat and `POST /ask` are accessible without a code; `POST /control` requires the control code. Use a network you trust. The code does not protect the video or chat. Details: [docs/ALGORITHM.md](docs/ALGORITHM.md#7-streaming-to-the-iphone).
 - Thresholds are untuned guesses. How to validate and tune them with real clips: [docs/TEST_PLAN.md](docs/TEST_PLAN.md).
 - Keep `GEMINI_API_KEY` in `.env` (gitignored), never in code.

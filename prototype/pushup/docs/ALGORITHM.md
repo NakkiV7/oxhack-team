@@ -101,15 +101,15 @@ Each frame the UI shows, in priority order: joints hidden, step back (no pose), 
 
 ## 9. Personal profile (offline, mock data so far)
 
-Not part of the live pipeline yet. [profile.mjs](../profile.mjs) turns past reps (`data/history.csv`: elbow, body line, seconds per rep, label) into a profile:
+This profile pipeline belongs to the standalone browser prototype, separate from native Spottr. The tree is explanatory; the live counter can optionally use only the bounded baseline rule below. [profile.mjs](../profile.mjs) turns past reps (`data/history.csv`: elbow, body line, seconds per rep, label) into a profile:
 
 - **Baselines:** mean and standard deviation of elbow and body line, median of rep time, over the reps labeled `good`. Median for time because slow outlier reps would drag a mean.
 - **Decision tree:** CART, Gini impurity, depth <= 4, >= 5 reps per leaf, features `elbow`, `body_line`, `seconds`, `rep` (rep number in the set). Printed as readable if/then rules. The last 2 sessions are held out to measure accuracy on sessions the tree has not seen; the saved tree is retrained on all reps.
 - The CSV is generated (`data/make-history.mjs`, seeded) with labels set by the generator, not by the app's own rules, so the tree has something to learn beyond the fixed thresholds. Real use needs real labels (for example a "bad rep" tap) and roughly 300+ labeled reps with at least 50 bad ones.
 - Storage: reps can be kept in Tiger Data (`pushup.rep` hypertable, 7-day chunks, `source` = mock or real). `pushup.session_stats` is a continuous aggregate (per day, user, session: reps, good reps, mean good elbow and body line, mean seconds). `train.mjs --tiger` reads reps back in the CSV row shape.
-- Readiness (`readiness()` in `profile.mjs`): train only with >= 300 reps, >= 5 sessions and >= 50 reps not labeled good. `profile-service.mjs` wraps status and training for the server (`GET /profile/status`, `POST /profile/train`, loopback only).
-- Real sessions: `sync.mjs` (`parseSync`, `labelOf`) turns a finished camera workout into rows (`source=real`, session id = start time in epoch seconds so a resend is idempotent, labels good/shallow/sagging/piking/other from the app cue, migration `003_label_values.sql`). The page POSTs them to `/sync` (loopback only).
-- Training takes well under a second, so any loading screen would be presentation only.
+- Readiness (`readiness()` in `profile.mjs`): train only with >= 300 usable reps, >= 5 sessions, >= 50 reps not labeled good and >= 30 complete good reps. Missing durations are excluded with counts disclosed; malformed/nonfinite rows reject the fit. The CLI and service share this gate. `profile-service.mjs` wraps status and training for the server (`GET /profile/status`, `POST /profile/train`, loopback only; mutations also require same-origin JSON and a local session bearer token).
+- Real sessions: `parseSync` accepts only explicitly approved owner-bound standard-camera snapshots with a UUID, finite metrics and actual rep completion timestamps. The page writes its versioned outbox before sending. An immutable content-hash receipt and rep rows commit together; exact retries add nothing and changed content returns 409. Page load and workout completion do not initiate cloud writes. Migration `004_immutable_workouts.sql` is required. Legacy ownerless pending items are not uploaded.
+- Training on the bundled mock fixtures took under a second in local checks; larger histories can take longer. The server returns the completed stages together; their brief sequential display is presentation, not streamed progress.
 
 ## 10. Personal rule (live)
 
@@ -154,3 +154,5 @@ Questions typed on the iPhone Coach page go to `POST /ask` on the Mac (`ask.mjs`
 5. The API key is only in the request header on the Mac; it is never in any prompt.
 
 Limits: this reduces, not eliminates, prompt-injection risk, and answers are only as complete as the page excerpts (first 6000 characters of each page).
+
+Saved profile provenance binds the owner, source selection, training-data digest and training mock share. Owner/source mismatch and legacy/invalid artifacts are unavailable until retrained. A changed current history is reported separately from the saved model’s training source. These checks prevent mock or another owner’s baselines from being silently presented as personal real-data evidence.

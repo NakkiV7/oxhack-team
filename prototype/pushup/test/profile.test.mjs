@@ -31,3 +31,19 @@ test('profile is measured on sessions held out of training', () => {
   assert.ok(p.holdoutAccuracy > 0.85, `accuracy ${p.holdoutAccuracy}`);
   assert.ok(p.rules.length >= 4);
 });
+
+test('CSV rejects missing cells, duplicate columns, unknown labels and nonfinite measurements', () => {
+  const header = 'session,rep,elbow,body_line,seconds,counted,label';
+  for (const text of [
+    header + '\n1,1,Infinity,170,3,1,good',
+    header + '\n1,1,,170,3,1,good',
+    header + '\n1,1,60,170,3,1',
+    header + ',label\n1,1,60,170,3,1,good,good',
+    header + '\n1,1,60,170,3,1,unknown',
+  ]) assert.throws(() => parseCsv(text), /Invalid profile/);
+});
+
+test('direct fitting refuses nonfinite input and insufficient usable profile history', () => {
+  assert.throws(() => trainTree([{ ...rows[0], seconds: Infinity }]), /Invalid profile row/);
+  assert.throws(() => buildProfile(rows.slice(0, 30)), /Not enough usable/);
+});
