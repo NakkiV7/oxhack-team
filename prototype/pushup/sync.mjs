@@ -1,5 +1,4 @@
-// Turns a finished workout from the page into rep rows for Tiger Data. Pure, so it is easy to test.
-// The page sends { startedAt (ms), timeMs, reps: [{ counted, good, minElbow, minLine, secs, issue }] }.
+import { createHash } from 'node:crypto';
 
 export const MAX_SYNC_REPS = 500;
 
@@ -19,25 +18,36 @@ const num = (v, lo, hi, what) => {
   return v;
 };
 
-// Session id = start time in epoch seconds, so sending the same workout again maps to the same rows
-// (inserts skip rows that already exist) and a retry never creates a duplicate session.
-export function parseSync(body) {
-  if (!body || !Array.isArray(body.reps)) throw new Error('reps must be a list');
-  if (!body.reps.length) throw new Error('no reps to save');
-  if (body.reps.length > MAX_SYNC_REPS) throw new Error(`more than ${MAX_SYNC_REPS} reps`);
-  const startedAt = num(body.startedAt, Date.UTC(2020, 0, 1), Date.now() + 86400000, 'startedAt');
-  const timeMs = num(body.timeMs ?? 0, 0, 86400000, 'timeMs');
-  const step = Math.max(1000, Math.floor(timeMs / body.reps.length));
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const object = (value, keys) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(k => !keys.includes(k))) throw new Error('Unknown or invalid sync fields');
+};
+
+// Real observation dates come from camera completion events, never an even spacing estimate.
+export function parseSync(body, { userId, now = Date.now() } = {}) {
+  object(body, ['workoutId', 'userId', 'cloudConsent', 'source', 'variation', 'startedAt', 'endedAt', 'timeMs', 'reps']);
+  if (typeof userId !== 'string' || !userId.trim() || userId.length > 128 || body.userId !== userId) throw new Error('Workout owner does not match this server');
+  if (body.cloudConsent !== true || body.source !== 'real' || body.variation !== 'standard') throw new Error('Explicit consent and a real standard-camera workout are required');
+  if (typeof body.workoutId !== 'string' || !uuid.test(body.workoutId)) throw new Error('A stable workout UUID is required');
+  if (!Array.isArray(body.reps) || !body.reps.length || body.reps.length > MAX_SYNC_REPS) throw new Error('Workout needs 1–500 observed reps');
+  const startedAt = num(body.startedAt, Date.UTC(2020, 0, 1), now + 2000, 'startedAt');
+  const endedAt = num(body.endedAt, startedAt, now + 2000, 'endedAt');
+  if (!Number.isSafeInteger(startedAt) || !Number.isSafeInteger(endedAt) || endedAt - startedAt > 86400000) throw new Error('Workout dates must be integer milliseconds within 24 hours');
+  const timeMs = num(body.timeMs, 0, endedAt - startedAt, 'timeMs');
+  let previous = startedAt - 1;
+  const reps = body.reps.map(r => {
+    object(r, ['observedAt', 'counted', 'good', 'minElbow', 'minLine', 'secs', 'issue']);
+    const observedAt = num(r.observedAt, startedAt, endedAt, 'observedAt');
+    if (!Number.isSafeInteger(observedAt) || observedAt <= previous) throw new Error('Rep observation times must be strictly ordered');
+    previous = observedAt;
+    if (typeof r.counted !== 'boolean' || typeof r.good !== 'boolean' || (r.good && !r.counted)) throw new Error('Rep judgments must be consistent booleans');
+    if (r.issue != null && (typeof r.issue !== 'string' || r.issue.length > 200)) throw new Error('Rep issue exceeds its text limit');
+    return { observedAt, counted: r.counted, good: r.good, minElbow: num(r.minElbow, 0, 180, 'elbow'), minLine: num(r.minLine, 0, 180, 'body line'), secs: r.secs == null ? null : num(r.secs, 0, 600, 'seconds'), issue: r.issue ?? null };
+  });
+  const workoutId = body.workoutId.toLowerCase();
+  const snapshot = { workoutId, userId, cloudConsent: true, source: 'real', variation: 'standard', startedAt, endedAt, timeMs, reps };
+  const contentHash = createHash('sha256').update(JSON.stringify(snapshot)).digest('hex');
   const session = Math.floor(startedAt / 1000);
-  const rows = body.reps.map((r, i) => ({
-    measured_at: new Date(startedAt + i * step).toISOString(),
-    session,
-    rep: i + 1,
-    elbow: num(r.minElbow, 0, 180, `rep ${i + 1} elbow`),
-    body_line: num(r.minLine, 0, 180, `rep ${i + 1} body line`),
-    seconds: r.secs == null ? null : num(r.secs, 0, 600, `rep ${i + 1} seconds`),
-    counted: !!r.counted,
-    label: labelOf(r),
-  }));
-  return { session, rows };
+  const rows = reps.map((r, i) => ({ measured_at: new Date(r.observedAt).toISOString(), session, rep: i + 1, elbow: r.minElbow, body_line: r.minLine, seconds: r.secs, counted: r.counted, label: labelOf(r) }));
+  return { workoutId, userId, source: 'real', session, rows, contentHash };
 }

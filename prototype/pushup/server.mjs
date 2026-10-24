@@ -1,6 +1,6 @@
 import http from 'node:http';
 import os from 'node:os';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, rename, rm } from 'node:fs/promises';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { createAsker } from './ask.mjs';
 import { parseCsv } from './profile.mjs';
@@ -8,6 +8,8 @@ import { createProfileService } from './profile-service.mjs';
 import { parseSync } from './sync.mjs';
 
 const PORT = Number(process.env.PORT ?? 3001);
+const cloudToken = randomBytes(32).toString('hex');
+const userId = process.env.PUSHUP_USER_ID || 'local';
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -133,16 +135,25 @@ const profileService = createProfileService({
   async loadRows() {
     if (!hasTiger()) {
       const csv = await readFile(new URL('./data/history-demo.csv', import.meta.url), 'utf8').catch(() => readFile(new URL('./data/history.csv', import.meta.url), 'utf8'));
-      return { rows: parseCsv(csv), where: 'mock CSV file' };
+      return { rows: parseCsv(csv), where: 'mock CSV file', userId, selectedSources: ['mock'] };
     }
     const { readReps } = await tigerLib();
-    const rows = await readReps(tigerPool, { userId: process.env.PUSHUP_USER_ID || 'local', sources: (process.env.PUSHUP_SOURCES || 'mock,real').split(',') });
-    return { rows, where: 'Tiger Data' };
+    const selectedSources = [...new Set((process.env.PUSHUP_SOURCES || 'mock,real').split(','))].sort();
+    if (selectedSources.some((source) => !['mock', 'real'].includes(source))) throw new Error('PUSHUP_SOURCES must select mock or real');
+    const rows = await readReps(tigerPool, { userId, sources: selectedSources });
+    return { rows, where: 'Tiger Data', userId, selectedSources };
   },
-  save: (p) => writeFile(PROFILE_FILE, JSON.stringify(p, null, 2) + '\n'),
+  async save(profile) {
+    const temporary = new URL(`./data/profile-${randomBytes(8).toString('hex')}.tmp`, import.meta.url);
+    try {
+      await writeFile(temporary, JSON.stringify(profile, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
+      await rename(temporary, PROFILE_FILE);
+    } finally {
+      await rm(temporary, { force: true });
+    }
+  },
   load: async () => {
-    const p = JSON.parse(await readFile(PROFILE_FILE, 'utf8').catch(() => 'null'));
-    return p && { trainedAt: p.trainedAt, reps: p.reps, sessions: p.sessions, baselines: p.baselines, holdoutAccuracy: p.holdoutAccuracy, rules: p.rules, where: p.where };
+    return JSON.parse(await readFile(PROFILE_FILE, 'utf8').catch(() => 'null'));
   },
 });
 const profileError = (res, e) => {
@@ -151,6 +162,17 @@ const profileError = (res, e) => {
 };
 
 const isLoopback = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
+
+const localOrigin = (req) => {
+  const host = req.headers.host;
+  if (!['localhost', '127.0.0.1', '[::1]'].some((name) => host === `${name}:${PORT}`)) return false;
+  return !req.headers.origin || req.headers.origin === `http://${host}`;
+};
+const cloudAuthorized = (req) => {
+  const given = Buffer.from(req.headers.authorization ?? '');
+  const expected = Buffer.from(`Bearer ${cloudToken}`);
+  return given.length === expected.length && timingSafeEqual(given, expected);
+};
 
 const readBody = (req) => new Promise((resolve, reject) => {
   let body = '';
@@ -237,6 +259,18 @@ const server = http.createServer(async (req, res) => {
     // Everything else (page, assets, publishing state) is for the Mac itself.
     if (!isLoopback(req)) return res.writeHead(403).end();
 
+    if (['/cloud-context', '/profile/status', '/profile/train', '/sync'].includes(path)) {
+      if (!localOrigin(req)) return res.writeHead(403).end();
+      if (req.method === 'POST') {
+        if (!cloudAuthorized(req)) return res.writeHead(403).end();
+        if (!/^application\/json(?:\s*;|$)/i.test(req.headers['content-type'] ?? '')) return res.writeHead(415).end();
+      }
+    }
+    if (req.method === 'GET' && path === '/cloud-context') {
+      return res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
+        .end(JSON.stringify({ userId, token: cloudToken, cloudAvailable: hasTiger() }));
+    }
+
     if (req.method === 'GET' && path === '/profile/status') {
       let out;
       try { out = await profileService.status(); } catch (e) { return profileError(res, e); }
@@ -253,12 +287,16 @@ const server = http.createServer(async (req, res) => {
       const send = (status, obj) => res.writeHead(status, { 'Content-Type': 'application/json' }).end(JSON.stringify(obj));
       if (!hasTiger()) return send(503, { error: 'Cloud sync is off: no TIGER_DATABASE_URL in .env' });
       let parsed;
-      try { parsed = parseSync(JSON.parse(await readBody(req))); } catch (e) { return send(422, { error: e.message.slice(0, 200) }); }
+      try {
+        const body = JSON.parse(await readBody(req));
+        if (body.cloudConsent !== true) throw new Error('Cloud upload requires approval');
+        parsed = parseSync(body, { userId });
+      } catch (e) { return send(422, { error: e.message.slice(0, 200) }); }
       try {
         const { insertReps } = await tigerLib();
-        const saved = await insertReps(tigerPool, parsed.rows, { userId: process.env.PUSHUP_USER_ID || 'local', source: 'real' });
+        const saved = await insertReps(tigerPool, parsed.rows, { userId, source: 'real', workoutId: parsed.workoutId, contentHash: parsed.contentHash });
         return send(200, { ok: true, saved, total: parsed.rows.length, session: parsed.session, where: 'Tiger Data' });
-      } catch (e) { return send(502, { error: String(e.message).slice(0, 200) }); }
+      } catch (e) { return send(e.code === 'workout_conflict' ? 409 : 502, { error: e.code === 'workout_conflict' ? 'This workout was already saved with different content' : 'Cloud upload failed; keep the workout and retry later' }); }
     }
 
     if (req.method === 'GET' && path === '/control-code') return res.writeHead(200, { 'Content-Type': 'text/plain' }).end(controlToken);
@@ -295,6 +333,7 @@ const server = http.createServer(async (req, res) => {
 
     let file = null;
     if (path === '/') file = new URL('./index.html', import.meta.url);
+    else if (path === '/client-workout.mjs') file = new URL('./client-workout.mjs', import.meta.url);
     else if (path === '/pushup.mjs') file = new URL('./pushup.mjs', import.meta.url);
     else {
       for (const [prefix, dir] of Object.entries(MOUNTS)) {

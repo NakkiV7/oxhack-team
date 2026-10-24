@@ -98,6 +98,8 @@ The [Pi camera companion](hardware/pi/README.md) is deployed with authenticated 
 
 A standalone Node prototype for exploring the push-up counter. It is a reference for the native counter, not a replacement for it. Full guide: [prototype/pushup/README-pushup.md](prototype/pushup/README-pushup.md).
 
+The personal-profile/cloud extension now has explicit owner-bound uploads, immutable retry receipts and validated training provenance. [Integrity checks and browser evidence](docs/evidence/pushup-prototype-integrity-2026-10-24.md) distinguish offline acceptance from the pending live Tiger migration.
+
 ```bash
 cd prototype/pushup
 npm install
