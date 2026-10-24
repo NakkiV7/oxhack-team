@@ -18,7 +18,8 @@ struct SpottrApp: App {
                         try? await Task.sleep(for: .seconds(1))
                     }
                 }
-                .onChange(of: scenePhase) { _, phase in
+                .onChange(of: scenePhase, initial: true) { _, phase in
+                    store.setAppActive(phase == .active)
                     if store.sessionPhase == .active,
                        phase == .background || (phase == .inactive && store.configured != nil) { store.pause() }
                 }

@@ -34,6 +34,9 @@ final class TrainingStore {
     private var preferredSide: Int?
     private var coachingPolicy = CoachingPolicy()
     private var activeCoachingEvent: CoachingEvent?
+    private(set) var voiceFeedbackEnabled = false
+    private var appActive = true
+    private let coachingVoice: CoachingVoiceBridge
     private var restGeneration: UUID?
     private var restStartedAt: Double?
 
@@ -44,7 +47,21 @@ final class TrainingStore {
         return event
     }
 
-    func cancelCoaching() { activeCoachingEvent = nil }
+    func cancelCoaching() {
+        activeCoachingEvent = nil
+        coachingVoice.cancel()
+    }
+
+    func setVoiceFeedback(_ enabled: Bool) {
+        guard voiceFeedbackEnabled != enabled else { return }
+        coachingVoice.update(session: session, event: coachingEvent, enabled: false, now: now)
+        voiceFeedbackEnabled = enabled
+    }
+
+    func setAppActive(_ active: Bool) {
+        appActive = active
+        if !active { cancelCoaching() }
+    }
 
     func actualRestElapsed(at time: Double? = nil) -> Double? {
         let time = time ?? now
@@ -54,8 +71,10 @@ final class TrainingStore {
     }
 
     func coachingTick(at time: Double? = nil, wallTime: Date = Date()) {
-        guard configured == nil else { return }
+        guard appActive else { cancelCoaching(); return }
+        guard configured == nil else { coachingVoice.cancel(); return }
         let time = time ?? now
+        defer { coachingVoice.update(session: session, event: coachingEvent, enabled: voiceFeedbackEnabled, now: time) }
         guard time.isFinite else { return }
         if coachingEvent == nil || activeCoachingEvent?.expiresAt.map({ time >= $0 }) == true {
             activeCoachingEvent = nil
@@ -88,7 +107,9 @@ final class TrainingStore {
     }
 
     init(historyURL: URL? = nil, secondaryVision: SecondaryCameraVisionWorker? = nil,
-         secondaryCameraClient: @escaping @MainActor () throws -> SecondaryCameraClient = { try SecondaryCameraSettings.client() }) {
+         secondaryCameraClient: @escaping @MainActor () throws -> SecondaryCameraClient = { try SecondaryCameraSettings.client() },
+         voicePlayback: VoicePlayback? = nil) {
+        coachingVoice = CoachingVoiceBridge(playback: voicePlayback ?? LocalVoicePlayback())
         self.secondaryVision = secondaryVision ?? SecondaryCameraVisionWorker()
         self.secondaryCameraClient = secondaryCameraClient
         let root = URL.applicationSupportDirectory.appendingPathComponent("Spottr")
@@ -165,6 +186,7 @@ final class TrainingStore {
     var now: Double { ProcessInfo.processInfo.systemUptime }
     func start() {
         defer { publish() }
+        voiceFeedbackEnabled = false
         configured = nil
         vision.stop(); secondaryVision.stop(); session = TrainingSession(firstExercise: selectedExercise)
         coachingPolicy = CoachingPolicy(history: history)
