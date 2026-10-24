@@ -50,7 +50,8 @@ Status per track, with the acceptance gate for each, is in [docs/ROADMAP.md](doc
 
 | Track | Owner | State |
 |---|---|---|
-| Push-up and squat counting | @azhar-rafiq, @NakkiV7 | ✅ baseline, 🚧 validation on labelled clips |
+| Push-up counting | @azhar-rafiq | ✅ baseline, 🚧 validation on labelled clips (test plan in `prototype/pushup/docs/TEST_PLAN.md`, no accuracy claim yet) |
+| Squat counting | @NakkiV7 | ✅ baseline, 🚧 validation on labelled clips |
 | Manual/timed logging, progression, reports | @omariosc | ✅ local implementation |
 | Gemini chat, summaries, proposals | @omariosc | 🚧 gateway and contracts, live provider run pending |
 | Voice (ElevenLabs) and landing page | @MishaGitnik | ⏳ |
@@ -95,6 +96,29 @@ The gateway defaults to `http://127.0.0.1:8787`; `GET /health` reports configura
 
 Use Send, Propose or Generate summary to explicitly share recent saved sets and skill game points; raw sensor telemetry is not part of that request. Proposals start unselected: choose exercises, then **Approve & save selected exercises** to save a checklist. Each checklist item's Log action opens the manual logger; the camera foundation session remains a separate flow. Cancel/failure/invalid coaching preserves local reports and the current plan. See the gateway README for current routes and restrictions.
 
+## Push-up CV prototype
+
+A standalone Node prototype for exploring the push-up counter. It is a reference for the native counter, not a replacement for it. Full guide: [prototype/pushup/README-pushup.md](prototype/pushup/README-pushup.md).
+
+```bash
+cd prototype/pushup
+npm install
+npm run setup   # downloads the pose model into models/ (gitignored)
+npm test        # offline rep-counter and guardrail tests
+npm run ui      # http://localhost:3001
+```
+
+**Supported setup:** camera side-on to the user, one person in frame, whole body visible, about 2 to 3 m away.
+
+**Known limitations:**
+
+- Thresholds are untuned guesses and have not been measured on labelled clips. There is no count-accuracy claim yet.
+- A 2D side view cannot judge elbow flare or scapular issues. This is not a form-certified or medical tool.
+- Wall push-ups only check for one straight line, not sag or pike direction.
+- The prototype's Gemini coach reads its own `GEMINI_API_KEY` from `prototype/pushup/.env`. It is separate from the app's gateway (Coach tab) and is not wired into the native build.
+
+**Next:** consented side-view clips, count-error and cue measurements, then an exercise-specific push-up policy with landmark-fixture tests. Edits to `PoseGeometry.swift` and `RepCounter.swift` are agreed with the squat owner first.
+
 ## Pick up a feature
 
 - [Team ownership and help wanted](docs/TEAM.md): claim a branch and file boundary before editing.
@@ -115,7 +139,7 @@ Push-up CV belongs to [@azhar-rafiq](https://github.com/azhar-rafiq); squat CV t
 | `server` | Optional local gateway; credentials stay here at runtime |
 | `integrations` | Provider contracts, schemas, SQL preparation and integration setup |
 | `scripts` | Pinned SDK fetch, Xcode generator and local checks |
-| `prototype/pushup` | Standalone web + iPhone push-up prototype (Node), used to explore the counter, plus Gemini coach and cited-Q&A experiments. Not part of the native build. See `README-pushup.md` there. |
+| `prototype/pushup` | Standalone push-up prototype, not part of the native build: web page (MediaPipe + rep state machine, standard/knee/incline/wall variations), a small iPhone display app in `ios/`, and an experimental Gemini coach with cited Q&A. It has its own `.env` and does not use the gateway. Thresholds are untuned guesses. See `README-pushup.md` there. |
 | `design`, `research`, `docs` | Existing approved graphics, research and historical design notes |
 
 Historical design documents describe intentions at their recorded date; source and the current evidence ledger take precedence for implementation status. Existing images are available for the demo; generation of additional images is paused.
