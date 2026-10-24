@@ -2,35 +2,27 @@
 
 Native iPhone + Apple Watch training companion for OxHack 2026. Repository: [NakkiV7/oxhack-team](https://github.com/NakkiV7/oxhack-team).
 
-<!-- NEW: badges. Only things that exist in the repo today; see docs/ROADMAP.md for what is verified. -->
 ![Swift](https://img.shields.io/badge/Swift-SwiftUI-F05138?logo=swift&logoColor=white)
 ![iOS](https://img.shields.io/badge/iOS-26-000000?logo=apple&logoColor=white)
 ![watchOS](https://img.shields.io/badge/watchOS-26-000000?logo=apple&logoColor=white)
 ![MediaPipe](https://img.shields.io/badge/MediaPipe-Pose_Landmarker-0097A7?logo=google&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-gateway-339933?logo=nodedotjs&logoColor=white)
 ![Gemini](https://img.shields.io/badge/Gemini-API-8E75B2?logo=googlegemini&logoColor=white)
-![Tiger Data](https://img.shields.io/badge/Tiger_Data-SQL_proposal-FDB515)
+![Tiger Data](https://img.shields.io/badge/Tiger_Data-adapter-FDB515)
 ![Status](https://img.shields.io/badge/status-hackathon_prototype-orange)
 
-<!-- NEW: hero. Replace with a real recording (5 to 10 s: live camera, skeleton, rep count). Put it in docs/media/. -->
-<p align="center"><img src="https://placehold.co/900x420?text=Demo+GIF+goes+here" alt="Demo placeholder"></p>
+The working baseline includes on-device MediaPipe push-up/squat tracking, manual and timed custom workouts, a 19-exercise library with lessons and private demo-video imports, local profiles/goals, connected skill progression and deterministic session/week reports. Most exercises use manual logging or a timer; only push-ups and squats currently have camera tracking. Attribute points are game progress, not measured physiology. Local training needs no sign-in or cloud sync.
 
-The working baseline includes on-device MediaPipe push-up/squat tracking, camera and imported-video sessions, manual workout logging, timed holds, a 19-exercise library, local history, skill progression and deterministic session/week reports. Most exercises use manual logging or a timer; only push-ups and squats currently have camera tracking. Attribute points are game progress, not measured physiology. There is no sign-in or cloud sync requirement for the local demo.
+Merged milestones through [PR #36](https://github.com/NakkiV7/oxhack-team/pull/36) include the profile-aware Coach, Pi camera client and opt-in local voice. Provider integrations and physical-device evidence have separate acceptance gates. A passing simulator test does not establish rep accuracy or real Watch sensor capture. The [current evidence ledger](docs/integration-readiness.md) distinguishes implemented, offline-tested, live and pending paths.
 
-Provider integrations and physical-device evidence have separate acceptance gates. A passing simulator test does not establish rep accuracy or real Watch sensor capture. See [roadmap and evidence gates](docs/ROADMAP.md) before describing a sponsor integration as connected.
+## What the demo can show
 
-## At a glance
+- Local custom workouts with explicit manual reps, paused hold timing, history and reports; connected grid/linear skill views; profile goals and weekly targets.
+- Nineteen exercise icons, six push-up/squat phase illustrations and recording guides. User-filmed demonstration videos remain to be recorded; illustrations and imported fixtures are not physical exercise evidence.
+- Optional grounded Gemini chat, two report types and selected workout proposals. Four local gateway requests returned 200 using synthetic inputs; a native phone-to-provider flow is still pending.
+- Opt-in standard local voice and a paired Pi side-camera path. Audible phone acceptance remains pending; the actual Pi camera disconnects after roughly two seconds, so sustained tracking is not established.
 
-<!-- NEW. Screenshots: replace the placeholders with real images in docs/media/. -->
-| Today / session | Camera tracking | Coach |
-|---|---|---|
-| ![Today](https://placehold.co/200x400?text=Today) | ![Camera](https://placehold.co/200x400?text=Camera) | ![Coach](https://placehold.co/200x400?text=Coach) |
-| TODO caption | TODO caption | TODO caption |
-
-| Apple Watch | Hardware / landing page |
-|---|---|
-| ![Watch](https://placehold.co/200x200?text=Watch) | ![Extra](https://placehold.co/300x200?text=Arduino+or+landing) |
-| TODO caption | TODO caption |
+For judges, distinguish these paths from the pending Tiger persistence, hosted Vultr gateway, physical Watch sensors, Presage measurement and Delta review. There is no public TestFlight build yet. See [release readiness](docs/release-readiness.md) and the [integration ledger](docs/integration-readiness.md).
 
 How the pieces connect (offline-first; gateway and providers are optional):
 
@@ -46,16 +38,18 @@ flowchart LR
   Store --> Voice[Voice cues]
 ```
 
-Status per track, with the acceptance gate for each, is in [docs/ROADMAP.md](docs/ROADMAP.md). Short version (✅ implemented, 🚧 in progress, ⏳ not started; "verified" still needs its named check):
+Current contributor boundaries:
 
 | Track | Owner | State |
 |---|---|---|
 | Push-up counting | @azhar-rafiq | ✅ baseline, 🚧 validation on labelled clips (test plan in `prototype/pushup/docs/TEST_PLAN.md`, no accuracy claim yet) |
 | Squat counting | @NakkiV7 | ✅ baseline, 🚧 validation on labelled clips |
-| Manual/timed logging, progression, reports | @omariosc | ✅ local implementation |
-| Gemini chat, summaries, proposals | @omariosc | 🚧 gateway and contracts, live provider run pending |
-| Voice (ElevenLabs) and landing page | @MishaGitnik | ⏳ |
-| Physical Watch, Vultr, Tiger, Snowflake, HRT, Presage, Arduino | @omariosc | 🚧 / ⏳ see roadmap |
+| Manual/timed logging, profile, lessons, skill tree, reports | @omariosc | Merged local implementation |
+| Gemini chat, summaries, proposals | @omariosc | Merged native flow; live gateway synthetic checks passed, native network acceptance pending |
+| Local voice | @omariosc | Merged; fake playback tests passed, audible acceptance pending |
+| ElevenLabs and landing page | @MishaGitnik | Local page work exists; remote synthesis and public deployment pending |
+| Pi side camera | @omariosc | Native client merged; companion deployed, sustained USB capture blocked |
+| Physical Watch and remaining providers | @omariosc | See the evidence ledger for each distinct gate |
 
 ## Start locally
 
@@ -92,13 +86,13 @@ For hidden key entry, run `./scripts/local-config.py GEMINI_API_KEY` (Python 3).
 
 Use the variable descriptions in [.env.example](.env.example) and the [gateway setup](integrations/gateway/README.md). `.env` is ignored. Keep Gemini, database and other provider credentials on the server. The app receives only the gateway base URL and its separate gateway access token through local settings. Do not put provider keys in Swift, Xcode build settings, a committed plist, screenshots or PR text. Use a per-developer local token; a shared hackathon token is not production identity management.
 
-The gateway defaults to `http://127.0.0.1:8787`; `GET /health` reports configuration without a provider call. Health readiness and a configured key do not prove a provider request succeeded. In **Coach → Coach settings** (sliders), enter the gateway URL and gateway access token, then save. The app stores the token in this-device Keychain. It accepts HTTPS and permits HTTP for localhost development; a physical phone needs a reachable HTTPS gateway. A remote deployment must provide its own authentication and transport hardening.
+The gateway defaults to `http://127.0.0.1:8787`; `GET /health` reports configuration without a provider call. Health readiness and a configured key do not prove a provider request succeeded. In **Coach → Coach settings** (sliders), enter the gateway URL and gateway access token, then save. The app stores the token in this-device Keychain. It accepts HTTPS and permits HTTP for localhost development; a physical phone needs a reachable HTTPS gateway. [Vultr packaging](docs/vultr-deployment.md) is prepared with bounded HTTPS proxying, but no VM is deployed and the bearer token remains a single-owner demo boundary.
 
-Use Send, Propose or Generate summary to explicitly share saved training, skill game points and recorded Watch summaries; raw sensor streams are not sent. Proposals start unselected: choose exercises, then **Approve & save selected exercises** to save a checklist. Each checklist item's Log action opens the manual logger; the camera foundation session remains a separate flow. Cancel/failure/invalid coaching preserves local reports and the current plan. See the gateway README for current routes and restrictions.
+Use Send, Propose or Generate summary to explicitly share saved training, skill game points, recorded Watch summaries and saved goals/weekly target; raw sensor streams and the optional profile name are not sent. Proposals start unselected: choose exercises, then **Approve & save selected exercises**. **Start saved workout** runs the approved manual/timed plan with explicit set controls. Cancel/failure/invalid coaching preserves local reports and the current plan. See [goals and privacy](docs/coach-goals.md) and the gateway README.
 
-The local coaching policy evaluates form and pacing every second and at rep boundaries, using personal mean/sample SD from valid observed camera reps. It records actual rest between sets and emits expiring, prioritized text events for later voice playback. It makes no per-second provider call. See [coaching policy](docs/coaching-policy.md).
+The local coaching policy evaluates form and pacing every second and at rep boundaries, using personal mean/sample SD from valid observed camera reps. It records actual rest between sets and emits expiring, prioritized events. An explicit **Voice feedback** toggle speaks new events through Apple's local synthesizer; it starts off for every new tracked workout. No per-second provider call is made. See [coaching policy](docs/coaching-policy.md) and [voice feedback](docs/voice-feedback.md).
 
-The [Pi camera companion](hardware/pi/README.md) is prepared for a later attached USB camera, with explicit authenticated capture and stale-frame/lease handling. It has not been deployed to the Pi or connected to iPhone inference.
+The [Pi camera companion](hardware/pi/README.md) is deployed with authenticated HTTPS capture, certificate pinning, freshness and expiring leases. The native client feeds preview frames into phone inference; it does not claim Pi inference. Native/UI tests passed 31/31 and Python tests 23/23. Real capture produced frames, then the USB device disconnected after roughly two seconds. Sustained iPhone tracking and rep accuracy remain pending; see [physical evidence](hardware/pi/EVIDENCE-2026-10-24.md).
 
 ## Push-up CV prototype
 
@@ -143,16 +137,18 @@ Push-up CV belongs to [@azhar-rafiq](https://github.com/azhar-rafiq); squat CV t
 | `Shared/Apple` | Apple companion transport |
 | `Tests/Core`, `Tests/iOS`, `Tests/UI` | Offline behavior, native pipeline and UI checks |
 | `server` | Optional local gateway; credentials stay here at runtime |
+| `deploy` | Prepared Docker/Caddy single-owner hosting configuration; no deployed VM implied |
+| `evaluations` | Authored synthetic judge fixtures and run evidence; prepared packets are not judge results |
 | `integrations` | Provider contracts, schemas, SQL preparation and integration setup |
 | `scripts` | Pinned SDK fetch, Xcode generator and local checks |
 | `prototype/pushup` | Standalone push-up prototype, not part of the native build: web page (MediaPipe + rep state machine, standard/knee/incline/wall variations), a small iPhone display app in `ios/`, and an experimental Gemini coach with cited Q&A. It has its own `.env` and does not use the gateway. Thresholds are untuned guesses. See `README-pushup.md` there. |
 | `design`, `research`, `docs` | Existing approved graphics, research and historical design notes |
 
-Historical design documents describe intentions at their recorded date; source and the current evidence ledger take precedence for implementation status. Existing images are available for the demo; generation of additional images is paused.
+Historical design documents describe intentions at their recorded date; source and the current evidence ledger take precedence for implementation status. The 19 icons and six phase illustrations are merged. Coordinate any further artwork changes; real demonstration recordings remain separate from generated illustrations.
 
 ## Prizes we are aiming for
 
-<!-- NEW. Targets, not claims: claim a sponsor integration only once its roadmap row is verified. -->
+These are targets, not claims of completed sponsor acceptance.
 | Prize | Track |
 |---|---|
 | Best Use of Gemini API (MLH) | Gemini chat, summaries, proposals |

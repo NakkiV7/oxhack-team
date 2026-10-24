@@ -1,18 +1,20 @@
 # How Spottr works
 
-Spottr is a native iPhone and Watch app with a small optional Node gateway. Local workouts, form cues, history, skill progress and deterministic reports work without provider credentials. The phone owns workout state and feedback priority.
+Spottr is a native iPhone and Watch app with a small optional Node gateway. Local workouts, profile/goals, lessons, skill progress and deterministic reports work without provider credentials. The phone owns workout state and feedback priority. This overview reflects merged native work through PR #36; the [evidence ledger](integration-readiness.md) separates that code from physical/provider acceptance.
 
 ## Runtime boundaries
 
 | Component | Owns | Boundary |
 |---|---|---|
-| iPhone, `Native/iOS` | Camera/video frames, MediaPipe pose, workout controls, cue presentation, local history and reports | Raw camera frames stay local in the current phone path. User explicitly requests cloud chat, summaries or sync |
+| iPhone, `Native/iOS` | Camera/video frames, MediaPipe pose, manual/timed plans, profile, lesson videos, local voice, history and reports | Raw frames/private demo imports stay local. User explicitly requests cloud chat, summaries or sync |
 | Shared core, `Shared/Core` | Rep/session state, source/freshness validation, catalogue, game rules, computed reports, provider contracts | Foundation-only Swift compiled by SwiftPM and both app targets |
 | Watch, `Native/Watch` | Workout heart rate and motion magnitudes, controls and current session display | Timestamped session/generation-scoped WatchConnectivity messages; stale/missing values remain unknown |
 | Gateway, `server` | Bearer authentication, input/output bounds, Gemini REST, Tiger transactions, bounded Snowflake check | Provider keys remain on the server. The current token is a single-owner hackathon boundary, not a user account system |
-| Pi, `hardware/pi` | Explicit camera capture, fresh preview frames and expiring capture lease | Camera transport is separate from pose inference; actual hardware evidence is recorded separately |
+| Pi, `hardware/pi` | Explicit authenticated HTTPS capture, certificate pinning, fresh JPEGs and expiring lease | Phone runs pose inference. Companion is deployed; sustained USB capture remains blocked |
 
-Flow: camera pose + Watch observations → local workout/session state → deterministic cue policy → text event → optional audio consumer. Completed records → local reports and skill progress. Explicit requests → grounded derived facts to Gemini, or an immutable session snapshot to Tiger.
+Flow: phone/Pi camera pose + available Watch observations → local workout/session state → deterministic cue policy → text event → opted-in local speech. Manual/timed custom plans use explicit quantities rather than camera counts. Completed records → reports and connected skill progression. Explicit requests → derived facts to Gemini, or a snapshot to the Tiger adapter. Live Tiger persistence is not yet established.
+
+The 19-exercise catalogue defines units, support and game prerequisites. Only push-ups and squats have camera adapters. Grid and linear skill views share the same progression rules; attribute points and unlocks are game progress. Lessons combine illustrations with a user-selected private movie at its original aspect ratio. The recording guide does not imply all 19 real demonstrations have been filmed.
 
 ## Feedback that arrives at the right time
 
@@ -22,21 +24,21 @@ Flow: camera pose + Watch observations → local workout/session state → deter
 - Discomfort stops encouragement and continuation for the current workout. Planned targets never establish remaining physical capacity.
 - Watch heart rate can provide fresh context; it alone does not initiate a coaching command or establish readiness.
 - Record actual monotonic rest between completed sets. Missing legacy timings stay unknown.
-- Voice playback consumes the event identity/priority/expiry; it must cancel obsolete requests and never overlap routine speech.
+- Local `AVSpeechSynthesizer` playback consumes event identity/priority/expiry. It defaults off per tracked workout, drops obsolete/lower-priority events and cancels on mute, app inactivity and session transitions. It has no ElevenLabs dependency; audible/device interruption acceptance is separate from fake playback tests.
 
 Details and test cases: [coaching policy](coaching-policy.md).
 
 ## AI jobs
 
-Gemini receives allowlisted derived facts, recent conversation and catalogue IDs. It explains session/week reports and proposes a structured workout. Schema and semantic checks reject unknown IDs, invalid quantities, stale generations and absent evidence. The user selects and approves exercises before a saved plan changes. Fact-ID membership does not prove the generated sentence is correct; evaluation also checks entailment.
+Gemini receives allowlisted derived facts, recent conversation and catalogue IDs. Explicit profile input adds goals/weekly target but excludes the optional name; changed goals invalidate late results. It explains session/week reports and proposes a structured workout. Schema and semantic checks reject unknown IDs, invalid quantities, stale generations and absent evidence. The user selects and approves exercises before a saved plan changes, then can start that manual/timed workout. Fact-ID membership does not prove the generated sentence is correct; evaluation also checks entailment. See [goal context](coach-goals.md).
 
 Routine tests use deterministic fake network responses and synthetic histories. Bounded live checks are separate and record model, request/result and latency where available. Fixture success is never described as real physiology or a completed provider call.
 
 ## Storage and analytics
 
-The phone stores completed session records locally. Tiger stores immutable snapshots by installation/workout UUID and SHA-256 plus a measured-time scalar hypertable. Identical retries return the same receipt; changed content conflicts instead of overwriting. Timestamp duplication does not manufacture observations. Wider continuous aggregates and compression are a planned analytics layer until executed and measured.
+The phone stores completed records and the local profile on-device. The Tiger adapter implements immutable snapshots by installation/workout UUID and SHA-256 plus measured-time scalar observations: identical retries return the same receipt and changed content conflicts. Offline tests cover this contract. The current service endpoint presents a private-CA chain, so migration and live persistence remain blocked by strict TLS verification. Wider aggregates/compression remain a proposal. See [Tiger diagnosis](tiger-live-readiness.md).
 
-Snowflake has a separate batch-evaluation role: versioned public-data/model features and retrospective comparisons exported from the operational store. Its current connection-check command runs one fixed statement; that is not yet the full analytics pipeline. Vultr is the intended gateway host. Presage is an optional explicitly started camera measurement, with quality and source kept distinct from Watch. See the [readiness ledger](integration-readiness.md).
+Snowflake's implemented connection-check command runs one fixed statement; batch public-data/feature evaluation remains future work. [Vultr packaging](vultr-deployment.md) exists, but no VM is deployed and container execution is unverified. The [Presage proposal](presage-integration.md) keeps source/quality separate from Watch; SDK automatic derived-vitals LLM transmission must be resolved before a local-only claim or live check. Delta has a prepared synthetic judge packet but no actual review. These are distinct integration boundaries, not extra per-frame services.
 
 ## Extending Spottr
 
