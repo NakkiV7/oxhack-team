@@ -1,6 +1,6 @@
 # Public PAMAP forecast evaluation
 
-The runnable workflow is documented in [Snowflake analytics](../../docs/snowflake-analytics.md). The CLI defaults to a local dry run and does not create Snowflake resources or execute this directory's SQL.
+The runnable workflow is documented in [Snowflake analytics](../../docs/snowflake-analytics.md). The [existing-account acceptance handoff](ACCEPTANCE.md) gives the separate configuration, table-review, bounded execution and receipt gates. The CLI defaults to a local dry run and does not create Snowflake resources or execute this directory's SQL.
 
 `001_public_pamap_forecast.sql` is a review-only table definition for a separately approved existing database/schema. It has no replacement, deletion, warehouse, role or database statements. A later approved operator may create the table with their normal administrative tooling. The CLI itself uses only fixed lookup, insert-only MERGE, and evaluation statements.
 
