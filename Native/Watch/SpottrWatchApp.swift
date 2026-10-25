@@ -51,7 +51,7 @@ struct WatchTrainingView: View {
                 Button("Cancel", role: .cancel) { store.cancelFinish() }
             } message: {
                 Text(store.state.snapshot?.configured != nil
-                     ? "Only ended sets are saved. The current unfinished set will be discarded."
+                     ? "Ended sets and skipped steps are saved separately. The current unfinished set will be discarded."
                      : "Finish this session and save your completed work on iPhone.")
             }
     }
@@ -74,6 +74,7 @@ struct WatchTrainingView: View {
                         .font(.title3.weight(.semibold)).monospacedDigit()
                         .foregroundStyle(heartRate == nil ? Color.gray : Color.red)
                         .accessibilityIdentifier("watch-heart-rate")
+                    recordingControl(snapshot)
                     Text(instruction(snapshot)).font(.caption2).multilineTextAlignment(.center)
                         .foregroundStyle(snapshot.configured?.stoppedForDiscomfort == true ? Color.red : Color.white)
                         .fixedSize(horizontal: false, vertical: true)
@@ -91,6 +92,8 @@ struct WatchTrainingView: View {
                     VStack(spacing: 10) {
                         if snapshot.configured?.stoppedForDiscomfort == true {
                             Text("Stop here and recover.").font(.caption).foregroundStyle(.red)
+                        } else if snapshot.configured?.currentWasSkipped == true {
+                            Text("Set skipped. Check in on iPhone.").font(.caption)
                         } else if snapshot.phase == .rest {
                             Button("Next set", systemImage: "forward.end.fill") { store.command(.nextSet) }.buttonStyle(.borderedProminent)
                         } else if snapshot.configured?.hasStarted == false {
@@ -106,10 +109,6 @@ struct WatchTrainingView: View {
                             .buttonStyle(.bordered).tint(.red).accessibilityIdentifier("watch-end-session")
                     }.disabled(!store.reachable)
                     if !store.reachable { Text("Open iPhone to reconnect.").font(.caption2).foregroundStyle(.secondary) }
-                    if !store.recordingBusy {
-                        Button("Record workout", systemImage: "heart") { store.record() }
-                            .buttonStyle(.bordered).disabled(snapshot.phase == .paused)
-                    }
                 }
                 Text(store.status ?? store.recordingState.message).font(.caption2).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
@@ -119,6 +118,20 @@ struct WatchTrainingView: View {
                 }
             }.frame(maxWidth: .infinity).padding(.horizontal, 12).padding(.vertical, 6)
         }.accessibilityIdentifier("watch-controls-page")
+    }
+    @ViewBuilder private func recordingControl(_ snapshot: CompanionSnapshot) -> some View {
+        if snapshot.configured?.stoppedForDiscomfort != true, snapshot.configured?.currentWasSkipped != true {
+            if store.recordingBusy {
+                Text(store.recordingState.message).font(.caption2).foregroundStyle(.secondary)
+            } else if [.active, .rest].contains(snapshot.phase) {
+                Button("Start Watch workout", systemImage: "heart") { store.record() }
+                    .buttonStyle(.bordered).controlSize(.small).font(.caption2)
+                    .accessibilityIdentifier("watch-start-workout")
+                if store.recordingState != .idle {
+                    Text(store.recordingState.message).font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+        }
     }
     private func quantity(_ snapshot: CompanionSnapshot) -> String {
         guard let configured = snapshot.configured else {
@@ -135,6 +148,7 @@ struct WatchTrainingView: View {
             return shortCue(snapshot.cue)
         }
         if configured.stoppedForDiscomfort { return "Stop here. Finish this session and recover." }
+        if configured.currentWasSkipped == true { return "Set skipped. Check in on iPhone." }
         if snapshot.phase == .rest { return "Rest \(Int(configured.restElapsed ?? 0)) s · suggested \(configured.restTarget) s" }
         if !configured.hasStarted { return "Start when ready." }
         if snapshot.phase == .paused { return "Paused. Resume when you’re ready." }

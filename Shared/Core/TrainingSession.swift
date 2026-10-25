@@ -29,16 +29,28 @@ public struct SetRecord: Codable, Identifiable, Equatable, Sendable {
     public var restSecondsBefore: Double? = nil
 }
 
+public struct SkippedSet: Codable, Identifiable, Equatable, Sendable {
+    public enum Reason: String, Codable, Sendable { case userChoice }
+    public let id: UUID
+    public let exerciseID: String
+    public let number: Int
+    public let target: Int
+    public let unit: ExerciseEntry.Unit
+    public let source: InputSource
+    public let reason: Reason
+}
+
 public struct SessionRecord: Codable, Identifiable, Equatable, Sendable {
     public let id: UUID
     public let date: Date
     public let sets: [SetRecord]
     public let telemetry: [WatchTelemetry]
     public let loggedSets: [LoggedSet]
-    public init(id: UUID, date: Date, sets: [SetRecord], telemetry: [WatchTelemetry] = [], loggedSets: [LoggedSet] = []) {
-        self.id = id; self.date = date; self.sets = sets; self.telemetry = telemetry; self.loggedSets = loggedSets
+    public let skippedSets: [SkippedSet]
+    public init(id: UUID, date: Date, sets: [SetRecord], telemetry: [WatchTelemetry] = [], loggedSets: [LoggedSet] = [], skippedSets: [SkippedSet] = []) {
+        self.id = id; self.date = date; self.sets = sets; self.telemetry = telemetry; self.loggedSets = loggedSets; self.skippedSets = skippedSets
     }
-    private enum CodingKeys: String, CodingKey { case id, date, sets, telemetry, loggedSets }
+    private enum CodingKeys: String, CodingKey { case id, date, sets, telemetry, loggedSets, skippedSets }
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         id = try values.decode(UUID.self, forKey: .id)
@@ -46,6 +58,7 @@ public struct SessionRecord: Codable, Identifiable, Equatable, Sendable {
         sets = try values.decode([SetRecord].self, forKey: .sets)
         telemetry = try values.decodeIfPresent([WatchTelemetry].self, forKey: .telemetry) ?? []
         loggedSets = try values.decodeIfPresent([LoggedSet].self, forKey: .loggedSets) ?? []
+        skippedSets = try values.decodeIfPresent([SkippedSet].self, forKey: .skippedSets) ?? []
     }
     public var setCount: Int { sets.count + loggedSets.count }
     public var reps: Int { sets.reduce(0) { $0 + $1.reps } + loggedSets.reduce(0) { $0 + $1.reps } }

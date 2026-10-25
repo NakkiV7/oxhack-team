@@ -1,7 +1,7 @@
 import Foundation
 
 public struct WorkoutStep: Identifiable, Equatable, Sendable {
-    public let id = UUID()
+    public let id: UUID
     public let exerciseID: String
     public let number: Int
     public let totalSets: Int
@@ -9,17 +9,22 @@ public struct WorkoutStep: Identifiable, Equatable, Sendable {
     public let unit: ExerciseEntry.Unit
     public let restSeconds: Int
     public var entry: ExerciseEntry { ExerciseCatalog.find(exerciseID)! }
+    init(id: UUID = UUID(), exerciseID: String, number: Int, totalSets: Int, target: Int, unit: ExerciseEntry.Unit, restSeconds: Int) {
+        self.id = id; self.exerciseID = exerciseID; self.number = number; self.totalSets = totalSets
+        self.target = target; self.unit = unit; self.restSeconds = restSeconds
+    }
 }
 
 public struct ConfigurableSession: Sendable {
     public enum Invalid: Error { case plan }
     public let id = UUID()
     public let date = Date()
-    public let steps: [WorkoutStep]
+    public private(set) var steps: [WorkoutStep]
     public private(set) var generation = UUID()
     public private(set) var phase: SessionPhase = .idle
     public private(set) var index = 0
     public private(set) var completed: [LoggedSet] = []
+    public private(set) var skippedSets: [SkippedSet] = []
     public private(set) var hasStarted = false
     public private(set) var manualReps: Int?
     public private(set) var stoppedForDiscomfort = false
@@ -35,7 +40,7 @@ public struct ConfigurableSession: Sendable {
     public var current: WorkoutStep { steps[index] }
     public var trackingExercise: Exercise? { Exercise(rawValue: current.exerciseID) }
     public var actualReps: Int? { source == .camera ? counter?.reps : manualReps }
-    public var record: SessionRecord { .init(id: id, date: date, sets: [], telemetry: telemetry, loggedSets: completed) }
+    public var record: SessionRecord { .init(id: id, date: date, sets: [], telemetry: telemetry, loggedSets: completed, skippedSets: skippedSets) }
 
     public init(plan: CoachSavedPlan, availableSupport: Set<String>) throws {
         guard (1...12).contains(plan.items.count), plan.approvedAt.timeIntervalSince1970.isFinite,
@@ -62,7 +67,7 @@ public struct ConfigurableSession: Sendable {
     }
     public func canEndSet(at time: Double) -> Bool {
         guard hasStarted, phase == .active || phase == .paused, time.isFinite else { return false }
-        return current.unit == .reps ? actualReps != nil : elapsed(at: time) >= 1
+        return current.unit == .reps ? (actualReps ?? 0) > 0 : elapsed(at: time) >= 1
     }
     public mutating func start(at time: Double) {
         guard phase == .idle, time.isFinite else { return }
@@ -116,6 +121,37 @@ public struct ConfigurableSession: Sendable {
             repDurations: source == .camera ? repDurations : nil))
         if reason == .discomfort { stoppedForDiscomfort = true }
         restStarted = time; activeStarted = nil; accumulated = 0; phase = .rest; generation = UUID()
+        return true
+    }
+    public var currentWasSkipped: Bool {
+        phase == .rest && skippedSets.last?.exerciseID == current.exerciseID && skippedSets.last?.number == current.number
+    }
+    public func canSkipSet(at time: Double) -> Bool {
+        guard time.isFinite, phase == .active || phase == .paused, !stoppedForDiscomfort else { return false }
+        return current.unit == .reps ? (actualReps ?? 0) == 0 : !hasStarted || elapsed(at: time) == 0
+    }
+    @discardableResult public mutating func skipSet(at time: Double) -> Bool {
+        guard canSkipSet(at: time) else { return false }
+        skippedSets.append(.init(id: UUID(), exerciseID: current.exerciseID, number: current.number,
+                                target: current.target, unit: current.unit, source: source, reason: .userChoice))
+        if hasStarted { restStarted = time }
+        activeStarted = nil; accumulated = 0; hasStarted = false; phase = .rest; generation = UUID()
+        return true
+    }
+    public var canReduceRemainingRepTargets: Bool {
+        guard phase == .rest, !stoppedForDiscomfort, !currentWasSkipped, current.unit == .reps,
+              let last = completed.last, last.exerciseID == current.exerciseID, last.number == current.number,
+              last.reps == 1, last.seconds == 0 else { return false }
+        return steps.dropFirst(index + 1).contains { $0.exerciseID == current.exerciseID && $0.unit == .reps && $0.target > 1 }
+    }
+    @discardableResult public mutating func reduceRemainingRepTargetsToOne() -> Bool {
+        guard canReduceRemainingRepTargets else { return false }
+        steps = steps.enumerated().map { offset, step in
+            guard offset > index, step.exerciseID == current.exerciseID, step.unit == .reps else { return step }
+            return WorkoutStep(id: step.id, exerciseID: step.exerciseID, number: step.number,
+                               totalSets: step.totalSets, target: 1, unit: step.unit, restSeconds: step.restSeconds)
+        }
+        generation = UUID()
         return true
     }
     public mutating func nextSet(at time: Double) {

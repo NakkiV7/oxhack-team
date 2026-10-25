@@ -4,6 +4,45 @@ import UIKit
 
 @MainActor
 final class ConfiguredWorkoutFlowTests: XCTestCase {
+    func testExplicitZeroWorkSkipSavesOnlySkipMetadataAfterFinish() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let store = TrainingStore(historyURL: folder.appendingPathComponent("history.json"))
+        store.startPlan(try cameraPlan(), availableSupport: [])
+        store.beginConfiguredSet()
+        XCTAssertTrue(store.skipConfiguredSet())
+        XCTAssertTrue(store.configured?.currentWasSkipped == true)
+        XCTAssertTrue(store.configured?.completed.isEmpty == true)
+        XCTAssertTrue(store.history.isEmpty)
+        XCTAssertTrue(ConfiguredRecoveryView(store: store).continuationGuidance.contains("Nothing was added as a completed set"))
+        store.finish(); store.save()
+        XCTAssertEqual(store.history.count, 1)
+        XCTAssertEqual(store.history.first?.setCount, 0)
+        XCTAssertEqual(store.history.first?.skippedSets.count, 1)
+        XCTAssertEqual(try HistoryStore(url: folder.appendingPathComponent("history.json")).load().first?.skippedSets.count, 1)
+    }
+
+    func testOneRepAdjustmentNeedsExplicitActionAndDoesNotChangeSavedPlan() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let store = TrainingStore(historyURL: folder.appendingPathComponent("history.json"))
+        let plan = try CoachSavedPlan.catalogue(exerciseID: "squat", sets: 2, target: 2, restSeconds: 30)
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        let bytes = try encoder.encode(plan)
+        store.startPlan(plan, availableSupport: [])
+        store.beginConfiguredSet(); store.setConfiguredReps(1); store.endSet()
+        XCTAssertEqual(store.configured?.steps.map(\.target), [2, 2])
+        XCTAssertTrue(store.useOneRepForRemainingConfiguredSets())
+        XCTAssertEqual(store.configured?.steps.map(\.target), [2, 1])
+        XCTAssertEqual(try encoder.encode(plan), bytes)
+        XCTAssertEqual(store.configured?.completed.first?.reps, 1)
+        XCTAssertEqual(store.configured?.phase, .rest)
+        XCTAssertTrue(store.history.isEmpty)
+        store.next()
+        XCTAssertFalse(store.configured?.hasStarted ?? true)
+        XCTAssertNil(store.configured?.actualReps)
+    }
+
     func testRecoveryGuidanceDistinguishesIntermediateRestFromFinalReview() throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }

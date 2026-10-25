@@ -39,9 +39,9 @@ struct ConfiguredSessionView: View {
             }
         }.background(.white).foregroundStyle(Palette.ink)
             .confirmationDialog("Finish this session?", isPresented: $ending) {
-                Button("Finish and save ended sets") { store.finish() }
+                Button(store.configured?.skippedSets.isEmpty == false ? "Finish and save session" : "Finish and save ended sets") { store.finish() }
                 Button("Keep training", role: .cancel) {}
-            } message: { Text("Only sets you explicitly ended are saved. The current unended set and remaining plan are left out.") }
+            } message: { Text("Only sets you explicitly ended count as completed work. Skipped steps are saved separately. The current unended set and remaining plan are left out.") }
     }
 }
 
@@ -60,9 +60,12 @@ private struct ConfiguredLiveSetView: View {
                             Text(run.current.unit == .seconds ? clockText(run.elapsed(at: store.now)) : run.actualReps.map(String.init) ?? "—")
                                 .font(.system(size: 66, weight: .semibold, design: .rounded)).monospacedDigit()
                                 .accessibilityIdentifier("configured-quantity")
-                            Text("/ \(run.current.target) \(run.current.unit == .seconds ? "sec" : "reps")").foregroundStyle(.secondary)
+                            Text("/ \(run.current.target) \(run.current.unit == .seconds ? "sec" : (run.current.target == 1 ? "rep" : "reps"))").foregroundStyle(.secondary)
                             Spacer()
-                            Label(store.heartRate(at: context.date), systemImage: "heart").font(.caption)
+                            let heartRate = store.heartRate(at: context.date)
+                            Label { Text(heartRate) } icon: {
+                                Image(systemName: "heart").foregroundStyle(heartRate == "—" ? Palette.muted : Palette.red)
+                            }.font(.caption)
                         }
                         inputControl(run)
                         preview(run)
@@ -73,7 +76,8 @@ private struct ConfiguredLiveSetView: View {
                         if run.source == .camera, run.hasStarted {
                             Text(store.visionState.message).font(.caption).foregroundStyle(.secondary)
                             Text(store.coachingEvent?.decision.text ?? run.cue.text)
-                                .font(.headline).accessibilityIdentifier("configured-coaching-cue")
+                                .font(.headline).foregroundStyle(Palette.coaching(store.coachingEvent?.decision, cue: run.cue))
+                                .accessibilityIdentifier("configured-coaching-cue")
                             Text("Observed reps stay separate from your target. End this set yourself.")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
@@ -98,6 +102,7 @@ private struct ConfiguredLiveSetView: View {
                     }.padding(24)
                 }.scrollDismissesKeyboard(.interactively)
                     .safeAreaInset(edge: .bottom) {
+                        VStack(spacing: 8) {
                         HStack(spacing: 12) {
                             if !run.hasStarted {
                                 PrimaryButton(title: run.current.unit == .seconds ? "Start hold" : "Start set", symbol: "play", action: store.beginConfiguredSet)
@@ -108,6 +113,12 @@ private struct ConfiguredLiveSetView: View {
                                 PrimaryButton(title: "End set", symbol: "checkmark") { enteringReps = false; store.endSet() }
                                     .disabled(!run.canEndSet(at: store.now)).accessibilityIdentifier("configured-end")
                             }
+                        }
+                        if run.canSkipSet(at: store.now) {
+                            Button("Skip set / stop here") { enteringReps = false; store.skipConfiguredSet() }
+                                .font(.subheadline.weight(.medium)).foregroundStyle(Palette.blue)
+                                .accessibilityIdentifier("configured-skip")
+                        }
                         }.padding(.horizontal, 24).padding(.vertical, 12).background(.white)
                     }
                     .onChange(of: run.generation) { _, _ in
@@ -182,7 +193,7 @@ struct ConfiguredRecoveryView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 27) {
                 TimelineView(.periodic(from: .now, by: 1)) { _ in
-                    if let run = store.configured, let rest = run.restElapsed(at: store.now) {
+                    if let run = store.configured, !run.currentWasSkipped, let rest = run.restElapsed(at: store.now) {
                         VStack(spacing: 9) {
                             Text("Suggested rest · \(run.current.restSeconds) sec").font(.caption).foregroundStyle(.secondary)
                             Text(clockText(max(0, Double(run.current.restSeconds) - rest)))
@@ -191,16 +202,38 @@ struct ConfiguredRecoveryView: View {
                         }.frame(maxWidth: .infinity).padding(.vertical, 20)
                     }
                 }
-                if store.configured?.stoppedForDiscomfort == true {
+                if store.configured?.currentWasSkipped == true {
+                    Label("It’s okay to stop here.", systemImage: "hand.raised").font(.headline)
+                    Text(continuationGuidance).font(.subheadline).foregroundStyle(.secondary)
+                    PrimaryButton(title: "Finish session", symbol: "checkmark", action: store.finish)
+                    if !isLast {
+                        Button("Choose the next planned set", action: store.next)
+                            .font(.subheadline.weight(.medium)).foregroundStyle(Palette.blue)
+                            .accessibilityIdentifier("configured-next-after-skip")
+                        Text("Only continue if you choose to. The next set still needs an explicit Start.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                } else if store.configured?.stoppedForDiscomfort == true {
                     Label("Stop here. Finish this session and give yourself time to recover.", systemImage: "hand.raised")
-                        .font(.headline).accessibilityIdentifier("configured-stop")
+                        .font(.headline).foregroundStyle(Palette.red).accessibilityIdentifier("configured-stop")
                 } else {
+                    if store.configured?.canReduceRemainingRepTargets == true {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("One rep recorded. You can stop here.").font(.headline)
+                            Text("If you choose to continue, you can make the remaining sets of this exercise one rep each. No sets are added and no workout starts automatically.")
+                                .font(.caption).foregroundStyle(.secondary)
+                            Button("Use 1 rep for remaining \(store.configured?.current.entry.name ?? "exercise") sets") {
+                                store.useOneRepForRemainingConfiguredSets()
+                            }.font(.subheadline.weight(.semibold)).foregroundStyle(Palette.blue)
+                                .accessibilityIdentifier("configured-one-rep-targets")
+                        }.padding(16).background(Palette.surface, in: RoundedRectangle(cornerRadius: 14))
+                    }
                     if store.configured?.current.unit == .reps {
                         Text("How many clean reps were left?").font(.headline)
                         HStack {
                             ForEach(0..<4) { count in
                                 Button(count == 3 ? "3+" : "\(count)") { reserve = count; feedback() }
-                                    .padding(16).background(reserve == count ? Palette.ink : Palette.surface, in: RoundedRectangle(cornerRadius: 12))
+                                    .padding(16).background(reserve == count ? Palette.blue : Palette.surface, in: RoundedRectangle(cornerRadius: 12))
                                     .foregroundStyle(reserve == count ? .white : Palette.ink)
                             }
                             Button("Skip") { reserve = nil; feedback() }.font(.caption)
@@ -214,12 +247,20 @@ struct ConfiguredRecoveryView: View {
                     Text(continuationGuidance)
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                Button("Finish session", action: store.finish).font(.subheadline.weight(.medium)).frame(maxWidth: .infinity)
+                if store.configured?.currentWasSkipped != true {
+                    Button("Finish session", action: store.finish).font(.subheadline.weight(.medium)).frame(maxWidth: .infinity)
+                }
             }.padding(24)
         }.onAppear { reason = store.configured?.completed.last?.reason ?? .voluntary }
     }
     var continuationGuidance: String {
-        isLast ? "All planned sets are ended. Review your session to save the work you completed."
+        if store.configured?.currentWasSkipped == true {
+            return "Nothing was added as a completed set. This skipped step is saved locally when you finish. Missing entries or camera observations do not prove you did no exercise."
+        }
+        if isLast, store.configured?.skippedSets.isEmpty == false {
+            return "Your planned steps are finished. Review your completed work and skipped steps."
+        }
+        return isLast ? "All planned sets are ended. Review your session to save the work you completed."
             : "The next set starts only when you choose Start. Rest timing never starts a set automatically."
     }
     private var isLast: Bool { store.configured.map { $0.index + 1 == $0.steps.count } ?? false }
@@ -233,17 +274,29 @@ private struct ConfiguredFinishedView: View {
             VStack(alignment: .leading, spacing: 25) {
                 if let run = store.configured {
                     Text("That’s your session.").font(.system(size: 32, weight: .bold)).padding(.top, 25)
-                    Text(run.completed.isEmpty ? "No ended sets to save." : (store.error == nil ? "Session saved on this iPhone." : "Save interrupted."))
-                        .font(.subheadline).foregroundStyle(.secondary)
+                    Text(run.completed.isEmpty && run.skippedSets.isEmpty ? "No ended sets to save." : (store.error == nil ? (run.completed.isEmpty ? "Skipped steps saved locally. No completed sets." : "Session saved on this iPhone.") : "Save interrupted."))
+                        .font(.subheadline).foregroundStyle(store.error != nil ? Palette.red : (run.completed.isEmpty ? Palette.muted : Palette.green))
                     HStack {
                         Metric(value: "\(run.completed.count)", title: "Sets ended", symbol: "square.3.layers.3d")
                         Metric(value: "\(run.record.reps)", title: "Reps", symbol: "repeat")
                         Metric(value: clockText(run.record.activeSeconds), title: "Active time", symbol: "clock")
                     }
+                    if !run.skippedSets.isEmpty {
+                        VStack(alignment: .leading, spacing: 9) {
+                            Text("\(run.skippedSets.count) skipped \(run.skippedSets.count == 1 ? "step" : "steps") · not completed sets")
+                                .font(.subheadline.weight(.semibold)).foregroundStyle(Palette.muted)
+                            ForEach(run.skippedSets) { skipped in
+                                Text("\(ExerciseCatalog.find(skipped.exerciseID)?.name ?? skipped.exerciseID) · planned set \(skipped.number) · skipped by choice")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            Text("Skip details stay in local history and exports. Cloud upload includes completed sets only.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
                     ForEach(run.completed) { set in
                         VStack(alignment: .leading, spacing: 7) {
                             Text("\(ExerciseCatalog.find(set.exerciseID)?.name ?? set.exerciseID) · Set \(set.number ?? 1)").font(.headline)
-                            Text("\(set.seconds > 0 ? "\(Int(set.seconds)) sec" : "\(set.reps) reps") · \(set.source == .camera ? "camera observation" : (set.quantityOrigin == .activeTimer ? "active hold timer" : "manual self-report"))")
+                            Text("\(set.seconds > 0 ? "\(Int(set.seconds)) sec" : "\(set.reps) \(set.reps == 1 ? "rep" : "reps")") · \(set.source == .camera ? "camera observation" : (set.quantityOrigin == .activeTimer ? "active hold timer" : "manual self-report"))")
                                 .font(.subheadline)
                             Text(set.reason.title).font(.caption).foregroundStyle(.secondary)
                             if let rest = set.restSecondsBefore { Text("\(Int(rest)) sec recorded rest before this set").font(.caption).foregroundStyle(.secondary) }

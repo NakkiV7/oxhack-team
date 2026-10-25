@@ -267,6 +267,15 @@ final class TrainingStore {
         else { vision.camera(token: run.generation) }
     }
     func setConfiguredReps(_ reps: Int?) { configured?.setReps(reps); publish() }
+    @discardableResult func skipConfiguredSet() -> Bool {
+        guard configured?.skipSet(at: now) == true else { return false }
+        vision.stop(); secondaryVision.stop(); frame = nil; image = nil; preferredSide = nil
+        cancelCoaching(); publish(); return true
+    }
+    @discardableResult func useOneRepForRemainingConfiguredSets() -> Bool {
+        guard configured?.reduceRemainingRepTargetsToOne() == true else { return false }
+        cancelCoaching(); publish(); return true
+    }
     func stopConfiguredForDiscomfort() {
         guard let run = configured, !run.stoppedForDiscomfort else { return }
         configured?.stopForDiscomfort(at: now)
@@ -394,7 +403,7 @@ final class TrainingStore {
     }
     func save() {
         if let configured {
-            guard configured.phase == .finished, !configured.completed.isEmpty else { return }
+            guard configured.phase == .finished, !configured.completed.isEmpty || !configured.skippedSets.isEmpty else { return }
             persist(configured.record); return
         }
         persist(session.record)

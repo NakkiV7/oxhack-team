@@ -15,7 +15,7 @@ public struct CompanionState: Sendable {
         case .pause: allowed = snapshot.phase == .active && (snapshot.configured?.hasStarted ?? true)
         case .resume: allowed = snapshot.phase == .paused
         case .endSet: allowed = (snapshot.phase == .active || snapshot.phase == .paused) && (snapshot.configured?.canEndSet ?? true)
-        case .nextSet: allowed = snapshot.phase == .rest && snapshot.configured?.stoppedForDiscomfort != true
+        case .nextSet: allowed = snapshot.phase == .rest && snapshot.configured?.stoppedForDiscomfort != true && snapshot.configured?.currentWasSkipped != true
         case .finish: allowed = snapshot.phase != .idle && snapshot.phase != .finished
         }
         guard allowed else { return nil }
@@ -46,6 +46,7 @@ public struct ConfiguredCompanionSnapshot: Codable, Sendable {
     public let hasStarted: Bool
     public let canEndSet: Bool
     public let stoppedForDiscomfort: Bool
+    public let currentWasSkipped: Bool?
     public let source: InputSource?
 }
 
@@ -92,13 +93,17 @@ public struct CompanionSnapshot: Codable, Sendable {
             enteredReps: session.manualReps, activeSeconds: activeSeconds,
             restElapsed: session.restElapsed(at: time), restTarget: session.current.restSeconds,
             hasStarted: session.hasStarted, canEndSet: session.canEndSet(at: time),
-            stoppedForDiscomfort: session.stoppedForDiscomfort, source: session.source)
+            stoppedForDiscomfort: session.stoppedForDiscomfort, currentWasSkipped: session.currentWasSkipped, source: session.source)
     }
     public func isFresh(at now: Date) -> Bool {
         let age = now.timeIntervalSince(sentAt)
         guard age >= -5, age <= 10, reps >= 0, (1...1000).contains(target) else { return false }
         guard let configured else { return exercise != nil && (1...3).contains(setNumber) }
         guard configured.source != .video else { return false }
+        if configured.currentWasSkipped == true {
+            guard phase == .rest, reps == 0, configured.activeSeconds == 0,
+                  !configured.hasStarted, !configured.canEndSet, !configured.stoppedForDiscomfort else { return false }
+        }
         if configured.source == .camera {
             guard Exercise(rawValue: configured.exerciseID) != nil, configured.unit == .reps,
                   configured.enteredReps == nil else { return false }
