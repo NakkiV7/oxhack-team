@@ -4,6 +4,27 @@ import UIKit
 
 @MainActor
 final class ConfiguredWorkoutFlowTests: XCTestCase {
+    func testRecoveryGuidanceDistinguishesIntermediateRestFromFinalReview() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let store = TrainingStore(historyURL: folder.appendingPathComponent("history.json"))
+        let plan = try JSONDecoder().decode(CoachSavedPlan.self, from: Data(#"{"items":[{"exerciseID":"squat","sets":2,"target":2,"unit":"reps","restSeconds":30}],"approvedAt":0,"rationale":"Offline guidance fixture"}"#.utf8))
+        store.startPlan(plan, availableSupport: [])
+        store.beginConfiguredSet(); store.setConfiguredReps(2); store.endSet()
+
+        XCTAssertEqual(ConfiguredRecoveryView(store: store).continuationGuidance,
+                       "The next set starts only when you choose Start. Rest timing never starts a set automatically.")
+        store.next()
+        store.beginConfiguredSet(); store.setConfiguredReps(1); store.endSet()
+
+        XCTAssertEqual(ConfiguredRecoveryView(store: store).continuationGuidance,
+                       "All planned sets are ended. Review your session to save the work you completed.")
+        XCTAssertTrue(store.history.isEmpty)
+        store.next()
+        XCTAssertEqual(store.configured?.phase, .finished)
+        XCTAssertEqual(store.history.first?.setCount, 2)
+    }
+
     func testSavedPlanStartsReadyAndOnlyCompletedWorkIsSavedOnceOnFinish() throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }

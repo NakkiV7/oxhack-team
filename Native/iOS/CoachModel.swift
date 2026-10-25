@@ -12,11 +12,13 @@ final class CoachModel {
     private(set) var proposalContext: CoachValidationContext?
     private var generation = UUID()
     private let configuration: @MainActor () throws -> CoachGatewayClient
+    private let planDefaults: UserDefaults
     private var lastMessage = ""
     private var profile: LocalProfile?
 
-    init(configuration: @escaping @MainActor () throws -> CoachGatewayClient = CoachSettings.client, savedPlanData: Data? = CoachSettings.planData(), profile: LocalProfile? = nil) {
+    init(configuration: @escaping @MainActor () throws -> CoachGatewayClient = CoachSettings.client, savedPlanData: Data? = CoachSettings.planData(), profile: LocalProfile? = nil, defaults: UserDefaults = .standard) {
         self.configuration = configuration
+        planDefaults = defaults
         self.profile = profile
         approvedPlan = savedPlanData.flatMap { try? JSONDecoder().decode(CoachSavedPlan.self, from: $0) }
     }
@@ -79,9 +81,14 @@ final class CoachModel {
         do {
             let plan = try CoachSavedPlan(proposal: proposal, selectedExerciseIDs: selected, context: proposalContext)
             let data = try JSONEncoder().encode(plan)
-            UserDefaults.standard.set(data, forKey: "coach.approvedPlan")
+            planDefaults.set(data, forKey: "coach.approvedPlan")
             approvedPlan = plan; self.proposal = nil; error = nil
         } catch { self.error = "Select at least one valid exercise before saving your plan." }
+    }
+
+    func removeApprovedPlan() {
+        planDefaults.removeObject(forKey: "coach.approvedPlan")
+        approvedPlan = nil
     }
 
     private func begin() -> UUID { generation = UUID(); isLoading = true; error = nil; return generation }
