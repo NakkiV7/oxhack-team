@@ -11,6 +11,7 @@ import numpy as np
 
 from analyzer import SquatAnalyzer
 from coach import Coach
+from voice import Voice
 from panel import BG, COLOUR, W, panel, text
 from pose import L_ANK, L_HIP, L_KNEE, L_SHO, MODELS, Pose, R_ANK, R_HIP, R_KNEE, R_SHO
 
@@ -43,6 +44,7 @@ def main():
     ap.add_argument("--log", help="write reps and timed cues as JSON here")
     ap.add_argument("--caption", help="small caption burnt into the video (e.g. footage credit)")
     ap.add_argument("--headless", action="store_true", help="no window (CI / remote)")
+    ap.add_argument("--voice", default="off", choices=["off", "say", "elevenlabs"], help="speak cues aloud")
     args = ap.parse_args()
 
     live = args.source.isdigit()
@@ -50,7 +52,8 @@ def main():
     if not cap.isOpened():
         raise SystemExit(f"cannot open {args.source!r}" + (" (grant camera access to your terminal app)" if live else ""))
     fps = cap.get(cv2.CAP_PROP_FPS) or 30
-    pose, analyzer, coach = Pose(MODELS[args.model]), SquatAnalyzer(), Coach()
+    pose, analyzer = Pose(MODELS[args.model]), SquatAnalyzer()
+    coach = Coach(speak=Voice(args.voice) if args.voice != "off" else print)
     writers, f, n, t0 = {}, None, 0, time.time()
 
     def write(key, path, img):

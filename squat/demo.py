@@ -7,42 +7,18 @@ ELEVENLABS_VOICE_ID from the environment or squat/.env; each distinct cue is syn
 """
 import argparse
 import json
-import os
 import subprocess
 import tempfile
-import urllib.request
 from pathlib import Path
 
 import cv2
 import imageio_ffmpeg
 import numpy as np
 
+from voice import load_env, synth
+
 FFMPEG = imageio_ffmpeg.get_ffmpeg_exe()
 RATE = 24000
-DEFAULT_VOICE = "21m00Tcm4TlvDq8ikWAM"      # ElevenLabs "Rachel", a standard voice
-
-
-def load_env():
-    env = Path(__file__).with_name(".env")
-    if env.exists():
-        for line in env.read_text().splitlines():
-            if "=" in line and not line.lstrip().startswith("#"):
-                k, v = line.split("=", 1)
-                os.environ.setdefault(k.strip(), v.strip())
-
-
-def synth(text: str, voice: str, path: str) -> None:
-    if voice == "say":
-        subprocess.run(["say", "-v", "Daniel", "-o", path, "--data-format=LEI16@24000", text], check=True)
-        return
-    req = urllib.request.Request(
-        f"https://api.elevenlabs.io/v1/text-to-speech/{os.environ.get('ELEVENLABS_VOICE_ID', DEFAULT_VOICE)}",
-        data=json.dumps({"text": text, "model_id": "eleven_turbo_v2_5"}).encode(),
-        headers={"xi-api-key": os.environ["ELEVENLABS_API_KEY"], "Content-Type": "application/json"},
-    )
-    import certifi, ssl                                   # python.org builds ship without a CA bundle
-    ctx = ssl.create_default_context(cafile=certifi.where())
-    Path(path).write_bytes(urllib.request.urlopen(req, timeout=30, context=ctx).read())
 
 
 def pcm(path: str) -> np.ndarray:
@@ -69,7 +45,7 @@ def main():
         for t, text in cues:
             if text not in clips:
                 path = f"{tmp}/{len(clips)}.{'wav' if args.voice == 'say' else 'mp3'}"
-                synth(text, args.voice, path)
+                synth(text, args.voice, Path(path))
                 clips[text] = pcm(path)
             a, i = clips[text], int(t * RATE)
             track[i:i + len(a)] = a[: len(track) - i]
