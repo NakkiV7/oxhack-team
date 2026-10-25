@@ -40,7 +40,7 @@ hysteresis), so the two push-up paths agree; keep them in step.
 
 ```bash
 python -m venv .venv && .venv/bin/pip install -r requirements.txt
-curl -sSLo squat/models/pose_landmarker_lite.task https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task
+curl -sSLo squat/models/pose_landmarker_full.task https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task
 cd squat && ../.venv/bin/python main.py            # webcam
 ../.venv/bin/python main.py --source clip.mp4 --out annotated.mp4 --log reps.json
 ```
