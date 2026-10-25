@@ -64,6 +64,14 @@ public struct SkillProgress: Sendable {
     public func points(for attribute: TrainingAttribute) -> Int { attributePoints[attribute, default: 0] }
     public func node(exerciseID: String) -> SkillNodeProgress? { nodes.first { $0.exerciseID == exerciseID } }
 
+    public func pendingPrerequisiteIDs(for exerciseID: String) -> [String] {
+        SkillGraph.prerequisites(for: exerciseID).filter { node(exerciseID: $0)?.isComplete != true }
+    }
+
+    public func isConnectionEarned(from: String, to: String) -> Bool {
+        SkillGraph.prerequisites(for: to).contains(from) && node(exerciseID: from)?.isComplete == true
+    }
+
     public func access(exerciseID: String, previewUnlock: Bool = false) -> SkillAccess? {
         guard let node = node(exerciseID: exerciseID) else { return nil }
         if node.isComplete { return .earned }
