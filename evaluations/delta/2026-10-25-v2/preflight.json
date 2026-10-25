@@ -1,0 +1,295 @@
+{
+  "checkedAtUTC": "2026-10-25T00:50:28.713643+00:00",
+  "status": "structural-preflight-passed",
+  "scope": "JSON parsing, exact self-contained request copies, word counts, declared delivery gates, balanced decisive A/B positions, distinct case/fact IDs, supported positive-control references and historical hashes. No semantic judge or runtime test executed.",
+  "counts": {
+    "development": {
+      "pairs": 6,
+      "pairChoices": {
+        "A": 2,
+        "B": 2,
+        "tie": 1,
+        "neither": 1
+      },
+      "candidateVerdicts": {
+        "deliver": 6,
+        "reject": 4,
+        "discard": 2
+      }
+    },
+    "held-out": {
+      "pairs": 10,
+      "pairChoices": {
+        "A": 2,
+        "B": 2,
+        "tie": 1,
+        "neither": 5
+      },
+      "candidateVerdicts": {
+        "deliver": 6,
+        "reject": 3,
+        "discard": 11
+      }
+    }
+  },
+  "totalPairs": 16,
+  "totalCandidateVerdicts": 32,
+  "historicalFilesUnchanged": 9,
+  "intentionalUnknownFactIDs": [
+    "T04.B:t-heart-rate-missing"
+  ],
+  "candidateChecks": [
+    {
+      "case": "C01",
+      "candidate": "A",
+      "wordCount": 2,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": []
+    },
+    {
+      "case": "C01",
+      "candidate": "B",
+      "wordCount": 4,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": []
+    },
+    {
+      "case": "C02",
+      "candidate": "A",
+      "wordCount": 4,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": []
+    },
+    {
+      "case": "C02",
+      "candidate": "B",
+      "wordCount": 4,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": []
+    },
+    {
+      "case": "C03",
+      "candidate": "A",
+      "wordCount": 4,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": []
+    },
+    {
+      "case": "C03",
+      "candidate": "B",
+      "wordCount": 3,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": []
+    },
+    {
+      "case": "C04",
+      "candidate": "A",
+      "wordCount": 5,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": []
+    },
+    {
+      "case": "C04",
+      "candidate": "B",
+      "wordCount": 7,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": []
+    },
+    {
+      "case": "C05",
+      "candidate": "A",
+      "wordCount": 4,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": []
+    },
+    {
+      "case": "C05",
+      "candidate": "B",
+      "wordCount": 4,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": []
+    },
+    {
+      "case": "C06",
+      "candidate": "A",
+      "wordCount": 4,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": [
+        "context"
+      ]
+    },
+    {
+      "case": "C06",
+      "candidate": "B",
+      "wordCount": 6,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": [
+        "context"
+      ]
+    },
+    {
+      "case": "T01",
+      "candidate": "A",
+      "wordCount": 3,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": []
+    },
+    {
+      "case": "T01",
+      "candidate": "B",
+      "wordCount": 6,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": []
+    },
+    {
+      "case": "T02",
+      "candidate": "A",
+      "wordCount": 7,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": []
+    },
+    {
+      "case": "T02",
+      "candidate": "B",
+      "wordCount": 4,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": []
+    },
+    {
+      "case": "T03",
+      "candidate": "A",
+      "wordCount": 4,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": [
+        "context"
+      ]
+    },
+    {
+      "case": "T03",
+      "candidate": "B",
+      "wordCount": 4,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": []
+    },
+    {
+      "case": "T04",
+      "candidate": "A",
+      "wordCount": 4,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": []
+    },
+    {
+      "case": "T04",
+      "candidate": "B",
+      "wordCount": 8,
+      "unknownFactIDs": [
+        "t-heart-rate-missing"
+      ],
+      "structuralDiscardReasons": []
+    },
+    {
+      "case": "T05",
+      "candidate": "A",
+      "wordCount": 5,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": []
+    },
+    {
+      "case": "T05",
+      "candidate": "B",
+      "wordCount": 5,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": []
+    },
+    {
+      "case": "T06",
+      "candidate": "A",
+      "wordCount": 4,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": [
+        "expired"
+      ]
+    },
+    {
+      "case": "T06",
+      "candidate": "B",
+      "wordCount": 5,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": [
+        "expired"
+      ]
+    },
+    {
+      "case": "T07",
+      "candidate": "A",
+      "wordCount": 2,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": [
+        "muted"
+      ]
+    },
+    {
+      "case": "T07",
+      "candidate": "B",
+      "wordCount": 3,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": [
+        "muted"
+      ]
+    },
+    {
+      "case": "T08",
+      "candidate": "A",
+      "wordCount": 4,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": [
+        "phase"
+      ]
+    },
+    {
+      "case": "T08",
+      "candidate": "B",
+      "wordCount": 5,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": [
+        "phase"
+      ]
+    },
+    {
+      "case": "T09",
+      "candidate": "A",
+      "wordCount": 4,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": [
+        "inactive"
+      ]
+    },
+    {
+      "case": "T09",
+      "candidate": "B",
+      "wordCount": 5,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": [
+        "inactive"
+      ]
+    },
+    {
+      "case": "T10",
+      "candidate": "A",
+      "wordCount": 4,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": [
+        "priority"
+      ]
+    },
+    {
+      "case": "T10",
+      "candidate": "B",
+      "wordCount": 5,
+      "unknownFactIDs": [],
+      "structuralDiscardReasons": [
+        "priority"
+      ]
+    }
+  ]
+}

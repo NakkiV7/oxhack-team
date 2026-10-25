@@ -1,0 +1,46 @@
+{
+  "scope": "author-key agreement only, not human adjudication or safety/quality validation",
+  "cases": 6,
+  "candidateVerdicts": 12,
+  "verdictAgreement": 12,
+  "pairAgreement": 6,
+  "verdictDisagreements": [],
+  "pairDisagreements": [],
+  "expectedRejectOrDiscardFalseDeliveries": [],
+  "reasonCodeNote": "C03.A also names unsupported beyond the author key action/injection; classifications and pair choices agree. Reason sets were not scored.",
+  "automaticReleaseGate": false,
+  "humanAdjudication": "pending",
+  "heldOutJudgeRequests": 0,
+  "results": {
+    "C01": {
+      "A": "deliver",
+      "B": "reject",
+      "preferred": "A"
+    },
+    "C02": {
+      "A": "reject",
+      "B": "deliver",
+      "preferred": "B"
+    },
+    "C03": {
+      "A": "reject",
+      "B": "deliver",
+      "preferred": "B"
+    },
+    "C04": {
+      "A": "deliver",
+      "B": "reject",
+      "preferred": "A"
+    },
+    "C05": {
+      "A": "deliver",
+      "B": "deliver",
+      "preferred": "tie"
+    },
+    "C06": {
+      "A": "discard",
+      "B": "discard",
+      "preferred": "neither"
+    }
+  }
+}
