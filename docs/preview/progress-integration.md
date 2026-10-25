@@ -38,3 +38,9 @@ The test uses a unique data namespace, verifies normal empty progress, explicitl
 | `demo-grade-explanation` | Sample scoring explanation |
 
 Visual checks pending integration: small iPhone and accessibility text sizes, VoiceOver labels, workout order against fixture dates, zero-history preview, and mode switching back to unchanged real history. No physical, provider or deployed acceptance is claimed.
+
+## Integrated validation — 25 October 2026
+
+The primary integration chat confirmed the combined run green: all eight `PreviewWorkspaceTests` and `DemoProgressFlowTests/testFreshProgressHasNoPreviewAndExplicitPreviewOpensSampleInsights` passed. The UI test took 82.3 seconds; result bundle: `Test-Spottr-2026.10.25_08-54-31-+0000.xcresult` in the primary chat's derived data. It exercised latest sample/99 score, insight, full report, preview badge, disabling preview, unchanged empty real progress and terminate/relaunch. The UI test here now matches that exact tested version, using the inner switch thumb and conditional account-sheet dismissal.
+
+The primary chat owns integration commit/project wiring and further storage-edge checks. This simulator result does not establish physical camera/Watch acceptance or a TestFlight upload.

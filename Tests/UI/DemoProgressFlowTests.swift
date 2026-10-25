@@ -15,7 +15,10 @@ final class DemoProgressFlowTests: XCTestCase {
         let preview = app.switches["testflight-preview-toggle"]
         for _ in 0..<8 where !preview.isHittable { app.swipeUp() }
         XCTAssertTrue(preview.waitForExistence(timeout: 5))
-        preview.tap()
+        preview.switches.firstMatch.tap()
+        if app.navigationBars["Profile & settings"].buttons["Done"].exists {
+            app.navigationBars["Profile & settings"].buttons["Done"].tap()
+        }
         app.tabBars.buttons["Progress"].tap()
 
         XCTAssertTrue(app.staticTexts["Sample progress"].waitForExistence(timeout: 5))
@@ -42,7 +45,10 @@ final class DemoProgressFlowTests: XCTestCase {
         app.buttons["profile-settings"].tap()
         for _ in 0..<8 where !preview.isHittable { app.swipeUp() }
         XCTAssertTrue(preview.waitForExistence(timeout: 5))
-        preview.tap()
+        preview.switches.firstMatch.tap()
+        if app.navigationBars["Profile & settings"].buttons["Done"].exists {
+            app.navigationBars["Profile & settings"].buttons["Done"].tap()
+        }
         app.tabBars.buttons["Progress"].tap()
         XCTAssertTrue(app.staticTexts["Your first session starts here."].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["Sample progress"].exists)
