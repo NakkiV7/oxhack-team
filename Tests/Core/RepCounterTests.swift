@@ -69,3 +69,21 @@ func rejectsBrokenMovementContinuity(reason: String) {
     finish(&counter, at: 2.9)
     #expect(counter.reps == 1)
 }
+
+@Test func measuresLoweringFromTheLastDepartureFromTheTopToTheDeepestPoint() {
+    var counter = RepCounter(exercise: .squat)
+    // A shallow dip that returns to the top does not start the clock; the counted rep's descent begins at 1.4 s.
+    let samples: [(Double, Double)] = [(0.0, 170), (0.2, 170), (0.5, 140), (0.7, 140), (0.9, 170), (1.1, 170),
+                                       (1.4, 130), (1.9, 95), (2.1, 85), (2.3, 92), (2.9, 170), (3.1, 170)]
+    for (time, angle) in samples { _ = counter.consume(.init(time: time, angle: angle)) }
+    #expect(counter.reps == 1 && counter.lastRepDuration == 2.0)
+    let phases = counter.lastRepPhases
+    #expect(abs((phases?.lowering ?? 0) - 0.7) < 1e-9 && abs((phases?.rising ?? 0) - 0.8) < 1e-9 && phases?.minimumAngle == 85)
+}
+
+@Test func phaseTimingIsClearedWhenTrackingBreaks() {
+    var counter = loweredCounter(.squat)
+    _ = counter.consume(.init(time: 1.4, angle: 90, confidence: 0.1))
+    finish(&counter)
+    #expect(counter.reps == 0 && counter.lastRepPhases == nil)
+}
