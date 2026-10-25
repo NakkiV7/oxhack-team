@@ -3,7 +3,7 @@
 
 public protocol HKWorkoutSessionDelegate: AnyObject {}
 public protocol HKLiveWorkoutBuilderDelegate: AnyObject {}
-public enum HKAuthorizationStatus { case sharingAuthorized }
+public enum HKAuthorizationStatus { case sharingAuthorized, sharingDenied }
 public enum HKQuantityTypeIdentifier { case heartRate }
 public enum HKWorkoutSessionState { case running, paused, ended }
 public enum HKWorkoutActivityType { case traditionalStrengthTraining }
@@ -15,11 +15,17 @@ public final class HKQuantityType: HKSampleType {
     public init(_ identifier: HKQuantityTypeIdentifier) { super.init() }
 }
 public final class HKHealthStore {
+    public static var authorization = HKAuthorizationStatus.sharingAuthorized
+    public static var deferAuthorization = false
+    public static var authorizationRequests: [(Bool, Error?) -> Void] = []
     public init() {}
     public static func isHealthDataAvailable() -> Bool { true }
-    public func authorizationStatus(for type: HKSampleType) -> HKAuthorizationStatus { .sharingAuthorized }
+    public func authorizationStatus(for type: HKSampleType) -> HKAuthorizationStatus { Self.authorization }
     public func requestAuthorization(toShare: Set<HKSampleType>, read: Set<HKSampleType>,
-                                     completion: @escaping (Bool, Error?) -> Void) { completion(true, nil) }
+                                     completion: @escaping (Bool, Error?) -> Void) {
+        Self.authorizationRequests.append(completion)
+        if !Self.deferAuthorization { completion(true, nil) }
+    }
 }
 public final class HKWorkoutConfiguration {
     public init() {}

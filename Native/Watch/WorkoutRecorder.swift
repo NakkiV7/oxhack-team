@@ -3,10 +3,31 @@ import CoreMotion
 
 @MainActor
 final class WorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBuilderDelegate {
+    enum State: Equatable {
+        case idle, requestingAccess, starting, recording, paused, saving, saved
+        case unavailable, failed(String)
+
+        var isRecording: Bool { self == .recording || self == .paused }
+        var isBusy: Bool { self == .requestingAccess || self == .starting || isRecording || self == .saving }
+        var message: String {
+            switch self {
+            case .idle: return "Record on Watch to see heart rate."
+            case .requestingAccess: return "Requesting workout access…"
+            case .starting: return "Starting workout…"
+            case .recording: return "Workout recording"
+            case .paused: return "Workout paused"
+            case .saving: return "Saving workout…"
+            case .saved: return "Workout saved"
+            case .unavailable: return "Health data unavailable on this device."
+            case .failed(let message): return message
+            }
+        }
+    }
+
     var onHeart: ((SensorReading) -> Void)?
     var onMotion: ((SensorReading, SensorReading) -> Void)?
-    var onStatus: ((String) -> Void)?
-    var onRecording: ((Bool) -> Void)?
+    var onState: ((State) -> Void)?
+    private(set) var state = State.idle { didSet { onState?(state) } }
     private let health = HKHealthStore()
     private let motion = CMMotionManager()
     private let motionQueue = OperationQueue()
@@ -17,16 +38,18 @@ final class WorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBu
     private var lastMotion = Date.distantPast
 
     func start() {
+        guard !state.isBusy else { return }
         #if targetEnvironment(simulator)
-        onStatus?("Heart rate needs Apple Watch."); onRecording?(false)
+        state = .unavailable
         #else
-        guard workout == nil, HKHealthStore.isHealthDataAvailable() else { onStatus?("Health data unavailable"); onRecording?(false); return }
+        guard workout == nil, HKHealthStore.isHealthDataAvailable() else { state = .unavailable; return }
         let token = capture.start(); generation = token
+        state = .requestingAccess
         health.requestAuthorization(toShare: [.workoutType()], read: [HKQuantityType(.heartRate)]) { [weak self] success, error in
             Task { @MainActor in
-                guard let self, self.generation == token else { return }
+                guard let self, self.generation == token, self.state == .requestingAccess else { return }
                 guard success, error == nil, self.health.authorizationStatus(for: .workoutType()) == .sharingAuthorized else {
-                    self.onStatus?("Workout permission wasn’t granted."); self.onRecording?(false); return
+                    self.capture.end(); self.state = .failed("Workout access wasn’t granted or couldn’t be requested."); return
                 }
                 self.begin(token: token)
             }
@@ -35,6 +58,7 @@ final class WorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBu
     }
     private func begin(token: UUID) {
         guard capture.beginCollection(for: token) else { return }
+        state = .starting
         do {
             let config = HKWorkoutConfiguration()
             config.activityType = .traditionalStrengthTraining; config.locationType = .indoor
@@ -51,15 +75,15 @@ final class WorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBu
                         self.capture.end(); self.motion.stopDeviceMotionUpdates()
                         self.workout = nil; self.builder = nil
                         session.end(); builder.discardWorkout()
-                        self.onRecording?(false); self.onStatus?("Couldn’t collect workout data.")
+                        self.state = .failed("Couldn’t collect workout data.")
                         return
                     }
-                    self.onStatus?("Workout recording")
+                    self.state = self.capture.isPaused ? .paused : .recording
+                    if !self.capture.isPaused { self.startMotion() }
                 }
             }
             if capture.isPaused { session.pause() }
-            else { startMotion() }
-        } catch { capture.end(); onStatus?("Couldn’t start a workout."); onRecording?(false) }
+        } catch { capture.end(); state = .failed("Couldn’t start a workout.") }
     }
     private func startMotion() {
         guard motion.isDeviceMotionAvailable else { return }
@@ -82,32 +106,39 @@ final class WorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBu
             }
         }
     }
-    func pause() { capture.pause(); workout?.pause(); motion.stopDeviceMotionUpdates() }
+    func pause() {
+        capture.pause(); workout?.pause(); motion.stopDeviceMotionUpdates()
+        if state == .recording { state = .paused }
+    }
     func resume() {
         guard capture.isPaused else { return }
         guard let workout else { capture.resume(); return }
         guard workout.state == .paused else { return }
-        capture.resume(); workout.resume(); startMotion()
+        capture.resume(); workout.resume()
+        if state == .paused { state = .recording; startMotion() }
     }
     func end() {
+        guard state.isBusy, state != .saving else { return }
+        let collected = state.isRecording
         capture.end(); motion.stopDeviceMotionUpdates()
-        guard let workout, let builder else { return }
+        guard let workout, let builder else { state = .idle; return }
         let token = generation
         self.workout = nil; self.builder = nil; workout.end()
-        onStatus?("Ending workout…"); onRecording?(false)
+        guard collected else { builder.discardWorkout(); state = .idle; return }
+        state = .saving
         builder.endCollection(withEnd: Date()) { [weak self] success, _ in
             guard let self else { return }
             guard success else {
                 builder.discardWorkout()
                 Task { @MainActor in
                     guard self.capture.isCurrent(token) else { return }
-                    self.onStatus?("Couldn’t save workout.")
+                    self.state = .failed("Couldn’t save workout.")
                 }; return
             }
             builder.finishWorkout { workout, error in
                 Task { @MainActor in
                     guard self.capture.isCurrent(token) else { return }
-                    self.onStatus?(workout != nil && error == nil ? "Workout saved" : "Couldn’t save workout.")
+                    self.state = workout != nil && error == nil ? .saved : .failed("Couldn’t save workout.")
                 }
             }
         }
@@ -116,7 +147,7 @@ final class WorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBu
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {
         Task { @MainActor in
             guard self.workout === workoutSession else { return }
-            self.onStatus?("Workout interrupted."); self.end()
+            self.end()
         }
     }
     nonisolated func workoutBuilderDidCollectEvent(_ workoutBuilder: HKLiveWorkoutBuilder) {}
