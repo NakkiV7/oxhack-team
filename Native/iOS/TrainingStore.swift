@@ -32,6 +32,7 @@ final class TrainingStore {
     var error: String?
     var visionState: VisionState = .idle
     private(set) var frontPreviewState: VisionState = .idle
+    private(set) var frontCameraEnabled = true
     var frame: PoseFrame?
     var image: UIImage?
     var source: InputSource = .camera
@@ -100,6 +101,18 @@ final class TrainingStore {
         }
     }
 
+    func setFrontCameraEnabled(_ enabled: Bool) {
+        guard frontCameraEnabled != enabled else { return }
+        frontCameraEnabled = enabled
+        guard usingSecondaryCamera else { return }
+        if !enabled {
+            vision.stop()
+            frontPreviewState = .idle
+        } else if appActive && acceptsTracking {
+            vision.frontPreview(token: feedbackContext.generation)
+        }
+    }
+
     private var requiresForegroundCapture: Bool {
         configured != nil ? configuredInput != .manual : hasInput && source != .manual
     }
@@ -158,17 +171,18 @@ final class TrainingStore {
             stopReason: stopReason, source: configured?.source ?? source,
             encouragementEnabled: !previewMode && voiceFeedbackEnabled && (remoteVoice?.preference == .david || remoteVoice?.preference == .arnold)
         ))
-        if let decision {
+        let previewEncouragement = previewMode && milestone && voiceFeedbackEnabled && remoteVoice?.preference == .arnold &&
+            context.phase == .active && acceptsTracking && (configured?.source ?? source) == .camera &&
+            cue == .controlled && stopReason == nil && !reportedDiscomfort &&
+            coachingEvent?.decision.priority != .stop && coachingEvent?.decision.priority != .form &&
+            coachingEvent?.decision.reason != .slowerRep
+        if let decision, !previewEncouragement || decision.reason != .targetReached {
             activeCoachingEvent = CoachingEvent(sessionID: context.sessionID, generation: context.generation,
                                                decision: decision, issuedAt: time,
                                                expiresAt: decision.priority == .stop ? nil : time + 6)
             return
         }
-        guard previewMode, milestone, voiceFeedbackEnabled, remoteVoice?.preference == .arnold,
-              context.phase == .active, acceptsTracking, (configured?.source ?? source) == .camera,
-              cue == .controlled, stopReason == nil, !reportedDiscomfort,
-              coachingEvent?.decision.priority != .stop, coachingEvent?.decision.priority != .form,
-              coachingEvent?.decision.reason != .slowerRep else { return }
+        guard previewEncouragement else { return }
         activeCoachingEvent = CoachingEvent(sessionID: context.sessionID, generation: context.generation,
             decision: .init(text: "Keep a steady rhythm.", priority: .pacing, reason: .steadyRhythm,
                             facts: ["\(reps) camera reps recorded in this set."], elapsed: nil),
@@ -238,7 +252,7 @@ final class TrainingStore {
         }
         self.vision.onPreviewState = { [weak self] state, generation in
             Task { @MainActor in
-                guard let self, self.usingSecondaryCamera, self.acceptsTracking,
+                guard let self, self.frontCameraEnabled, self.usingSecondaryCamera, self.acceptsTracking,
                       self.feedbackContext.generation == generation else { return }
                 self.frontPreviewState = state
             }
@@ -372,6 +386,11 @@ final class TrainingStore {
     func secondaryCamera() {
         guard configured == nil, session.phase == .active || session.phase == .paused else { return }
         defer { publish() }
+        if usingSecondaryCamera, source == .camera, session.source == .camera {
+            if session.phase == .active { pause() }
+            resume()
+            return
+        }
         stopCapture()
         session.restartSet(source: .camera, at: now); clearInput()
         usingSecondaryCamera = true; source = .camera; hasInput = true
@@ -382,7 +401,7 @@ final class TrainingStore {
         do {
             let client = try secondaryCameraClient()
             frontPreviewState = .idle
-            vision.frontPreview(token: feedbackContext.generation)
+            if frontCameraEnabled { vision.frontPreview(token: feedbackContext.generation) }
             secondaryVision.start(client: client, generation: feedbackContext.generation)
         }
         catch {
@@ -479,7 +498,7 @@ final class TrainingStore {
         session.finish(at: now); stopCapture(); frame = nil; image = nil; cancelCoaching(); save(); announceCompletion(); publish()
     }
     private func announceCompletion() {
-        guard previewMode, voiceFeedbackEnabled, appActive, remoteVoice?.preference == .arnold,
+        guard voiceFeedbackEnabled, appActive, remoteVoice?.preference == .arnold,
               !reportedDiscomfort, configured?.stoppedForDiscomfort != true, sessionPhase == .finished else { return }
         let record = configured?.record ?? session.record
         guard record.sets.contains(where: { $0.reps > 0 && $0.source != .video }) ||

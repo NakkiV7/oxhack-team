@@ -71,4 +71,26 @@ final class SecondaryCameraFlowTests: XCTestCase {
         XCTAssertTrue(app.buttons["Resume"].waitForExistence(timeout: 3))
         XCTAssertFalse(app.staticTexts["Connecting to side camera…"].exists)
     }
+    @MainActor func testSideOnlyCaptureChoiceHidesFrontPaneAndReconnectDoesNotAskToReset() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
+        app.launch()
+        app.buttons["Start session"].tap()
+        app.buttons["secondary-camera-menu"].tap()
+        let front = app.buttons["front-camera-toggle"]
+        XCTAssertTrue(front.waitForExistence(timeout: 3), app.debugDescription)
+        XCTAssertTrue(front.isSelected)
+        front.tap()
+        if !app.buttons["Start side camera"].exists { app.buttons["secondary-camera-menu"].tap() }
+        app.buttons["Start side camera"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["side-camera-preview"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.descendants(matching: .any)["front-camera-preview"].exists)
+        app.buttons["secondary-camera-menu"].tap()
+        XCTAssertTrue(app.buttons["Reconnect side camera"].waitForExistence(timeout: 3))
+        app.buttons["Reconnect side camera"].tap()
+        XCTAssertFalse(app.buttons["Start fresh set"].exists)
+        XCTAssertFalse(app.staticTexts["Start a fresh side camera set?"].exists)
+    }
+
 }

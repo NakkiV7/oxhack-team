@@ -11,9 +11,11 @@ final class SecondaryCameraVisionWorkerTests: XCTestCase {
     private func client(jpeg: Data, uptime: @escaping () -> Double = { ProcessInfo.processInfo.systemUptime },
                         received: @escaping (String) -> Void = { _ in },
                         age: @escaping (Int) -> String = { _ in "0" },
-                        repeatFirstFrame: Bool = false) throws -> SecondaryCameraClient {
+                        repeatFirstFrame: Bool = false,
+                        frameFailure: @escaping (Int) throws -> Void = { _ in }) throws -> SecondaryCameraClient {
         let config = try SecondaryCameraConfig(url: "https://camera.local:8765", certificateSHA256: String(repeating: "b", count: 64))
         var sequence = 0
+        var frameRequests = 0
         return try SecondaryCameraClient(configuration: config, token: "private-fixture", uptime: uptime, transport: { request in
             received(request.url!.path)
             let data: Data
@@ -21,6 +23,8 @@ final class SecondaryCameraVisionWorkerTests: XCTestCase {
             if request.httpMethod == "POST" {
                 data = Data((request.url?.path == "/camera/start" ? "{\"capture_id\":\"\(self.captureID)\",\"lease_seconds\":60}" : #"{"camera":"stopped"}"#).utf8)
             } else {
+                frameRequests += 1
+                try frameFailure(frameRequests)
                 if !repeatFirstFrame || sequence == 0 { sequence += 1 }; data = jpeg
                 let formatter = ISO8601DateFormatter(); formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
                 headers = ["Content-Type": "image/jpeg", "X-Frame-ID": self.captureID + ":\(sequence)", "X-Captured-At": formatter.string(from: Date()), "X-Frame-Age-Ms": age(sequence)]
@@ -217,4 +221,66 @@ final class SecondaryCameraVisionWorkerTests: XCTestCase {
         XCTAssertEqual(replacementStarts, 1)
         XCTAssertEqual(original.status, .stopped)
     }
+    func testTransientNetworkLossClearsPublishedPoseAndRecoversWithoutRestartingCapture() async throws {
+        for code in [URLError.Code.timedOut, .networkConnectionLost] {
+            var starts = 0
+            let client = try client(jpeg: jpeg(), received: { if $0 == "/camera/start" { starts += 1 } },
+                                    frameFailure: { if $0 == 2 { throw URLError(code) } })
+            let recovered = expectation(description: "Fresh frame after transient network failure")
+            let cleared = expectation(description: "Previous pose removed during recovery")
+            let worker = SecondaryCameraVisionWorker(infer: { _, time in
+                (PoseFrame(time: time, width: 640, height: 360, points: []), UIImage())
+            })
+            var deliveries = 0
+            var failures = 0
+            worker.onState = { state, _ in
+                if state == .starting, deliveries == 1 {
+                    XCTAssertNil(worker.image); XCTAssertNil(worker.frame); XCTAssertNil(client.frame)
+                    cleared.fulfill()
+                }
+                if case .failed = state { failures += 1 }
+            }
+            worker.onFrame = { _, _, _ in
+                deliveries += 1
+                if deliveries == 2 { recovered.fulfill(); worker.stop() }
+            }
+            worker.start(client: client, generation: UUID())
+            await fulfillment(of: [cleared, recovered], timeout: 3)
+            XCTAssertEqual(deliveries, 2)
+            XCTAssertEqual(failures, 0)
+            XCTAssertEqual(starts, 1)
+            worker.stop()
+        }
+    }
+
+    func testPersistentNetworkTimeoutStopsWithinFiveSecondsWithSanitizedCause() async throws {
+        let client = try client(jpeg: jpeg(), frameFailure: { count in
+            if count > 1 {
+                throw URLError(.timedOut, userInfo: [NSURLErrorFailingURLErrorKey: URL(string: "https://private-camera.local/private-credential")!])
+            }
+        })
+        let failed = expectation(description: "Persistent network outage bounded")
+        let worker = SecondaryCameraVisionWorker(infer: { _, time in
+            (PoseFrame(time: time, width: 640, height: 360, points: []), UIImage())
+        })
+        defer { worker.stop() }
+        let began = ProcessInfo.processInfo.systemUptime
+        var failureMessage: String?
+        worker.onState = { state, _ in
+            if case .failed(let message) = state { failureMessage = message; failed.fulfill() }
+        }
+        worker.start(client: client, generation: UUID())
+        await fulfillment(of: [failed], timeout: 7)
+        let elapsed = ProcessInfo.processInfo.systemUptime - began
+        XCTAssertGreaterThan(elapsed, 4.5)
+        XCTAssertLessThan(elapsed, 6)
+        let message = try XCTUnwrap(failureMessage)
+        XCTAssertTrue(message.localizedCaseInsensitiveContains("timed out"))
+        XCTAssertFalse(message.contains("private"))
+        XCTAssertFalse(message.contains("https"))
+        XCTAssertEqual(client.status, .stopped)
+        XCTAssertNil(worker.image)
+        XCTAssertNil(worker.frame)
+    }
+
 }

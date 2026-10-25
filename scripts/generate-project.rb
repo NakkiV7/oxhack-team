@@ -37,6 +37,7 @@ if File.directory?('Native/Resources/DemoVoice')
   app.resources_build_phase.add_file_reference(voice_folder)
 end
 resource(project, app, '.local/SpottrDemoCamera.json') if File.file?('.local/SpottrDemoCamera.json')
+resource(project, app, '.local/SpottrPresage.json') if presage_enabled && File.file?('.local/SpottrPresage.json')
 resource(project, app, 'Native/iOS/PrivacyInfo.xcprivacy')
 resource(project, app, 'Shared/Core/Resources/coach-guidance.json')
 resource(project, app, 'Native/Resources/Assets.xcassets') if File.directory?('Native/Resources/Assets.xcassets')
@@ -86,6 +87,7 @@ if presage_enabled
 end
 Dir['Native/Vendor/*.xcframework'].sort.each do |path|
   next if File.basename(path) == 'SmartSpectra.xcframework' && !presage_enabled
+  next if presage_enabled && File.basename(path).start_with?('MediaPipe')
   framework = project.main_group.new_file(path)
   app.frameworks_build_phase.add_file_reference(framework)
   if File.basename(path) == 'SmartSpectra.xcframework'
@@ -95,7 +97,7 @@ Dir['Native/Vendor/*.xcframework'].sort.each do |path|
     embedded.settings = { 'ATTRIBUTES' => ['CodeSignOnCopy', 'RemoveHeadersOnCopy'] }
   end
 end
-%w[Accelerate AVFoundation CoreMedia AudioToolbox CoreGraphics CoreImage CoreVideo QuartzCore].each do |name|
+%w[Accelerate AVFoundation CoreMedia AudioToolbox CoreGraphics CoreImage CoreVideo QuartzCore Vision].each do |name|
   app.add_system_framework(name)
 end
 app.add_dependency(watch)

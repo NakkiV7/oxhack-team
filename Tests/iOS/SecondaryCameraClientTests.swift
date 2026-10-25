@@ -360,4 +360,65 @@ final class SecondaryCameraClientTests: XCTestCase {
         XCTAssertNil(client.errorMessage)
     }
 
+    func testTransientFrameNetworkFailuresClearPreviewAndRecoverOnTheSameLease() async throws {
+        for code in [URLError.Code.timedOut, .networkConnectionLost] {
+            var gets = 0
+            var starts = 0
+            var stops = 0
+            let client = try SecondaryCameraClient(configuration: configuration(), token: "private-fixture", transport: { request in
+                if request.url?.path == "/camera/start" {
+                    starts += 1
+                    return self.reply(request, body: "{\"capture_id\":\"\(self.captureID)\",\"lease_seconds\":60}")
+                }
+                if request.url?.path == "/camera/stop" { stops += 1; return self.reply(request, body: #"{"camera":"stopped"}"#) }
+                gets += 1
+                if gets == 2 { throw URLError(code) }
+                let formatter = ISO8601DateFormatter(); formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                return (Data([0xff, 0xd8, 0xff, 0xd9]), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: [
+                    "Content-Type": "image/jpeg", "X-Frame-ID": self.captureID + ":\(gets)", "X-Captured-At": formatter.string(from: Date()), "X-Frame-Age-Ms": "0"
+                ])!)
+            })
+            try await client.start()
+            let first = try await client.fetchLatestFrame()
+            XCTAssertNotNil(first)
+            do { _ = try await client.fetchLatestFrame(); XCTFail("A lost request cannot provide an image") }
+            catch { XCTAssertEqual((error as? URLError)?.code, code) }
+            XCTAssertNil(client.frame)
+            XCTAssertEqual(client.status, .streaming)
+            XCTAssertEqual(client.captureID, captureID)
+            XCTAssertEqual(stops, 0)
+            guard client.status == .streaming else { await client.stop(); continue }
+            let recovered = try await client.fetchLatestFrame()
+            XCTAssertEqual(recovered?.metadata.sequence, 3)
+            XCTAssertTrue(recovered.map(client.isCurrent) ?? false)
+            XCTAssertEqual(starts, 1)
+            await client.stop()
+            XCTAssertEqual(stops, 1)
+        }
+    }
+
+    func testFrameAuthenticationTLSAndCaptureIdentityFailuresRemainFatal() async throws {
+        for failure in 0..<3 {
+            var stops = 0
+            let client = try SecondaryCameraClient(configuration: configuration(), token: "private-fixture", transport: { request in
+                if request.url?.path == "/camera/start" { return self.reply(request, body: "{\"capture_id\":\"\(self.captureID)\",\"lease_seconds\":60}") }
+                if request.url?.path == "/camera/stop" { stops += 1; return self.reply(request, body: #"{"camera":"stopped"}"#) }
+                if failure == 0 { return self.reply(request, body: "private-auth-error", status: 401) }
+                if failure == 1 { throw URLError(.serverCertificateUntrusted) }
+                let formatter = ISO8601DateFormatter(); formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                return (Data([0xff, 0xd8, 0xff, 0xd9]), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: [
+                    "Content-Type": "image/jpeg", "X-Frame-ID": String(repeating: "b", count: 32) + ":1", "X-Captured-At": formatter.string(from: Date()), "X-Frame-Age-Ms": "0"
+                ])!)
+            })
+            try await client.start()
+            do { _ = try await client.fetchLatestFrame(); XCTFail("Unsafe transport response accepted") }
+            catch { XCTAssertTrue(error is SecondaryCameraError) }
+            XCTAssertEqual(client.status, .unavailable)
+            XCTAssertNil(client.captureID)
+            XCTAssertNil(client.frame)
+            await client.stop()
+            XCTAssertEqual(stops, 1)
+        }
+    }
+
 }

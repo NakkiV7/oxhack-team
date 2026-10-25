@@ -17,6 +17,7 @@ final class SecondaryCameraVisionWorker {
     @ObservationIgnored private var generation: UUID?
     @ObservationIgnored private var lastPublished: SecondaryCameraFrame?
     @ObservationIgnored private var lastFreshResultAt: TimeInterval?
+    @ObservationIgnored private var lastNetworkFailure: String?
     @ObservationIgnored private var loopTask: Task<Void, Never>?
     @ObservationIgnored private var renewTask: Task<Void, Never>?
     @ObservationIgnored private var watchdogTask: Task<Void, Never>?
@@ -58,6 +59,7 @@ final class SecondaryCameraVisionWorker {
                             if client.isCurrent(snapshot) {
                                 self.frame = pose; self.image = image; self.lastPublished = snapshot
                                 self.lastFreshResultAt = ProcessInfo.processInfo.systemUptime
+                                self.lastNetworkFailure = nil
                                 if self.state != .tracking {
                                     self.state = .tracking; self.onState?(self.state, generation)
                                 }
@@ -66,6 +68,11 @@ final class SecondaryCameraVisionWorker {
                             } else { self.clearPreview(generation: generation) }
                         }
                     } catch SecondaryCameraError.staleFrame {
+                        self.clearPreview(generation: generation)
+                    } catch let network as URLError where network.code == .timedOut || network.code == .networkConnectionLost {
+                        self.lastNetworkFailure = network.code == .timedOut
+                            ? "Pi camera frame requests timed out."
+                            : "The Pi camera connection was interrupted."
                         self.clearPreview(generation: generation)
                     }
                     // No backlog: each request waits for its inference, then yields at least 100 ms.
@@ -83,7 +90,7 @@ final class SecondaryCameraVisionWorker {
         runID = nil; generation = nil
         loopTask?.cancel(); renewTask?.cancel(); watchdogTask?.cancel()
         loopTask = nil; renewTask = nil; watchdogTask = nil
-        image = nil; frame = nil; lastPublished = nil; lastFreshResultAt = nil
+        image = nil; frame = nil; lastPublished = nil; lastFreshResultAt = nil; lastNetworkFailure = nil
         if let cleanup = client?.disconnect() {
             let previous = pendingStop
             pendingStop = Task { await previous?.value; await cleanup.value }
@@ -123,7 +130,8 @@ final class SecondaryCameraVisionWorker {
                     guard client.status == .streaming,
                           let lastFreshResultAt = self.lastFreshResultAt,
                           now - lastFreshResultAt < 5 else {
-                        self.fail("Pi camera has not provided a current result. Check the connection and restart capture.", run: run, generation: generation)
+                        let cause = self.lastNetworkFailure ?? "Pi camera has not provided a current result."
+                        self.fail(cause + " No current result arrived within 5 seconds. Check the connection and restart capture.", run: run, generation: generation)
                         return
                     }
                     if let preview = self.lastPublished, now >= preview.receivedUptime + preview.metadata.validFor {

@@ -150,6 +150,11 @@ final class SecondaryCameraClient {
                 disconnect()
                 throw CancellationError()
             }
+            if let network = error as? URLError,
+               network.code == .timedOut || network.code == .networkConnectionLost {
+                expiryTask?.cancel(); expiryTask = nil; frame = nil
+                throw network
+            }
             let failure = (error as? SecondaryCameraError) ?? .invalidResponse
             if failure == .staleFrame {
                 expiryTask?.cancel(); expiryTask = nil; frame = nil

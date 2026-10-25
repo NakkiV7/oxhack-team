@@ -67,6 +67,9 @@ private struct ConfiguredLiveSetView: View {
                         }
                         inputControl(run)
                         preview(run)
+                        if SmartSpectraDriver.isAvailable, run.hasStarted, run.source == .camera {
+                            PresageWorkoutPanel(store: store)
+                        }
                         Text(run.current.entry.instruction).font(.headline)
                         Label(run.source == .camera ? "Camera observation" : (run.current.unit == .seconds ? "Manual hold · active timer" : "Manual self-report"), systemImage: run.source == .camera ? "camera" : "hand.tap")
                             .font(.caption.weight(.medium)).foregroundStyle(.secondary)
@@ -138,6 +141,13 @@ private struct ConfiguredLiveSetView: View {
     @ViewBuilder private func inputControl(_ run: ConfigurableSession) -> some View {
         if run.trackingExercise != nil {
             Menu {
+                if store.configuredInput == .secondaryCamera {
+                    Toggle("Show front camera", isOn: Binding(get: { store.frontCameraEnabled }, set: store.setFrontCameraEnabled))
+                        .accessibilityIdentifier("front-camera-toggle")
+                    if run.hasStarted {
+                        Button("Reconnect side camera", systemImage: "arrow.clockwise") { store.pause(); store.resume() }
+                    }
+                }
                 ForEach(TrainingStore.ConfiguredInput.allCases, id: \.self) { input in
                     Button(input.title) {
                         guard input != store.configuredInput else { return }

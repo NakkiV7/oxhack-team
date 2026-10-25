@@ -6,6 +6,7 @@ struct DualCameraPreview: View {
     let exercise: Exercise
     var body: some View {
         HStack(spacing: 8) {
+            if store.frontCameraEnabled {
             ZStack {
                 Palette.surface
                 if case .camera = store.frontPreviewState, store.sessionPhase == .active {
@@ -18,6 +19,7 @@ struct DualCameraPreview: View {
                 }
             }.overlay(alignment: .topLeading) { cameraLabel("Front", symbol: "camera") }
                 .accessibilityIdentifier("front-camera-preview")
+            }
             ZStack {
                 Palette.surface
                 if let image = store.image {
@@ -35,7 +37,7 @@ struct DualCameraPreview: View {
         }.frame(height: 270)
             .clipShape(RoundedRectangle(cornerRadius: 20))
             .accessibilityElement(children: .contain)
-            .accessibilityLabel("Front preview on the left, side-camera form on the right")
+            .accessibilityLabel(store.frontCameraEnabled ? "Front preview on the left, side-camera form on the right" : "Side-camera form")
     }
     private func cameraLabel(_ title: String, symbol: String) -> some View {
         Label(title, systemImage: symbol).font(.caption2.weight(.semibold)).padding(8)

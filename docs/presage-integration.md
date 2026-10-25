@@ -1,6 +1,16 @@
 # Presage front-camera integration
 
-## Current offline checkpoint · 25 October 2026
+## Local physical-test variant · 25 October, 11:49 London
+
+Omar explicitly authorized using the existing API key on 25 October. A local SDK-enabled build now avoids the duplicate-class conflict by using Apple Vision for the pose wrapper and linking SmartSpectra without the three external MediaPipe frameworks. The default build still uses MediaPipe. Neither variant changes rep-count thresholds; Apple Vision exercise accuracy needs physical acceptance.
+
+The workout panel uses the existing app-owned front-camera buffers. It starts only after the user enables numeric Insights sharing and confirms a stationary face/chest view, then taps Start. This panel injects a **45-second** limit to allow the 30-second breathing window plus startup; the generic controller's default remains 30 seconds. Pause, set/session change, camera disable, background or dismissal removes the callback and stops the measurement. Values are qualified, source-labelled pulse and breathing estimates; missing/invalid values remain blank. Watch readings remain separate. No measurement has been started by automated tests.
+
+Local setup: save `{ "apiKey": "YOUR_KEY" }` in ignored `.local/SpottrPresage.json`, then run `SPOTTR_EXPERIMENTAL_PRESAGE=1 ruby scripts/generate-project.rb` before building. The generator embeds that private file only in the opted-in local build. Do not commit the file or distribute a shared native key for production. The SDK itself remains ignored and must be fetched with the documented script.
+
+Software acceptance: the SDK-enabled app compiles; three pose-mapping tests and three fake-driver panel tests pass. The existing simulator reports `Missing weights path cnn_human_pose.espresso.weights` when asked to execute Apple's actual body-pose detector; this remains a simulator/device acceptance boundary, not a passing inference test. No live Presage authentication, returned physiological metrics, quota balance or physical cancellation result has yet been verified.
+
+## Earlier offline checkpoint · 25 October 2026
 
 The new `CameraVitalsRun` keeps session/measurement identity, original observation time, confidence and stable flags separate from Watch telemetry. It rejects invalid validation, movement context, unsupported ranges, incomplete 12/30-second windows, stale/future samples and prior runs. `VitalsDisplay` prefers fresh, matching-session Watch heart rate under the existing 12-second policy; camera pulse and breathing remain Presage estimates. No calories, medical readiness, HealthKit writes or Coach/Tiger export are inferred.
 
