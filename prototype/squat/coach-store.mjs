@@ -1,5 +1,7 @@
 // Persistence for the coaching journey on Tiger Data (schema in ../shared/db/004_coaching.sql). Every write is keyed by a
 // stable id and safe to repeat; an assessment and the progress it earns are saved in one transaction.
+import { PRACTICE_COMPLETE, capability, dayOf } from './coach.mjs';
+export { PRACTICE_COMPLETE };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const uid = (u) => { if (typeof u !== 'string' || !/^[a-z0-9_-]{1,64}$/i.test(u)) throw new Error('bad user id'); return u; };
 const j = (v) => (v == null ? null : JSON.stringify(v)); // SQL NULL for absent values, so COALESCE can fill them later
@@ -13,24 +15,52 @@ export async function upsertProfile(pool, userId, { timezone, survey, goals, pre
 }
 
 export async function getActiveProgramme(pool, userId) { return (await pool.query("SELECT * FROM spottr_cv.programme WHERE user_id = $1 AND status = 'active' ORDER BY version DESC LIMIT 1", [uid(userId)])).rows[0] ?? null; }
-// A new programme supersedes the active one and starts its node rows; earlier versions are kept.
+// A new programme supersedes the active one; earlier versions and their rows are kept untouched. Progress for every step
+// that appears in both versions (practice, verification, evidence, XP, badges) is copied into the new version, so a new
+// path never loses earned progress; steps that leave the path keep their record in the earlier version.
 export async function saveProgramme(pool, userId, { programmeId, goal, catalogVersion, graph, rationale, provenance }) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const v = (await client.query('SELECT COALESCE(MAX(version), 0) + 1 AS v FROM spottr_cv.programme WHERE user_id = $1', [uid(userId)])).rows[0].v;
+    const prev = (await client.query("SELECT programme_id FROM spottr_cv.programme WHERE user_id = $1 AND status = 'active' ORDER BY version DESC LIMIT 1", [userId])).rows[0];
+    const carried = prev ? Object.fromEntries((await client.query('SELECT * FROM spottr_cv.node_progress WHERE programme_id = $1', [prev.programme_id])).rows.map((r) => [r.node_id, r])) : {};
     await client.query("UPDATE spottr_cv.programme SET status = 'superseded' WHERE user_id = $1 AND status = 'active'", [userId]);
     const row = (await client.query("INSERT INTO spottr_cv.programme (programme_id, user_id, version, goal, catalog_version, graph, rationale, provenance, status) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8, 'active') RETURNING *",
       [programmeId, userId, v, goal, catalogVersion, j(graph), j(rationale), provenance])).rows[0];
     for (const n of graph.nodes) {
       const availability = n.notRequired ? 'not_required' : n.id === graph.start ? 'current' : (n.prerequisites ?? []).length === 0 ? 'available' : 'locked';
-      await client.query('INSERT INTO spottr_cv.node_progress (programme_id, node_id, user_id, availability) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING', [programmeId, n.id, userId, availability]);
+      const c = carried[n.id];
+      await client.query(`INSERT INTO spottr_cv.node_progress (programme_id, node_id, user_id, availability, practice_count, practice_workouts, practice_log, verification, evidence, criteria_version, xp, badges, completed_at, verified_at)
+        VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8, $9::jsonb, $10, $11, $12::jsonb, $13, $14) ON CONFLICT DO NOTHING`,
+        [programmeId, n.id, userId, availability, c?.practice_count ?? 0, j(c?.practice_workouts ?? []), j(c?.practice_log ?? []), c?.verification ?? 'none', j(c?.evidence ?? []), c?.criteria_version ?? null, c?.xp ?? 0, j(c?.badges ?? []), c?.completed_at ?? null, c?.verified_at ?? null]);
     }
+    await unlockDependents(client, programmeId);
     await client.query('COMMIT'); return row;
   } catch (e) { await client.query('ROLLBACK').catch(() => {}); throw e; } finally { client.release(); }
 }
+// Every node row the person has across all versions: the basis for XP, achievements and practice history, so refining the
+// path never lowers the level or hides an earned milestone. Per step, the best row counts once.
+const RANK = { none: 0, first_completion: 1, consistent: 2 };
+export async function allProgress(pool, userId) {
+  const rows = (await pool.query('SELECT np.*, p.version FROM spottr_cv.node_progress np JOIN spottr_cv.programme p USING (programme_id) WHERE np.user_id = $1', [uid(userId)])).rows;
+  const best = {};
+  for (const r of rows) { const b = best[r.node_id]; if (!b || RANK[r.verification] > RANK[b.verification] || (RANK[r.verification] === RANK[b.verification] && r.xp > b.xp)) best[r.node_id] = r; }
+  const practice = new Map(); for (const r of rows) for (const e of r.practice_log ?? []) practice.set(e.key, e);
+  const xp = Object.values(best).reduce((t, r) => t + (r.xp ?? 0), 0);
+  const achievements = Object.values(best).filter((r) => r.verification !== 'none').map((r) => ({ nodeId: r.node_id, verification: r.verification, verifiedAt: r.verified_at ?? r.completed_at, version: r.version, badges: r.badges, evidence: r.evidence }));
+  const completedPractice = Object.values(best).filter((r) => capability(r.node_id) !== 'assessable' && r.practice_count >= PRACTICE_COMPLETE).map((r) => r.node_id);
+  return { xp, achievements, completedPractice, practiceDays: [...practice.values()] };
+}
+// The latest placement check: a camera attempt run from the survey (node 'placement-check') in the last 7 days.
+export async function latestCheck(pool, userId) {
+  const a = (await pool.query("SELECT * FROM spottr_cv.coaching_attempt WHERE user_id = $1 AND node_id = 'placement-check' AND created_at > now() - interval '7 days' ORDER BY created_at DESC LIMIT 1", [uid(userId)])).rows[0];
+  if (!a) return null;
+  const valid = (a.baseline_reps ?? []).filter((r) => r.counted && r.valid !== false && Number.isFinite(r.down));
+  const downs = valid.map((r) => r.down).sort((x, y) => x - y);
+  return { attemptId: a.attempt_id, exercise: a.exercise, at: a.created_at, validReps: valid.length, medianLowering: downs.length ? downs[downs.length >> 1] : null, status: a.status };
+}
 export async function listNodeProgress(pool, programmeId) { return (await pool.query('SELECT * FROM spottr_cv.node_progress WHERE programme_id = $1', [programmeId])).rows; }
-export const PRACTICE_COMPLETE = 3; // logged practice sets that complete a practice-only node (completion, never AI verification)
 // A node counts as done for unlocking when it is verified, not required, or practice-only with enough logged practice.
 export async function unlockDependents(client, programmeId) {
   const prog = (await client.query('SELECT graph FROM spottr_cv.programme WHERE programme_id = $1', [programmeId])).rows[0]?.graph;
@@ -40,18 +70,21 @@ export async function unlockDependents(client, programmeId) {
   for (const n of nodes) if ((n.prerequisites ?? []).length && n.prerequisites.every((p) => done.has(p))) await client.query("UPDATE spottr_cv.node_progress SET availability = 'available', updated_at = clock_timestamp() WHERE programme_id = $1 AND node_id = $2 AND availability = 'locked'", [programmeId, n.id]);
   return done;
 }
-// Practice is counted once per workout: logging the same workout twice changes nothing. Enough practice on a practice-only
-// node completes it (and unlocks what depends on it) without ever marking it verified.
-export async function logPractice(pool, { programmeId, nodeId, userId, workoutId }) {
-  if (!UUID.test(workoutId ?? '')) throw new Error('workout id required');
+// Practice is counted once per step per calendar day (in the person's timezone): logging again the same day, refreshing,
+// or retrying the request changes nothing and awards nothing. Practice on enough days completes a practice-only step and
+// unlocks what depends on it, without ever marking it verified. Returns { node, logged } (logged false = already counted).
+export async function logPractice(pool, { programmeId, nodeId, userId, tz = 'UTC', now = new Date() }) {
+  const key = `${nodeId}:${dayOf(now.toISOString(), tz)}`;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const row = (await client.query(`UPDATE spottr_cv.node_progress SET practice_count = practice_count + 1, practice_workouts = practice_workouts || to_jsonb($4::text), xp = xp + 10,
+    const row = (await client.query(`UPDATE spottr_cv.node_progress SET practice_count = practice_count + 1, practice_workouts = practice_workouts || to_jsonb($4::text),
+        practice_log = practice_log || jsonb_build_array(jsonb_build_object('key', $4::text, 'at', $5::text)), xp = xp + 10,
         completed_at = CASE WHEN practice_count + 1 >= ${PRACTICE_COMPLETE} THEN COALESCE(completed_at, clock_timestamp()) ELSE completed_at END, updated_at = clock_timestamp()
-      WHERE programme_id = $1 AND node_id = $2 AND user_id = $3 AND NOT (practice_workouts ? $4::text) RETURNING *`, [programmeId, nodeId, uid(userId), workoutId])).rows[0] ?? null;
+      WHERE programme_id = $1 AND node_id = $2 AND user_id = $3 AND NOT (practice_workouts ? $4::text) RETURNING *`, [programmeId, nodeId, uid(userId), key, now.toISOString()])).rows[0] ?? null;
     if (row) await unlockDependents(client, programmeId);
-    await client.query('COMMIT'); return row;
+    await client.query('COMMIT');
+    return { node: row ?? (await pool.query('SELECT * FROM spottr_cv.node_progress WHERE programme_id = $1 AND node_id = $2', [programmeId, nodeId])).rows[0] ?? null, logged: !!row, key };
   } catch (e) { await client.query('ROLLBACK').catch(() => {}); throw e; } finally { client.release(); }
 }
 

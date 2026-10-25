@@ -27,7 +27,8 @@ export async function sessionReport({ pool, ai, user, workoutId, narrate = false
   let narrative = saved?.narrative ?? null;
   if (narrate && !narrative && ai) narrative = await ai.narrate('session', facts);
   saved = await store.saveSessionReport(pool, user, { workoutId, version, facts, timeline, narrative });
-  return { workout: data.workout, facts, timeline, narrative: saved.narrative, attempts: data.attempts, predictions: data.predictions, version };
+  const reps = data.reps.map((r) => ({ n: r.rep_n, counted: r.counted, good: r.good, down: r.down_secs, up: r.up_secs, secs: r.secs, faults: r.faults ?? [], at: r.measured_at }));
+  return { workout: data.workout, facts, timeline, narrative: saved.narrative, attempts: data.attempts, predictions: data.predictions, reps, version };
 }
 
 // Weekly review for the most recently completed calendar week (or a given Monday). Idempotent by user, period and input

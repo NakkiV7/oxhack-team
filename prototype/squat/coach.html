@@ -2,188 +2,433 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Spottr Coach</title>
 <style>
-  :root { --bg:#f5f5f7; --fg:#1d1d1f; --card:#fff; --line:#e5e5ea; --mut:#6e6e73; --acc:#0a84ff; --ok:#30d158; --warn:#ff9f0a; --soft:#f2f2f7; }
-  :root[data-theme="dark"] { --bg:#000; --fg:#f5f5f7; --card:#1c1c1e; --line:#2c2c2e; --mut:#a1a1a6; --soft:#2c2c2e; }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#000; --fg:#f5f5f7; --card:#1c1c1e; --line:#2c2c2e; --mut:#a1a1a6; --soft:#2c2c2e; } }
-  * { box-sizing:border-box; } body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui, sans-serif; }
-  header { display:flex; align-items:center; gap:14px; padding:14px 20px; border-bottom:1px solid var(--line); background:var(--card); position:sticky; top:0; z-index:2; }
-  header h1 { font-size:20px; margin:0 14px 0 0; letter-spacing:-.02em; } header .sub { color:var(--mut); font-size:13px; } header .grow { flex:1; }
-  nav button { background:transparent; border:0; color:var(--mut); font:inherit; padding:6px 10px; border-radius:8px; cursor:pointer; } nav button[aria-current="page"] { color:var(--fg); background:var(--soft); }
-  main { max-width:960px; margin:0 auto; padding:18px 16px 60px; } section[hidden] { display:none; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px; margin:12px 0; } .card h2 { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--mut); margin:0 0 8px; } .card h3 { margin:0 0 6px; font-size:17px; letter-spacing:-.01em; }
-  button, .btn { font:inherit; font-size:14px; padding:8px 14px; border-radius:10px; border:1px solid var(--line); background:var(--soft); color:var(--fg); cursor:pointer; } button.primary { background:var(--acc); color:#fff; border-color:var(--acc); } button:disabled { opacity:.5; cursor:default; }
-  .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; } .sub { color:var(--mut); font-size:13px; } .pill { font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid var(--line); color:var(--mut); } .pill.ok { color:var(--ok); border-color:var(--ok); } .pill.warn { color:var(--warn); border-color:var(--warn); } .pill.acc { color:var(--acc); border-color:var(--acc); }
-  .tree { display:flex; flex-direction:column; gap:0; } .node { position:relative; padding-left:34px; margin:0; } .node::before { content:""; position:absolute; left:11px; top:0; bottom:0; width:2px; background:var(--line); } .node .dot { position:absolute; left:4px; top:26px; width:16px; height:16px; border-radius:50%; background:var(--card); border:2px solid var(--line); } .node.current .dot { border-color:var(--acc); background:var(--acc); } .node.verified .dot { border-color:var(--ok); background:var(--ok); } .node.locked { opacity:.7; } .node.notreq .dot { border-style:dashed; }
-  details > summary { cursor:pointer; } .facts li { margin:4px 0; } .facts small { color:var(--mut); } ul { padding-left:20px; margin:6px 0; } .timeline li { list-style:none; border-left:2px solid var(--line); padding:2px 0 2px 12px; margin:0; }
-  input, select, textarea { font:inherit; padding:7px 9px; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--fg); } label.f { display:flex; flex-direction:column; gap:4px; font-size:13px; color:var(--mut); } label.f > * { font-size:14px; color:var(--fg); }
-  .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px; } .goal { border:1px solid var(--line); border-radius:12px; padding:10px 12px; } .goal input { width:100%; } .unlock { animation:pop .6s ease; display:inline-block; } @keyframes pop { 0% { transform:scale(.6); opacity:0 } 60% { transform:scale(1.15) } 100% { transform:scale(1); opacity:1 } }
-  .bar { height:8px; background:var(--soft); border-radius:4px; overflow:hidden; } .bar i { display:block; height:100%; background:var(--acc); } .cmp { display:grid; grid-template-columns:1fr 1fr; gap:12px; } .num { font-size:26px; font-weight:600; letter-spacing:-.02em; }
-  .label { display:inline-block; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--mut); margin-right:6px; }
+  :root { --bg:#0B0F18; --bg2:#0E1320; --surface:#151C2B; --surface2:#1B2436; --line:#253049; --text:#F3F5FA; --mut:#A6B0C3; --dim:#7C869B;
+    --cyan:#3BD5FF; --gold:#F5C35B; --violet:#A68BFF; --slate:#56617A; --good:#3DD6A0; --warn:#FFB454; color-scheme:dark; }
+  * { box-sizing:border-box; } html, body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  body.survey-open { overflow:hidden; }
+  a { color:var(--cyan); } button { font:inherit; color:inherit; } .ico { flex:none; vertical-align:-3px; }
+  :focus-visible { outline:2px solid var(--cyan); outline-offset:2px; border-radius:8px; }
+  .muted { color:var(--mut); } .small, small { font-size:12.5px; } .tiny { font-size:11.5px; } h2, h3, h4 { letter-spacing:-.015em; margin:0; } .grow { flex:1; }
+  .ghost, .cta, .chip { border-radius:12px; border:1px solid var(--line); background:var(--surface2); padding:9px 14px; cursor:pointer; display:inline-flex; align-items:center; gap:7px; text-decoration:none; color:var(--text); font-size:14px; }
+  .ghost:hover { border-color:#3a4766; } .ghost.small { padding:5px 10px; font-size:13px; }
+  .cta { background:linear-gradient(180deg, #52dcff, #22b6e6); border-color:transparent; color:#04121c; font-weight:650; } .cta:hover { filter:brightness(1.07); } .cta:disabled { opacity:.45; cursor:default; filter:none; } .ghost:disabled { opacity:.5; cursor:default; }
+  .cta.alt { background:transparent; color:var(--cyan); border-color:rgba(59,213,255,.5); }
+  .pill { display:inline-flex; align-items:center; gap:5px; font-size:12px; padding:3px 9px; border-radius:999px; border:1px solid var(--line); color:var(--mut); white-space:nowrap; }
+  .pill.good { color:var(--good); border-color:rgba(61,214,160,.45); } .pill.warn { color:var(--warn); border-color:rgba(255,180,84,.45); } .pill.neutral { color:var(--mut); } .pill.cyan { color:var(--cyan); border-color:rgba(59,213,255,.45); } .pill.gold { color:var(--gold); border-color:rgba(245,195,91,.5); } .pill.violet { color:var(--violet); border-color:rgba(166,139,255,.5); }
+  .topbar { position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:18px; padding:12px 22px; background:rgba(11,15,24,.88); backdrop-filter:blur(14px); border-bottom:1px solid var(--line); }
+  .brand { font-weight:750; letter-spacing:-.02em; font-size:18px; display:flex; align-items:center; gap:10px; } .brand i { width:10px; height:10px; border-radius:3px; background:var(--cyan); box-shadow:0 0 12px var(--cyan); transform:rotate(45deg); display:inline-block; }
+  .tabs { display:flex; gap:4px; } .tabs button { background:none; border:0; color:var(--mut); padding:8px 12px; border-radius:10px; cursor:pointer; font-size:14px; white-space:nowrap; } .tabs button[aria-current="page"] { color:var(--text); background:var(--surface2); }
+  .who { display:flex; align-items:center; gap:8px; color:var(--mut); font-size:13px; } select { background:var(--surface2); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:7px 9px; font:inherit; font-size:13px; }
+  main { padding:18px 22px 90px; } [hidden] { display:none !important; }
+  /* ---------- programme screen ---------- */
+  .path { display:grid; grid-template-columns:300px minmax(0,1fr) 370px; gap:16px; height:calc(100vh - 106px); min-height:580px; }
+  .panel { background:var(--surface); border:1px solid var(--line); border-radius:22px; padding:18px; overflow:auto; scrollbar-width:thin; }
+  .player { display:flex; flex-direction:column; gap:16px; }
+  .who-card { display:flex; gap:12px; align-items:center; } .avatar { width:46px; height:46px; flex:none; display:grid; place-items:center; font-weight:750; font-size:18px; color:#04121c; background:linear-gradient(135deg,var(--cyan),#7ce8ff); clip-path:polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%); }
+  .pname { font-weight:700; font-size:16px; } .pgoal { color:var(--mut); font-size:13px; }
+  .level { background:var(--surface2); border:1px solid var(--line); border-radius:16px; padding:12px 14px; }
+  .level .lv { display:flex; align-items:baseline; justify-content:space-between; } .level .lv b { font-size:26px; letter-spacing:-.03em; } .level .lv span { color:var(--mut); font-size:12px; text-transform:uppercase; letter-spacing:.08em; }
+  .xpbar { height:9px; background:#0b1120; border-radius:99px; overflow:hidden; margin:8px 0 6px; border:1px solid #1f2a40; } .xpbar i { display:block; height:100%; width:0; background:linear-gradient(90deg,#e9ad35,var(--gold)); border-radius:99px; transition:width 1.1s cubic-bezier(.2,.8,.2,1); box-shadow:0 0 10px rgba(245,195,91,.45); }
+  .xpt { font-size:12.5px; color:var(--mut); display:flex; justify-content:space-between; gap:8px; }
+  .ach { display:flex; flex-wrap:wrap; gap:6px; }
+  .sect-h { font-size:11.5px; text-transform:uppercase; letter-spacing:.1em; color:var(--dim); margin:2px 0 8px; display:flex; justify-content:space-between; align-items:center; }
+  .attr { margin-bottom:12px; } .attr .ah { display:flex; justify-content:space-between; font-size:14px; } .attr .ah b { font-weight:650; } .attr .ah span { color:var(--mut); font-variant-numeric:tabular-nums; }
+  .abar { height:7px; background:#0b1120; border-radius:99px; overflow:hidden; margin:6px 0 4px; border:1px solid #1f2a40; } .abar i { display:block; height:100%; width:0; border-radius:99px; background:linear-gradient(90deg,#1aa6d6,var(--cyan)); transition:width 1s cubic-bezier(.2,.8,.2,1); }
+  .attr.na .abar { background:repeating-linear-gradient(45deg,#0b1120,#0b1120 4px,#121a2b 4px,#121a2b 8px); }
+  .attr .ad { font-size:12.5px; color:var(--mut); } .attr .ad.changed { color:var(--text); } .attr details summary { font-size:12px; color:var(--dim); cursor:pointer; margin-top:2px; } .attr details p { font-size:12.5px; color:var(--mut); margin:4px 0 0; }
+  .quest { border-radius:16px; padding:14px; background:radial-gradient(120% 140% at 0% 0%, rgba(59,213,255,.16), transparent 60%), var(--surface2); border:1px solid rgba(59,213,255,.3); }
+  .quest .qk { font-size:11.5px; text-transform:uppercase; letter-spacing:.1em; color:var(--cyan); } .quest .qt { font-size:18px; font-weight:700; margin:2px 0; } .quest .qs { color:var(--mut); font-size:13px; margin-bottom:10px; }
+  .drawer > summary { list-style:none; cursor:pointer; } .drawer > summary::-webkit-details-marker { display:none; } .drawer .chev { display:none; }
+  .mapwrap { position:relative; border-radius:22px; border:1px solid var(--line); overflow:hidden; display:flex; flex-direction:column; background:radial-gradient(60% 70% at 50% 45%, #13213a 0%, var(--bg2) 60%, #0a0e17 100%); }
+  .maptools { position:absolute; top:12px; left:12px; right:12px; display:flex; gap:8px; align-items:center; z-index:2; pointer-events:none; } .maptools > * { pointer-events:auto; }
+  .maptools .ghost { background:rgba(21,28,43,.85); backdrop-filter:blur(8px); font-size:13px; padding:7px 11px; }
+  .legend { position:absolute; left:12px; bottom:12px; right:12px; display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12px; color:var(--mut); background:rgba(11,15,24,.6); backdrop-filter:blur(6px); padding:8px 12px; border-radius:12px; border:1px solid var(--line); z-index:2; }
+  .legend span { display:inline-flex; gap:6px; align-items:center; } .lg { width:12px; height:12px; border-radius:50%; border:2px solid; display:inline-block; } .lg.cur { border-color:var(--cyan); box-shadow:0 0 8px var(--cyan); } .lg.av { border-color:rgba(59,213,255,.6); } .lg.ver { border-color:var(--gold); } .lg.lock { border-color:#2c3549; background:#121826; } .lg.opt { border-color:var(--violet); } .lg.skip { border-color:#3a4560; border-style:dashed; }
+  #map { flex:1; min-height:0; overflow:auto; padding:48px 6px 58px; display:flex; }
+  #map > svg { width:min(100%, calc(var(--w) * 1.2)); height:min(100%, calc(var(--h) * 1.2)); min-height:min(300px, var(--h)); display:block; margin:auto; }
+  #map.vertical > svg { height:auto; width:min(100%, calc(var(--w) * 1.2)); min-height:0; }
+  .map { color:var(--mut); } .map .label, .map .sub { paint-order:stroke; stroke:#0d1422; stroke-width:5px; stroke-linejoin:round; } .map .sky { fill:#cfe7ff; } .map .bg { color:#9fb3d9; }
+  .edge { fill:none; stroke-width:3; stroke-linecap:round; }
+  .edge.achieved { stroke:var(--gold); filter:drop-shadow(0 0 3px rgba(245,195,91,.5)); } .edge.open { stroke:var(--cyan); filter:drop-shadow(0 0 4px rgba(59,213,255,.65)); }
+  .edge.route { stroke:rgba(59,213,255,.42); stroke-dasharray:.018 .014; } .edge.future { stroke:#323d56; } .edge.optional { stroke:var(--violet); stroke-dasharray:.012 .016; opacity:.75; stroke-width:2.5; }
+  .node { cursor:pointer; outline:none; } .node .hit { fill:transparent; } .node .body { transition:transform .16s ease; } .node:hover .body, .node:focus-visible .body { transform:scale(1.07); }
+  .node .shape { fill:var(--surface2); stroke:#3a4560; stroke-width:2.2; } .node .inner { fill:none; stroke:rgba(255,255,255,.06); stroke-width:1.2; } .node .fig { color:#97a1b8; }
+  .node .label { fill:var(--text); font-size:13.5px; font-weight:650; text-anchor:middle; } .node .sub { fill:var(--mut); font-size:11px; text-anchor:middle; }
+  .st-current .shape { fill:#0f2a3d; stroke:var(--cyan); stroke-width:3; filter:drop-shadow(0 0 10px rgba(59,213,255,.55)); } .st-current .fig { color:#effcff; } .st-current .sub { fill:var(--cyan); }
+  .st-available .shape { stroke:rgba(59,213,255,.6); } .st-available .fig { color:#cdeefe; }
+  .st-verified .shape { fill:#2a2311; stroke:var(--gold); stroke-width:2.6; } .st-verified .fig { color:#ffe5a6; } .st-verified .sub { fill:var(--gold); }
+  .st-practised .shape { fill:#231f15; stroke:#cfa65c; } .st-practised .fig { color:#f0d9a6; }
+  .st-locked .shape { fill:#111725; stroke:#2a3348; } .st-locked .fig { color:#4c5670; } .st-locked .label { fill:#8a93a7; } .st-locked .sub { fill:#6c768c; }
+  .st-skipped .shape { stroke-dasharray:5 4; stroke:#3a4560; fill:#131a29; } .st-skipped { opacity:.72; }
+  .role-optional.st-available .shape, .role-optional.st-locked .shape { stroke:var(--violet); } .role-goal .shape { stroke-width:3; }
+  .node.selected .hit { stroke:rgba(243,245,250,.45); stroke-width:1.5; stroke-dasharray:3 5; } .node:focus-visible .hit { stroke:var(--cyan); stroke-width:2; }
+  .aura { fill:url(#auraG); transform-box:fill-box; transform-origin:center; animation:breathe 3.6s ease-in-out infinite; }
+  .badge circle { fill:#0b0f18; stroke-width:1.6; } .b-star { color:var(--gold); } .b-star circle { stroke:var(--gold); } .b-check { color:var(--good); } .b-check circle { stroke:var(--good); } .b-lock, .b-skip { color:#8a93a7; } .b-lock circle, .b-skip circle { stroke:#3a4560; }
+  .cap circle { fill:#0b0f18; stroke:#2f3a54; } .cap { color:var(--cyan); }
+  .ring { fill:none; stroke:var(--gold); stroke-width:3; stroke-linecap:round; opacity:.85; }
+  @keyframes breathe { 0%,100% { opacity:.75; transform:scale(.94); } 50% { opacity:1; transform:scale(1.04); } }
+  .map.reveal .node { animation:fadeIn .5s both; animation-delay:calc(var(--i) * 140ms); } .map.reveal .node .body { animation:popIn .55s cubic-bezier(.2,1.4,.4,1) both; animation-delay:calc(var(--i) * 140ms); }
+  .map.reveal .edge { stroke-dasharray:1 1; stroke-dashoffset:1; animation:draw .7s ease-out forwards; animation-delay:calc(var(--i) * 140ms + 120ms); }
+  .map.reveal .edge.route { stroke-dasharray:.018 .014; stroke-dashoffset:0; animation-name:fadeIn; } .map.reveal .edge.optional { stroke-dasharray:.012 .016; stroke-dashoffset:0; animation-name:fadeIn; }
+  @keyframes fadeIn { from { opacity:0; } } @keyframes popIn { from { transform:scale(.55); } } @keyframes draw { to { stroke-dashoffset:0; } }
+  .node.unlock .shape { animation:unlock 1.4s ease-out 1; } .edge.lit { animation:lit 1.6s ease-out 1; }
+  @keyframes unlock { 0% { filter:drop-shadow(0 0 0 rgba(245,195,91,0)); } 35% { filter:drop-shadow(0 0 22px rgba(245,195,91,.95)); } 100% { filter:drop-shadow(0 0 0 rgba(245,195,91,0)); } }
+  @keyframes lit { 0% { stroke-width:3; } 40% { stroke-width:7; } 100% { stroke-width:3; } }
+  .outline { list-style:none; margin:0; padding:56px 16px 70px; display:grid; gap:8px; } .outline button { width:100%; text-align:left; background:var(--surface2); border:1px solid var(--line); border-radius:12px; padding:10px 12px; cursor:pointer; } .outline span { display:block; color:var(--mut); font-size:12.5px; }
+  #outline { overflow:auto; flex:1; }
+  .detail { display:flex; flex-direction:column; gap:16px; position:relative; }
+  .dh { display:flex; gap:14px; align-items:center; } .demb { width:84px; height:84px; flex:none; display:grid; place-items:center; color:#d9f6ff; background:radial-gradient(circle at 50% 40%, rgba(59,213,255,.22), #0f1726 70%); border:2px solid rgba(59,213,255,.5); border-radius:50%; }
+  .demb.milestone, .demb.goal { border-radius:0; clip-path:polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%); border:0; }
+  .demb.st-verified { color:#ffe5a6; background:radial-gradient(circle at 50% 40%, rgba(245,195,91,.28), #1d180c 70%); border-color:var(--gold); } .demb.st-locked { color:#5b6680; background:#111725; border-color:#2a3348; } .demb.optional { border-color:var(--violet); }
+  .drole { font-size:11.5px; text-transform:uppercase; letter-spacing:.1em; color:var(--dim); } .detail h2 { font-size:24px; margin:2px 0 6px; } .dbadges { display:flex; flex-wrap:wrap; gap:6px; }
+  .dsec h4 { font-size:11.5px; text-transform:uppercase; letter-spacing:.1em; color:var(--dim); margin-bottom:5px; font-weight:600; } .dsec p { margin:0; color:#d7dcea; font-size:14.5px; }
+  .presc { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; } .presc span { background:var(--surface2); border:1px solid var(--line); border-radius:10px; padding:6px 10px; font-size:13px; color:var(--mut); } .presc b { color:var(--text); }
+  .prereq { display:flex; justify-content:space-between; align-items:center; gap:8px; background:var(--surface2); border:1px solid var(--line); border-radius:12px; padding:8px 10px; margin-top:6px; font-size:14px; } .prereq .emblem { color:var(--mut); vertical-align:middle; }
+  .rewards { display:grid; gap:6px; } .rewards div { display:flex; justify-content:space-between; gap:10px; font-size:13.5px; color:#d7dcea; } .rewards b { color:var(--gold); font-weight:650; text-align:right; } .rewards .got b { color:var(--good); }
+  .dactions { position:sticky; bottom:-18px; margin:auto -18px -18px; padding:14px 18px 18px; background:linear-gradient(180deg, rgba(21,28,43,0), var(--surface) 30%); display:flex; flex-wrap:wrap; gap:8px; }
+  .dactions .cta { flex:1; justify-content:center; padding:12px 16px; font-size:15px; }
+  .sheet-close { display:none !important; }
+  .empty { min-height:calc(100vh - 140px); display:grid; grid-template-columns:1.05fr 1fr; gap:28px; align-items:center; max-width:1180px; margin:0 auto; }
+  .empty h1 { font-size:44px; line-height:1.05; letter-spacing:-.035em; margin:14px 0 14px; } .empty p { color:var(--mut); font-size:17px; max-width:520px; } .empty .art { border-radius:26px; border:1px solid var(--line); background:radial-gradient(60% 70% at 50% 45%, #13213a 0%, var(--bg2) 70%); aspect-ratio:1.25; display:flex; position:relative; overflow:hidden; }
+  .empty .art .tag { position:absolute; top:12px; right:12px; } .empty ul { list-style:none; padding:0; margin:18px 0 26px; display:grid; gap:10px; color:#d7dcea; } .empty li { display:flex; gap:10px; align-items:center; }
+  .banner { display:flex; gap:8px; align-items:center; padding:10px 14px; border-radius:14px; border:1px solid var(--line); background:var(--surface); margin-bottom:12px; font-size:14px; color:#d7dcea; } .banner.warn { border-color:rgba(255,180,84,.4); color:#ffd8a6; }
+  .toast { position:fixed; left:50%; bottom:26px; transform:translate(-50%, 160%); background:#0f1726; border:1px solid rgba(245,195,91,.5); color:var(--text); padding:12px 16px; border-radius:14px; box-shadow:0 18px 50px rgba(0,0,0,.5); z-index:80; transition:transform .35s cubic-bezier(.2,1,.3,1); display:flex; gap:10px; align-items:center; width:max-content; max-width:min(calc(100vw - 24px), 520px); }
+  body.sheet-open .toast { bottom:96px; }
+  .toast { opacity:0; visibility:hidden; } .toast.show { transform:translate(-50%, 0); opacity:1; visibility:visible; } .toast b { color:var(--gold); }
+  .fab { display:none; }
+  /* ---------- survey ---------- */
+  .survey { position:fixed; inset:0; z-index:60; background:radial-gradient(80% 70% at 50% 0%, #142540 0%, var(--bg) 60%); overflow:auto; }
+  .sv { max-width:980px; margin:0 auto; padding:22px 22px 40px; min-height:100%; display:flex; flex-direction:column; }
+  .sv-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; } .sv-brand { display:flex; gap:8px; align-items:center; font-weight:700; color:#cfe9ff; }
+  .sv-steps { display:flex; gap:6px; list-style:none; padding:0; margin:0 0 22px; } .sv-steps li { flex:1; } .sv-steps li::before { content:""; display:block; height:4px; border-radius:99px; background:#253049; margin-bottom:6px; } .sv-steps li.done::before { background:var(--gold); } .sv-steps li.now::before { background:var(--cyan); box-shadow:0 0 10px var(--cyan); }
+  .sv-steps span { font-size:11.5px; color:var(--dim); } .sv-steps li.now span { color:var(--text); }
+  .sv-card { background:rgba(21,28,43,.82); border:1px solid var(--line); border-radius:26px; padding:28px; backdrop-filter:blur(8px); flex:1; }
+  .sv-card h2 { font-size:30px; line-height:1.15; margin-bottom:6px; outline:none; } .lede { color:var(--mut); font-size:16px; margin:0 0 22px; max-width:640px; }
+  .q { font-size:15px; margin:18px 0 10px; color:#d7dcea; } .q .muted { font-weight:400; }
+  .tiles { display:grid; gap:12px; } .tiles.two { grid-template-columns:1fr 1fr; } .tiles.one { grid-template-columns:minmax(0,420px); } .tiles.grid3 { grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); } .tiles.grid4 { grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); } .tiles.list { grid-template-columns:1fr; max-width:680px; }
+  .tile { text-align:left; display:flex; flex-direction:column; gap:4px; padding:18px; border-radius:18px; background:var(--surface2); border:1.5px solid var(--line); cursor:pointer; transition:border-color .15s, transform .15s, background .15s; }
+  .tile:hover { border-color:#3c4a6b; transform:translateY(-1px); } .tile.sel { border-color:var(--cyan); background:linear-gradient(180deg, rgba(59,213,255,.12), rgba(59,213,255,.03)), var(--surface2); box-shadow:0 0 0 3px rgba(59,213,255,.15); }
+  .tile .art { color:var(--cyan); margin-bottom:6px; } .tile .tt { font-size:17px; font-weight:650; } .tile .ts { color:var(--mut); font-size:13.5px; } .tile .big { font-size:30px; font-weight:750; letter-spacing:-.03em; }
+  .tiles.list .tile { flex-direction:row; align-items:center; justify-content:space-between; gap:14px; padding:16px 18px; } .tiles.list .tile .ts { text-align:right; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; } .chip { color:#d7dcea; } .chip .emblem { color:var(--mut); } .chip.sel { border-color:var(--warn); color:var(--warn); background:rgba(255,180,84,.08); } .chip.sel .emblem { color:var(--warn); }
+  .note { display:flex; gap:8px; color:var(--mut); font-size:13.5px; margin:16px 0 0; align-items:flex-start; }
+  .setup { margin-top:18px; padding:16px 18px; border-radius:16px; border:1px solid var(--line); background:#111827; } .setup h3 { font-size:15px; margin-bottom:8px; } .setup ul { list-style:none; padding:0; margin:0 0 14px; display:grid; gap:8px; color:#d7dcea; font-size:14px; } .setup li { display:flex; gap:8px; align-items:center; }
+  .checked { display:flex; gap:8px; align-items:center; color:var(--good); margin-bottom:12px; font-size:14px; }
+  .review { margin:0; display:grid; gap:10px; } .review div { display:grid; grid-template-columns:150px 1fr auto; gap:12px; align-items:center; padding:12px 14px; border-radius:14px; background:var(--surface2); border:1px solid var(--line); } .review dt { color:var(--mut); font-size:13px; } .review dd { margin:0; }
+  .link { background:none; border:0; color:var(--cyan); cursor:pointer; padding:4px; }
+  .sv-nav { display:flex; justify-content:space-between; align-items:center; margin-top:20px; gap:10px; }
+  .sv-gen { margin:auto; text-align:center; max-width:520px; padding:40px 0; } .sv-gen h2 { font-size:28px; margin:22px 0 8px; }
+  .orbit { width:96px; height:96px; margin:0 auto; position:relative; border-radius:50%; border:1px solid rgba(59,213,255,.25); animation:spin 2.4s linear infinite; } .orbit span { position:absolute; width:12px; height:12px; border-radius:50%; background:var(--cyan); box-shadow:0 0 14px var(--cyan); top:-6px; left:42px; } .orbit span:nth-child(2) { background:var(--gold); top:auto; bottom:12px; left:2px; box-shadow:0 0 14px var(--gold); } .orbit span:nth-child(3) { background:var(--violet); top:auto; bottom:12px; left:auto; right:2px; box-shadow:0 0 14px var(--violet); }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .pv { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(0,1fr); gap:18px; flex:1; } .pv-map { border-radius:24px; border:1px solid var(--line); background:radial-gradient(60% 70% at 50% 45%, #13213a 0%, var(--bg2) 60%); min-height:420px; display:flex; padding:10px; } .pv-map > svg { width:min(100%, calc(var(--w) * 1.2)); height:min(100%, calc(var(--h) * 1.2)); margin:auto; display:block; }
+  .pv-side { background:rgba(21,28,43,.82); border:1px solid var(--line); border-radius:24px; padding:22px; display:flex; flex-direction:column; gap:10px; } .pv-side h2 { font-size:22px; line-height:1.25; } .pv-side p { margin:0; color:#d7dcea; } .pv-side .emph { color:var(--cyan); display:flex; gap:8px; }
+  .prov { display:inline-flex; gap:7px; align-items:center; font-size:12.5px; padding:5px 10px; border-radius:999px; border:1px solid var(--line); align-self:flex-start; } .prov.gem { color:var(--cyan); border-color:rgba(59,213,255,.45); } .prov.fb { color:var(--warn); border-color:rgba(255,180,84,.45); }
+  .diff { border-top:1px solid var(--line); padding-top:10px; display:grid; gap:6px; } .diff h3 { font-size:14px; display:flex; gap:7px; align-items:center; margin-top:6px; } .diff ul { margin:0; padding-left:20px; color:#d7dcea; font-size:14px; }
+  .pv-side .sv-nav { margin-top:auto; }
+  /* ---------- reports ---------- */
+  .twocol { display:grid; grid-template-columns:320px minmax(0,1fr); gap:18px; align-items:start; }
+  .list { display:grid; gap:8px; } .item { text-align:left; display:grid; gap:4px; padding:12px 14px; border-radius:14px; background:var(--surface); border:1px solid var(--line); cursor:pointer; } .item:hover { border-color:#3c4a6b; } .item.sel { border-color:var(--cyan); background:linear-gradient(180deg, rgba(59,213,255,.08), transparent), var(--surface); }
+  .item .it { font-weight:650; display:flex; justify-content:space-between; gap:8px; } .item .is { color:var(--mut); font-size:12.5px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .report { display:grid; gap:16px; } .report section { display:grid; gap:10px; } .report h3 { font-size:16px; display:flex; gap:8px; align-items:center; }
+  .hero { padding:22px 24px; border-radius:22px; background:radial-gradient(100% 140% at 0% 0%, rgba(59,213,255,.14), transparent 55%), var(--surface); border:1px solid var(--line); }
+  .hero .kicker { color:var(--mut); font-size:13px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; } .hero h2 { font-size:30px; letter-spacing:-.03em; margin:6px 0 2px; } .hero .headline { font-size:26px; line-height:1.25; max-width:760px; } .hero .sub { color:var(--mut); }
+  .callout { padding:18px 20px; border-radius:20px; background:linear-gradient(180deg, rgba(166,139,255,.12), rgba(166,139,255,.03)); border:1px solid rgba(166,139,255,.35); } .callout.quiet { background:var(--surface); border-color:var(--line); } .callout .ck { color:var(--violet); font-size:12px; text-transform:uppercase; letter-spacing:.1em; display:flex; gap:6px; align-items:center; } .callout p { margin:6px 0; color:#dfe3ef; } .callout .big { font-size:18px; color:var(--text); font-weight:600; }
+  .cites { display:inline-flex; flex-wrap:wrap; gap:4px; vertical-align:middle; } .cite { font-size:10.5px; color:var(--dim); border:1px solid var(--line); padding:1px 6px; border-radius:6px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .stats { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:10px; } .stat { padding:14px 16px; border-radius:18px; background:var(--surface); border:1px solid var(--line); } .stat .sl { color:var(--mut); font-size:12px; text-transform:uppercase; letter-spacing:.08em; } .stat .sv2 { font-size:30px; font-weight:720; letter-spacing:-.03em; margin:2px 0; } .stat .sv2 small { font-size:16px; color:var(--mut); margin-left:2px; } .stat .ss { font-size:12.5px; color:var(--mut); }
+  .delta { display:inline-flex; gap:4px; align-items:center; font-size:12px; } .delta.up { color:var(--good); } .delta.down { color:var(--warn); } .delta.new { color:var(--cyan); } .delta.none, .delta.neutral { color:var(--mut); }
+  .chart { margin:0; padding:16px 18px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); } .chart figcaption { color:var(--mut); font-size:13px; display:flex; gap:6px; align-items:center; margin-bottom:6px; } .chart > svg { width:100%; height:auto; display:block; } .chart .ico { flex:none; }
+  .chart .grid { stroke:#253049; stroke-width:1; } .chart .ax { fill:var(--dim); font-size:10.5px; } .chart .bar { fill:var(--cyan); opacity:.85; } .chart .bar.fault { fill:var(--warn); } .chart .band { fill:rgba(245,195,91,.12); stroke:rgba(245,195,91,.45); stroke-dasharray:4 4; }
+  .chart .legend { position:static; background:none; border:0; padding:6px 0 0; backdrop-filter:none; } .k { width:10px; height:10px; border-radius:3px; display:inline-block; } .k.bar { background:var(--cyan); } .k.fault { background:var(--warn); } .k.band { background:rgba(245,195,91,.25); border:1px dashed var(--gold); }
+  .attempt { padding:16px 18px; border-radius:18px; background:var(--surface); border:1px solid var(--line); display:grid; gap:12px; } .attempt .ah { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .attempt blockquote { margin:0; padding:10px 14px; border-radius:12px; background:var(--surface2); border-left:3px solid var(--violet); color:#e4e1ff; display:flex; gap:8px; align-items:flex-start; flex-wrap:wrap; }
+  .line .track { position:relative; height:46px; margin:26px 8px 30px; border-bottom:2px solid #2a3550; } .tband { position:absolute; bottom:-6px; height:10px; border-radius:6px; background:rgba(245,195,91,.22); border:1px dashed var(--gold); }
+  .dot { position:absolute; bottom:-8px; transform:translateX(-50%); width:14px; height:14px; border-radius:50%; } .dot b { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); font-size:14px; white-space:nowrap; } .dot i { position:absolute; top:18px; left:50%; transform:translateX(-50%); font-style:normal; font-size:11px; color:var(--mut); }
+  .dot.before { background:#8a93a7; } .dot.after { background:var(--cyan); box-shadow:0 0 10px var(--cyan); } .expl { margin:0; color:#d7dcea; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:12px; } .box { padding:16px 18px; border-radius:18px; background:var(--surface); border:1px solid var(--line); } .box p { margin:6px 0 0; color:#d7dcea; } .box.quiet { background:transparent; }
+  .moments { list-style:none; margin:0; padding:0 0 0 18px; border-left:2px solid #253049; display:grid; gap:10px; } .moments li { position:relative; display:flex; gap:12px; } .moments li::before { content:""; position:absolute; left:-24px; top:6px; width:10px; height:10px; border-radius:50%; background:#3a4560; } .moments li.attempt::before { background:var(--violet); } .moments li.cue::before { background:var(--cyan); }
+  .moments .t { color:var(--dim); font-variant-numeric:tabular-nums; min-width:84px; font-size:13px; }
+  .facts { border-radius:16px; border:1px solid var(--line); padding:12px 16px; background:var(--surface); } .facts summary { cursor:pointer; color:var(--mut); } .facts ul { margin:10px 0 0; padding-left:18px; display:grid; gap:6px; color:#d7dcea; font-size:14px; }
+  .coverage { color:var(--mut); font-size:13.5px; display:flex; gap:8px; margin:0; }
+  .insights { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; } .insight { padding:14px 16px; border-radius:18px; background:var(--surface); border:1px solid var(--line); display:grid; gap:8px; align-content:start; } .insight .n { width:26px; height:26px; border-radius:50%; display:grid; place-items:center; background:rgba(166,139,255,.15); color:var(--violet); font-weight:700; font-size:13px; } .insight p { margin:0; color:#e1e5f0; }
+  .quests { display:grid; gap:10px; } .report .quest { padding:14px 16px; border-radius:18px; background:radial-gradient(120% 160% at 0% 0%, rgba(245,195,91,.12), transparent 55%), var(--surface); border:1px solid rgba(245,195,91,.3); display:grid; gap:10px; }
+  .qh { display:flex; gap:10px; align-items:center; } .qi { color:var(--gold); } .qh input { flex:1; background:transparent; border:0; border-bottom:1px dashed #3a4560; color:var(--text); font:inherit; font-size:16px; font-weight:600; padding:4px 0; min-width:0; } .qh input:focus { outline:none; border-bottom-color:var(--gold); }
+  .qf { display:flex; gap:14px; align-items:center; flex-wrap:wrap; color:var(--mut); font-size:13.5px; } .qf input[type=number] { width:60px; background:var(--surface2); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:4px 6px; font:inherit; } .why { color:#d7dcea; font-size:14px; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .cards { display:grid; gap:8px; } .ref { display:flex; gap:10px; align-items:center; padding:12px 14px; border-radius:14px; background:var(--surface); border:1px solid var(--line); color:var(--text); text-decoration:none; } .ref span:nth-child(2) { flex:1; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:20px; padding:18px 20px; margin-bottom:14px; } .card h2 { font-size:13px; text-transform:uppercase; letter-spacing:.1em; color:var(--dim); margin-bottom:10px; }
+  input:not([type]), input[type=text], input[type=search] { background:var(--surface2); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:9px 11px; font:inherit; }
+  .src-f { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px; } .src-f div { padding:12px 14px; border-radius:14px; background:var(--surface2); border:1px solid var(--line); } .src-f b { display:block; font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); margin-bottom:4px; }
+  .quote { border-left:3px solid var(--gold); padding:6px 12px; margin:6px 0; color:#e9dfc4; background:rgba(245,195,91,.05); border-radius:0 10px 10px 0; }
+  /* ---------- responsive ---------- */
+  @media (max-width:1240px) { .path { grid-template-columns:280px minmax(0,1fr); }
+    .detail.sheet { position:fixed; left:0; right:0; bottom:0; max-height:82vh; z-index:50; border-radius:24px 24px 0 0; transform:translateY(105%); transition:transform .3s cubic-bezier(.2,1,.3,1); box-shadow:0 -20px 60px rgba(0,0,0,.6); max-width:640px; margin:0 auto; }
+    .detail.sheet.open { transform:none; } .detail.sheet .sheet-close { display:inline-flex !important; position:absolute; top:12px; right:12px; z-index:2; } .detail.sheet .dh { padding-right:44px; }
+    .backdrop { position:fixed; inset:0; background:rgba(3,6,12,.55); z-index:45; } }
+  @media (max-width:860px) { .twocol, .two, .pv, .empty { grid-template-columns:1fr; } .stats { grid-template-columns:1fr 1fr; } .empty h1 { font-size:34px; } .empty { min-height:0; } }
+  @media (max-width:760px) {
+    .topbar { flex-wrap:wrap; gap:6px 10px; padding:8px 12px; } .tabs { order:3; width:100%; overflow-x:auto; scrollbar-width:none; } .tabs::-webkit-scrollbar { display:none; } .brand { font-size:16px; } .who .wl { display:none; } .who select { max-width:108px; } .topbar > a.ghost { padding:6px 10px; } main { padding:12px 12px 100px; }
+    .path { grid-template-columns:1fr; height:auto; min-height:0; } .player { padding:14px; gap:10px; }
+    .player .drawer:not([open]) .drawer-body { display:none; } .drawer .chev { display:inline; }
+    #map { padding:52px 4px 16px; overflow:visible; } #map > svg { min-height:0; }
+    .legend { position:static; margin:0 8px 10px; } .fab { display:flex; position:fixed; left:12px; right:12px; bottom:12px; z-index:40; justify-content:center; padding:14px; font-size:16px; box-shadow:0 12px 30px rgba(0,0,0,.5); }
+    body.sheet-open .fab, body.quest-visible .fab { display:none; } .sv { padding:14px 14px 30px; } .sv-card { padding:20px; } .sv-card h2 { font-size:24px; } .tiles.two { grid-template-columns:1fr; } .review div { grid-template-columns:1fr auto; } .review dt { grid-column:1 / -1; } .sv-steps span { display:none; } .hero h2 { font-size:24px; } .hero .headline { font-size:21px; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } .map.reveal .edge { stroke-dashoffset:0; stroke-dasharray:none; } .map.reveal .edge.route { stroke-dasharray:.018 .014; } .map.reveal .edge.optional { stroke-dasharray:.012 .016; } }
 </style>
-<script>try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch {}</script>
 </head>
 <body>
-<header>
-  <h1>Spottr Coach</h1>
-  <nav><button data-tab="tree" aria-current="page">Programme</button><button data-tab="reports">Reports</button><button data-tab="weekly">Weekly review</button><button data-tab="research">Research</button><button data-tab="profile">Profile</button></nav>
+<header class="topbar">
+  <div class="brand"><i></i>Spottr Coach</div>
+  <nav class="tabs" aria-label="Sections"><button data-tab="path" aria-current="page">Programme</button><button data-tab="reports">Reports</button><button data-tab="weekly">Weekly review</button><button data-tab="research">Research</button><button data-tab="profile">Profile</button></nav>
   <span class="grow"></span>
-  <span class="sub">user <select id="userSel"><option value="nakki">nakki</option><option value="demo">demo (sample history)</option></select></span>
-  <a class="btn" href="/">Squat page</a>
-  <button id="themeBtn">Dark</button>
+  <label class="who"><span class="wl">User</span> <select id="userSel"><option value="nakki">nakki</option><option value="demo">demo (sample history)</option></select></label>
+  <a class="ghost small" href="/">Squat page</a>
 </header>
 <main>
-  <section id="tab-tree">
-    <div class="card" id="programmeCard"><h2>Programme</h2><div class="sub">Loading…</div></div>
-    <div class="tree" id="tree"></div>
-  </section>
-  <section id="tab-reports" hidden>
-    <div class="card"><h2>Session reports</h2><div class="sub">Each recorded set: calculated facts, the timeline, coaching attempts, stored forecasts. Gemini narrative on request, never regenerated.</div><ul id="workouts"></ul></div>
-    <div id="reportView"></div>
-  </section>
-  <section id="tab-weekly" hidden>
-    <div class="card"><h2>Weekly review</h2><div class="row"><button class="primary" id="genWeekly">Generate weekly review</button><button id="genCurrent">Review this week so far</button><span class="sub">Most recently completed week against the one before, in your timezone. Same inputs, same report; late uploads produce a new version.</span></div><ul id="weeklyList"></ul></div>
-    <div id="weeklyView"></div>
-  </section>
-  <section id="tab-research" hidden>
-    <div class="card"><h2>Find research</h2><form class="row" id="searchForm"><input id="searchQ" style="flex:1;min-width:240px" maxlength="300" placeholder="e.g. does tempo-controlled lowering change squat strength outcomes?"><button class="primary">Search</button></form><div class="sub" id="searchNote">Gemini with search grounding; only sources that the search actually returned are kept. No personal data goes into the query.</div></div>
-    <div class="card"><h2>Add a paper</h2><div class="row"><input type="file" id="pdfFile" accept="application/pdf,text/plain"><button id="pdfBtn">Analyse</button><span class="sub" id="pdfNote">Read once and cached by its hash. The document is treated as evidence, not instructions.</span></div></div>
-    <div class="card"><h2>Saved sources</h2><ul id="researchList"></ul></div>
-    <div id="sourceView"></div>
-  </section>
-  <section id="tab-profile" hidden>
-    <div class="card"><h2>Profile and goals</h2>
-      <form id="survey" class="grid">
-        <label class="f">Main goal<select name="goal"><option value="squat">Squat progression</option><option value="pushup">Push-up progression</option></select></label>
-        <label class="f">Current ability<select name="ability"><option value="beginner">Beginner</option><option value="intermediate">Some experience</option><option value="advanced">Experienced</option></select></label>
-        <label class="f">Equipment (comma separated)<input name="equipment" placeholder="wall, raised surface, stable support"></label>
-        <label class="f">Minutes available per session<input name="minutes" type="number" min="5" max="120" value="20"></label>
-        <label class="f">Sessions per week<input name="daysPerWeek" type="number" min="1" max="7" value="3"></label>
-        <label class="f">Coaching style<select name="coaching"><option value="direct">Direct and brief</option><option value="encouraging">Encouraging</option></select></label>
-        <label class="f" style="grid-column:1/-1">Movement limitations you want respected (optional)<input name="limitations" placeholder="e.g. no deep knee flexion"></label>
-        <div class="row" style="grid-column:1/-1"><button class="primary">Save profile</button><button type="button" id="genProg">Generate my programme</button><span class="sub" id="profileNote"></span></div>
-      </form>
+  <section id="tab-path">
+    <div id="pathBanner"></div>
+    <div id="pathEmpty" hidden></div>
+    <div class="path" id="pathGrid" hidden>
+      <aside class="panel player" id="player" aria-label="Your progress"></aside>
+      <section class="mapwrap" aria-label="Skill map">
+        <div class="maptools"><button class="ghost" id="toCurrent">Return to current step</button><span class="grow"></span><button class="ghost" id="listToggle" aria-pressed="false">List view</button></div>
+        <div id="map"></div><div id="outline" hidden></div>
+        <div class="legend" id="legend"></div>
+      </section>
+      <aside class="panel detail" id="detail" aria-label="Step details"></aside>
     </div>
-    <div class="card"><h2>Accepted goals</h2><ul id="goalsList"></ul></div>
   </section>
+  <section id="tab-reports" hidden><div class="twocol"><div><div class="sect-h">Recorded sets</div><div class="list" id="workouts"></div></div><div id="reportView"><div class="hero"><h2>Pick a set</h2><div class="sub">Each recorded set becomes a short report: what you did, how the tempo looked, any coaching attempt, and every calculated fact behind it.</div></div></div></div></section>
+  <section id="tab-weekly" hidden><div class="twocol"><div><div class="row" style="margin-bottom:10px"><button class="cta" id="genWeekly">Generate weekly review</button><button class="ghost" id="genCurrent">This week so far</button></div><div class="muted small" style="margin-bottom:12px">The last completed week against the one before, in your timezone. Same inputs give the same report; new data makes a new version.</div><div class="list" id="weeklyList"></div></div><div id="weeklyView"><div class="hero"><h2>Your week, in one page</h2><div class="sub">Generate a review to see what was recorded, how it compares with the week before, and the quests proposed for next week.</div></div></div></div></section>
+  <section id="tab-research" hidden><div class="twocol"><div>
+      <div class="card"><h2>Find research</h2><form class="row" id="searchForm"><input id="searchQ" style="flex:1;min-width:200px" maxlength="300" placeholder="e.g. does slower lowering change squat strength?"><button class="cta">Search</button></form><p class="muted small" id="searchNote">Gemini with search grounding; only sources the search actually returned are kept. No personal data is sent.</p></div>
+      <div class="card"><h2>Add a paper</h2><div class="row"><input type="file" id="pdfFile" accept="application/pdf,text/plain"><button class="ghost" id="pdfBtn">Analyse</button></div><p class="muted small" id="pdfNote">Read once and cached by its hash. Its contents are treated as evidence, never as instructions.</p></div>
+      <div class="sect-h">Saved sources</div><div class="list" id="researchList"></div></div><div id="sourceView"><div class="hero"><h2>Research library</h2><div class="sub">Search for studies or add a paper. Each source is summarised once: question, design, population, findings, limitations and quoted passages with page numbers.</div></div></div></div></section>
+  <section id="tab-profile" hidden><div id="profileView"></div></section>
 </main>
+<div class="backdrop" id="backdrop" hidden></div>
+<button class="cta fab" id="fab" hidden></button>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="survey" id="survey" hidden></div>
 <script type="module">
+import { renderMap, renderOutline, nodeStatus, roleOf, layout } from '/coach-ui/map.mjs';
+import { emblemInline, icon } from '/coach-ui/emblems.mjs';
+import { openSurvey } from '/coach-ui/survey.mjs';
+import { renderSession, renderWeekly } from '/coach-ui/reports.mjs';
+
 const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const params = new URL(location.href).searchParams;
 const user = () => $('userSel').value;
+const store = { get: (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
 const api = async (path, body) => { const url = path + (path.includes('?') ? '&' : '?') + 'user=' + encodeURIComponent(user()); const r = await fetch(url, body ? { method: 'POST', body: JSON.stringify(body) } : {}); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error ?? r.statusText); return j; };
-try { $('userSel').value = new URL(location.href).searchParams.get('user') ?? localStorage.getItem('coachUser') ?? 'nakki'; } catch {}
-$('userSel').onchange = () => { try { localStorage.setItem('coachUser', user()); } catch {} loadAll(); };
-// theme
-const themeBtn = $('themeBtn'), isDark = () => document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
-const showTheme = () => { themeBtn.textContent = isDark() ? 'Light' : 'Dark'; }; themeBtn.onclick = () => { const n = isDark() ? 'light' : 'dark'; document.documentElement.dataset.theme = n; try { localStorage.setItem('theme', n); } catch {} showTheme(); }; showTheme();
-// tabs
-for (const b of document.querySelectorAll('nav button')) b.onclick = () => { for (const x of document.querySelectorAll('nav button')) x.removeAttribute('aria-current'); b.setAttribute('aria-current', 'page'); for (const s of document.querySelectorAll('main > section')) s.hidden = s.id !== 'tab-' + b.dataset.tab; };
+{ const u = params.get('user') ?? store.get('coachUser') ?? 'nakki'; if (/^[a-z0-9_-]{1,64}$/i.test(u) && ![...$('userSel').options].some((o) => o.value === u)) $('userSel').add(new Option(u, u)); $('userSel').value = u; }
+$('userSel').onchange = () => { store.set('coachUser', user()); selected = null; loadAll({ noResume: true }); };
+let tab = 'path';
+for (const b of document.querySelectorAll('.tabs button')) b.onclick = () => showTab(b.dataset.tab);
+function showTab(t) { tab = t; for (const x of document.querySelectorAll('.tabs button')) { if (x.dataset.tab === t) x.setAttribute('aria-current', 'page'); else x.removeAttribute('aria-current'); } for (const s of document.querySelectorAll('main > section')) s.hidden = s.id !== 'tab-' + t; updateFab(); if (t === 'path' && me?.programme) drawMap(); }
 
-let me = null;
-async function loadAll() { try { me = await api('/coach/me'); } catch (e) { $('programmeCard').innerHTML = `<h2>Programme</h2><div class="sub">${esc(e.message)}</div>`; return; } renderProgramme(); renderProfile(); loadWorkouts(); loadWeekly(); loadResearch(); }
+let me = null, cat = {}, selected = null, offline = false, orientation = null, fabAction = null;
+const capabilityOf = (id) => cat[id]?.capability;
+const isSheet = () => matchMedia('(max-width: 1240px)').matches, isPhone = () => matchMedia('(max-width: 760px)').matches;
+const statusOf = (n, rows = rowsById()) => nodeStatus(n, rows[n.id], { capability: capabilityOf(n.exerciseId), practiceComplete: me.practiceComplete });
 
-// ---------- skill tree ----------
-const CAP = (c) => c === 'assessable' ? '<span class="pill ok">Camera assessment</span>' : '<span class="pill warn">AI assessment coming soon · practice logging</span>';
-function renderProgramme() {
-  const p = me.programme, card = $('programmeCard');
-  if (!p) { card.innerHTML = `<h2>Programme</h2><h3>No programme yet</h3><div class="sub">Fill in the profile and generate one. Without a programme the squat page still coaches, but nothing is tied to a skill node.</div><div class="row" style="margin-top:8px"><button class="primary" id="goProfile">Set up profile</button></div>`; $('goProfile').onclick = () => document.querySelector('[data-tab=profile]').click(); $('tree').innerHTML = ''; return; }
-  const g = p.graph, prog = Object.fromEntries(p.progress.map((n) => [n.node_id, n]));
-  const current = g.nodes.find((n) => prog[n.id]?.availability === 'current') ?? g.nodes.find((n) => n.id === g.start);
-  const totalXp = p.progress.reduce((t, n) => t + (n.xp ?? 0), 0);
-  card.innerHTML = `<h2>Programme v${p.version} · ${esc(p.goal)} progression · ${p.provenance === 'gemini' ? 'personalised by Gemini' : 'catalogue fallback'}</h2>
-    <div class="row" style="justify-content:space-between"><div><h3>Goal: ${esc(me.catalogue.find((e) => e.id === g.nodes.find((n) => n.id === g.goalNode)?.exerciseId)?.name ?? g.goalNode)}</h3><div class="sub">Current step: <b>${esc(current?.id)}</b> · ${totalXp} XP · ${p.progress.filter((n) => n.verification !== 'none').length} verified milestones</div></div>
-    <div class="row"><a class="btn" href="/?node=${encodeURIComponent(current?.id ?? '')}&programme=${p.programme_id}&user=${encodeURIComponent(user())}">Train the current step</a><button id="regen">Regenerate</button></div></div>
-    <div class="sub" style="margin-top:8px">${esc(p.rationale?.text ?? '')}</div>`;
-  $('regen').onclick = async () => { $('regen').disabled = true; try { await api('/coach/programme', {}); await loadAll(); } catch (e) { alert(e.message); } };
-  // topological order: by prerequisites depth, optional last
-  const depth = (id, seen = new Set()) => { const n = g.nodes.find((x) => x.id === id); if (!n || seen.has(id)) return 0; seen.add(id); return (n.prerequisites ?? []).reduce((m, pid) => Math.max(m, depth(pid, seen) + 1), 0); };
-  const ordered = [...g.nodes].sort((a, b) => (a.optional - b.optional) || (depth(a.id) - depth(b.id)));
-  $('tree').innerHTML = ordered.map((n) => {
-    const e = me.catalogue.find((x) => x.id === n.exerciseId), s = prog[n.id] ?? {}, cls = ['node', s.availability === 'current' ? 'current' : '', s.verification !== 'none' && s.verification ? 'verified' : '', s.availability === 'locked' ? 'locked' : '', s.availability === 'not_required' ? 'notreq' : ''].join(' ');
-    const state = { current: 'Current step', available: 'Available', locked: 'Locked', not_required: 'Not required for your starting point' }[s.availability] ?? '';
-    const practised = e?.capability !== 'assessable' && (s.practice_count ?? 0) >= 3 ? '<span class="pill">Practice complete (not AI-verified)</span>' : '';
-    const ver = s.verification === 'consistent' ? '<span class="pill ok">Verified on two days</span>' : s.verification === 'first_completion' ? '<span class="pill ok">First completion verified</span>' : practised;
-    return `<div class="${cls}"><span class="dot"></span><div class="card"><div class="row" style="justify-content:space-between"><div><h3>${esc(e?.name ?? n.id)} <span class="pill">${esc(e?.family)} ${e?.level}</span>${n.optional ? ' <span class="pill">optional branch</span>' : ''}</h3><div class="sub">${esc(state)} · ${s.practice_count ?? 0} practice sets · ${s.xp ?? 0} XP ${ver}${(s.badges ?? []).map((b) => `<span class="pill acc unlock">${esc(b)}</span>`).join(' ')}</div></div><div>${CAP(e?.capability)}</div></div>
-      <details><summary class="sub">Why this step? What do I do?</summary>
-        <p><b>Why.</b> ${esc(n.why)}</p><p><b>What to do.</b> ${esc(e?.instruction)} Target ${e?.goal} ${e?.unit}.${e?.support ? ` Needs: ${esc(e.support)}.` : ''}</p>
-        <p><b>How progress is recorded.</b> ${e?.capability === 'assessable' ? `Camera assessment of ${esc(me.contracts[e.id]?.label)}: ${esc(me.contracts[e.id]?.pass)}. Unable to assess when ${esc(me.contracts[e.id]?.unableWhen)}. First completion verifies the step; the same on a second day marks it consistent.` : 'Practice is logged by you and shown as practice. Automated assessment for this movement is not available yet, so it is never marked AI-verified.'}</p>
-        <p><b>Prerequisites.</b> ${(n.prerequisites ?? []).map(esc).join(', ') || 'none'} · <b>Unlocks.</b> ${g.nodes.filter((x) => (x.prerequisites ?? []).includes(n.id)).map((x) => esc(x.id)).join(', ') || 'end of this programme'}</p>
-        ${(s.evidence ?? []).length ? `<p><b>Evidence.</b> ${s.evidence.map((ev) => `<a href="#" data-report="${ev.workoutId}">attempt ${esc(ev.attemptId.slice(0, 8))} (${esc(ev.kind)})</a>`).join(', ')}</p>` : ''}
-      </details>
-      <div class="row" style="margin-top:8px">${e?.capability === 'assessable' ? `<a class="btn primary" style="background:var(--acc);color:#fff;border-color:var(--acc)" href="/?node=${encodeURIComponent(n.id)}&programme=${p.programme_id}&user=${encodeURIComponent(user())}">Assess with camera</a>` : ''}<button data-practice="${n.id}" ${s.availability === 'locked' ? 'disabled' : ''}>Log a practice set</button></div></div></div>`;
-  }).join('');
-  for (const b of $('tree').querySelectorAll('[data-practice]')) b.onclick = async () => { b.disabled = true; try { await api('/coach/practice', { programmeId: p.programme_id, nodeId: b.dataset.practice, workoutId: crypto.randomUUID() }); await loadAll(); } catch (e) { alert(e.message); b.disabled = false; } };
-  for (const a of $('tree').querySelectorAll('[data-report]')) a.onclick = (ev) => { ev.preventDefault(); document.querySelector('[data-tab=reports]').click(); showReport(a.dataset.report); };
+function toast(html, ms = 3800) { const t = $('toast'); t.innerHTML = html; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), ms); }
+
+async function loadAll(opts = {}) {
+  try { me = await api('/coach/me'); offline = false; store.set('coach.cache.' + user(), me); }
+  catch (e) { me = store.get('coach.cache.' + user()); offline = true; if (!me) { $('pathBanner').innerHTML = `<div class="banner warn">${icon('info', 16)} Can't reach the coach server (${esc(e.message)}). Start it with npm run ui in prototype/squat.</div>`; return; } }
+  cat = Object.fromEntries(me.catalogue.map((e) => [e.id, e]));
+  renderPath(opts); renderProfile(); loadWorkouts(); loadWeekly(); loadResearch();
+  if (params.get('resume') === 'survey' && !opts.noResume) { params.delete('resume'); history.replaceState(null, '', location.pathname + (params.toString() ? '?' + params : '')); startSurvey('check'); }
+}
+
+// ---------- the programme screen ----------
+function rowsById() { return Object.fromEntries((me.programme?.progress ?? []).map((r) => [r.node_id, r])); }
+function currentNode() {
+  const p = me.programme, rows = rowsById();
+  return p.graph.nodes.find((n) => statusOf(n, rows).key === 'current') ?? p.graph.nodes.find((n) => statusOf(n, rows).key === 'available' && !n.optional) ?? p.graph.nodes.find((n) => n.id === p.graph.goalNode);
+}
+
+function renderPath({ reveal = false } = {}) {
+  const p = me.programme;
+  $('pathBanner').innerHTML = offline ? `<div class="banner warn">${icon('info', 16)} Offline: showing your last loaded path. Actions are paused until the coach server is reachable again.</div>` : '';
+  if (!p) { $('pathGrid').hidden = true; $('pathEmpty').hidden = false; renderEmpty(); updateFab(); return; }
+  $('pathGrid').hidden = false; $('pathEmpty').hidden = true;
+  // What changed since this browser last saw this path drives the unlock, XP and attribute animations, nothing else.
+  const snapKey = `coach.snap.${user()}.${p.programme_id}`, prev = store.get(snapKey), rows = rowsById();
+  const statusNow = Object.fromEntries(p.graph.nodes.map((n) => [n.id, statusOf(n, rows).key]));
+  const unlocked = new Set(prev ? Object.entries(statusNow).filter(([id, s]) => prev.status?.[id] && prev.status[id] !== s && ['available', 'current', 'verified', 'practised'].includes(s) && !['current', 'available'].includes(prev.status[id]) || (prev?.status?.[id] && prev.status[id] !== s && ['verified', 'practised'].includes(s))).map(([id]) => id) : []);
+  const verifiedNow = Object.entries(statusNow).filter(([id, s]) => s === 'verified' && prev?.status?.[id] && prev.status[id] !== 'verified').map(([id]) => id);
+  renderPlayer(prev);
+  selected = selected && p.graph.nodes.some((n) => n.id === selected) ? selected : currentNode()?.id;
+  drawMap({ reveal: reveal || !prev, unlocked });
+  renderDetail(selected, { open: false });
+  if (verifiedNow.length) toast(`${icon('star', 18)} <span><b>Milestone verified:</b> ${esc(cat[verifiedNow[0]]?.name)}. The evidence is saved with the attempt.</span>`, 5400);
+  else if (unlocked.size && prev) toast(`${icon('bolt', 18)} <span><b>Unlocked:</b> ${[...unlocked].map((id) => esc(cat[id]?.name)).join(', ')}</span>`, 4800);
+  store.set(snapKey, { status: statusNow, xp: me.game.xp, attrs: Object.fromEntries(me.attributes.map((a) => [a.key, a.value])), version: p.version });
+  updateFab();
+}
+function updateFab() {
+  const q = me?.programme ? currentNode() : null; fabAction = q ? primaryAction(q) : null;
+  $('fab').hidden = !fabAction || fabAction.disabled || tab !== 'path';
+  if (fabAction) $('fab').innerHTML = `${icon(fabAction.icon, 18)} ${esc(fabAction.label)}`;
+}
+$('fab').onclick = () => fabAction?.run();
+// On phones the floating action only appears once the quest card's own button has scrolled out of view.
+const questSeen = new IntersectionObserver((es) => { for (const e of es) document.body.classList.toggle('quest-visible', e.isIntersecting); });
+
+// Horizontal when the whole path fits at 72% scale or better; otherwise the vertical map (phones, narrow middle columns).
+function pickOrientation(el) { const w = el.clientWidth - 12; if (!w) return 'h'; if (w < 520) return 'v'; return w >= layout(me.programme.graph, cat, 'h').width * 0.72 ? 'h' : 'v'; }
+function drawMap({ reveal = false, unlocked = new Set() } = {}) {
+  const p = me.programme, el = $('map'); if (!p || $('pathGrid').hidden) return;
+  orientation = pickOrientation(el); el.classList.toggle('vertical', orientation === 'v');
+  const m = renderMap(el, { graph: p.graph, rows: rowsById(), catalogue: cat, capabilityOf, practiceComplete: me.practiceComplete, selected, orientation, reveal, unlocked, onSelect: (id) => select(id, { open: true }) });
+  renderOutline($('outline'), { graph: p.graph, rows: rowsById(), catalogue: cat, capabilityOf, practiceComplete: me.practiceComplete, orientation, onSelect: (id) => select(id, { open: true }) });
+  $('legend').innerHTML = `<span><i class="lg cur"></i>Current</span><span><i class="lg av"></i>Available</span><span><i class="lg ver"></i>Verified or practised</span><span><i class="lg lock"></i>Locked</span><span><i class="lg opt"></i>Optional</span><span><i class="lg skip"></i>Not required</span><span>${icon('camera', 14)} Camera assessment</span><span>${icon('count', 14)} Camera counting</span>`;
+  drawMap.m = m;
+}
+function select(id, { open = true } = {}) { selected = id; for (const g of document.querySelectorAll('#map .node')) { g.classList.toggle('selected', g.dataset.id === id); g.setAttribute('aria-pressed', g.dataset.id === id); } renderDetail(id, { open }); }
+$('toCurrent').onclick = () => { const c = currentNode(); if (!c) return; select(c.id, { open: false }); const el = drawMap.m?.focusNode(c.id); el?.scrollIntoView?.({ block: 'center', behavior: 'smooth' }); };
+$('listToggle').onclick = (ev) => { const on = $('outline').hidden; $('outline').hidden = !on; $('map').hidden = on; ev.currentTarget.setAttribute('aria-pressed', on); ev.currentTarget.textContent = on ? 'Map view' : 'List view'; };
+let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (!me?.programme) return; const want = pickOrientation($('map')); if (want !== orientation) drawMap(); renderDetail(selected, { open: $('detail').classList.contains('open') }); }, 160); });
+
+function renderPlayer(prev) {
+  const p = me.programme, g = me.game, pct = (v) => Math.max(0, Math.min(100, v));
+  const xpPct = pct((100 * (g.xp - g.floor)) / (g.next - g.floor)), prevPct = prev && prev.xp != null && prev.xp <= g.xp && prev.xp >= g.floor ? pct((100 * (prev.xp - g.floor)) / (g.next - g.floor)) : prev ? 0 : xpPct;
+  const q = currentNode(), qT = q?.practiceTarget, act = q ? primaryAction(q) : null;
+  const goalName = cat[p.graph.goalNode]?.name ?? p.graph.goalNode;
+  $('player').innerHTML = `
+    <div class="who-card"><div class="avatar" aria-hidden="true">${esc(user().slice(0, 1).toUpperCase())}</div><div><div class="pname">${esc(user())}</div><div class="pgoal">${p.goal === 'pushup' ? 'Push-up path' : 'Squat path'} · goal: ${esc(goalName)}</div></div></div>
+    <details class="drawer" ${isPhone() ? '' : 'open'}><summary aria-label="Level and attributes"><div class="level"><div class="lv"><span>Programme level</span><b>${g.level}</b></div><div class="xpbar"><i id="xpFill" style="width:${prevPct}%"></i></div><div class="xpt"><span>${g.xp} XP</span><span>${g.next - g.xp} XP to level ${g.level + 1}</span></div><div class="tiny muted" style="margin-top:4px">Game progress from practice and verified milestones, not a fitness rating.<span class="chev"> Tap for attributes.</span></div></div></summary>
+    <div class="drawer-body" style="display:grid;gap:16px;margin-top:14px">
+      <div><div class="sect-h"><span>Achievements</span><span>${g.achievements.length + g.completedPractice.length}</span></div><div class="ach">${g.achievements.map((a) => `<span class="pill gold" title="${esc(a.verification.replace('_', ' '))}">${icon('star', 13)} ${esc(cat[a.nodeId]?.name ?? a.nodeId)}</span>`).join('')}${g.completedPractice.map((id) => `<span class="pill" title="Practice complete (self-reported)">${icon('check', 13)} ${esc(cat[id]?.name ?? id)}</span>`).join('') || '<span class="muted small">None yet. Verified milestones appear here.</span>'}</div></div>
+      <div><div class="sect-h"><span>Attributes</span><span class="tiny">from saved sessions</span></div>${me.attributes.map((a) => { const was = prev?.attrs?.[a.key]; const changed = prev && was !== undefined && was !== a.value && a.value != null; return `<div class="attr ${a.value == null ? 'na' : ''}"><div class="ah"><b>${esc(a.label)}</b><span>${a.value == null ? 'Not assessed yet' : a.value + ' / 100'}</span></div><div class="abar" role="img" aria-label="${esc(a.label)}: ${a.value == null ? 'not assessed yet' : a.value + ' out of 100'}"><i data-to="${a.value ?? 0}" style="width:${(changed ? was ?? 0 : a.value) ?? 0}%"></i></div><div class="ad ${changed ? 'changed' : ''}">${changed ? `${icon('spark', 12)} ` : ''}${esc(a.detail)}</div><details><summary>How is this calculated?</summary><p>${esc(a.how)} Scope: ${esc(a.scope)}. A transparent count, not a clinical or fitness score.</p></details></div>`; }).join('')}</div>
+    </div></details>
+    ${q ? `<div class="quest"><div class="qk">Current quest</div><div class="qt">${esc(cat[q.exerciseId]?.name)}</div><div class="qs">${[qT ? `${qT.sets} × ${qT.target} ${qT.unit === 'seconds' ? 's' : 'reps'} · ${qT.perWeek}× a week` : '', act ? esc(act.hint) : ''].filter(Boolean).join(' · ')}</div>${act ? `<button class="cta" id="questBtn" style="width:100%;justify-content:center" ${act.disabled ? 'disabled' : ''}>${icon(act.icon, 17)} ${esc(act.label)}</button>` : ''}</div>` : ''}
+    <button class="ghost" id="adjustBtn" style="justify-content:center">${icon('route', 16)} Adjust my path</button>
+    <div class="tiny muted">${p.provenance === 'catalogue-fallback' ? `${icon('info', 13)} Built from the catalogue because Gemini's plan was unavailable or did not pass validation.` : `${icon('spark', 13)} Personalised by Gemini, validated against the catalogue.`} Version ${p.version}.</div>`;
+  if (act) { $('questBtn').onclick = act.run; questSeen.disconnect(); questSeen.observe($('questBtn')); }
+  $('adjustBtn').onclick = () => startSurvey('review');
+  requestAnimationFrame(() => requestAnimationFrame(() => { $('xpFill').style.width = xpPct + '%'; for (const i of $('player').querySelectorAll('.abar i')) i.style.width = i.dataset.to + '%'; }));
+}
+
+// The one right action for a node, from its status and capability.
+// Practice counts once per calendar day in the user's timezone (same key as the server: node:YYYY-MM-DD).
+function loggedToday(nodeId) { const tz = me.profile?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone; const day = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date()); return (rowsById()[nodeId]?.practice_log ?? []).some((e) => e.key === `${nodeId}:${day}`); }
+function primaryAction(n) {
+  const p = me.programme, cap = capabilityOf(n.exerciseId), st = statusOf(n);
+  if (offline) return null;
+  if (st.key === 'locked') { const pre = (n.prerequisites ?? []).find((id) => !statusOf(p.graph.nodes.find((x) => x.id === id)).done) ?? n.prerequisites?.[0]; return pre ? { label: `Go to ${cat[pre]?.name ?? pre}`, icon: 'route', hint: 'locked', run: () => { select(pre, { open: true }); drawMap.m?.focusNode(pre); } } : null; }
+  if (cap === 'assessable') return { label: st.key === 'verified' ? 'Practise again with camera' : 'Assess with camera', icon: 'camera', hint: 'camera assessment', run: () => { location.href = `/?node=${encodeURIComponent(n.id)}&programme=${p.programme_id}&user=${encodeURIComponent(user())}`; } };
+  if (loggedToday(n.id)) return { label: 'Logged today', icon: 'check', hint: 'practice counts once per day', disabled: true, run: () => {} };
+  return { label: st.key === 'skipped' ? 'Practise anyway' : st.done ? 'Log more practice' : 'Log practice', icon: 'log', hint: cap === 'counting' ? 'practice log; camera counting on the push-up page' : 'practice log', run: () => logPractice(n) };
+}
+async function logPractice(n) {
+  try {
+    const r = await api('/coach/practice', { programmeId: me.programme.programme_id, nodeId: n.id });
+    if (!r.logged) toast(`${icon('calendar', 18)} <span>Already counted today for <b>${esc(cat[n.exerciseId]?.name)}</b>. Practice counts once per day.</span>`);
+    else toast(`${icon('check', 18)} <span><b>+${me.xpRules.practice} XP</b> · ${esc(cat[n.exerciseId]?.name)} practice logged (${Math.min(r.node.practice_count, me.practiceComplete)} of ${me.practiceComplete} days)</span>`);
+    await loadAll({ noResume: true });
+  } catch (e) { toast(`${icon('info', 18)} ${esc(e.message)}`); }
+}
+
+function renderDetail(id, { open = false } = {}) {
+  const p = me.programme, n = p?.graph.nodes.find((x) => x.id === id); if (!n) return;
+  const rows = rowsById(), row = rows[id], e = cat[n.exerciseId], cap = capabilityOf(n.exerciseId), role = roleOf(n, p.graph, cap), st = statusOf(n, rows);
+  const route = p.graph.route ?? [], stepNo = route.indexOf(id), act = primaryAction(n), t = n.practiceTarget, capT = me.capabilityText[cap];
+  const pre = (n.prerequisites ?? []).map((pid) => { const pn = p.graph.nodes.find((x) => x.id === pid); const ps = statusOf(pn, rows); return `<div class="prereq"><span>${emblemInline(pid, 22)} ${esc(cat[pid]?.name ?? pid)}</span><span class="row" style="gap:6px"><span class="pill ${ps.done ? 'good' : ''}">${esc(ps.label)}</span><button class="link" data-goto="${esc(pid)}">Go</button></span></div>`; }).join('');
+  const unlocks = p.graph.nodes.filter((x) => (x.prerequisites ?? []).includes(id)).map((x) => cat[x.exerciseId]?.name ?? x.id);
+  const ev = (me.evidence ?? []).filter((x) => x.nodeId === id), verified = row?.verification && row.verification !== 'none';
+  $('detail').innerHTML = `<button class="ghost sheet-close" id="sheetClose" aria-label="Close details">${icon('close', 16)}</button>
+    <div class="dh"><div class="demb ${role} st-${st.key}">${emblemInline(n.exerciseId, 54, e?.name)}</div><div><div class="drole">${role === 'goal' ? 'Path goal' : role === 'optional' ? 'Optional branch' : role === 'milestone' ? 'Milestone' : 'Step'}${stepNo >= 0 ? ` · ${stepNo + 1} of ${route.length} on your route` : ''}${id === p.graph.start ? ' · start' : ''}</div><h2>${esc(e?.name ?? id)}</h2>
+      <div class="dbadges"><span class="pill ${['current', 'available'].includes(st.key) ? 'cyan' : st.key === 'verified' ? 'gold' : st.done ? 'good' : ''}">${icon({ verified: 'star', practised: 'check', locked: 'lock', skipped: 'skip', current: 'bolt' }[st.key] ?? 'target', 13)} ${esc(st.label)}</span><span class="pill ${cap === 'assessable' ? 'cyan' : cap === 'counting' ? 'violet' : ''}">${icon(cap === 'assessable' ? 'camera' : cap === 'counting' ? 'count' : 'log', 13)} ${esc(capT.badge)}</span></div></div></div>
+    <div class="dsec"><h4>Why this step?</h4><p>${esc(n.why)}</p>${n.optional && n.supports ? `<p class="muted small" style="margin-top:6px">Supports ${esc(cat[n.supports]?.name ?? n.supports)}. Optional: it never blocks your route.</p>` : ''}${st.key === 'skipped' ? `<p class="muted small" style="margin-top:6px">Not required for your starting point. That is not a verification; you can still practise it.</p>` : ''}</div>
+    <div class="dsec"><h4>What you'll practise</h4><p>${esc(e?.instruction)}</p>${t ? `<div class="presc"><span><b>${t.sets}</b> sets</span><span><b>${t.target}</b> ${t.unit === 'seconds' ? 'seconds' : 'reps'} each</span><span><b>${t.perWeek}×</b> a week</span>${e?.support ? `<span>needs ${esc(e.support)}</span>` : ''}</div>` : ''}</div>
+    <div class="dsec"><h4>Before this</h4>${pre || `<p class="muted">Nothing. You can start here.</p>`}</div>
+    <div class="dsec"><h4>Completion</h4><p>${esc(e?.criteria?.text)}</p><p class="muted small" style="margin-top:4px">Criteria ${esc(e?.criteria?.version)}${cap === 'assessable' ? '' : ` · ${Math.min(row?.practice_count ?? 0, me.practiceComplete)} of ${me.practiceComplete} practice days so far`}</p></div>
+    <div class="dsec"><h4>Assessment</h4><p>${esc(capT.detail)}</p>${cap === 'counting' ? `<p style="margin-top:6px"><a href="${location.protocol}//${location.hostname}:3001/" target="_blank" rel="noopener">Open the push-up counter</a></p>` : ''}</div>
+    <div class="dsec"><h4>Rewards</h4><div class="rewards"><div><span>Practice, once per day</span><b>+${me.xpRules.practice} XP</b></div>${cap === 'assessable' ? `<div class="${verified ? 'got' : ''}"><span>First verified completion</span><b>${verified ? 'Earned' : `+${me.xpRules.firstCompletion} XP`}</b></div><div class="${row?.verification === 'consistent' ? 'got' : ''}"><span>Verified again on a second day</span><b>${row?.verification === 'consistent' ? 'Earned' : `+${me.xpRules.consistent} XP`}</b></div>` : ''}<div><span>Unlocks</span><b style="color:var(--text)">${unlocks.length ? esc(unlocks.join(', ')) : role === 'goal' ? 'Path complete' : 'Nothing; optional'}</b></div></div></div>
+    ${ev.length || (row?.practice_count ?? 0) ? `<div class="dsec"><h4>Your evidence</h4>${ev.map((x) => `<div class="prereq"><span>${icon('camera', 15)} ${esc(new Date(x.at).toLocaleDateString())} · ${esc(x.classification)}${x.baselineMedian != null ? ` · ${x.baselineMedian}s → ${x.retryMedian}s` : ''}${x.retryMeets ? ' · met target' : ''}</span><button class="link" data-report="${esc(x.workoutId)}">View</button></div>`).join('')}${row?.practice_count ? `<p class="muted small" style="margin-top:6px">${row.practice_count} day${row.practice_count === 1 ? '' : 's'} of logged practice (self-reported).</p>` : ''}</div>` : ''}
+    <div class="dactions">${act ? `<button class="cta" id="primaryAct" ${act.disabled ? 'disabled' : ''}>${icon(act.icon, 17)} ${esc(act.label)}</button>` : offline ? '<span class="muted small">Actions are paused while offline.</span>' : ''}${!offline && cap === 'assessable' && st.key !== 'locked' ? `<button class="ghost" id="secondaryAct" ${loggedToday(id) ? 'disabled' : ''}>${icon(loggedToday(id) ? 'check' : 'log', 16)} ${loggedToday(id) ? 'Practice logged today' : 'Log practice'}</button>` : ''}${ev.length ? `<button class="ghost" id="evidenceAct">${icon('doc', 16)} View evidence</button>` : ''}</div>`;
+  if (act) $('primaryAct').onclick = act.run;
+  $('secondaryAct')?.addEventListener('click', () => logPractice(n));
+  $('evidenceAct')?.addEventListener('click', () => { closeSheet(); showTab('reports'); showReport(ev[0].workoutId); });
+  for (const b of $('detail').querySelectorAll('[data-goto]')) b.onclick = () => { select(b.dataset.goto, { open: true }); drawMap.m?.focusNode(b.dataset.goto); };
+  for (const b of $('detail').querySelectorAll('[data-report]')) b.onclick = () => { closeSheet(); showTab('reports'); showReport(b.dataset.report); };
+  $('sheetClose').onclick = closeSheet;
+  $('detail').classList.toggle('sheet', isSheet());
+  if (isSheet() && open) { $('detail').classList.add('open'); $('backdrop').hidden = false; document.body.classList.add('sheet-open'); $('detail').scrollTop = 0; $('sheetClose').focus(); }
+  else if (!isSheet()) { $('detail').classList.remove('open'); $('backdrop').hidden = true; document.body.classList.remove('sheet-open'); }
+}
+function closeSheet() { if (!$('detail').classList.contains('open')) return; $('detail').classList.remove('open'); $('backdrop').hidden = true; document.body.classList.remove('sheet-open'); drawMap.m?.nodeEl(selected)?.focus(); }
+$('backdrop').onclick = closeSheet; addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheet(); });
+
+function renderEmpty() {
+  const sv = me.profile?.survey ?? {}, started = sv.step && !sv.completed;
+  const preview = { goal: 'squat', start: 'gluteBridge', goalNode: 'splitSquat', route: ['gluteBridge', 'squat', 'reverseLunge', 'splitSquat'], nodes: [{ id: 'gluteBridge', exerciseId: 'gluteBridge', prerequisites: [] }, { id: 'squat', exerciseId: 'squat', prerequisites: ['gluteBridge'] }, { id: 'reverseLunge', exerciseId: 'reverseLunge', prerequisites: ['squat'] }, { id: 'splitSquat', exerciseId: 'splitSquat', prerequisites: ['reverseLunge'] }, { id: 'singleLegBalance', exerciseId: 'singleLegBalance', prerequisites: [], optional: true, supports: 'reverseLunge' }] };
+  $('pathEmpty').innerHTML = `<div class="empty"><div><span class="pill cyan">${icon('route', 14)} Your training path</span><h1>Build a path you can actually climb.</h1><p>Six quick questions. Gemini picks your steps from the Spottr catalogue, the app checks every link, and the camera verifies the milestones it can measure.</p>
+    <ul><li>${icon('target', 18)} A clear goal and a current quest</li><li>${icon('camera', 18)} Camera-verified milestones where the camera can judge</li><li>${icon('star', 18)} Levels and attributes from your real sessions</li></ul>
+    <button class="cta" id="buildBtn" style="padding:14px 22px;font-size:16px">${icon('route', 18)} ${started ? 'Continue building my path' : 'Build my training path'}</button>${started ? `<span class="muted small" style="margin-left:12px">Answers saved up to: ${esc(sv.step)}</span>` : ''}</div>
+    <div class="art" aria-hidden="true"><span class="pill tag">Example path</span><div id="emptyMap" style="width:100%;display:flex;padding:8px"></div></div></div>`;
+  const rows = { gluteBridge: { availability: 'current' }, squat: { availability: 'locked' }, reverseLunge: { availability: 'locked' }, splitSquat: { availability: 'locked' }, singleLegBalance: { availability: 'available' } };
+  renderMap($('emptyMap'), { graph: preview, rows, catalogue: cat, capabilityOf, practiceComplete: me.practiceComplete, selected: null, orientation: 'h', reveal: true, onSelect: () => {} });
+  for (const g of $('emptyMap').querySelectorAll('.node')) { g.removeAttribute('role'); g.setAttribute('tabindex', '-1'); }
+  $('buildBtn').onclick = () => startSurvey();
+}
+
+function startSurvey(at = null) {
+  if (offline) { toast(`${icon('info', 18)} The survey needs the coach server.`); return; }
+  openSurvey({ root: $('survey'), me, api, user: user(), startAt: at, onClose: () => loadAll({ noResume: true }), onFinished: async () => { selected = null; showTab('path'); await loadAll({ reveal: true, noResume: true }); } });
 }
 
 // ---------- profile ----------
 function renderProfile() {
-  const sv = me.profile?.survey ?? {}, f = $('survey');
-  for (const [k, v] of Object.entries(sv)) if (f.elements[k]) f.elements[k].value = Array.isArray(v) ? v.join(', ') : v;
-  $('goalsList').innerHTML = (me.profile?.goals ?? []).map((g) => `<li>${esc(g.text)} <span class="sub">(${esc(g.kind)}, target ${g.target}, accepted ${esc((g.acceptedAt ?? '').slice(0, 10))})</span></li>`).join('') || '<li class="sub">No accepted goals yet. They come from a weekly review.</li>';
+  const sv = me.profile?.survey ?? {}, g = sv.goal === 'pushup' ? 'pushup' : 'squat', ab = me.options.ability[g].find((a) => a.key === sv.abilityKey) ?? me.options.ability[g].find((a) => a.band === sv.ability);
+  const rows = [['Goal', sv.goal ? (g === 'pushup' ? 'Push-up path' : 'Squat path') : 'Not set'], ['Starting point', ab?.label ?? '—'], ['Nearby', (sv.equipment ?? []).join(', ') || (sv.equipmentAnswered ? 'Floor space only' : '—')], ['Routine', sv.minutes ? `${sv.minutes} min, ${sv.daysPerWeek} sessions per week` : '—'], ['Focus and style', [{ learn: 'Learn the movement', consistency: 'Build consistency', improve: 'Improve a skill I have', unsure: 'Balance all three' }[sv.focus], { concise: 'concise', direct: 'concise', encouraging: 'encouraging', supportive: 'encouraging', explanatory: 'explanatory', detailed: 'explanatory' }[sv.coaching]].filter(Boolean).join(', ') || 'Not answered'], ['Left out', (sv.avoid ?? []).map((id) => cat[id]?.name).join(', ') || 'Nothing']];
+  $('profileView').innerHTML = `<div class="twocol"><div class="card"><h2>${esc(user())}</h2><p class="muted">Timezone ${esc(me.profile?.timezone)}</p><div class="level"><div class="lv"><span>Programme level</span><b>${me.game.level}</b></div><div class="xpbar"><i style="width:${Math.round((100 * (me.game.xp - me.game.floor)) / (me.game.next - me.game.floor))}%"></i></div><div class="xpt"><span>${me.game.xp} XP</span><span>${me.game.achievements.length} verified milestone${me.game.achievements.length === 1 ? '' : 's'}</span></div></div>
+      <div class="row" style="margin-top:14px"><button class="cta" id="profAdjust">${icon('route', 16)} ${me.programme ? 'Adjust my path' : 'Build my training path'}</button></div></div>
+    <div><div class="card"><h2>Your answers</h2><dl class="review">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd><span></span></div>`).join('')}</dl></div>
+      <div class="card"><h2>Accepted goals</h2>${(me.profile?.goals ?? []).length ? `<div class="quests">${me.profile.goals.map((x) => `<div class="prereq"><span>${icon('flag', 15)} ${esc(x.text)}</span><span class="pill">target ${x.target}</span></div>`).join('')}</div>` : '<p class="muted">None yet. They come from a weekly review.</p>'}</div></div></div>`;
+  $('profAdjust').onclick = () => startSurvey(me.programme ? 'review' : null);
 }
-$('survey').onsubmit = async (ev) => { ev.preventDefault(); const f = ev.target, list = (s) => s.split(',').map((x) => x.trim()).filter(Boolean);
-  const survey = { goal: f.goal.value, ability: f.ability.value, equipment: list(f.equipment.value), minutes: +f.minutes.value, daysPerWeek: +f.daysPerWeek.value, coaching: f.coaching.value, limitations: list(f.limitations.value) };
-  try { await api('/coach/profile', { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, survey }); $('profileNote').textContent = 'Saved.'; await loadAll(); } catch (e) { $('profileNote').textContent = e.message; } };
-$('genProg').onclick = async () => { $('genProg').disabled = true; $('profileNote').textContent = 'Generating…'; try { const r = await api('/coach/programme', {}); $('profileNote').textContent = r.provenance === 'gemini' ? 'Programme generated by Gemini and validated.' : 'Gemini output failed validation twice; a catalogue programme was used.'; await loadAll(); document.querySelector('[data-tab=tree]').click(); } catch (e) { $('profileNote').textContent = e.message; } $('genProg').disabled = false; };
 
-// ---------- session reports ----------
-async function loadWorkouts() { try { const rows = await api('/coach/workouts'); $('workouts').innerHTML = rows.map((w) => `<li><a href="#" data-w="${w.workout_id}">${esc(new Date(w.started_at).toLocaleString())}</a> · ${w.counted} reps · ${esc(w.source)}${w.note ? ` · ${esc(w.note)}` : ''} · ${w.attempts} coaching attempt(s) · ${w.forecasts} forecasts</li>`).join('') || '<li class="sub">No recorded sets yet.</li>'; for (const a of $('workouts').querySelectorAll('[data-w]')) a.onclick = (ev) => { ev.preventDefault(); showReport(a.dataset.w); }; } catch (e) { $('workouts').innerHTML = `<li class="sub">${esc(e.message)}</li>`; } }
-async function showReport(workoutId, narrate = false) {
-  const v = $('reportView'); v.innerHTML = '<div class="card sub">Loading…</div>';
-  try {
-    const r = await api(`/coach/report?workout=${workoutId}${narrate ? '&narrate=1' : ''}`);
-    const fact = (id) => r.facts.find((f) => f.id === id);
-    v.innerHTML = `<div class="card"><h2>Session report · ${esc(r.workout.source)} · ${esc(new Date(r.workout.started_at).toLocaleString())}</h2>
-      <div class="grid"><div><div class="label">Duration</div><div class="num">${esc(fact('duration')?.text.replace('Recorded workout duration ', ''))}</div></div><div><div class="label">Counted reps</div><div class="num">${fact('reps')?.value ?? '–'}</div></div><div><div class="label">Median lowering</div><div class="num">${fact('lowering') ? fact('lowering').value + ' s' : '–'}</div></div><div><div class="label">Clean form</div><div class="num">${fact('form')?.value ?? '–'}</div></div></div>
-      <h2 style="margin-top:12px">Calculated facts</h2><ul class="facts">${r.facts.map((f) => `<li>${esc(f.text)} <small>[${esc(f.id)}]</small></li>`).join('')}</ul>
-      <h2>Coaching attempts</h2>${r.attempts.length ? r.attempts.map((a) => `<div class="goal"><b>${esc(a.status)}</b> · cue: ${esc(a.cue?.text ?? 'none')} (${esc(a.cue?.provenance ?? '')})<br>${a.outcome ? `Result <b>${esc(a.outcome.classification)}</b>: baseline median ${a.outcome.baselineMedian} s, retry median ${a.outcome.retryMedian} s against ${a.outcome.target} s (${a.outcome.baselineN}/${a.outcome.retryN} valid reps)${a.outcome.reason ? `; ${esc(a.outcome.reason)}` : ''}` : 'no result'}<br><span class="sub">${esc(a.explanation?.text ?? '')}</span></div>`).join('') : '<div class="sub">None in this set.</div>'}
-      <h2 style="margin-top:12px">Tempo forecasts (HRT, shadow mode)</h2><div class="sub">${r.predictions.length ? `${r.predictions.length} stored forecasts, ${r.predictions.filter((p) => p.state === 'observed').length} resolved, ${r.predictions.filter((p) => p.outcome === 1).length} with a departure. <a href="/">Evidence panel on the squat page.</a>` : 'None stored for this set.'}</div>
-      <h2 style="margin-top:12px">Biometrics</h2><div class="sub">${esc(fact('biometrics')?.text)}</div>
-      <h2 style="margin-top:12px">Timeline</h2><ul class="timeline">${r.timeline.map((t) => `<li><span class="sub">${esc(new Date(t.at).toLocaleTimeString())}</span> ${esc(t.text)}</li>`).join('')}</ul>
-      <h2 style="margin-top:12px">Narrative</h2>${r.narrative ? `<p><b>${esc(r.narrative.headline?.text)}</b> <small class="sub">[${(r.narrative.headline?.factIDs ?? []).map(esc).join(', ')}]</small></p><ul>${(r.narrative.insights ?? []).map((i) => `<li>${esc(i.text)} <small class="sub">[${(i.factIDs ?? []).map(esc).join(', ')}]</small></li>`).join('')}</ul><div class="sub">Generated once by Gemini from the facts above (${esc(r.narrative.generationId ?? '')}); facts and narrative are stored separately.</div>` : `<div class="row"><button id="narrateBtn">Add Gemini narrative</button><span class="sub">One call, then saved.</span></div>`}</div>`;
-    if ($('narrateBtn')) $('narrateBtn').onclick = () => showReport(workoutId, true);
-  } catch (e) { v.innerHTML = `<div class="card sub">${esc(e.message)}</div>`; }
+// ---------- reports ----------
+async function loadWorkouts() { try { const rows = await api('/coach/workouts'); $('workouts').innerHTML = rows.map((w) => { const syn = (w.note ?? '').startsWith('synthetic'); return `<button class="item" data-w="${w.workout_id}"><span class="it"><span>${esc(new Date(w.started_at).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }))} · ${esc(new Date(w.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}</span><span class="pill ${syn ? 'warn' : w.source === 'camera' ? 'cyan' : ''}">${syn ? 'synthetic' : esc(w.source)}</span></span><span class="is"><span>${w.counted} reps</span>${w.attempts ? `<span>${icon('target', 12)} ${w.attempts} coaching</span>` : ''}${w.forecasts ? `<span>${icon('route', 12)} ${w.forecasts} forecasts</span>` : ''}${w.note && !syn ? `<span>${esc(w.note.slice(0, 42))}</span>` : ''}</span></button>`; }).join('') || '<p class="muted">No recorded sets yet.</p>'; for (const b of $('workouts').querySelectorAll('[data-w]')) b.onclick = () => showReport(b.dataset.w); } catch (e) { $('workouts').innerHTML = `<p class="muted">${esc(e.message)}</p>`; } }
+async function showReport(id, narrate = false) {
+  for (const b of $('workouts').querySelectorAll('[data-w]')) b.classList.toggle('sel', b.dataset.w === id);
+  const v = $('reportView'); v.innerHTML = '<div class="hero"><div class="sub">Loading…</div></div>';
+  try { const r = await api(`/coach/report?workout=${id}${narrate ? '&narrate=1' : ''}`); v.innerHTML = renderSession(r); v.querySelector('[data-narrate]')?.addEventListener('click', (ev) => { ev.target.disabled = true; ev.target.textContent = 'Writing…'; showReport(id, true); }); }
+  catch (e) { v.innerHTML = `<div class="hero"><div class="sub">${esc(e.message)}</div></div>`; }
 }
 
 // ---------- weekly ----------
-async function loadWeekly() { try { const rows = await api('/coach/weekly'); $('weeklyList').innerHTML = rows.map((w) => `<li><a href="#" data-r="${w.report_id}">Week of ${esc(w.period_start)}</a> · v${w.version} · <span class="pill ${w.status === 'ready' ? 'ok' : w.status === 'stale' ? 'warn' : ''}">${esc(w.status)}</span> · ${esc(new Date(w.created_at).toLocaleString())}</li>`).join('') || '<li class="sub">No weekly reviews yet.</li>'; for (const a of $('weeklyList').querySelectorAll('[data-r]')) a.onclick = (ev) => { ev.preventDefault(); showWeekly(a.dataset.r); }; } catch (e) { $('weeklyList').innerHTML = `<li class="sub">${esc(e.message)}</li>`; } }
-const gen = (btn, body) => async () => { btn.disabled = true; try { const r = await api('/coach/weekly', body); await loadWeekly(); showWeekly(r.report.report_id); } catch (e) { alert(e.message); } btn.disabled = false; };
+async function loadWeekly() { try { const rows = await api('/coach/weekly'); $('weeklyList').innerHTML = rows.map((w) => `<button class="item" data-r="${w.report_id}"><span class="it"><span>Week of ${esc(new Date(w.period_start + 'T12:00:00Z').toLocaleDateString(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' }))}</span><span class="pill ${w.status === 'ready' ? 'good' : w.status === 'stale' ? 'warn' : ''}">${esc(w.status)}</span></span><span class="is"><span>version ${w.version}</span><span>${esc(new Date(w.created_at).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))}</span></span></button>`).join('') || '<p class="muted">No reviews yet.</p>'; for (const b of $('weeklyList').querySelectorAll('[data-r]')) b.onclick = () => showWeekly(b.dataset.r); } catch (e) { $('weeklyList').innerHTML = `<p class="muted">${esc(e.message)}</p>`; } }
+const gen = (btn, body) => async () => { btn.disabled = true; const t = btn.textContent; btn.textContent = 'Writing…'; try { const r = await api('/coach/weekly', body); await loadWeekly(); showWeekly(r.report.report_id); } catch (e) { toast(esc(e.message)); } btn.disabled = false; btn.textContent = t; };
 $('genWeekly').onclick = gen($('genWeekly'), {}); $('genCurrent').onclick = gen($('genCurrent'), { periodStart: 'current' });
 async function showWeekly(id) {
-  const v = $('weeklyView'); v.innerHTML = '<div class="card sub">Loading…</div>';
+  for (const b of $('weeklyList').querySelectorAll('[data-r]')) b.classList.toggle('sel', b.dataset.r === id);
+  const v = $('weeklyView'); v.innerHTML = '<div class="hero"><div class="sub">Loading…</div></div>';
   try {
-    const r = await api(`/coach/weekly?id=${id}`), items = r.facts?.items ?? [], s = r.facts?.summary ?? {}, cur = s.current ?? {}, prev = s.previous;
-    const bar = (a, b) => { const m = Math.max(a ?? 0, b ?? 0, 1); return `<div class="cmp"><div><div class="label">This week</div><div class="num">${a ?? 0}</div><div class="bar"><i style="width:${100 * (a ?? 0) / m}%"></i></div></div><div><div class="label">Week before</div><div class="num">${prev ? (b ?? 0) : '–'}</div><div class="bar"><i style="width:${prev ? 100 * (b ?? 0) / m : 0}%;background:var(--mut)"></i></div></div></div>`; };
-    const goals = r.proposed_goals ?? [];
-    v.innerHTML = `<div class="card"><h2>Week of ${esc(r.period_start)} · ${esc(r.status)} · v${r.version} · ${esc(r.timezone)}</h2>
-      <div class="sub">${esc(items.find((f) => f.id === 'coverage')?.text)}</div>
-      <div class="grid" style="margin-top:10px"><div><h3>Workouts</h3>${bar(cur.sessions, prev?.sessions)}</div><div><h3>Counted reps</h3>${bar(cur.reps, prev?.reps)}</div><div><h3>Training days</h3>${bar(cur.days, prev?.days)}</div></div>
-      <h2 style="margin-top:12px">Narrative</h2>${r.narrative?.headline ? `<p><b>${esc(r.narrative.headline.text)}</b></p><ul>${(r.narrative.insights ?? []).map((i) => `<li>${esc(i.text)} <small class="sub">[${(i.factIDs ?? []).map(esc).join(', ')}]</small></li>`).join('')}</ul>` : `<div class="sub">${r.narrative?.error ? esc(r.narrative.error) : 'No Gemini narrative (off or invalid); the facts stand on their own.'}</div>`}
-      <h2 style="margin-top:12px">All calculated facts</h2><ul class="facts">${items.map((f) => `<li>${esc(f.text)} <small>[${esc(f.id)}]</small></li>`).join('')}</ul>
-      <h2 style="margin-top:12px">Research referenced</h2>${(r.research_refs ?? []).length ? `<ul>${r.research_refs.map((x) => `<li><a href="#" data-src="${esc(x.sourceId)}">${esc(x.title)}</a> <span class="pill">${esc(x.access)}</span></li>`).join('')}</ul>` : '<div class="sub">No saved research yet; add a paper or search in the Research tab and regenerate.</div>'}
-      <h2 style="margin-top:12px">Proposed next-week goals</h2><div class="sub">Edit the wording or targets, then accept. Nothing changes in your programme until you do.</div>
-      <div id="goalForm">${goals.map((g, i) => `<div class="goal" data-i="${i}"><div class="row"><span class="pill">${esc(g.kind)}</span>${g.nodeId ? `<span class="pill acc">${esc(g.nodeId)}</span>` : ''}<span class="sub">cites ${(g.factIDs ?? []).map(esc).join(', ')}</span></div><input value="${esc(g.text)}" data-k="text"><div class="row" style="margin-top:6px"><label class="sub">target <input type="number" min="1" max="14" value="${g.target}" data-k="target" style="width:70px"></label><label class="sub"><input type="checkbox" data-k="accept" checked> accept</label><button data-why="${esc(g.id)}">Why this goal?</button></div><div class="sub" data-answer></div></div>`).join('') || '<div class="sub">No goals proposed.</div>'}</div>
-      <div class="row" style="margin-top:8px"><button class="primary" id="acceptGoals" ${goals.length ? '' : 'disabled'}>Accept selected goals</button><span class="sub" id="goalNote"></span></div></div>`;
-    for (const a of v.querySelectorAll('[data-src]')) a.onclick = (ev) => { ev.preventDefault(); document.querySelector('[data-tab=research]').click(); showSource(a.dataset.src); };
-    for (const b of v.querySelectorAll('[data-why]')) b.onclick = async () => { b.disabled = true; const box = b.closest('.goal').querySelector('[data-answer]'); box.textContent = 'Asking…'; try { const a = await api('/coach/ask', { reportId: id, question: `Why did you propose the goal "${b.closest('.goal').querySelector('[data-k=text]').value}"?` }); box.textContent = a.answer.text + (a.answer.factIds?.length ? ` [${a.answer.factIds.join(', ')}]` : ''); } catch (e) { box.textContent = e.message; } b.disabled = false; };
-    $('acceptGoals').onclick = async () => { const chosen = [...v.querySelectorAll('.goal')].filter((g) => g.querySelector('[data-k=accept]').checked).map((g) => ({ ...goals[+g.dataset.i], text: g.querySelector('[data-k=text]').value, target: +g.querySelector('[data-k=target]').value })); try { await api('/coach/goals', { reportId: id, goals: chosen }); $('goalNote').textContent = `${chosen.length} goal(s) accepted and saved to your profile; they feed the next programme generation and the next review.`; await loadAll(); } catch (e) { $('goalNote').textContent = e.message; } };
-  } catch (e) { v.innerHTML = `<div class="card sub">${esc(e.message)}</div>`; }
+    const r = await api(`/coach/weekly?id=${id}`), goals = r.proposed_goals ?? []; v.innerHTML = renderWeekly(r);
+    for (const a of v.querySelectorAll('[data-src]')) a.onclick = (ev) => { ev.preventDefault(); showTab('research'); showSource(a.dataset.src); };
+    for (const b of v.querySelectorAll('[data-why]')) b.onclick = async () => { b.disabled = true; const box = b.closest('.quest').querySelector('[data-answer]'); box.textContent = 'Asking…'; try { const a = await api('/coach/ask', { reportId: id, question: `Why did you propose the goal "${b.closest('.quest').querySelector('[data-k=text]').value}"?` }); box.innerHTML = `${icon('chat', 14)} ${esc(a.answer.text)} ${a.answer.factIds?.length ? `<span class="cites">${a.answer.factIds.map((f) => `<span class="cite">${esc(f)}</span>`).join('')}</span>` : ''}`; } catch (e) { box.textContent = e.message; } b.disabled = false; };
+    $('acceptGoals')?.addEventListener('click', async () => { const chosen = [...v.querySelectorAll('.quest')].filter((g) => g.querySelector('[data-k=accept]').checked).map((g) => ({ ...goals[+g.dataset.i], text: g.querySelector('[data-k=text]').value, target: +g.querySelector('[data-k=target]').value })); try { await api('/coach/goals', { reportId: id, goals: chosen }); $('goalNote').textContent = `${chosen.length} quest${chosen.length === 1 ? '' : 's'} accepted. They feed your next path version and next week's review.`; toast(`${icon('flag', 18)} <span><b>${chosen.length} quest${chosen.length === 1 ? '' : 's'} accepted</b> for next week</span>`); me = await api('/coach/me'); renderProfile(); } catch (e) { $('goalNote').textContent = e.message; } });
+  } catch (e) { v.innerHTML = `<div class="hero"><div class="sub">${esc(e.message)}</div></div>`; }
 }
 
 // ---------- research ----------
-async function loadResearch() { try { const rows = await api('/coach/research'); $('researchList').innerHTML = rows.map((s) => `<li><a href="#" data-src="${esc(s.source_id)}">${esc(s.title)}</a> <span class="pill">${esc(s.origin)}</span> <span class="pill">${esc(s.access === 'full_text' ? 'full text' : s.access)}</span> <span class="sub">${esc(s.authors ?? '')} ${s.year ?? ''}</span></li>`).join('') || '<li class="sub">Nothing saved yet.</li>'; for (const a of $('researchList').querySelectorAll('[data-src]')) a.onclick = (ev) => { ev.preventDefault(); showSource(a.dataset.src); }; } catch (e) { $('researchList').innerHTML = `<li class="sub">${esc(e.message)}</li>`; } }
-async function showSource(id) { const v = $('sourceView'); v.innerHTML = '<div class="card sub">Loading…</div>'; try { const s = await api(`/coach/research?id=${encodeURIComponent(id)}`), f = s.findings ?? {};
-  v.innerHTML = `<div class="card"><h2>${esc(s.origin)} source · ${esc(s.access === 'full_text' ? 'full text analysed' : s.access === 'abstract' ? 'abstract only' : 'metadata only')}</h2><h3>${esc(s.title)}</h3><div class="sub">${esc(s.authors ?? '')} ${s.year ?? ''} ${s.doi ? `· DOI ${esc(s.doi)}` : ''} ${s.url ? `· <a href="${esc(s.url)}" target="_blank" rel="noopener">source</a>` : ''}</div>
-    <ul class="facts">${['question', 'design', 'population', 'intervention', 'outcomes', 'mainFindings', 'limitations', 'relevance'].filter((k) => f[k]).map((k) => `<li><b>${esc(k)}.</b> ${esc(f[k])}</li>`).join('')}</ul>
-    ${(f.evidence ?? []).length ? `<h2>Evidence passages</h2><ul>${f.evidence.map((e) => `<li>p.${e.page}: “${esc(e.quote)}”</li>`).join('')}</ul>` : ''}
-    <div class="sub">“This study found…” is a population finding; it never proves an individual outcome and never changes a pass criterion.</div></div>`; } catch (e) { v.innerHTML = `<div class="card sub">${esc(e.message)}</div>`; } }
-$('searchForm').onsubmit = async (ev) => { ev.preventDefault(); const q = $('searchQ').value.trim(); if (!q) return; $('searchNote').textContent = 'Searching…'; try { const r = await api('/coach/research/search', { question: q }); $('searchNote').textContent = `${r.sources.length} grounded source(s) saved${r.ungrounded ? `, ${r.ungrounded} dropped because the search did not return them` : ''}.`; await loadResearch(); } catch (e) { $('searchNote').textContent = e.message; } };
-$('pdfBtn').onclick = async () => { const f = $('pdfFile').files[0]; if (!f) return; if (f.size > 8e6) { $('pdfNote').textContent = 'Keep documents under 8 MB.'; return; } $('pdfNote').textContent = 'Reading…'; const base64 = await new Promise((res) => { const rd = new FileReader(); rd.onload = () => res(rd.result.split(',')[1]); rd.readAsDataURL(f); });
-  try { const r = await api('/coach/research/pdf', { name: f.name, mime: f.type || 'application/pdf', base64 }); $('pdfNote').textContent = r.cached ? 'Already analysed; showing the saved summary.' : 'Analysed and saved.'; await loadResearch(); showSource(r.source.source_id); } catch (e) { $('pdfNote').textContent = e.message; } };
+async function loadResearch() { try { const rows = await api('/coach/research'); $('researchList').innerHTML = rows.map((s) => `<button class="item" data-src="${esc(s.source_id)}"><span class="it"><span>${esc(s.title)}</span></span><span class="is"><span class="pill ${s.origin === 'supplied' ? 'violet' : 'cyan'}">${esc(s.origin)}</span><span>${esc(s.access === 'full_text' ? 'full text' : s.access)}</span><span>${esc([s.authors, s.year].filter(Boolean).join(' '))}</span></span></button>`).join('') || '<p class="muted">Nothing saved yet.</p>'; for (const a of $('researchList').querySelectorAll('[data-src]')) a.onclick = () => showSource(a.dataset.src); } catch (e) { $('researchList').innerHTML = `<p class="muted">${esc(e.message)}</p>`; } }
+async function showSource(id) { const v = $('sourceView'); v.innerHTML = '<div class="hero"><div class="sub">Loading…</div></div>'; try { const s = await api(`/coach/research?id=${encodeURIComponent(id)}`), f = s.findings ?? {};
+  v.innerHTML = `<article class="report"><header class="hero"><div class="kicker">${icon('book', 16)} ${esc(s.origin)} source · <span class="pill ${s.access === 'full_text' ? 'good' : 'warn'}">${esc(s.access === 'full_text' ? 'full text analysed' : s.access === 'abstract' ? 'abstract only' : 'metadata only')}</span></div><h2 style="font-size:24px">${esc(s.title)}</h2><div class="sub">${esc([s.authors, s.year].filter(Boolean).join(' · '))}${s.doi ? ` · DOI ${esc(s.doi)}` : ''}${s.url ? ` · <a href="${esc(s.url)}" target="_blank" rel="noopener">source</a>` : ''}</div></header>
+    ${f.mainFindings ? `<section class="callout"><div class="ck">${icon('spark', 15)} This study found</div><p class="big">${esc(f.mainFindings)}</p></section>` : ''}
+    <div class="src-f">${[['question', 'Question'], ['design', 'Design'], ['population', 'Population'], ['intervention', 'Intervention'], ['outcomes', 'Outcomes'], ['limitations', 'Limitations'], ['relevance', 'Relevance to your training']].filter(([k]) => f[k]).map(([k, l]) => `<div><b>${l}</b>${esc(f[k])}</div>`).join('')}</div>
+    ${(f.evidence ?? []).length ? `<section><h3>${icon('doc', 18)} Passages</h3>${f.evidence.map((e) => `<div class="quote">p.${e.page}: “${esc(e.quote)}”</div>`).join('')}</section>` : ''}
+    <p class="coverage">${icon('info', 15)} A study finding describes a population. It never proves an individual outcome and never changes a pass criterion.</p></article>`; } catch (e) { v.innerHTML = `<div class="hero"><div class="sub">${esc(e.message)}</div></div>`; } }
+$('searchForm').onsubmit = async (ev) => { ev.preventDefault(); const q = $('searchQ').value.trim(); if (!q) return; $('searchNote').textContent = 'Searching…'; try { const r = await api('/coach/research/search', { question: q }); $('searchNote').textContent = `${r.sources.length} grounded source${r.sources.length === 1 ? '' : 's'} saved${r.ungrounded ? `, ${r.ungrounded} dropped because the search did not return them` : ''}.`; await loadResearch(); } catch (e) { $('searchNote').textContent = e.message; } };
+$('pdfBtn').onclick = async () => { const f = $('pdfFile').files[0]; if (!f) return; if (f.size > 8e6) { $('pdfNote').textContent = 'Keep documents under 8 MB.'; return; } $('pdfNote').textContent = 'Reading…'; const base64 = await new Promise((res) => { const rd = new FileReader(); rd.onload = () => res(rd.result.split(',')[1]); rd.readAsDataURL(f); }); try { const r = await api('/coach/research/pdf', { name: f.name, mime: f.type || 'application/pdf', base64 }); $('pdfNote').textContent = r.cached ? 'Already analysed; showing the saved summary.' : 'Analysed and saved.'; await loadResearch(); showSource(r.source.source_id); } catch (e) { $('pdfNote').textContent = e.message; } };
 
 loadAll();
 </script>

@@ -173,14 +173,43 @@ async function coachRoute(req, res, path) {
   try {
     if (path === '/coach/me' && req.method === 'GET') {
       const profile = await ensureProfile(pool, user), programme = await programmeView(pool, user);
-      return json(200, { user, profile, programme, catalogue: coach.CATALOG.map((e) => ({ ...e, capability: coach.capability(e.id), prerequisites: coach.prerequisites(e.id) })), contracts: coach.CONTRACTS });
+      const all = await store.allProgress(pool, user), attempts = await store.listAttempts(pool, user, { limit: 200 });
+      const nodeAttempts = programme ? attempts.filter((a) => a.programme_id === programme.programme_id) : [];
+      return json(200, { user, profile, programme,
+        game: { ...coach.levelFor(all.xp), achievements: all.achievements, completedPractice: all.completedPractice },
+        attributes: coach.attributes({ attempts, practiceDays: all.practiceDays, survey: profile.survey ?? {}, tz: profile.timezone }),
+        check: await store.latestCheck(pool, user),
+        evidence: nodeAttempts.filter((a) => a.status === 'result').map((a) => ({ attemptId: a.attempt_id, workoutId: a.workout_id, nodeId: a.node_id, at: a.created_at, classification: a.outcome?.classification, retryMeets: a.outcome?.retryMeets ?? false, baselineMedian: a.outcome?.baselineMedian, retryMedian: a.outcome?.retryMedian })),
+        catalogue: coach.CATALOG.map((e) => ({ ...e, capability: coach.capability(e.id), prerequisites: coach.prerequisites(e.id), criteria: coach.criteriaFor(e.id) })),
+        contracts: coach.CONTRACTS, capabilityText: coach.CAPABILITY_TEXT, xpRules: coach.XP, practiceComplete: coach.PRACTICE_COMPLETE,
+        options: { ability: coach.ABILITY, equipment: coach.EQUIPMENT_OPTIONS, avoidable: coach.AVOIDABLE } });
     }
     if (path === '/coach/profile' && req.method === 'POST') return json(200, await store.upsertProfile(pool, user, { timezone: body.timezone, survey: body.survey, goals: body.goals, preferences: body.preferences }));
-    if (path === '/coach/programme' && req.method === 'POST') {
-      const profile = await ensureProfile(pool, user);
-      const attempts = await store.listAttempts(pool, user, { limit: 20 });
-      const history = { coachingAttempts: attempts.length, assessed: [...new Set(attempts.filter((a) => a.outcome?.classification && a.outcome.classification !== 'unable').map((a) => a.exercise))] };
-      const gen = await coachAI.generateProgramme(profile, history);
+    // Survey answers are saved as they are given, so a half-finished survey resumes where it stopped.
+    if (path === '/coach/survey' && req.method === 'POST') {
+      const prev = (await ensureProfile(pool, user)).survey ?? {};
+      return json(200, await store.upsertProfile(pool, user, { timezone: body.timezone, survey: { ...prev, ...(body.survey ?? {}), updatedAt: new Date().toISOString() } }));
+    }
+    // Generation never saves. The preview is reviewed (what changes, what progress carries over) and saved by /accept.
+    const generate = async () => {
+      const profile = await ensureProfile(pool, user), all = await store.allProgress(pool, user), check = await store.latestCheck(pool, user);
+      const attempts = (await store.listAttempts(pool, user, { limit: 20 })).filter((a) => a.outcome?.classification).slice(0, 5).map((a) => ({ exercise: a.exercise, at: a.created_at, result: a.outcome.classification, baselineMedian: a.outcome.baselineMedian, retryMedian: a.outcome.retryMedian }));
+      return { profile, gen: await coachAI.generateProgramme(profile, { check, verified: all.achievements.map((x) => ({ step: x.nodeId, status: x.verification })), attempts }) };
+    };
+    if (path === '/coach/programme/preview' && req.method === 'POST') {
+      const { gen } = await generate(), current = await programmeView(pool, user);
+      return json(200, { graph: gen.graph, rationale: gen.rationale, provenance: gen.provenance, diff: coach.diffProgrammes(current?.graph, gen.graph, current?.progress ?? []), currentVersion: current?.version ?? null });
+    }
+    if (path === '/coach/programme/accept' && req.method === 'POST') {
+      const profile = await ensureProfile(pool, user), graph = body.graph;
+      const v = coach.validateProgramme(graph, profile.survey ?? {});
+      if (!v.ok) return json(422, { error: v.errors.join('; ') });
+      const provenance = body.provenance === 'gemini' ? 'gemini' : 'catalogue-fallback';
+      await store.saveProgramme(pool, user, { programmeId: crypto.randomUUID(), goal: graph.goal, catalogVersion: coach.CATALOG_VERSION, graph, rationale: body.rationale ?? {}, provenance });
+      return json(200, { programme: await programmeView(pool, user) });
+    }
+    if (path === '/coach/programme' && req.method === 'POST') { // generate and save in one step (scripts and the demo seed)
+      const { gen } = await generate();
       const saved = await store.saveProgramme(pool, user, { programmeId: crypto.randomUUID(), goal: gen.graph.goal, catalogVersion: coach.CATALOG_VERSION, graph: gen.graph, rationale: gen.rationale, provenance: gen.provenance });
       return json(200, { programme: await programmeView(pool, user), provenance: saved.provenance });
     }
@@ -194,7 +223,7 @@ async function coachRoute(req, res, path) {
       const unlocks = programme.graph.nodes.filter((n) => (n.prerequisites ?? []).includes(id)).map((n) => n.id);
       return json(200, { node, entry, capability: coach.capability(node.exerciseId), contract, progress, attempts, unlocks, programmeId: programme.programme_id });
     }
-    if (path === '/coach/practice' && req.method === 'POST') return json(200, { node: await store.logPractice(pool, { programmeId: body.programmeId, nodeId: body.nodeId, userId: user, workoutId: body.workoutId }) });
+    if (path === '/coach/practice' && req.method === 'POST') { const profile = await ensureProfile(pool, user); return json(200, await store.logPractice(pool, { programmeId: body.programmeId, nodeId: body.nodeId, userId: user, tz: profile.timezone })); }
     if (path === '/coach/cue' && req.method === 'POST') {
       const contract = coach.contractFor(body.exercise);
       if (!contract || !Array.isArray(body.baselineReps)) return json(400, { error: 'exercise without a measured contract, or no baseline' });
@@ -483,7 +512,7 @@ const server = http.createServer(async (req, res) => {
     let file = null;
     if (path === '/') file = new URL('./index.html', import.meta.url);
     else if (path === '/coach' || path === '/coach.html') file = new URL('./coach.html', import.meta.url);
-    else if (/^\/(squat|hrt|hrt-evidence|coach|coach-loop)\.mjs$/.test(path)) file = new URL('.' + path, import.meta.url);
+    else if (/^\/(squat|hrt|hrt-evidence|coach|coach-loop)\.mjs$/.test(path) || /^\/coach-ui\/[a-z-]+\.mjs$/.test(path)) file = new URL('.' + path, import.meta.url);
     else if (/^\/hrt\/(model|results)-[a-z]+\.json$/.test(path)) file = new URL('.' + path, import.meta.url); // one artifact pair per target
     else {
       for (const [prefix, dir] of Object.entries(MOUNTS)) {

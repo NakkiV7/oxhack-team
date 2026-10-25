@@ -1,20 +1,30 @@
 # Demo click path
 
-Three windows: Chrome tab A at http://localhost:3002 (squat page), Chrome tab B at http://localhost:3002/coach?user=nakki (programme page), and the paper at http://localhost:3002/docs/hrt-paper/main.pdf. About ten minutes end to end; the ninety-second version is Part 1 plus the first two clicks of Part 3.
+Three windows: Chrome tab A at http://localhost:3002 (squat page), Chrome tab B at http://localhost:3002/coach?user=nakki (programme page), and the paper at http://localhost:3002/docs/hrt-paper/main.pdf. About twelve minutes end to end; the ninety-second version is Part 0 steps 4 and 5, then Part 1.
 
 ## Before judges arrive
 
 1. `cd prototype/squat && npm run ui` (Tiger, Gemini and the voice all read from `.env`; the terminal must say `Tiger Data: on` and `Tiger Data: schema ready`).
-2. Tab B: Profile → check the survey says *Some experience* → **Save profile** → **Generate my programme** (about 5 s). The tree should show Squats as the current step and Glute bridges as *not required*.
+2. Tab B: Programme should show Squats as the current step and Glute bridges as *not required*. If not: **Adjust my path** → Starting point → *I can squat, but want help with control* → **Back to review** → **Build a new version** (about 15 s) → **Save as version N**.
 3. Tab B: Research → search one general question (for example "does tempo-controlled lowering change squat strength outcomes") or **Analyse** a PDF you have. One saved source is enough.
 4. Tab B: Weekly review → **Review this week so far** (about 10 s). Leave it generated; do not regenerate in front of judges.
 5. Tab A: pick the voice (Arnold or Goggins) once so the lines prewarm. Camera side-on at hip height, two to three metres, feet in frame.
 6. Have the raw held-out clip handy for Part 3 (a raw recording with an audio track, not the tutorial video). Loop on `pause at forecast` is set at that moment, not before.
 
+## Part 0. Build a training path (about 2 minutes, tab B)
+
+1. Open http://localhost:3002/coach?user=judge3 (any id not used before). The empty state shows an example path and **Build my training path**.
+2. Walk the survey: *Squat path* → *I'm not sure* → *Continue with my answers* (or the camera check if the camera is set up) → tick *A clear wall* and *Something stable to hold* → *20 min*, *3 per week* → *Improve a skill I have*, *Encouraging*, leave out one movement. Say: "concrete statements, not a fitness score; leaving something out needs no reason."
+3. On the review, click **Edit** on one answer and show it comes straight back. Click **Build my path**. Say while it loads: "Gemini picks from the catalogue only; the app checks every link, target and capability before we see it."
+4. The preview draws the path. Read the start reason. Point at the provenance badge. Click **Start my path**.
+5. The map: the current step glows, camera steps are hexagons with a camera badge, practice steps are circles, the optional branch is violet and gates nothing. Click a locked step: the panel says what comes before it and offers **Go to …**, not a camera. Click the current step and **Log practice**: +10 XP, the ring fills a third. Click it again: *Logged today*.
+6. Point at the level ("a game score, not fitness") and the three attributes reading *Not assessed yet*. Open *How is this calculated?* on Tempo.
+7. **Adjust my path** → change the starting point → **Build a new version**. Show *What changes*, *Progress carried over* and *Kept in your history*, then close without saving.
+
 ## Part 1. Coach, retry, verify (live camera, about 3 minutes)
 
-1. Tab B, Programme: point at **Current step: squat**, the capability pills, and one practice-only node ("AI assessment coming soon"). Expand *Why this step?* on Squats: show the contract text (target 1.5 s lowering, tolerance, when it is unable to assess).
-2. Click **Assess with camera** on Squats. Tab A opens with the *Coach · retry · verify* card reading *Setting up*.
+1. Tab B, Programme (user nakki): click the Squats hexagon. The step panel shows the camera badge, *Why this step?*, and *Completion* with the contract (target 1.5 s lowering, tolerance, three counted reps).
+2. Click **Assess with camera** in the panel. Tab A opens with the *Coach · retry · verify* card reading *Setting up*.
 3. Click **Start camera**. Say: "three reps at my natural pace; nothing is judged yet." Do three squats. The card counts *Baseline: n of 3*.
 4. After the third rep the card says *Preparing one cue*, then shows the cue and speaks it. Read it aloud if the room is loud. Say: "Gemini chose from five allowed actions and could only use numbers from these three reps; the target is now frozen."
 5. Click **Start retry**. Do three squats following the cue.
@@ -39,10 +49,10 @@ If the camera warns about framing, step back until the warning clears; the loop 
 
 ## Part 4. Reports and the weekly review (about 2 minutes, tab B)
 
-1. Reports: click the set you just did. Show the facts with ids, the coaching attempt with both medians, the forecasts line, the biometrics line saying none were recorded, the timeline. Click **Add Gemini narrative** once; show that each sentence cites fact ids.
-2. Weekly review: open the review generated earlier. Show the three comparison charts, the "no percentage from a zero baseline" wording, the research reference, and the proposed goals.
-3. Click **Why this goal?** on one goal; the answer cites fact ids.
-4. Edit a target, untick one goal, click **Accept selected goals**. Profile tab shows them as accepted. Say: "nothing in the programme changed until I accepted; the accepted goals feed the next programme generation."
+1. Reports: click the set you just did. Show the stat tiles, the lowering-time chart with the target band, the coaching attempt as a before/after line, the biometrics box saying none were recorded, and the moments. Click **Write the summary** once; show the fact chips under it. *All calculated facts* at the bottom lists every id.
+2. Weekly review: open the review generated earlier. Show the headline, the stat tiles with week-on-week changes, *What stood out*, and next week's quests.
+3. Click **Why this?** on one quest; the answer cites fact ids.
+4. Edit a target, untick one quest, click **Accept selected quests**. Profile tab shows them as accepted. Say: "nothing in the programme changed until I accepted; the accepted goals feed the next programme generation."
 
 ## Part 5. Research (about 1 minute, tab B)
 

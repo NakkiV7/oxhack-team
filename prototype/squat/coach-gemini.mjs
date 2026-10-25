@@ -2,14 +2,18 @@
 // number; Gemini selects among allowed actions, phrases cues, explains computed results, drafts programmes and goals
 // inside the catalogue, and reads documents. Every response is validated semantically (allowed ids, allowed actions,
 // numbers that exist in the supplied facts) and every call has a deterministic fallback.
-import { CATALOG, CATALOG_VERSION, capability, contractFor, validateProgramme, fallbackProgramme, validateGoals, deterministicCue, prerequisites, metricValue, placeStart } from './coach.mjs';
+import { CATALOG, CATALOG_VERSION, capability, contractFor, criteriaFor, validateProgramme, fallbackProgramme, validateGoals, deterministicCue, prerequisites, metricValue, placeStart, availableExercise, defaultTarget, defaultRoute, validRoute, defaultEmphasis, goalOf, bandOf, AVOIDABLE } from './coach.mjs';
 
 const CUE_ACTIONS = ['cue_target', 'maintain_target', 'ask_user', 'request_better_view', 'no_assessment'];
 const NEXT_ACTIONS = ['repeat_retry', 'practice_node', 'rest', 'try_again_later', 'end_session'];
 const schema = {
   cue: { type: 'OBJECT', properties: { action: { type: 'STRING', enum: CUE_ACTIONS }, cue_text: { type: 'STRING' }, brief_rationale: { type: 'STRING' }, evidence_ids: { type: 'ARRAY', items: { type: 'STRING' } }, target_id: { type: 'STRING' } }, required: ['action', 'cue_text', 'brief_rationale', 'evidence_ids', 'target_id'] },
   explain: { type: 'OBJECT', properties: { explanation: { type: 'STRING' }, next_action: { type: 'STRING', enum: NEXT_ACTIONS }, fact_ids: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['explanation', 'next_action', 'fact_ids'] },
-  programme: { type: 'OBJECT', properties: { nodes: { type: 'ARRAY', items: { type: 'OBJECT', properties: { id: { type: 'STRING' }, exerciseId: { type: 'STRING' }, why: { type: 'STRING' }, prerequisites: { type: 'ARRAY', items: { type: 'STRING' } }, optional: { type: 'BOOLEAN' } }, required: ['id', 'exerciseId', 'why', 'prerequisites', 'optional'] } }, start: { type: 'STRING' }, goalNode: { type: 'STRING' }, rationale: { type: 'STRING' } }, required: ['nodes', 'start', 'goalNode', 'rationale'] },
+  programme: { type: 'OBJECT', properties: {
+    nodes: { type: 'ARRAY', items: { type: 'OBJECT', properties: { id: { type: 'STRING' }, exerciseId: { type: 'STRING' }, why: { type: 'STRING' }, prerequisites: { type: 'ARRAY', items: { type: 'STRING' } }, optional: { type: 'BOOLEAN' }, supports: { type: 'STRING' },
+      practiceTarget: { type: 'OBJECT', properties: { sets: { type: 'INTEGER' }, target: { type: 'INTEGER' }, perWeek: { type: 'INTEGER' } }, required: ['sets', 'target', 'perWeek'] } }, required: ['id', 'exerciseId', 'why', 'prerequisites', 'optional', 'practiceTarget'] } },
+    start: { type: 'STRING' }, goalNode: { type: 'STRING' }, route: { type: 'ARRAY', items: { type: 'STRING' } }, rationale: { type: 'STRING' }, startReason: { type: 'STRING' }, emphasis: { type: 'STRING' } },
+    required: ['nodes', 'start', 'goalNode', 'route', 'rationale', 'startReason', 'emphasis'] },
   narrative: { type: 'OBJECT', properties: { headline: { type: 'OBJECT', properties: { text: { type: 'STRING' }, factIDs: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['text', 'factIDs'] }, insights: { type: 'ARRAY', items: { type: 'OBJECT', properties: { text: { type: 'STRING' }, factIDs: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['text', 'factIDs'] } } }, required: ['headline', 'insights'] },
   weekly: { type: 'OBJECT', properties: { headline: { type: 'OBJECT', properties: { text: { type: 'STRING' }, factIDs: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['text', 'factIDs'] }, insights: { type: 'ARRAY', items: { type: 'OBJECT', properties: { text: { type: 'STRING' }, factIDs: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['text', 'factIDs'] } },
     goals: { type: 'ARRAY', items: { type: 'OBJECT', properties: { id: { type: 'STRING' }, kind: { type: 'STRING' }, text: { type: 'STRING' }, nodeId: { type: 'STRING' }, target: { type: 'INTEGER' }, factIDs: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['id', 'kind', 'text', 'target', 'factIDs'] } } }, required: ['headline', 'insights', 'goals'] },
@@ -97,28 +101,45 @@ Context: ${JSON.stringify({ node: ctx.node, contract: ctx.contract })}`;
     return { text: fallback, nextAction: o.classification === 'unable' ? 'repeat_retry' : o.classification === 'further' ? 'rest' : 'practice_node', factIds: ['classification', 'baseline', 'retry'], facts, provenance: 'deterministic', generationId: null };
   }
 
-  // Programme generation inside the catalogue, validated, one repair, then the catalogue fallback.
-  async function generateProgramme(profile, history = {}) {
-    const survey = profile?.survey ?? {}, goal = survey.goal === 'pushup' ? 'pushup' : 'squat';
-    const allowed = CATALOG.map((e) => ({ id: e.id, name: e.name, family: e.family, level: e.level, support: e.support, assessable: capability(e.id) === 'assessable', prerequisites: prerequisites(e.id) }));
-    const base = `Design a short personalised progression (4 to 6 nodes, at most one optional branch) for this person from the catalogue below. Node ids must equal exercise ids; prerequisites must be catalogue prerequisite links (or a lower level of the same family); the start node must have no prerequisites inside the programme; the goal node must be reachable from the start. Only "squat" and "pushup" can be assessed by the camera; every other node is practice-only, say so in its "why". Do not invent thresholds, timelines or medical claims. Respect equipment and stated limitations. Return JSON only.
-Catalogue: ${JSON.stringify(allowed)}
-Person: ${JSON.stringify({ survey, acceptedGoals: (profile?.goals ?? []).map((g) => g.text).slice(0, 5), history })}`;
+  // Programme generation inside the catalogue, validated, one repair, then the catalogue fallback. Gemini chooses which
+  // allowed steps to include, the optional branch, the start (within the bounds the answers and any camera check allow),
+  // the practice prescription (within catalogue bounds), the route and the wording. It cannot add exercises, links,
+  // capabilities, thresholds or criteria. context: { check, verified, attempts }.
+  async function generateProgramme(profile, context = {}) {
+    const survey = profile?.survey ?? {}, goal = goalOf(survey), band = bandOf(survey);
+    const usable = CATALOG.filter((e) => availableExercise(e.id, survey));
+    const catalogue = usable.map((e) => ({ id: e.id, name: e.name, family: e.family, level: e.level, unit: e.unit, catalogueTarget: e.goal, maxTarget: Math.ceil(e.goal * 1.5), needs: e.support, capability: capability(e.id), criteria: criteriaFor(e.id), allowedPrerequisites: prerequisites(e.id).filter((p) => availableExercise(p, survey)) }));
+    const rule = placeStart(survey, fallbackProgramme(survey, context.check).nodes, goal, context.check);
+    const person = { goal, band, abilityAnswer: survey.abilityKey ?? survey.ability, focus: survey.focus ?? 'unsure', coaching: survey.coaching ?? 'concise', minutesPerSession: survey.minutes ?? 20, sessionsPerWeek: survey.daysPerWeek ?? 3,
+      equipment: survey.equipment ?? [], leaveOut: survey.avoid ?? [], cameraCheck: context.check ?? null, verifiedSteps: context.verified ?? [], recentAssessments: context.attempts ?? [], acceptedGoals: (profile?.goals ?? []).map((g) => g.text).slice(0, 5) };
+    const base = `Build a personalised training path toward ${goal === 'pushup' ? 'a standard push-up and beyond' : 'a controlled squat and beyond'} for this person, using only the catalogue below.
+Rules: 4 to 6 nodes; node id = exercise id; the main chain follows the ${goal === 'pushup' ? 'push' : 'legs'} family in level order and must include "${goal}"; prerequisites only from each exercise's allowedPrerequisites (or a lower level of the same family); at most one optional node, which has no dependents and names in "supports" the node it helps (one of that node's allowedPrerequisites); the goal node is the last node of the main chain; "start" must be one of ${JSON.stringify(rule.allowedStarts)}: use "${rule.start}" (what the answers support) and choose an earlier one only when focus is "learn" or the ability answer is unsure, saying why in startReason; "route" lists node ids from start to goal along prerequisite links; practiceTarget: sets 1-4, target 1..maxTarget in the exercise's unit, perWeek 1..${Math.max(1, survey.sessionsPerWeek ?? survey.daysPerWeek ?? 3)}, fitting ${survey.minutes ?? 20} minutes per session.
+Write "why" (max 200 characters) for each node in a ${survey.coaching ?? 'concise'} voice; for a node whose capability is not "assessable", say plainly that the camera does not assess it yet. "rationale": two sentences on why this route fits these answers; "startReason": one sentence on the starting point; "emphasis": one sentence on what to focus on (${survey.focus ?? 'unsure'}). No thresholds, timelines, medical claims or promises of results.
+Catalogue: ${JSON.stringify(catalogue)}
+Person: ${JSON.stringify(person)}
+Return JSON only.`;
     let last = null;
     for (let attempt = 0; attempt < 2; attempt++) {
       const prompt = attempt === 0 ? base : `${base}\nYour previous answer failed validation: ${last.errors.join('; ')}. Fix exactly those problems.`;
-      const res = await ask(prompt, schema.programme, { maxOutputTokens: 2048 });
+      const res = await ask(prompt, schema.programme, { maxOutputTokens: 3072 });
       const g = res?.json;
       if (!g) { last = { errors: ['no response'] }; continue; }
-      const graph = { goal, catalogVersion: CATALOG_VERSION, nodes: (g.nodes ?? []).map((n) => ({ id: n.id, exerciseId: n.exerciseId, why: text(n.why, 240), prerequisites: n.prerequisites ?? [], optional: !!n.optional, assessable: capability(n.exerciseId) === 'assessable', notRequired: false })), start: g.start, goalNode: g.goalNode };
-      // Placement is a rule, not a generation: the survey (and a stated limitation) decides where the chain starts.
-      if (graph.nodes.some((n) => n.id === (goal === 'pushup' ? 'pushup' : 'squat'))) { const pl = placeStart(survey, graph.nodes, goal); graph.start = pl.start; for (const n of graph.nodes) n.notRequired = pl.notRequired.includes(n.id); graph.placement = pl.reason; }
+      const nodes = (g.nodes ?? []).map((n) => ({ id: n.id, exerciseId: n.exerciseId, why: text(n.why, 240), prerequisites: n.prerequisites ?? [], optional: !!n.optional, ...(n.optional && n.supports ? { supports: n.supports } : {}),
+        assessable: capability(n.exerciseId) === 'assessable', notRequired: false, practiceTarget: n.practiceTarget ? { sets: n.practiceTarget.sets, target: n.practiceTarget.target, unit: CATALOG.find((e) => e.id === n.exerciseId)?.unit, perWeek: n.practiceTarget.perWeek } : null }));
+      const graph = { goal, catalogVersion: CATALOG_VERSION, nodes, start: g.start, goalNode: g.goalNode, route: g.route };
+      // Placement is bounded by the rule: Gemini may start at or before the furthest start the answers and evidence allow.
+      const pl = placeStart(survey, nodes, goal, context.check);
+      if (!pl.allowedStarts.includes(graph.start)) graph.start = pl.start;
+      const chainBefore = pl.allowedStarts.slice(0, pl.allowedStarts.indexOf(graph.start));
+      for (const n of nodes) n.notRequired = chainBefore.includes(n.id);
+      graph.placementSource = graph.start === pl.start || pl.source === 'self-reported' ? pl.source : 'self-reported';
+      if (!validRoute(graph)) { graph.route = defaultRoute(graph); graph.routeRepaired = true; }
       const v = validateProgramme(graph, survey);
-      if (v.ok) return { graph, rationale: { source: 'gemini', text: text(g.rationale, 600), generationId: generationId() }, provenance: 'gemini' };
+      if (v.ok) return { graph, rationale: { source: 'gemini', text: text(g.rationale, 600), startReason: text(g.startReason, 240) || pl.reason, emphasis: text(g.emphasis, 240) || defaultEmphasis(survey), placementSource: graph.placementSource, generationId: generationId(), survey }, provenance: 'gemini' };
       last = v; log('programme: validation failed', v.errors, JSON.stringify({ start: g.start, goalNode: g.goalNode, nodes: (g.nodes ?? []).map((n) => `${n.id}<-${(n.prerequisites ?? []).join('+')}${n.optional ? '?' : ''}`) }));
     }
-    const fb = fallbackProgramme(survey);
-    return { graph: fb, rationale: { ...fb.rationale, geminiErrors: last?.errors ?? [] }, provenance: 'catalogue-fallback' };
+    const fb = fallbackProgramme(survey, context.check), { rationale, ...graph } = fb;
+    return { graph, rationale: { ...rationale, geminiErrors: last?.errors ?? [], survey }, provenance: 'catalogue-fallback' };
   }
 
   // Session narrative over calculated facts (same shape as the native session summary: headline + up to three insights).

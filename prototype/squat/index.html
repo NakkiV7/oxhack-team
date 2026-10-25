@@ -726,15 +726,26 @@ $('evClose').onclick = () => $('evidence').close();
 // server stores with the node progress it earns, then Gemini explains the computed result. The state machine lives in
 // /coach-loop.mjs; the page only feeds it reps and user actions and persists snapshots at each transition.
 const coachParams = new URL(location.href).searchParams;
-const coachNode = coachParams.get('node'), coachProgramme = coachParams.get('programme'), coachUser = coachParams.get('user');
+// ?check=squat runs the same loop as a placement check from the path survey: stored as evidence, tied to no programme step.
+const coachCheck = coachParams.get('check') === 'squat';
+const coachNode = coachCheck ? 'placement-check' : coachParams.get('node'), coachProgramme = coachCheck ? null : coachParams.get('programme'), coachUser = coachParams.get('user');
 let cl = null, coachInfo = null;
 const coachApi = async (path, body) => { const url = coachUser ? path + (path.includes('?') ? '&' : '?') + 'user=' + encodeURIComponent(coachUser) : path; const r = await fetch(url, body ? { method: 'POST', body: JSON.stringify(body) } : {}); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error ?? r.statusText); return j; };
 async function coachInit() {
   if (!coachNode) return;
-  try { coachInfo = await coachApi(`/coach/node?id=${encodeURIComponent(coachNode)}`); } catch (e) { $('coachCard').hidden = false; $('coachState').textContent = 'Node unavailable'; $('coachSub').textContent = e.message; return; }
+  const back = `/coach${coachUser ? `?user=${encodeURIComponent(coachUser)}${coachCheck ? '&resume=survey' : ''}` : coachCheck ? '?resume=survey' : ''}`;
+  $('coachBack').href = back; $('coachBack').textContent = coachCheck ? 'Back to your path survey' : 'Back to programme';
+  if (coachCheck) coachInfo = { node: { id: 'placement-check', exerciseId: 'squat' }, entry: { name: 'Squats' }, capability: 'assessable', programmeId: null };
+  else { try { coachInfo = await coachApi(`/coach/node?id=${encodeURIComponent(coachNode)}`); } catch (e) { $('coachCard').hidden = false; $('coachState').textContent = 'Step unavailable'; $('coachSub').textContent = e.message; return; } }
   $('coachCard').hidden = false;
-  if (coachInfo.capability !== 'assessable') { $('coachState').textContent = 'AI assessment coming soon'; $('coachSub').textContent = `${coachInfo.entry.name} is practice-only in this version. Log practice from the programme page; the camera assessor is for squats and standard push-ups.`; $('coachStopBtn').hidden = true; return; }
+  // This page assesses squats only. Any other step, push-ups included, never reaches the squat assessor.
+  if (coachInfo.capability !== 'assessable' || coachInfo.node.exerciseId !== 'squat') {
+    $('coachState').textContent = coachInfo.capability === 'counting' ? 'Camera counting is on the push-up page' : 'AI assessment coming soon';
+    $('coachSub').textContent = coachInfo.capability === 'counting' ? `${coachInfo.entry.name} are counted on the push-up page, which is not linked to your path yet. Log practice from your path.` : `${coachInfo.entry.name} is practice-only for now. Log practice from your path; this page only assesses squats.`;
+    $('coachStopBtn').hidden = true; return;
+  }
   coachNew();
+  if (coachCheck) $('coachSub').textContent = 'Camera check: start the camera and do three squats at your normal pace. You can stop after the baseline.';
 }
 function coachNew() {
   cl = new CoachLoop({ contract: coachContractFor(coachInfo.node.exerciseId) });

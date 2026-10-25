@@ -4,11 +4,12 @@ What is checked automatically, what was checked by hand, and how to re-check aft
 
 ## Automated
 
-`npm test` runs 53 node checks with no network and no model download:
+`npm test` runs 65 node checks with no network and no model download:
 
 - `test/ask.test.mjs`: the coach Q&A guardrails (shared with the push-up prototype).
 - `test/tiger-stream.test.mjs`: the Tiger batch validation, the ingest against a fake pool (frames, reps, forecasts, outcomes), the strict-TLS pool guard and the migration files (see [TIGER.md](TIGER.md)).
 - `test/coach.test.mjs`: the coaching journey's domain rules (capabilities, programme validation and fallback, comparison, node contracts and idempotent rewards, the coach-retry-verify state machine, report facts, week boundaries, goal validation, Gemini output validation with a fake provider, keyed store writes); see [COACH.md](COACH.md).
+- `test/path.test.mjs`: the training path (criteria, ability bands, distinct valid paths for five survey profiles, placement with a camera check, validation rejections, levels, attributes, the version diff, Gemini bounds and fallback, the daily practice key, progress carry-over on save, deterministic map layout and node states); see [COACH.md](COACH.md).
 - `test/hrt.test.mjs`: the tempo forecaster (target boundaries, past-only features, two-rep horizons and exclusions, shadow and coaching actions, cooldown, outcome linkage, immutability, parity with the offline definition); see [HRT.md](HRT.md).
 - `test/squat.test.mjs`:
   - angle and grade helpers;
@@ -43,8 +44,9 @@ To rerun the comparison after a change: dump landmarks for the clips with the Py
 - Coaching journey, 25 October: the offline driver `coach-replay.mjs` ran the six-rep side clip through the real routes (baseline of three reps, a Gemini `maintain_target` cue because the baseline median 1.37 s already met the 1.5 s target, explicit retry, three retry reps, computed result "similar", the attempt and a first-completion milestone saved in one transaction, a Gemini explanation citing the computed facts); `coach-demo-seed.mjs` seeded six labelled synthetic sets for the demo account and its weekly review flagged them; the journey page rendered the tree, a session report and the weekly review in the browser. Not checked by hand: the loop with a live camera on this machine.
 - Tempo forecast, held-out replay of the raw six-rep side clip with *pause at forecast*: the clip played once, paused at the forecasts after reps 3 and 4 with the status line naming the rep, resumed on the Pause button, ended the set itself at the end of the clip; "What we anticipated" read both forecasts back from Tiger with the observed outcome (rep 5 outside the range) and lead times of 16.4 s and 8.5 s; the Evidence dialog drew the stored timeline with the onset marker. Shadow mode throughout; with the frozen threshold no cue was due.
 - Tiger Data card with the team's service configured: the replayed side clip streamed 1,266 frames and 6 reps, the card's counters and sparkline updated every two seconds from the database, End workout wrote the end mark, Compress now converted the closed chunk. Same pass on the push-up page (6,083 frames, 24 reps). Details and numbers in [TIGER.md](TIGER.md).
+- Training path, 25 October, in the app's browser pane: a new account ran the whole survey with real Gemini (one generation), got a validated four-step path starting at glute bridges for "not sure", and saved it as version 1. Logged practice gave +10 XP and "1 of 3 days"; a second log the same day returned `logged: false` and the button reads *Logged today*. Adjusting the starting point to "comfortable" with focus "improve" produced a preview starting at squats; the diff listed the start change, the new optional step and glute bridges kept in history; saving made version 2 with XP intact. The legacy account's adjust flow showed its old answers mapped onto the new options. Checked at 1440×900, 1100×820 (step panel as a bottom sheet), 704 wide and 375×812 (vertical map, floating action only once the quest button scrolls away): no overlap or clipping after the fixes in this pass (map scale cap, labels with a halo and above upper side branches, toast width, phone top bar). Keyboard: arrows, Home, End and Enter on the map. Reports: chart, before/after line, moments in time order, weekly tiles and quests.
 
-Not yet checked by hand: a live camera session in the browser on this machine, and a phone client against the squat state.
+Not yet checked by hand: a live camera session in the browser on this machine, a phone client against the squat state, the reduced-motion setting in a real browser (the rule is CSS only), and a screen reader pass over the map.
 
 ## How to tune a threshold
 

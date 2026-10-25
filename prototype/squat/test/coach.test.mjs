@@ -8,8 +8,8 @@ import { saveAttempt, saveAttemptAndProgress, claimWeeklyReport } from '../coach
 const SQ = CONTRACTS.squat;
 const rep = (n, down, extra = {}) => ({ n, counted: true, tDown: down, tUp: 0.8, secs: down + 0.8, travel: 0.5, depth: 0.05, ...extra });
 
-test('capabilities: only squat and push-up have a measured contract; everything else is practice-only', () => {
-  assert.equal(capability('squat'), 'assessable'); assert.equal(capability('pushup'), 'assessable');
+test('capabilities: squats are assessed in this app, push-ups are camera-counted elsewhere, everything else is practice', () => {
+  assert.equal(capability('squat'), 'assessable'); assert.equal(capability('pushup'), 'counting');
   for (const id of ['wallPushup', 'inclinePushup', 'kneePushup', 'closeGripPushup', 'reverseLunge']) assert.equal(capability(id), 'practice-only');
   assert.equal(contractFor('kneePushup'), null); assert.equal(contractFor('squat').metric, 'down');
   assert.deepEqual(prerequisites('pushup'), ['kneePushup', 'plank']); assert.deepEqual(prerequisites('squat'), ['gluteBridge']);
@@ -24,7 +24,7 @@ test('fallback programme validates, places beginners at the foundation and exper
   assert.equal(inter.start, 'squat'); assert.ok(inter.nodes.find((n) => n.id === 'gluteBridge').notRequired);
   assert.ok(validateProgramme(inter).ok);
   const push = fallbackProgramme({ goal: 'pushup', ability: 'beginner', equipment: ['wall', 'raised surface'] });
-  assert.equal(push.start, 'wallPushup'); assert.ok(validateProgramme(push, { equipment: ['wall', 'raised surface'] }).ok);
+  assert.equal(push.start, 'wallPushup'); assert.ok(validateProgramme(push, { equipment: ['wall', 'raised surface'] }).ok, validateProgramme(push, { equipment: ['wall', 'raised surface'] }).errors.join('; '));
   assert.ok(validateProgramme(push, { equipment: ['raised surface'] }).errors.some((e) => /wall/.test(e))); // wall push-ups need a wall
 });
 

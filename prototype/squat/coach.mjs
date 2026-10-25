@@ -43,15 +43,74 @@ export const CONTRACTS = {
   pushup: { exerciseId: 'pushup', variation: 'standard', version: 'pushup-cadence-v1', metric: 'secs', label: 'rep time', unit: 's', target: 2.0, tolerance: 0.25,
     evidence: 'three counted reps with the rep time measured, body line and elbow in frame', unableWhen: 'fewer than three counted reps or tracking lost', pass: 'median rep time within 0.25 s of the 2.0 s target over three counted reps' },
 };
-export const capability = (exerciseId) => (CONTRACTS[find(exerciseId)?.tracking] ? 'assessable' : 'practice-only');
+// Capability inside this app. Squats have the full coach -> retry -> verify loop on the squat page ('assessable'). Push-ups
+// are counted by the camera on the push-up page, which has no programme-linked assessment yet ('counting'). Everything else
+// is practice the person logs ('practice-only'). Capability is separate from progress.
+export const capability = (exerciseId) => { const t = find(exerciseId)?.tracking; return t === 'squat' ? 'assessable' : t === 'pushup' ? 'counting' : 'practice-only'; };
+export const CAPABILITY_TEXT = {
+  assessable: { badge: 'Camera assessment', detail: 'The squat page times your lowering phase, coaches one change, and checks a retry against a fixed target. Passing it verifies this step.' },
+  counting: { badge: 'Camera rep counting', detail: 'The push-up page counts reps and checks body line, but it is not linked to this path yet, so it cannot verify this step. Log your practice here.' },
+  'practice-only': { badge: 'Practice log', detail: 'Automated assessment for this movement is not available yet. You log practice yourself; it completes the step but is never shown as AI-verified.' },
+};
 export const contractFor = (exerciseId) => CONTRACTS[find(exerciseId)?.tracking] ?? null;
+export const PRACTICE_COMPLETE = 3; // practice logged on this many different days completes a practice step (never AI verification)
+// Versioned completion criteria for any catalogue exercise.
+export function criteriaFor(exerciseId) {
+  if (capability(exerciseId) === 'assessable') { const c = contractFor(exerciseId); return { version: c.version, kind: 'camera', text: `First completion: ${c.pass}. Consistency: the same result on a second day.` }; }
+  return { version: 'practice-v1', kind: 'practice', text: `Log practice on ${PRACTICE_COMPLETE} different days to complete this step. Logged practice is self-reported.` };
+}
+
+// ---------- survey ----------
+// Concrete self-report options per goal. Each maps to a placement band; nothing here is a strength or fitness score.
+export const ABILITY = {
+  squat: [
+    { key: 'new', label: "I'm new to squats", band: 'beginner' },
+    { key: 'control', label: 'I can squat, but want help with control', band: 'intermediate' },
+    { key: 'comfortable', label: 'I can do a comfortable set', band: 'advanced' },
+    { key: 'unsure', label: "I'm not sure", band: 'unsure' },
+  ],
+  pushup: [
+    { key: 'notTried', label: "I haven't tried recently", band: 'beginner' },
+    { key: 'first', label: "I'm working towards my first standard push-up", band: 'beginner' },
+    { key: 'few', label: 'I can do a few', band: 'intermediate' },
+    { key: 'comfortable', label: 'I can do a comfortable set', band: 'advanced' },
+    { key: 'unsure', label: "I'm not sure", band: 'unsure' },
+  ],
+};
+export const EQUIPMENT_OPTIONS = [
+  { key: 'wall', label: 'A clear wall', hint: 'for wall push-ups' },
+  { key: 'raised surface', label: 'A sturdy raised surface', hint: 'counter, table edge or sofa arm' },
+  { key: 'stable support', label: 'Something stable to hold', hint: 'chair back or rail' },
+];
+// Movements a person may choose to leave out of their path. The goal's own camera movement is never offered.
+export const AVOIDABLE = { squat: ['gluteBridge', 'reverseLunge', 'splitSquat', 'assistedSquat', 'hipFlexorStretch', 'singleLegBalance'], pushup: ['wallPushup', 'inclinePushup', 'kneePushup', 'closeGripPushup', 'plank', 'sidePlank'] };
+export const goalOf = (survey = {}) => (survey.goal === 'pushup' ? 'pushup' : 'squat');
+export const bandOf = (survey = {}) => ABILITY[goalOf(survey)].find((a) => a.key === survey.abilityKey)?.band ?? survey.ability ?? 'beginner';
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+// Practice prescription per node, from the catalogue goal, the time available and the placement band. Gemini may propose
+// different numbers inside validTarget's bounds; it may not exceed them.
+export function defaultTarget(exerciseId, survey = {}) {
+  const e = find(exerciseId), band = bandOf(survey), minutes = survey.minutes ?? 20;
+  const scale = band === 'advanced' ? 1 : band === 'intermediate' ? 0.8 : 0.6;
+  return { sets: minutes <= 10 ? 2 : 3, target: Math.max(e.unit === 'seconds' ? 10 : 3, Math.round(e.goal * scale)), unit: e.unit, perWeek: clamp(Math.round(survey.daysPerWeek ?? 3), 1, 6) };
+}
+export function validTarget(t, exerciseId, survey = {}) {
+  const e = find(exerciseId); if (!e || !t) return false;
+  const maxPerWeek = clamp(Math.round(survey.daysPerWeek ?? 6), 1, 6);
+  return Number.isInteger(t.sets) && t.sets >= 1 && t.sets <= 4 && Number.isInteger(t.target) && t.target >= 1 && t.target <= Math.ceil(e.goal * 1.5)
+    && (t.unit == null || t.unit === e.unit) && Number.isInteger(t.perWeek) && t.perWeek >= 1 && t.perWeek <= maxPerWeek;
+}
 
 // ---------- programme ----------
 export const PROGRAMME_LIMITS = { minNodes: 4, maxNodes: 6, maxOptional: 1 };
 const EQUIPMENT_FOR = { wall: 'wall', 'raised surface': 'raised surface', 'stable support': 'stable support', 'optional support': null };
 
-// A generated graph: { goal: 'squat'|'pushup', nodes: [{ id, exerciseId, why, prerequisites: [nodeIds], optional, notRequired }], start, goalNode }.
-// Returns { ok, errors }. Every rule here is one Gemini could break: unknown ids, invented links, cycles, an unreachable start.
+// A generated graph: { goal: 'squat'|'pushup', nodes: [{ id, exerciseId, why, prerequisites: [nodeIds], optional, supports?,
+// notRequired, practiceTarget? }], start, goalNode, route? }. Optional nodes are side branches: they never gate another node,
+// and `supports` names the node they help (a catalogue support link). Returns { ok, errors }. Every rule here is one Gemini
+// could break: unknown ids, invented links, cycles, an unreachable goal, equipment or movements the person ruled out.
+const equipmentAnswered = (survey) => Array.isArray(survey.equipment) && (survey.equipmentAnswered || survey.equipment.length > 0);
 export function validateProgramme(graph, survey = {}) {
   const errors = [];
   if (!graph || !Array.isArray(graph.nodes)) return { ok: false, errors: ['graph.nodes missing'] };
@@ -59,13 +118,22 @@ export function validateProgramme(graph, survey = {}) {
   if (ids.size !== nodes.length) errors.push('duplicate node ids');
   if (nodes.length < PROGRAMME_LIMITS.minNodes || nodes.length > PROGRAMME_LIMITS.maxNodes) errors.push(`expected ${PROGRAMME_LIMITS.minNodes} to ${PROGRAMME_LIMITS.maxNodes} nodes, got ${nodes.length}`);
   if (nodes.filter((n) => n.optional).length > PROGRAMME_LIMITS.maxOptional) errors.push('more than one optional branch');
-  const equipment = new Set(survey.equipment ?? []);
+  const equipment = new Set(survey.equipment ?? []), avoid = new Set(survey.avoid ?? []);
   for (const n of nodes) {
     const e = find(n.exerciseId);
     if (!e) { errors.push(`unknown exercise ${n.exerciseId}`); continue; }
+    if (n.id !== n.exerciseId) errors.push(`${n.id}: node id must equal its exercise id`);
     if (n.assessable != null && n.assessable !== (capability(e.id) === 'assessable')) errors.push(`${n.id}: assessable flag does not match capability`);
     const need = e.support ? EQUIPMENT_FOR[e.support] : null;
-    if (need && equipment.size && !equipment.has(need)) errors.push(`${n.id}: needs ${need}, not in equipment`);
+    if (need && equipmentAnswered(survey) && !equipment.has(need)) errors.push(`${n.id}: needs ${need}, not in equipment`);
+    if (avoid.has(e.id)) errors.push(`${n.id}: the person asked to leave this movement out`);
+    if (n.practiceTarget != null && !validTarget(n.practiceTarget, e.id, survey)) errors.push(`${n.id}: practice target outside the allowed range`);
+    if (n.optional && nodes.some((x) => (x.prerequisites ?? []).includes(n.id))) errors.push(`${n.id}: an optional node cannot gate another node`);
+    if (n.supports != null) {
+      const target = nodes.find((x) => x.id === n.supports);
+      if (!target) errors.push(`${n.id}: supports ${n.supports}, which is not in the programme`);
+      else if (!prerequisites(target.exerciseId).includes(e.id)) errors.push(`${n.id}: is not a catalogue support for ${n.supports}`);
+    }
     for (const p of n.prerequisites ?? []) {
       if (!ids.has(p)) { errors.push(`${n.id}: prerequisite ${p} not in programme`); continue; }
       const pe = nodes.find((x) => x.id === p);
@@ -86,29 +154,110 @@ export function validateProgramme(graph, survey = {}) {
     while (grew) { grew = false; for (const n of nodes) if (!reach.has(n.id) && (n.prerequisites ?? []).length && (n.prerequisites ?? []).every((p) => reach.has(p) || nodes.find((x) => x.id === p)?.notRequired)) { reach.add(n.id); grew = true; } }
     if (!reach.has(graph.goalNode)) errors.push('goal node not reachable from the start');
   }
+  if (graph.route != null && !validRoute(graph)) errors.push('recommended route is not a path from the start to the goal');
   return { ok: errors.length === 0, errors };
 }
 
-// Deterministic programme from the catalogue, used when generation fails validation twice and as the first placement.
-export function fallbackProgramme(survey = {}) {
-  const goal = survey.goal === 'pushup' ? 'pushup' : 'squat';
-  const chain = goal === 'pushup' ? ['wallPushup', 'inclinePushup', 'kneePushup', 'pushup', 'closeGripPushup'] : ['gluteBridge', 'squat', 'reverseLunge', 'splitSquat', 'assistedSquat'];
-  const support = goal === 'pushup' ? 'plank' : 'hipFlexorStretch';
-  const nodes = chain.map((exerciseId, i) => ({ id: exerciseId, exerciseId, why: i === 0 ? 'The foundation of this progression.' : `Builds on ${find(chain[i - 1]).name.toLowerCase()}.`, prerequisites: i ? [chain[i - 1]] : [], optional: false, assessable: capability(exerciseId) === 'assessable', notRequired: false }));
-  nodes.push({ id: support, exerciseId: support, why: goal === 'pushup' ? 'Plank supports push-ups: a steady body line.' : 'Hip mobility supports deeper, steadier squats.', prerequisites: [], optional: true, assessable: false, notRequired: false });
-  const placement = placeStart(survey, nodes, goal);
-  for (const n of nodes) n.notRequired = placement.notRequired.includes(n.id);
-  return { goal, catalogVersion: CATALOG_VERSION, nodes, start: placement.start, goalNode: chain[chain.length - 1], rationale: { source: 'catalogue-fallback', text: placement.reason } };
+// The recommended route: start -> goal following prerequisite links (each step's node lists the previous one).
+export function validRoute(graph) {
+  const r = graph.route, byId = Object.fromEntries(graph.nodes.map((n) => [n.id, n]));
+  if (!Array.isArray(r) || r[0] !== graph.start || r[r.length - 1] !== graph.goalNode || new Set(r).size !== r.length) return false;
+  return r.every((id, i) => byId[id] && (i === 0 || (byId[id].prerequisites ?? []).includes(r[i - 1])));
+}
+export function defaultRoute(graph) {
+  const byId = Object.fromEntries(graph.nodes.map((n) => [n.id, n])), route = [graph.start];
+  for (let guard = 0; guard < 12 && route[route.length - 1] !== graph.goalNode; guard++) {
+    const cur = route[route.length - 1];
+    const next = graph.nodes.filter((n) => !n.optional && (n.prerequisites ?? []).includes(cur)).sort((a, b) => (find(a.exerciseId)?.level ?? 0) - (find(b.exerciseId)?.level ?? 0))[0];
+    if (!next) break;
+    route.push(next.id);
+  }
+  return route[route.length - 1] === graph.goalNode ? route : [graph.start];
 }
 
-// Starting node from the survey and any history: beginners start at the foundation; someone who already does the assessable
-// movement starts there and earlier nodes are marked not required (never verified).
-export function placeStart(survey = {}, nodes, goal = survey.goal === 'pushup' ? 'pushup' : 'squat') {
-  const assessable = goal === 'pushup' ? 'pushup' : 'squat', chainIds = nodes.filter((n) => !n.optional).map((n) => n.id);
-  const ability = survey.ability ?? 'beginner';
-  if (ability === 'beginner' || survey.limitations?.length) return { start: chainIds[0], notRequired: [], reason: ability === 'beginner' ? 'Starting at the foundation of the progression.' : 'A stated limitation keeps the start at the foundation; it can be moved after a check with a coach.' };
-  const idx = Math.max(0, chainIds.indexOf(assessable));
-  return { start: chainIds[idx], notRequired: chainIds.slice(0, idx), reason: `${ability === 'advanced' ? 'Experienced' : 'Some experience'} with this movement: starting at ${find(assessable).name.toLowerCase()}, with earlier steps marked not required for this starting point.` };
+// Deterministic programme from the catalogue: used when Gemini is off or its plan fails validation twice. It honours the
+// same answers (equipment, movements to leave out, time, placement) so the fallback is still a fit, just not a written one.
+const CHAINS = { pushup: ['wallPushup', 'inclinePushup', 'kneePushup', 'pushup', 'closeGripPushup'], squat: ['gluteBridge', 'squat', 'reverseLunge', 'splitSquat', 'assistedSquat'] };
+export function availableExercise(id, survey = {}) {
+  const e = find(id); if (!e) return false;
+  if ((survey.avoid ?? []).includes(id) && id !== goalOf(survey)) return false;
+  const need = e.support ? EQUIPMENT_FOR[e.support] : null;
+  return !(need && equipmentAnswered(survey) && !(survey.equipment ?? []).includes(need));
+}
+export function fallbackProgramme(survey = {}, check = null) {
+  const goal = goalOf(survey), chain = CHAINS[goal].filter((id) => availableExercise(id, survey));
+  const nodes = chain.map((exerciseId, i) => ({ id: exerciseId, exerciseId, why: i === 0 ? 'The first step of this progression with the space and equipment you have.' : `Builds on ${find(chain[i - 1]).name.toLowerCase()}.`, prerequisites: i ? [chain[i - 1]] : [], optional: false, assessable: capability(exerciseId) === 'assessable', notRequired: false }));
+  // Supports from the catalogue: the first available becomes the optional branch; more are added as prerequisites only when
+  // the chain is too short for a useful path.
+  const supports = chain.flatMap((id) => (SUPPORT[id] ?? []).map((s) => ({ s, of: id }))).filter(({ s }) => availableExercise(s, survey) && !chain.includes(s));
+  const opt = supports.shift();
+  for (const { s, of } of supports) { if (nodes.length + (opt ? 1 : 0) >= PROGRAMME_LIMITS.minNodes) break; nodes.push({ id: s, exerciseId: s, why: `Supports ${find(of).name.toLowerCase()}.`, prerequisites: [], optional: false, assessable: false, notRequired: false }); nodes.find((n) => n.id === of).prerequisites.push(s); }
+  if (opt) nodes.push({ id: opt.s, exerciseId: opt.s, why: `Optional: ${find(opt.s).name.toLowerCase()} supports ${find(opt.of).name.toLowerCase()}.`, prerequisites: [], optional: true, supports: opt.of, assessable: false, notRequired: false });
+  for (const n of nodes) n.practiceTarget = defaultTarget(n.exerciseId, survey);
+  const placement = placeStart(survey, nodes, goal, check);
+  for (const n of nodes) n.notRequired = placement.notRequired.includes(n.id);
+  const graph = { goal, catalogVersion: CATALOG_VERSION, nodes, start: placement.start, goalNode: chain[chain.length - 1], placementSource: placement.source };
+  graph.route = defaultRoute(graph);
+  return { ...graph, rationale: { source: 'catalogue-fallback', text: placement.reason, startReason: placement.reason, emphasis: defaultEmphasis(survey), placementSource: placement.source } };
+}
+export function defaultEmphasis(survey = {}) {
+  return { learn: 'Learn the movement pattern before adding volume.', consistency: 'Turn up on your planned days; steady practice beats big sessions.', improve: 'Refine control on the movement you already have.' }[survey.focus] ?? 'Build the movement step by step at a pace you can repeat.';
+}
+
+// Where the path starts. Self-report places beginners and "not sure" at the foundation and people with experience at the
+// camera movement; a recent camera check with three valid reps of the goal movement also allows starting there. Earlier
+// steps on the main chain become "not required for this starting point" (never verified). allowedStarts bounds Gemini.
+export function placeStart(survey = {}, nodes, goal = goalOf(survey), check = null) {
+  const family = find(goal)?.family;
+  const chainIds = nodes.filter((n) => !n.optional && find(n.exerciseId)?.family === family).sort((a, b) => find(a.exerciseId).level - find(b.exerciseId).level).map((n) => n.id);
+  const band = bandOf(survey), at = (idx, reason, source) => ({ start: chainIds[idx], notRequired: chainIds.slice(0, idx), reason, source, allowedStarts: chainIds.slice(0, idx + 1) });
+  const idx = Math.max(0, chainIds.indexOf(goal));
+  if (survey.limitations?.length) return at(0, 'A stated limitation keeps the start at the foundation.', 'self-reported');
+  if (check && check.exercise === goal && check.validReps >= 3) return at(idx, `Your camera check recorded ${check.validReps} valid ${find(goal).name.toLowerCase()}, so the path starts there; earlier steps are not required for this starting point.`, 'camera-supported');
+  if (band === 'beginner' || band === 'unsure') return at(0, band === 'unsure' ? "You weren't sure, so the path starts at the foundation; a camera check can move you on." : 'Starting at the foundation of the progression.', 'self-reported');
+  return at(idx, `${band === 'advanced' ? 'You can do a comfortable set' : 'You have some experience'}, so the path starts at ${find(goal).name.toLowerCase()}; earlier steps are not required for this starting point.`, 'self-reported');
+}
+
+// What a new version changes, for the review before saving. progress: rows of the current version.
+export function diffProgrammes(oldGraph, newGraph, progress = []) {
+  const o = new Set((oldGraph?.nodes ?? []).map((n) => n.id)), n = new Set(newGraph.nodes.map((x) => x.id));
+  const done = progress.filter((p) => p.verification !== 'none' || (p.practice_count ?? 0) > 0);
+  return {
+    added: [...n].filter((id) => !o.has(id)), removed: [...o].filter((id) => !n.has(id)), kept: [...n].filter((id) => o.has(id)),
+    start: { from: oldGraph?.start ?? null, to: newGraph.start }, goal: { from: oldGraph?.goalNode ?? null, to: newGraph.goalNode },
+    carried: done.filter((p) => n.has(p.node_id)).map((p) => ({ nodeId: p.node_id, verification: p.verification, practice: p.practice_count, xp: p.xp })),
+    archived: done.filter((p) => !n.has(p.node_id)).map((p) => ({ nodeId: p.node_id, verification: p.verification, practice: p.practice_count, xp: p.xp })),
+  };
+}
+
+// ---------- game progression and measured attributes ----------
+// Programme level is a game score from XP, never a fitness rating. Level L starts at 50·L·(L-1) XP.
+export function levelFor(xp = 0) { let L = 1; while (xp >= 50 * L * (L + 1)) L++; return { level: L, xp, floor: 50 * L * (L - 1), next: 50 * L * (L + 1) }; }
+const inWindow = (iso, now, days) => Date.parse(iso) >= now.getTime() - days * 86400e3 && Date.parse(iso) <= now.getTime();
+// Three transparent attributes from saved records only. attempts: coaching_attempt rows; practiceDays: [{ at }] from the
+// practice log. A value is null ("not assessed yet") until there is enough evidence; there is no flattering default.
+export function attributes({ attempts = [], practiceDays = [], survey = {}, now = new Date(), tz = 'UTC' }) {
+  const timed = [];
+  for (const a of attempts) {
+    if (!inWindow(a.created_at ?? a.createdAt, now, 30)) continue;
+    const c = contractFor(a.exercise); if (!c || c.metric !== 'down') continue;
+    for (const r of [...(a.baseline_reps ?? a.baselineReps ?? []), ...(a.retry_reps ?? a.retryReps ?? [])]) { const v = metricValue(r, 'down'); if (r.counted && r.valid !== false && v != null) timed.push({ v, target: c.target, tol: c.tolerance }); }
+  }
+  const out = [];
+  const inRange = timed.filter((x) => Math.abs(x.v - x.target) <= x.tol).length;
+  out.push({ key: 'tempo', label: 'Tempo', value: timed.length >= 3 ? Math.round((100 * inRange) / timed.length) : null, evidence: timed.length,
+    detail: timed.length >= 3 ? `${inRange} of ${timed.length} timed squats were within ${timed[0].tol} s of the ${timed[0].target} s lowering target` : `Needs 3 timed squats from a camera assessment (${timed.length} so far)`,
+    how: 'Share of squats timed in camera assessments over the last 30 days whose lowering phase was within the target tolerance. Baseline and retry reps both count; uncounted reps do not.', scope: 'last 30 days' });
+  const med = median(timed.map((x) => x.v)), steady = med ? timed.filter((x) => Math.abs(x.v - med) <= 0.1 * med).length : 0;
+  out.push({ key: 'consistency', label: 'Consistency', value: timed.length >= 5 ? Math.round((100 * steady) / timed.length) : null, evidence: timed.length,
+    detail: timed.length >= 5 ? `${steady} of ${timed.length} timed squats were within 10% of your own median lowering time (${round(med)} s)` : `Needs 5 timed squats (${timed.length} so far)`,
+    how: 'Share of timed squats over the last 30 days within ±10% of your own median lowering time. It measures repeatability, not speed.', scope: 'last 30 days' });
+  const week = weekBounds(now.toISOString(), tz), planned = Number.isInteger(survey.daysPerWeek) ? survey.daysPerWeek : null;
+  const days = new Set([...practiceDays.map((p) => p.at), ...attempts.filter((a) => (a.status === 'result')).map((a) => a.created_at ?? a.createdAt)].filter(Boolean).map((at) => dayOf(at, tz)).filter((d) => d >= week.start && d < week.end));
+  out.push({ key: 'practice', label: 'Practice', value: planned ? Math.min(100, Math.round((100 * days.size) / planned)) : null, evidence: days.size,
+    detail: planned ? `${days.size} of ${planned} planned sessions this week` : 'Set sessions per week in your path to track this',
+    how: 'Days this calendar week with logged practice or a completed camera assessment, against the sessions per week you chose. Logged practice is self-reported.', scope: 'this week' });
+  return out;
 }
 
 // ---------- comparison (coach -> retry -> verify) ----------
@@ -148,7 +297,7 @@ export function deterministicCue(contract, baseline) {
 
 // ---------- node contracts and rewards ----------
 export const XP = { practice: 10, firstCompletion: 50, consistent: 100 };
-const dayOf = (iso, tz) => new Date(iso).toLocaleDateString('en-CA', { timeZone: tz });
+export const dayOf = (iso, tz) => new Date(iso).toLocaleDateString('en-CA', { timeZone: tz });
 // attempts: stored coaching attempts for this node (with outcome). An attempt qualifies when its retry (or baseline, if it
 // already met the target) has at least three valid reps with median error within tolerance.
 export function evaluateNode(contract, attempts, tz = 'UTC') {
