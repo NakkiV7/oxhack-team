@@ -128,7 +128,7 @@ export function cueOutputContract(data) {
     && grounded(cue.text, data) && !hasLink(cue.text));
 }
 
-const cueInstruction = 'Choose one coaching change between a baseline and a retry of the same movement. The target, tolerance and pass rule are fixed by the app and cannot change. Use maintain_target only when the baseline median is already within tolerance of the target; otherwise use cue_target with one short, concrete instruction about the timed phase; use request_better_view only when the facts say the view is poor. One sentence, at most 25 words, in the requested coaching style. State only numbers that appear in the facts. Cite the facts you used. No praise of form the facts do not show, no medical claims.';
+const cueInstruction = 'Choose one coaching change between a baseline and a retry of the same movement. The target, tolerance and pass rule are fixed by the app and cannot change. Use maintain_target only when the baseline median is already within tolerance of the target; otherwise use cue_target with one short, concrete instruction about the timed phase; use request_better_view only when the facts say the view is poor. One sentence, at most 25 words, in the requested coaching style. State only numbers that appear in the facts. Cite the facts you used in factIDs; never write fact ids in the text. No praise of form the facts do not show, no medical claims.';
 
 // ---------- explanation of the computed result ----------
 export const explanationRequest = z.strictObject({
@@ -150,7 +150,7 @@ export function explanationOutputContract(data) {
   }).refine(item => grounded(item.text, data) && !hasLink(item.text));
 }
 
-const explanationInstruction = 'Explain a result the app has already computed. Do not change, soften or upgrade it: the classification and whether the retry met the target are final. Two or three sentences in the requested coaching style. State only numbers that appear in the facts, and cite them. If the result is unable, say why from the facts and what to do next time. No medical claims.';
+const explanationInstruction = 'Explain a result the app has already computed. Do not change, soften or upgrade it: the classification and whether the retry met the target are final. Two or three sentences in the requested coaching style. State only numbers that appear in the facts, and cite them in factIDs; never write fact ids in the text. If the result is unable, say why from the facts and what to do next time. No medical claims.';
 
 export const pathTasks = {
   '/v1/path-proposal': { request: pathRequest, output: pathOutputContract, instruction: pathInstruction, maxOutputTokens: 4096 },
