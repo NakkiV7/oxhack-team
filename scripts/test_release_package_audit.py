@@ -1,4 +1,5 @@
 import importlib.util
+import datetime as dt
 import json
 from pathlib import Path
 import plistlib
@@ -52,6 +53,11 @@ class ReleasePackagingBehavior(unittest.TestCase):
         self.watch = self.host / 'Watch/SpottrWatch.app'
         self.sdk = self.source / 'Native/Vendor/SmartSpectra.xcframework/ios-arm64/SmartSpectra.framework'
         self.embedded = self.host / 'Frameworks/SmartSpectra.framework'
+        self.now = dt.datetime(2026, 10, 25, 8, tzinfo=dt.timezone.utc)
+        self.demo = self.root / 'private-build/SpottrDemoAccess.json'
+        self.demo.parent.mkdir()
+        self.demo.write_text(json.dumps({'token': 'synthetic_demo_' + 'a' * 32, 'expiresAt': '2026-10-26T06:00:00.000Z'}))
+        self.demo.chmod(0o600)
         privacy = {'NSPrivacyAccessedAPITypes': []}
         for target, bundle, platform in [('host', self.host, 2), ('watch', self.watch, 4)]:
             name = 'Spottr' if target == 'host' else 'SpottrWatch'
@@ -80,6 +86,7 @@ class ReleasePackagingBehavior(unittest.TestCase):
         guidance.parent.mkdir(parents=True)
         guidance.write_text(json.dumps({'version': 1, 'sources': ['synthetic']}))
         shutil.copy(guidance, self.host / guidance.name)
+        shutil.copy(self.demo, self.host / self.demo.name)
         plist(self.sdk / 'Info.plist', {'CFBundleExecutable': 'SmartSpectra', 'CFBundleIdentifier': 'com.presage.SmartSpectra',
                                       'CFBundlePackageType': 'FMWK', 'CFBundleShortVersionString': '3.4.0'})
         plist(self.sdk / 'PrivacyInfo.xcprivacy', privacy)
@@ -91,7 +98,7 @@ class ReleasePackagingBehavior(unittest.TestCase):
 
     def inspect(self):
         self.assertIsNotNone(audit, 'The reusable packaging audit is not implemented')
-        return audit.audit_layout(self.host, self.source, '0.1', '6')
+        return audit.audit_layout(self.host, self.source, '0.1', '6', self.demo, self.now)
 
     def reject(self, code):
         self.assertIsNotNone(audit, 'The reusable packaging audit is not implemented')
@@ -185,6 +192,67 @@ class ReleasePackagingBehavior(unittest.TestCase):
                 self.reject('bundled_private_material')
                 file.unlink()
 
+    def replace_demo(self, data):
+        raw = json.dumps(data).encode() if isinstance(data, dict) else data
+        self.demo.write_bytes(raw)
+        (self.host / self.demo.name).write_bytes(raw)
+
+    def test_demo_access_requires_exact_shape_token_format_and_bounded_canonical_expiry(self):
+        valid = json.loads(self.demo.read_bytes())
+        variants = [({**valid, 'ownerToken': 'not-allowed'}, 'invalid_demo_access'),
+                    ({'token': valid['token']}, 'invalid_demo_access'),
+                    ({**valid, 'token': 'short'}, 'invalid_demo_access'),
+                    ({**valid, 'token': 'x' * 257}, 'invalid_demo_access'),
+                    ({**valid, 'token': 'non-url-safe/' + 'x' * 32}, 'invalid_demo_access'),
+                    ({**valid, 'expiresAt': '2026-10-25T07:00:00.000Z'}, 'demo_access_expired_or_overlong'),
+                    ({**valid, 'expiresAt': '2026-10-26T08:00:00.001Z'}, 'demo_access_expired_or_overlong'),
+                    ({**valid, 'expiresAt': '2026-10-26T06:48:00.000Z'}, 'demo_access_past_teardown'),
+                    ({**valid, 'expiresAt': '2026-10-26T06:00:00Z'}, 'invalid_demo_access'),
+                    (b'{"token":"duplicate","token":"duplicate","expiresAt":"2026-10-26T06:00:00.000Z"}',
+                     'invalid_demo_access')]
+        for value, code in variants:
+            with self.subTest(code=code, value_type=type(value).__name__):
+                self.replace_demo(value)
+                self.reject(code)
+
+    def test_demo_access_input_must_be_private_and_exactly_match_the_iphone_resource(self):
+        self.demo.chmod(0o644)
+        self.reject('demo_access_input_must_be_private')
+        self.demo.chmod(0o600)
+        (self.host / self.demo.name).write_text('{}')
+        self.reject('demo_access_resource_mismatch')
+        (self.host / self.demo.name).unlink()
+        self.reject('demo_access_resource_mismatch')
+
+    def test_demo_access_cannot_leak_to_watch_or_another_resource(self):
+        shutil.copy(self.demo, self.watch / self.demo.name)
+        self.reject('watch_contains_host_only_resource')
+        (self.watch / self.demo.name).unlink()
+        token = json.loads(self.demo.read_bytes())['token']
+        (self.host / 'unexpected.bin').write_bytes(token.encode())
+        self.reject('bundled_private_material')
+
+    def test_demo_access_never_exempts_known_owner_or_provider_values(self):
+        token = json.loads(self.demo.read_bytes())['token'].encode()
+        self.assertIsNotNone(audit)
+        with self.assertRaises(audit.AuditError) as caught:
+            audit.verify_private_material([self.host / self.demo.name], [token])
+        self.assertEqual(str(caught.exception), 'bundled_private_material')
+
+    def test_owner_and_provider_inputs_are_read_privately_and_cannot_be_the_demo_token(self):
+        self.assertIsNotNone(audit)
+        owner = self.root / 'private-owner-token.txt'
+        owner.write_text(json.loads(self.demo.read_bytes())['token'])
+        owner.chmod(0o600)
+        values = audit.private_values([owner])
+        with self.assertRaises(audit.AuditError) as caught:
+            audit.verify_private_material([self.host / self.demo.name], values)
+        self.assertEqual(str(caught.exception), 'bundled_private_material')
+        owner.chmod(0o644)
+        with self.assertRaises(audit.AuditError) as caught:
+            audit.private_values([owner])
+        self.assertEqual(str(caught.exception), 'secret_file_must_be_private')
+
     def test_allows_nonsecret_sdk_graph_identifiers_and_public_api_declarations(self):
         (self.host / 'synthetic-graph.txt').write_bytes(
             b'input_side_packet: "api_key:api_key"\npublic var apiKey: Swift.String?\n')
@@ -268,7 +336,19 @@ class ReleasePackagingBehavior(unittest.TestCase):
                 if file.is_file():
                     zipped.write(file, 'Payload/Spottr.app/' + str(file.relative_to(self.host)))
         extracted = audit.extract_ipa(ipa, self.root / 'extracted-valid')
-        self.assertEqual(audit.audit_layout(extracted, self.source, '0.1', '6'), self.inspect())
+        self.assertEqual(audit.audit_layout(extracted, self.source, '0.1', '6', self.demo, self.now), self.inspect())
+
+    def test_ipa_rejects_private_file_names_even_outside_the_app_payload(self):
+        self.assertIsNotNone(audit)
+        for name in ['Symbols/private.p8', 'SwiftSupport/.env.production']:
+            with self.subTest(name=name):
+                ipa = self.root / 'private-file.ipa'
+                with zipfile.ZipFile(ipa, 'w') as zipped:
+                    zipped.writestr('Payload/Spottr.app/Info.plist', 'synthetic')
+                    zipped.writestr(name, 'synthetic')
+                with self.assertRaises(audit.AuditError) as caught:
+                    audit.extract_ipa(ipa, self.root / 'private-extraction')
+                self.assertEqual(str(caught.exception), 'unexpected_private_file')
 
     def test_vendor_inputs_preserve_mediapipe_and_require_approved_manifest(self):
         self.assertIsNotNone(audit)

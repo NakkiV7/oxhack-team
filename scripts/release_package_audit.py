@@ -17,6 +17,8 @@ import zipfile
 
 HOST_ID = 'com.omarchoudhry.spottr'
 WATCH_ID = HOST_ID + '.watchkitapp'
+DEMO_NAME = 'SpottrDemoAccess.json'
+DEMO_TEARDOWN = dt.datetime(2026, 10, 26, 6, 47, tzinfo=dt.timezone.utc)
 MODEL_NAMES = {'metrics_cpu_continuous_rest.binarypb', 'pose_detection.tflite', 'pose_landmark_lite.tflite',
                'pose_landmark_full.tflite', 'face_detection_full_range.tflite',
                'face_detection_short_range.tflite', 'face_landmark_with_attention.tflite'}
@@ -175,12 +177,41 @@ def verify_info(app, source, target, version, build):
     return info, slices
 
 
-def audit_layout(host, source, version, build):
+def unique_demo_fields(pairs):
+    value = dict(pairs)
+    require(len(value) == len(pairs), 'invalid_demo_access')
+    return value
+
+
+def verify_demo_access(host, private_file, now):
+    require(private_file.is_file() and not private_file.is_symlink() and
+            private_file.stat().st_mode & 0o777 == 0o600, 'demo_access_input_must_be_private')
+    resource = host / DEMO_NAME
+    require(resource.is_file() and resource.read_bytes() == private_file.read_bytes(), 'demo_access_resource_mismatch')
+    raw = resource.read_bytes()
+    require(len(raw) <= 4096, 'invalid_demo_access')
+    try:
+        value = json.loads(raw, object_pairs_hook=unique_demo_fields)
+        require(isinstance(value, dict) and set(value) == {'token', 'expiresAt'}, 'invalid_demo_access')
+        token, expiry = value['token'], value['expiresAt']
+        require(isinstance(token, str) and re.fullmatch('[A-Za-z0-9_-]{32,256}', token) is not None,
+                'invalid_demo_access')
+        require(isinstance(expiry, str) and re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', expiry)
+                is not None, 'invalid_demo_access')
+        date = dt.datetime.fromisoformat(expiry.replace('Z', '+00:00'))
+    except (ValueError, TypeError):
+        raise AuditError('invalid_demo_access') from None
+    require(now < date <= now + dt.timedelta(hours=24), 'demo_access_expired_or_overlong')
+    require(date <= DEMO_TEARDOWN, 'demo_access_past_teardown')
+    return {'SHA256': digest(resource), 'expiresAt': expiry}, token.encode('ascii')
+
+
+def audit_layout(host, source, version, build, demo_access_file, now=None):
     host, source = Path(host), Path(source)
     paths = files(host)
     watch = host / 'Watch/SpottrWatch.app'
     watch_paths = files(watch)
-    require(not any(p.name in {'pose_landmarker_lite.task', 'MediaPipe-LICENSE.txt', 'coach-guidance.json'}
+    require(not any(p.name in {'pose_landmarker_lite.task', 'MediaPipe-LICENSE.txt', 'coach-guidance.json', DEMO_NAME}
                     or 'SmartSpectra' in str(p.relative_to(watch)) or p.suffix in {'.tflite', '.binarypb'}
                     or 'MediaPipe' in str(p.relative_to(watch)) for p in watch_paths),
             'watch_contains_host_only_resource')
@@ -189,7 +220,11 @@ def audit_layout(host, source, version, build):
     binaries = [inspect_macho(p) for p in paths if is_macho(p)]
     require(not any('smartspectra' in link.lower() for slices in binaries for section in slices
                     for link in section['links']), 'smartspectra_release_blocked')
+    require([p for p in paths if p.name.lower() == DEMO_NAME.lower()] == [host / DEMO_NAME],
+            'demo_access_resource_mismatch')
+    demo_receipt, demo_token = verify_demo_access(host, Path(demo_access_file), now or dt.datetime.now(dt.timezone.utc))
     verify_private_material(paths)
+    verify_private_material([p for p in paths if p != host / DEMO_NAME], [demo_token])
     host_info, host_slices = verify_info(host, source / 'Native/iOS', 'host', version, build)
     watch_info, watch_slices = verify_info(watch, source / 'Native/Watch', 'watch', version, build)
     mapping = {'PrivacyInfo.xcprivacy': 'Native/iOS/PrivacyInfo.xcprivacy',
@@ -208,7 +243,7 @@ def audit_layout(host, source, version, build):
                     if host / 'Frameworks' in p.parents),
             'static_mediapipe_unexpectedly_embedded')
     return {'hostInfo': host_info, 'watchInfo': watch_info, 'resources': resources(host),
-            'hostMachO': host_slices, 'watchMachO': watch_slices, 'presageEnabled': False}
+            'hostMachO': host_slices, 'watchMachO': watch_slices, 'presageEnabled': False, 'demoAccess': demo_receipt}
 
 
 def verify_source(repo, source, commit):
@@ -289,6 +324,17 @@ def verify_signing(app, identity, team, watch=False):
     return ent
 
 
+def private_values(paths):
+    values = []
+    for path in paths:
+        require(path.is_file() and not path.is_symlink() and path.stat().st_mode & 0o777 == 0o600,
+                'secret_file_must_be_private')
+        value = path.read_bytes().strip()
+        require(8 <= len(value) <= 8192, 'invalid_secret_file')
+        values.append(value)
+    return values
+
+
 def audit_release(args):
     require(re.fullmatch(r'\d+(?:\.\d+){0,2}', args.version) and
             re.fullmatch(r'\d+(?:\.\d+){0,2}', args.build), 'invalid_version')
@@ -296,16 +342,12 @@ def audit_release(args):
     vendor_count = verify_vendor(args.source_root / 'Native/Vendor', args.previous_vendor_root,
                                  json.loads(args.approved_vendor_manifest.read_bytes()))
     archive_host = args.archive / 'Products/Applications/Spottr.app'
-    layouts = [audit_layout(host, args.source_root, args.version, args.build) for host in [archive_host, args.export_app]]
+    layouts = [audit_layout(host, args.source_root, args.version, args.build, args.demo_access_file)
+               for host in [archive_host, args.export_app]]
     require(layouts[0] == layouts[1], 'archive_export_layout_mismatch')
-    private_values = []
-    for path in args.secret_file:
-        require(path.is_file() and path.stat().st_mode & 0o777 == 0o600, 'secret_file_must_be_private')
-        value = path.read_bytes().strip()
-        require(8 <= len(value) <= 8192, 'invalid_secret_file')
-        private_values.append(value)
+    forbidden = private_values([args.owner_token_file] + args.secret_file)
     for host in [archive_host, args.export_app]:
-        verify_private_material(files(host), private_values)
+        verify_private_material(files(host), forbidden)
     signed = []
     for host in [archive_host, args.export_app]:
         rows = []
@@ -321,6 +363,7 @@ def audit_release(args):
             'version': args.version, 'build': args.build, 'resourceSHA256': layouts[0]['resources'],
             'ipaSHA256': digest(args.ipa),
             'presageEnabled': False,
+            'demoAccess': layouts[0]['demoAccess'],
             'scope': 'Archive/export packaging, signatures, App Store profiles and app dSYM UUIDs only; '
                      'no runtime, device, provider, privacy/legal acceptance, Apple validation or upload.'}
 
@@ -340,6 +383,8 @@ def extract_ipa(ipa, destination):
             require(not path.is_absolute() and '..' not in path.parts and '\\' not in entry.filename
                     and ':' not in entry.filename and bool(path.parts), 'unsafe_ipa_path')
             require(not stat.S_ISLNK(entry.external_attr >> 16), 'ipa_symlink_not_supported')
+            require(not path.name.lower().startswith('.env') and path.suffix.lower() not in
+                    {'.p8', '.p12', '.pfx', '.key', '.pem', '.keychain', '.keychain-db'}, 'unexpected_private_file')
             require(str(path) not in names, 'duplicate_ipa_entry')
             names.add(str(path))
         require({str(PurePosixPath(name).parts[1]) for name in names if
@@ -352,7 +397,8 @@ def extract_ipa(ipa, destination):
 def main():
     try:
         parser = Parser(add_help=False)
-        for name in ['archive', 'ipa', 'source-root', 'repo', 'previous-vendor-root', 'approved-vendor-manifest']:
+        for name in ['archive', 'ipa', 'source-root', 'repo', 'previous-vendor-root', 'approved-vendor-manifest',
+                     'demo-access-file', 'owner-token-file']:
             parser.add_argument('--' + name, required=True, type=Path)
         for name in ['source-commit', 'version', 'build', 'team-id']:
             parser.add_argument('--' + name, required=True)
