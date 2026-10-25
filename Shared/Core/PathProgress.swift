@@ -197,7 +197,7 @@ public enum MeasuredAttributes {
         let week = calendar.dateInterval(of: .weekOfYear, for: now)
         let trainedDates = history.filter { session in session.sets.contains { $0.source != .video } || session.loggedSets.contains { $0.source != .video } }.map(\.date)
             + attempts.filter { $0.status == .result }.map { $0.completedAt ?? $0.startedAt }
-        let days = Set(trainedDates.filter { week?.contains($0) == true }.map { calendar.startOfDay(for: $0) }).count
+        let days = Set(trainedDates.filter { date in week.map { date >= $0.start && date < $0.end } == true }.map { calendar.startOfDay(for: $0) }).count
         let planned = plannedSessions.flatMap { $0 > 0 ? $0 : nil }
         let practice = MeasuredAttribute(
             key: .practice, value: planned.map { min(100, percent(days, of: $0)) }, evidence: days,
