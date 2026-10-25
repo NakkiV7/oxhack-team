@@ -40,7 +40,12 @@ public struct ReportSet: Identifiable, Sendable {
         }
     }
     public var averageRepSeconds: Double? { repDurations.isEmpty ? nil : repDurations.reduce(0, +) / Double(repDurations.count) }
-    public var quantityText: String { holdSeconds > 0 ? "\(Int(holdSeconds)) sec" : "\(reps) reps" }
+    public var quantityText: String { holdSeconds > 0 ? "\(Int(holdSeconds)) sec" : "\(reps) \(reps == 1 ? "rep" : "reps")" }
+}
+
+public enum SessionHighlight: Equatable, Sendable {
+    case firstActivity, recorded, noActivity, replay, discomfort, difficult
+    case repBest(exerciseID: String, source: InputSource, reps: Int, previousBest: Int)
 }
 
 public struct WorkoutReport: Identifiable, Sendable {
@@ -66,6 +71,27 @@ public struct WorkoutReport: Identifiable, Sendable {
     public var category: WorkoutCategory {
         let categories = Set(sets.map(\.category))
         return categories.count > 1 ? .fullBody : categories.first ?? .empty
+    }
+
+    public func highlight(history: [SessionRecord]?, now: Date = Date()) -> SessionHighlight {
+        if sets.contains(where: { $0.reason == .discomfort }) { return .discomfort }
+        if sets.contains(where: { $0.reason == .failure || $0.reason == .form }) { return .difficult }
+        let actual = sets.filter { $0.reps > 0 || ($0.holdSeconds.isFinite && $0.holdSeconds > 0) }
+        guard !actual.isEmpty else { return .noActivity }
+        let activity = actual.filter { $0.source != .video }
+        guard !activity.isEmpty else { return .replay }
+        guard let history, date.timeIntervalSince1970.isFinite, date <= now else { return .recorded }
+        let earlier = history.filter { $0.id != id && $0.date.timeIntervalSince1970.isFinite && $0.date < date }
+            .flatMap { WorkoutReport(record: $0).sets }.filter { $0.source != .video }
+        guard earlier.contains(where: { $0.reps > 0 || ($0.holdSeconds.isFinite && $0.holdSeconds > 0) }) else { return .firstActivity }
+        for set in activity.sorted(by: { $0.reps > $1.reps }) where set.reps > 0 && set.holdSeconds == 0 {
+            let previous = earlier.filter { $0.exerciseID == set.exerciseID && $0.source == set.source && $0.holdSeconds == 0 }
+                .map(\.reps).max() ?? 0
+            if previous > 0, set.reps > previous {
+                return .repBest(exerciseID: set.exerciseID, source: set.source, reps: set.reps, previousBest: previous)
+            }
+        }
+        return .recorded
     }
 
     public init(record: SessionRecord) {
@@ -171,6 +197,11 @@ public struct ReportSignal: Sendable {
     public var average: Double? { samples.isEmpty ? nil : samples.reduce(0) { $0 + $1.value } / Double(samples.count) }
     public var minimum: Double? { samples.map(\.value).min() }
     public var maximum: Double? { samples.map(\.value).max() }
+    public var sampleSpan: TimeInterval? {
+        guard let first = samples.first, let last = samples.last else { return nil }
+        return last.date.timeIntervalSince(first.date)
+    }
+    public var gapCount: Int { samples.last?.segment ?? 0 }
 
     init(record: SessionRecord, keyPath: KeyPath<WatchTelemetry, SensorReading?>, validRange: ClosedRange<Double>) {
         let readings = record.telemetry.filter { $0.sessionID == record.id }.compactMap { message -> SensorReading? in
