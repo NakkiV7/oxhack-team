@@ -31,8 +31,18 @@ A separate same-source Watch simulator build/run succeeded in 15.4 seconds (`bui
 
 ## Apple distribution
 
+### Initial internal/public checkpoint — 00:33 UTC
+
 Apple validation returned exit 0 and `VERIFY SUCCEEDED with no errors` at **25 October 2026 00:22:55 UTC**. Upload returned exit 0 and `UPLOAD SUCCEEDED with no errors` at **00:27:06 UTC**, delivery UUID `5c610f6d-5ebd-46e0-9099-0ea5e07a7ee6`. Build 3 was not immediately listed in App Store Connect. At approximately **00:33 UTC**, App Store Connect confirmed build ID `5c610f6d-5ebd-46e0-9099-0ea5e07a7ee6` (matching the delivery UUID), `processingState: VALID` and `usesNonExemptEncryption: false`. The existing **Spottr Internal** group was explicitly assigned build 3; read-back confirmed builds **1, 2 and 3** in that group, with build 3 `IN_BETA_TESTING`. Its external state is `READY_FOR_BETA_SUBMISSION`; it was not submitted externally.
 
 At **00:28 UTC**, App Store Connect reported external build **1** as `IN_BETA_TESTING`. The **OxHack** external group still contains only build 1, with its [public invitation](https://testflight.apple.com/join/f3MhePbf) enabled and limited to 25 testers. This supersedes the earlier waiting-for-review state. Subsequent read-back still showed only build 1 assigned externally.
 
 The public Apple invitation page was verified in Chrome: it displayed **Get TestFlight**, **View Spottr: AI Workout Coach Beta** and **View in TestFlight**, without a closed-beta message. The [page-only screenshot](testflight-public-invitation-2026-10-25.jpg) is a 1302 × 614 JPEG, 60,799 bytes, SHA-256 `6962eafd992792f7e1e63ac038dc81655be12b018cdb9975e24d26c13003aaee`. A subsequent landing check followed the hero and footer HTTPS links to this Apple page. The `itms-beta` deep link was not clicked, and no invitation was accepted or app installed during these checks. No public App Store submission, actual phone/Watch installation or physical behavior is established.
+
+### External update
+
+At **00:35:42.134 UTC**, the operator updated build 3’s en-GB beta “What’s New” text, assigned build 3 to the existing **OxHack** external group while preserving build 1, and created its beta review submission. The first read-back showed build 3 internally and externally `IN_BETA_TESTING` and external-group membership **1 + 3**. The submission resource initially returned `WAITING_FOR_REVIEW` with `submittedDate: null`; that immediate result was not treated as a final review state.
+
+At **00:36:00.626 UTC**, a separate read-back confirmed build 3 `VALID`, encryption `false`, and **both internal and external `IN_BETA_TESTING`**. Its submission resource now reported **`APPROVED`**, still with `submittedDate: null`; the absent date does not establish a precise review timeline. External OxHack contained **builds 3 and 1**. Build 1’s existing availability was preserved as a fallback, and build 2 remains internal only. These current states supersede the initial 00:33 checkpoint above.
+
+The same enabled 25-person [public invitation](https://testflight.apple.com/join/f3MhePbf) remains the external entry point. Its earlier public-page/landing checks did not select or install a build. No new deep-link launch, invitation acceptance, actual phone/Watch installation or physical exercise acceptance is established by the API read-back. The frozen 00:09 UTC judges’ deck remains a dated historical snapshot.
