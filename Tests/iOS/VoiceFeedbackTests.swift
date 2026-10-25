@@ -3,11 +3,11 @@ import XCTest
 
 @MainActor
 final class VoiceFeedbackTests: XCTestCase {
-    func testAppOwnsAnExplicitLocalCoachChoiceAndPreservesInjectedPlayback() {
+    func testAppOwnsOfflineArnoldAndPreservesInjectedPlayback() {
         let store = TrainingStore()
-        XCTAssertEqual(store.remoteVoice?.preference, .local)
+        XCTAssertEqual(store.remoteVoice?.preference, .arnold)
         XCTAssertFalse(store.voiceFeedbackEnabled)
-        XCTAssertTrue(store.remoteVoice?.configuredVoices.isEmpty == true)
+        XCTAssertEqual(store.remoteVoice?.configuredVoices, [.arnold])
 
         let remote = RemoteVoicePlayback(local: FakeVoicePlayback(), client: {
             XCTFail("Creating a workout must not contact a voice provider")

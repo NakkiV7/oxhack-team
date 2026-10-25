@@ -1,6 +1,28 @@
 import XCTest
 
 final class SpottrFlowTests: XCTestCase {
+    @MainActor func testFinishedLegacySessionHeaderCloseDismissesWithoutDuplicatingHistory() {
+        let app = XCUIApplication()
+        app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
+        app.launch()
+        XCTAssertTrue(app.buttons["Start session"].waitForExistence(timeout: 10))
+        app.buttons["Start session"].tap()
+        XCTAssertTrue(app.buttons["End set"].waitForExistence(timeout: 5))
+        app.buttons["End set"].tap()
+        XCTAssertTrue(app.buttons["Finish session"].waitForExistence(timeout: 5))
+        app.buttons["Finish session"].tap()
+        XCTAssertTrue(app.staticTexts["Session saved"].waitForExistence(timeout: 5))
+        let close = app.buttons["Finish session now"]
+        XCTAssertTrue(close.isHittable)
+        close.tap()
+        XCTAssertTrue(app.buttons["Start session"].waitForExistence(timeout: 5),
+                      "The finished workout header Close must dismiss just like Done.")
+        XCTAssertFalse(app.staticTexts["Session saved"].exists)
+        app.tabBars.buttons["Progress"].tap()
+        XCTAssertTrue(app.buttons["session-report"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons.matching(identifier: "session-report").count, 1,
+                       "Closing finished work must not save another history record.")
+    }
     @MainActor func testSeparateStorageNamespaceStartsWithEmptyHistory() {
         let app = XCUIApplication()
         app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString

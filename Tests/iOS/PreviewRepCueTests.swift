@@ -1,9 +1,69 @@
 import AVFoundation
 import XCTest
+import UIKit
 @testable import Spottr
 
 @MainActor
 final class PreviewRepCueTests: XCTestCase {
+    func testEvenLegacyTargetStillEncouragesAndNextSetStartsANewTwoRepMilestone() {
+        for exercise in Exercise.allCases {
+            let (store, cached, clock) = makeStore(exercise: exercise)
+            defer { store.cancelCoaching() }
+            for index in 0..<exercise.target { completeRep(index, store: store, clock: clock) }
+            XCTAssertEqual(cached.spoken.filter { $0.reason == .steadyRhythm }.count, exercise.target / 2)
+            XCTAssertEqual(store.coachingEvent?.decision.reason, .steadyRhythm,
+                           "Reaching an even target must not replace the requested cached encouragement with local target speech")
+            XCTAssertEqual(store.session.phase, .active)
+            store.endSet(); store.next()
+            let count = cached.spoken.count
+            completeRep(0, store: store, clock: clock)
+            XCTAssertEqual(cached.spoken.count, count)
+            completeRep(1, store: store, clock: clock)
+            XCTAssertEqual(cached.spoken.count, count + 1)
+            XCTAssertEqual(cached.spoken.last?.reason, .steadyRhythm)
+            XCTAssertEqual(cached.spoken.last?.generation, store.session.generation)
+        }
+    }
+
+    func testConfiguredCameraEncouragesAtTwoRepTargetAcrossExplicitSetTransitions() async throws {
+        for exercise in Exercise.allCases {
+            let cached = RepRecordingVoice()
+            let remote = RemoteVoicePlayback(local: RepRecordingVoice(), previewPlayback: cached, client: {
+                XCTFail("Configured preview encouragement cannot request a provider")
+                throw RemoteVoiceError.configuration
+            })
+            let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { _ in })
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("history.json")
+            let store = TrainingStore(historyURL: url, voicePlayback: remote, vision: vision, previewMode: true, previewPlayback: cached)
+            store.repVoice.coach = nil   // the rep counter replaces this encouragement when on; see testPreviewEncouragementGivesWayToTheRepCounter
+            defer { store.cancelCoaching(); vision.stop() }
+            store.startPlan(try CoachSavedPlan.catalogue(exerciseID: exercise.rawValue, sets: 2, target: 2, restSeconds: 0), availableSupport: [])
+            store.setVoiceFeedback(true)
+            for set in 0..<2 {
+                XCTAssertTrue(store.selectConfiguredInput(.phoneCamera))
+                store.beginConfiguredSet()
+                let generation = try XCTUnwrap(store.configured?.generation)
+                for rep in 0..<2 {
+                    for (offset, angle) in [(0.0, 170.0), (0.2, 170), (0.6, 90), (0.8, 90),
+                                            (1.2, 90), (1.4, 90), (1.8, 170), (2.0, 170)] {
+                        let time = Double(rep) * 2.2 + offset
+                        vision.onFrame?(poseFrame(exercise: exercise, time: time, angle: angle), UIImage(), generation)
+                        for _ in 0..<30 where store.frame?.time != time { await Task.yield() }
+                        XCTAssertEqual(store.frame?.time, time)
+                    }
+                    XCTAssertEqual(store.configured?.actualReps, rep + 1)
+                    XCTAssertEqual(cached.spoken.filter { $0.reason == .steadyRhythm }.count, set + rep)
+                }
+                XCTAssertEqual(store.coachingEvent?.decision.reason, .steadyRhythm)
+                XCTAssertEqual(cached.spoken.last?.generation, generation)
+                XCTAssertEqual(store.configured?.phase, .active, "A target cue cannot automatically end the set")
+                XCTAssertTrue(store.history.isEmpty)
+                store.endSet()
+                if set == 0 { store.next() }
+            }
+        }
+    }
+
     func testPreviewCameraEncouragesEveryTwoFreshRepsWithoutHistoryAndDoesNotRepeatATick() throws {
         for exercise in Exercise.allCases {
             let (store, cached, clock) = makeStore(exercise: exercise)
@@ -138,6 +198,24 @@ final class PreviewRepCueTests: XCTestCase {
         }
         clock.now = 100 + base + 2
         if tick { store.coachingTick(at: clock.now) }
+    }
+
+    private func poseFrame(exercise: Exercise, time: Double, angle: Double) -> PoseFrame {
+        var points = Array(repeating: PosePoint(x: 0, y: 0, confidence: 0), count: 33)
+        if exercise == .squat {
+            points[23] = .init(x: 0.5, y: 0.25, confidence: 1)
+            points[25] = .init(x: 0.5, y: 0.5, confidence: 1)
+            points[27] = .init(x: 0.5 + sin(angle * .pi / 180) * 0.25,
+                               y: 0.5 - cos(angle * .pi / 180) * 0.25, confidence: 1)
+        } else {
+            points[11] = .init(x: 0.2, y: 0.5, confidence: 1)
+            points[13] = .init(x: 0.3, y: 0.5, confidence: 1)
+            points[15] = .init(x: 0.3 - cos(angle * .pi / 180) * 0.1,
+                               y: 0.5 + sin(angle * .pi / 180) * 0.1, confidence: 1)
+            points[23] = .init(x: 0.5, y: 0.5, confidence: 1)
+            points[27] = .init(x: 0.8, y: 0.5, confidence: 1)
+        }
+        return .init(time: time, width: 640, height: 640, points: points)
     }
 }
 

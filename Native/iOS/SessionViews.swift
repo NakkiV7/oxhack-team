@@ -12,7 +12,10 @@ struct SessionView: View {
     private var legacySession: some View {
         VStack(spacing: 0) {
             HStack {
-                Button { store.finish() } label: { Image(systemName: "xmark").frame(width: 40, height: 40) }
+                Button {
+                    if store.session.phase == .finished { store.presented = false }
+                    else { store.finish() }
+                } label: { Image(systemName: "xmark").frame(width: 40, height: 40) }
                     .accessibilityLabel("Finish session now")
                 Spacer()
                 VStack(spacing: 4) {
@@ -87,6 +90,9 @@ struct LiveSetView: View {
                         .font(.caption.weight(.medium)).padding(8).background(.white.opacity(0.9), in: Capsule()).padding(12)
                 }.frame(height: 295).clipShape(RoundedRectangle(cornerRadius: 23))
                 }
+                if SmartSpectraDriver.isAvailable, store.hasInput, store.source == .camera {
+                    PresageWorkoutPanel(store: store)
+                }
                 if !store.hasInput {
                     Picker("Movement phase", selection: $guide) {
                         Text("Top").tag("top"); Text("Middle").tag("mid"); Text("Bottom").tag("bottom")
@@ -101,7 +107,10 @@ struct LiveSetView: View {
                     Button("Import video", systemImage: "film") { importing = true }
                 }.font(.subheadline.weight(.medium)).buttonStyle(.plain)
                 Menu {
-                    Button("Start side camera", systemImage: "video") {
+                    Toggle("Show front camera", isOn: Binding(get: { store.frontCameraEnabled }, set: store.setFrontCameraEnabled))
+                        .accessibilityIdentifier("front-camera-toggle")
+                    Button(store.usingSecondaryCamera ? "Reconnect side camera" : "Start side camera", systemImage: "video") {
+                        if store.usingSecondaryCamera { store.secondaryCamera(); return }
                         if store.hasInput || store.source == .manual || store.session.counter.reps > 0 { replaceSecondaryCamera = true; return }
                         store.secondaryCamera()
                     }

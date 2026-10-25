@@ -48,7 +48,7 @@ struct VoiceCoachSettingsView: View {
                                 portrait(voice)
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(voice.title).font(.headline).foregroundStyle(Palette.ink)
-                                    Text(voice == .local ? "On this iPhone" : (playback.isPreview ? "Preview · bundled cues · offline" : "ElevenLabs · current coaching cues"))
+                                    Text(voice == .local ? "On this iPhone" : (voice == .arnold ? "Bundled workout cues · offline" : "ElevenLabs · current coaching cues"))
                                         .font(.caption).foregroundStyle(.secondary)
                                 }
                                 Spacer()
@@ -87,7 +87,7 @@ struct VoiceCoachSettingsView: View {
                     if let error { Text(error).font(.caption).foregroundStyle(Palette.red).accessibilityIdentifier("coach-voice-error") }
                     if let error = playback.errorMessage { Text(error).font(.caption).foregroundStyle(Palette.red) }
                 } footer: {
-                    Text(playback.isPreview ? "Arnold preview uses bundled audio without network requests. Stop feedback uses immediate local speech." : "Remote voices send short coaching text to your gateway and ElevenLabs. Checking lists server configuration; it doesn’t verify synthesis or use voice credits. Stop feedback always uses immediate local speech.")
+                    Text(playback.isPreview ? "Arnold uses bundled workout audio without network requests, including stop warnings. If a stop recording cannot play, the iPhone speaks the warning immediately." : "Arnold uses bundled workout cues offline, including stop warnings. David sends short coaching text to your gateway and ElevenLabs. Checking lists server configuration without using voice credits. A stop recording that cannot play falls back to immediate iPhone speech.")
                 }
             }.scrollContentBackground(.hidden).background(.white).tint(Palette.blue)
                 .navigationTitle("Coach voice").navigationBarTitleDisplayMode(.inline)

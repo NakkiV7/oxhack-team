@@ -4,6 +4,153 @@ import AVFoundation
 
 @MainActor
 final class SecondaryCameraTrainingStoreTests: XCTestCase {
+    func testExplicitLegacyPiReconnectPreservesEndedSetsCurrentRepsAndResetsOnlyUnfinishedMovement() async throws {
+        for failure in [false, true] {
+            let transport = try client()
+            let worker = SecondaryCameraVisionWorker(infer: { _, time in
+                (PoseFrame(time: time, width: 640, height: 480, points: []), UIImage())
+            })
+            let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { _ in })
+            let store = TrainingStore(historyURL: historyURL(), secondaryVision: worker, secondaryCameraClient: { transport }, vision: vision)
+            defer { worker.stop(); store.cancelCoaching() }
+            store.start(); store.switchToManualReps(); store.setManualReps(3); store.endSet(); store.next()
+            store.secondaryCamera()
+            try await waitUntil { store.image != nil }
+            let identity = store.session.id, generation = store.session.generation
+            let ended = store.session.sets
+            injectSquatRep(worker, generation: generation, start: 0)
+            injectSquat(worker, generation: generation, samples: [(2.2, 170), (2.4, 170), (2.8, 90), (3.0, 90)])
+            XCTAssertEqual(store.session.counter.reps, 1)
+            if failure { worker.onState?(.failed("Synthetic disconnect"), generation) }
+            else { store.pause() }
+            XCTAssertEqual(store.session.phase, .paused)
+            let elapsed = store.session.elapsed(at: store.now)
+
+            store.secondaryCamera()
+
+            XCTAssertEqual(store.session.phase, .active)
+            XCTAssertEqual(store.session.id, identity)
+            XCTAssertEqual(store.session.sets, ended)
+            XCTAssertEqual(store.session.exercise, .squat)
+            XCTAssertEqual(store.session.counter.reps, 1, "Reconnect is not a fresh set")
+            XCTAssertGreaterThanOrEqual(store.session.elapsed(at: store.now), elapsed)
+            XCTAssertNotEqual(store.session.generation, generation)
+            worker.onState?(.failed("Old failure"), generation)
+            injectSquatRep(worker, generation: generation, start: 4)
+            XCTAssertEqual(store.session.phase, .active)
+            XCTAssertEqual(store.session.counter.reps, 1)
+            let resumed = store.session.generation
+            injectSquat(worker, generation: resumed, samples: [(4.0, 170), (4.2, 170)])
+            XCTAssertEqual(store.session.counter.reps, 1, "Returning to the top cannot finish a pre-disconnect half-rep")
+            injectSquatRep(worker, generation: resumed, start: 4.4)
+            XCTAssertEqual(store.session.counter.reps, 2)
+            store.endSet(); store.finish()
+            XCTAssertEqual(store.history.first?.sets.first, ended.first)
+            XCTAssertEqual(store.history.first?.sets.last?.reps, 2)
+            XCTAssertEqual(store.history.first?.sets.last?.source, .camera)
+            XCTAssertEqual(store.history.first?.sets.last?.repDurations?.count, 2)
+        }
+    }
+
+    func testConfiguredPiResumePreservesCompletedWorkAndCurrentCounterAfterFailure() async throws {
+        let transport = try client()
+        let worker = SecondaryCameraVisionWorker(infer: { _, time in
+            (PoseFrame(time: time, width: 640, height: 480, points: []), UIImage())
+        })
+        let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { _ in })
+        let store = TrainingStore(historyURL: historyURL(), secondaryVision: worker, secondaryCameraClient: { transport }, vision: vision)
+        defer { worker.stop(); store.cancelCoaching() }
+        store.startPlan(try CoachSavedPlan.catalogue(exerciseID: "squat", sets: 2, target: 8, restSeconds: 0), availableSupport: [])
+        store.beginConfiguredSet(); store.setConfiguredReps(3); store.endSet(); store.next()
+        XCTAssertTrue(store.selectConfiguredInput(.secondaryCamera)); store.beginConfiguredSet()
+        try await waitUntil { store.image != nil }
+        let identity = try XCTUnwrap(store.configured?.id), generation = try XCTUnwrap(store.configured?.generation)
+        let ended = store.configured?.completed
+        injectSquatRep(worker, generation: generation, start: 0)
+        injectSquat(worker, generation: generation, samples: [(2.2, 170), (2.4, 170), (2.8, 90), (3.0, 90)])
+        worker.onState?(.failed("Synthetic disconnect"), generation)
+        XCTAssertEqual(store.configured?.phase, .paused)
+        XCTAssertEqual(store.configured?.actualReps, 1)
+        store.resume()
+        XCTAssertEqual(store.configured?.id, identity)
+        XCTAssertEqual(store.configured?.completed, ended)
+        XCTAssertEqual(store.configured?.current.number, 2)
+        XCTAssertEqual(store.configured?.actualReps, 1)
+        XCTAssertEqual(store.configured?.phase, .active)
+        let resumed = try XCTUnwrap(store.configured?.generation)
+        XCTAssertNotEqual(resumed, generation)
+        injectSquatRep(worker, generation: generation, start: 4)
+        worker.onState?(.failed("Old failure"), generation)
+        XCTAssertEqual(store.configured?.actualReps, 1)
+        XCTAssertEqual(store.configured?.phase, .active)
+        injectSquat(worker, generation: resumed, samples: [(4.0, 170), (4.2, 170)])
+        XCTAssertEqual(store.configured?.actualReps, 1)
+        injectSquatRep(worker, generation: resumed, start: 4.4)
+        XCTAssertEqual(store.configured?.actualReps, 2)
+        store.endSet(); store.finish()
+        XCTAssertEqual(store.history.first?.loggedSets.map(\.reps), [3, 2])
+        XCTAssertEqual(store.history.first?.loggedSets.map(\.source), [.manual, .camera])
+        XCTAssertEqual(store.history.first?.loggedSets.last?.repDurations?.count, 2)
+    }
+
+    func testFrontPreviewToggleStopsOnlyFrontAndCannotRestartPausedSideCapture() async throws {
+        let camera = TrainingFrontCamera()
+        let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { $0(true) }, cameraDriver: camera,
+                                  makePoseProcessor: { throw CocoaError(.featureUnsupported) })
+        let transport = try client()
+        let worker = SecondaryCameraVisionWorker(infer: { _, time in
+            (PoseFrame(time: time, width: 640, height: 480, points: []), UIImage())
+        })
+        let store = TrainingStore(historyURL: historyURL(), secondaryVision: worker, secondaryCameraClient: { transport }, vision: vision)
+        defer { worker.stop(); store.cancelCoaching(); vision.stop() }
+        XCTAssertTrue(store.frontCameraEnabled)
+        store.start(); store.secondaryCamera()
+        try await waitUntil { store.image != nil && camera.starts == 1 }
+        let identity = store.session.id, generation = store.session.generation
+        injectSquatRep(worker, generation: generation, start: 0)
+        let stops = camera.stops
+        store.setFrontCameraEnabled(false)
+        try await waitUntil { camera.stops > stops }
+        XCTAssertFalse(store.frontCameraEnabled)
+        if case .idle = store.frontPreviewState {} else { XCTFail("Disabled front preview must be idle") }
+        vision.onPreviewState?(.camera, generation)
+        await Task.yield()
+        if case .idle = store.frontPreviewState {} else { XCTFail("Queued front state cannot revive a disabled preview") }
+        XCTAssertEqual(store.session.id, identity)
+        XCTAssertEqual(store.session.generation, generation)
+        XCTAssertEqual(store.session.phase, .active)
+        XCTAssertTrue(store.usingSecondaryCamera)
+        injectSquatRep(worker, generation: generation, start: 2.2)
+        XCTAssertEqual(store.session.counter.reps, 2)
+        store.setFrontCameraEnabled(true)
+        try await waitUntil { camera.starts == 2 }
+        XCTAssertEqual(store.session.generation, generation)
+        XCTAssertEqual(store.session.counter.reps, 2)
+        store.pause()
+        store.setFrontCameraEnabled(false); store.setFrontCameraEnabled(true)
+        await Task.yield()
+        XCTAssertEqual(camera.starts, 2)
+        XCTAssertEqual(transport.status, .stopped)
+        XCTAssertEqual(store.session.phase, .paused)
+    }
+
+    private func injectSquatRep(_ worker: SecondaryCameraVisionWorker, generation: UUID, start: Double) {
+        let samples: [(Double, Double)] = [(0, 170), (0.2, 170), (0.6, 90), (0.8, 90),
+                                            (1.2, 90), (1.4, 90), (1.8, 170), (2, 170)]
+        injectSquat(worker, generation: generation, samples: samples.map { (start + $0.0, $0.1) })
+    }
+
+    private func injectSquat(_ worker: SecondaryCameraVisionWorker, generation: UUID, samples: [(Double, Double)]) {
+        for (time, angle) in samples {
+            var points = Array(repeating: PosePoint(x: 0, y: 0, confidence: 0), count: 33)
+            points[23] = .init(x: 0.5, y: 0.25, confidence: 1)
+            points[25] = .init(x: 0.5, y: 0.5, confidence: 1)
+            points[27] = .init(x: 0.5 + sin(angle * .pi / 180) * 0.25,
+                               y: 0.5 - cos(angle * .pi / 180) * 0.25, confidence: 1)
+            worker.onFrame?(.init(time: time, width: 640, height: 640, points: points), UIImage(), generation)
+        }
+    }
+
     private func historyURL() -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("history.json")
     }
@@ -294,9 +441,11 @@ private final class TrainingFrontCamera: VisionCameraDriving, @unchecked Sendabl
     let capture = AVCaptureSession()
     private let lock = NSLock()
     private var count = 0
+    private var stopCount = 0
     var starts: Int { lock.lock(); defer { lock.unlock() }; return count }
+    var stops: Int { lock.lock(); defer { lock.unlock() }; return stopCount }
     func start(worker: VisionWorker, queue: DispatchQueue, captureID: UUID) throws {
         lock.lock(); count += 1; lock.unlock()
     }
-    func stop() {}
+    func stop() { lock.lock(); stopCount += 1; lock.unlock() }
 }

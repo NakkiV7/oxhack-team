@@ -1,6 +1,16 @@
-# Spottr
-
-Native iPhone + Apple Watch training companion for OxHack 2026. Repository: [NakkiV7/oxhack-team](https://github.com/NakkiV7/oxhack-team).
+<div align="center">
+  <img src="docs/media/app/app-icon.png" alt="Spottr app icon: a flexed arm with green accents" width="112">
+  <h1>Spottr</h1>
+  <p><strong>Your next rep. Your next level.</strong></p>
+  <p>A native iPhone + Apple Watch training companion.<br>Track your workouts, see your progress and plan your next session.</p>
+  <p>
+    <a href="https://testflight.apple.com/join/f3MhePbf"><strong>Try the beta</strong></a> ·
+    <a href="https://spottr.omarchoudhry.co.uk/">Website</a> ·
+    <a href="#inside-spottr">App tour</a> ·
+    <a href="docs/SETUP.md">Developer setup</a>
+  </p>
+  <p>Built for OxHack 2026</p>
+</div>
 
 ![Swift](https://img.shields.io/badge/Swift-SwiftUI-F05138?logo=swift&logoColor=white)
 ![iOS](https://img.shields.io/badge/iOS-26-000000?logo=apple&logoColor=white)
@@ -10,6 +20,86 @@ Native iPhone + Apple Watch training companion for OxHack 2026. Repository: [Nak
 ![Gemini](https://img.shields.io/badge/Gemini-API-8E75B2?logo=googlegemini&logoColor=white)
 ![Tiger Data](https://img.shields.io/badge/Tiger_Data-adapter-FDB515)
 ![Status](https://img.shields.io/badge/status-hackathon_prototype-orange)
+
+## Inside Spottr
+
+From your first session to your next training plan. Select any screenshot to view it at full size.
+
+### Your training, at a glance
+
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <a href="docs/media/app/01-home.png"><img src="docs/media/app/01-home.png" alt="Home and daily training" width="250"></a><br>
+      <strong>01 · Home and daily training</strong>
+    </td>
+    <td align="center" width="33%">
+      <a href="docs/media/app/02-progress.png"><img src="docs/media/app/02-progress.png" alt="Weekly progress" width="250"></a><br>
+      <strong>02 · Weekly progress</strong>
+    </td>
+    <td align="center" width="33%">
+      <a href="docs/media/app/03-session.png"><img src="docs/media/app/03-session.png" alt="Session overview" width="250"></a><br>
+      <strong>03 · Session overview</strong>
+    </td>
+  </tr>
+</table>
+
+### Every session has a story
+
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <a href="docs/media/app/04-history.png"><img src="docs/media/app/04-history.png" alt="Recent workouts" width="250"></a><br>
+      <strong>04 · Recent workouts</strong>
+    </td>
+    <td align="center" width="33%">
+      <a href="docs/media/app/05-insights.png"><img src="docs/media/app/05-insights.png" alt="Workout insights" width="250"></a><br>
+      <strong>05 · Workout insights</strong>
+    </td>
+    <td align="center" width="33%">
+      <a href="docs/media/app/06-workout.png"><img src="docs/media/app/06-workout.png" alt="Start a workout" width="250"></a><br>
+      <strong>06 · Start a workout</strong>
+    </td>
+  </tr>
+</table>
+
+### Move with control. Build your skills.
+
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <a href="docs/media/app/07-squat-start.png"><img src="docs/media/app/07-squat-start.png" alt="Squat: standing position" width="250"></a><br>
+      <strong>07 · Squat: standing position</strong>
+    </td>
+    <td align="center" width="33%">
+      <a href="docs/media/app/08-squat-bottom.png"><img src="docs/media/app/08-squat-bottom.png" alt="Squat: lowered position" width="250"></a><br>
+      <strong>08 · Squat: lowered position</strong>
+    </td>
+    <td align="center" width="33%">
+      <a href="docs/media/app/09-skills.png"><img src="docs/media/app/09-skills.png" alt="Skill progression" width="250"></a><br>
+      <strong>09 · Skill progression</strong>
+    </td>
+  </tr>
+</table>
+
+### Make a plan with Coach
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <a href="docs/media/app/10-coach.png"><img src="docs/media/app/10-coach.png" alt="Ask Coach for a plan" width="250"></a><br>
+      <strong>10 · Ask Coach for a plan</strong>
+    </td>
+    <td align="center" width="50%">
+      <a href="docs/media/app/11-plan.png"><img src="docs/media/app/11-plan.png" alt="Review a workout plan" width="250"></a><br>
+      <strong>11 · Review a workout plan</strong>
+    </td>
+  </tr>
+</table>
+
+The tour includes sample progress, reports and Coach plans shown in the app’s preview mode.
+
+## About the project
 
 The working baseline includes on-device MediaPipe push-up/squat tracking, manual and timed custom workouts, a 19-exercise library with lessons and private demo-video imports, local profiles/goals, connected skill progression and deterministic session/week reports. Most exercises use manual logging or a timer; only push-ups and squats currently have camera tracking. Attribute points are game progress, not measured physiology. Local training needs no sign-in or cloud sync.
 
@@ -51,7 +141,7 @@ The [official MLH OxHack ’26 page](https://www.mlh.com/events/oxhack-26) lists
 | [Vultr](https://www.mlh.com/events/oxhack-26/challenges/019a0ccc-7154-9378-095c-2a7be06a0378) | London VM runs the restricted gateway behind Caddy; also serves the public landing. [Container](server/Dockerfile), [Compose/Caddy](deploy/), [receipt](docs/evidence/vultr-owner-gateway-2026-10-25.md). | Show public landing; operator demonstrates trusted HTTPS health/auth boundaries and the retained synthetic Gemini response. | Actual AMD64 build/runtime, TLS/allowlist checks and hosted Gemini accepted. API access is operator-restricted; current phone egress and physical networking remain gates. The VM destruction deadline is 26 October 06:47 UTC. |
 | [Tiger Data](https://www.mlh.com/events/oxhack-26/challenges/019fcfdb-abbc-d470-b762-e73f1ee414d2) | Explicit workout snapshot/observed-sensor storage; bounded scalar rollups prepared in PR #132. [Adapter](server/src/tiger.mjs), [active schema](server/migrations/001_workouts.sql). | Show schema and offline SQL tests. Run the gated synthetic ingest/replay/readback smoke only after strict TLS/auth succeeds. | Empty schema accepted in provider console. Original Node service still fails strict certificate-chain verification; no live gateway workout ingestion or rollup acceptance. Prototype storage is a separate path. |
 | [Snowflake API](https://www.mlh.com/events/oxhack-26/challenges/01964000-e99a-a874-3f87-b5f811a39e65) | SQL API batch import/reconciliation of frozen public PAMAP2 forecasts. [Workflow](server/src/snowflake-benchmark-cli.mjs), [guide](docs/snowflake-analytics.md). | Run `cd server && npm run snowflake:benchmark` for the network-free dry run; show forecast lineage and coverage. | Offline import/reconciliation tests pass. Missing token/database/schema block live SQL. This is analytics preparation, **not** a demonstrated Snowflake LLM/Cortex integration. |
-| [ElevenLabs](https://www.mlh.com/events/oxhack-26/challenges/01999bc7-ad70-0ba6-f3ff-d7eb57ff56d1) | Optional synthesis of existing expiring cue text; local speech remains the default and stop cues stay local. [Server](server/src/voice.mjs), [native adapter](Native/iOS/RemoteVoicePlayback.swift). | Show fake-provider/client checks and configured-only discovery; demonstrate one selected voice only after authorized account configuration. | Bounded adapter/native tests pass. A usable API secret and account-enabled voice IDs are still missing; no real synthesis, Goggins voice entitlement or audible acceptance is established. |
+| [ElevenLabs](https://www.mlh.com/events/oxhack-26/challenges/01999bc7-ad70-0ba6-f3ff-d7eb57ff56d1) | Seventeen generated Arnold recordings cover typed workout cues offline; optional David synthesis uses the gateway. [Voice bank](docs/arnold-preview-voice.md), [native adapter](Native/iOS/RemoteVoicePlayback.swift). | Enable workout voice feedback and select Arnold for tracking, alignment, pacing, rest and completion. | Real Arnold synthesis, MP3 decoding and offline routing are verified. Loudness checks pass; the previous phone build was reported quiet, so the updated phone installation and listening check remain open. |
 | [Presage](https://www.mlh.com/events/oxhack-26/challenges/019a3ac5-3f5e-8da6-2088-a201b011e9ac) | SmartSpectra 3.4.0 custom-input adapter for an opt-in stationary front-camera check. [Driver](Native/iOS/SmartSpectraDriver.swift), [controller](Native/iOS/PresageCaptureController.swift), [privacy boundary](docs/presage-integration.md). | Show SDK compile/fake-driver checks and source-labelled freshness rules. A real check needs consent, native authentication and credits first. | Default build excludes the SDK because its runtime conflicts with MediaPipe. Fake-driver and default-unavailability checks pass; no SDK start or physiology capture. Runtime compatibility, consent, authentication and physical acceptance remain gates. No medical/readiness claim. |
 
 Delta evaluation, running, workout zones, full cloud accounts and Watch complications are [deferred](docs/POST-HACKATHON.md). Local profiles are guest data, not authentication. Do not put keys or private account receipts in a prize submission.
@@ -66,7 +156,7 @@ Current contributor boundaries:
 | Manual/timed logging, profile, lessons, skill tree, reports | @omariosc | Merged local implementation |
 | Gemini chat, summaries, proposals | @omariosc | Real synthetic native chat/proposal/session/week responses and approved Squats-only manual execution accepted; physical networking, real exercise and real-user quality pending |
 | Local voice | @omariosc | Merged; fake playback tests passed, audible acceptance pending |
-| ElevenLabs and landing page | @MishaGitnik | Public white landing deployed; bounded voice adapter implemented, real synthesis/audible acceptance pending |
+| ElevenLabs and landing page | @MishaGitnik | Public white landing deployed; generated Arnold cue bank and offline playback verified, updated phone listening check pending |
 | Pi side camera | @omariosc | Native client/companion implemented; LifeCam-only 60-second capture passed, phone/Pi tracking acceptance pending |
 | Physical Watch and remaining providers | @omariosc | See the evidence ledger for each distinct gate |
 
@@ -202,3 +292,7 @@ The six provider mappings above are grounded in the [official MLH categories](ht
 The separate [public wearable HR forecast](docs/public-data-benchmark.md) retains participant-held-out errors, sparse coverage and negative results. The push-up personal profile is trained on mock history so far, with no real-data accuracy result. Delta evaluation is [deferred](docs/POST-HACKATHON.md); authored controls and Codex calibration are not Delta usage. Overall hardware/demo claims still need real phone/Watch/camera acceptance.
 
 Event: [OxHack 26](https://26.oxhack.net) and [Devpost](https://oxhack-2026.devpost.com/).
+
+### Latest local demo checkpoint
+
+The camera path now preserves completed reps and sets when reconnecting, offers side-camera-only capture, and retries transient frame timeouts within a bounded outage window. Arnold's bundled cues include encouragement after every two fresh preview reps, including an even rep target. The optional Presage-enabled local build uses Apple Vision plus SmartSpectra to avoid the SDK/MediaPipe runtime collision; [setup and acceptance boundaries](docs/presage-integration.md). Live physiological output and physical pose recognition still require phone acceptance.
