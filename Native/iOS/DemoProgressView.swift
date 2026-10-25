@@ -169,7 +169,7 @@ private struct DemoWorkoutRow: View {
 private struct DemoGradeRing: View {
     let score: Int
     let grade: String
-    @ScaledMetric(relativeTo: .title) private var diameter = 76
+    @ScaledMetric(relativeTo: .title) private var diameter: CGFloat = 76
     private var color: Color { score >= 80 ? Palette.green : (score >= 60 ? Palette.amber : Palette.red) }
 
     var body: some View {
