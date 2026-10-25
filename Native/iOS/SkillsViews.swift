@@ -277,13 +277,20 @@ private struct ExerciseDetailView: View {
                     Text("Only goal-meeting sets without pain or discomfort count toward the challenge.")
                         .font(.caption).foregroundStyle(.secondary)
                 }.padding(20).frame(maxWidth: .infinity, alignment: .leading).background(Palette.surface, in: RoundedRectangle(cornerRadius: 20))
+                NavigationLink {
+                    CatalogueWorkoutSetupView(store: store, entry: entry)
+                } label: {
+                    Label("Start workout", systemImage: "play")
+                        .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity).padding(19)
+                        .foregroundStyle(.white).background(Palette.ink, in: RoundedRectangle(cornerRadius: 15))
+                }.buttonStyle(.plain).accessibilityIdentifier("catalogue-workout-setup")
                 PrimaryButton(title: "Log manually", symbol: "plus") { manualPresented = true }
                 if entry.unit == .seconds {
                     Button { timerPresented = true } label: {
                         Label("Start hold timer", systemImage: "timer").font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity).padding(17)
                     }.buttonStyle(.plain)
                 }
-                Text(entry.tracking == nil ? "Manual self-report\(entry.unit == .seconds ? " or a hold timer" : ""). Camera tracking hasn’t been validated for this variation." : "Camera tracking is available for this variation in your live session. Manual entries are labelled separately.")
+                Text(entry.tracking == nil ? "Manual self-report\(entry.unit == .seconds ? " or a hold timer" : ""). Camera tracking hasn’t been validated for this variation." : "Start workout, then choose Manual, iPhone camera or Pi side camera. Manual entries are labelled separately.")
                     .font(.caption).foregroundStyle(.secondary)
                 Label("Stop if you feel pain or discomfort.", systemImage: "hand.raised").font(.caption)
             }.padding(24)
