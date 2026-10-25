@@ -2,3 +2,6 @@ research/hr_forecast/results/test-predictions.csv -text whitespace=cr-at-eol
 
 # Preserve meaningful blank-line context markers inside archived unified patches.
 integrations/mediapipe-source/*.patch -whitespace
+
+# Rendered presentation PDFs retain binary bytes and cross-reference offsets.
+presentation/checkpoints/*/output/*.pdf binary

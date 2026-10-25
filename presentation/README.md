@@ -1,5 +1,17 @@
 # Spottr judges' presentation
 
+The current **25 October 2026, 01:43 UTC** checkpoint updates slides 6, 9 and 10 while retaining the ten-slide design and unchanged shared assets. It records the accepted synthetic native approved-plan flow, standalone Python scope and TestFlight build 4 status. Physical installation, exercise accuracy, Watch sensors and coaching-quality acceptance remain pending.
+
+- [Editable PowerPoint](checkpoints/20261025T0143Z/output/spottr-judges.pptx)
+- [Static PDF](checkpoints/20261025T0143Z/output/spottr-judges-rendered.pdf)
+- [Overview](checkpoints/20261025T0143Z/output/preview-montage.png)
+- [Dated source and provenance](checkpoints/20261025T0143Z/source/)
+- [Presenter guide](../docs/judges-guide.md)
+
+The historical 00:36 output, previews, builder and provenance below remain byte-for-byte unchanged. Current verification details and hashes are in the dated checkpoint README/provenance. No provider call, generated asset or publication accompanies this refresh.
+
+## Historical 00:36 checkpoint
+
 Ten editable slides for the 25 October 2026, 00:36 UTC evidence snapshot. The deck keeps actual simulator captures, illustrations, implemented behavior, offline tests, live Gemini responses and unverified integrations distinct. Builds 1, 2 and 3 are internally available through TestFlight; builds 1 and 3 are externally available, and build 3 beta review is approved. Physical installations remain unverified.
 
 ## Deliverables
