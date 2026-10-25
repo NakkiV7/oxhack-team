@@ -1,6 +1,34 @@
 import XCTest
 
 final class CoachFlowTests: XCTestCase {
+    @MainActor func testChatDoneAndDismissHandlePreserveTheUnsentDraft() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
+        app.launch()
+        app.tabBars.buttons["Coach"].tap()
+        let composer = app.descendants(matching: .any)["coach-message"]
+        XCTAssertTrue(composer.waitForExistence(timeout: 3))
+        composer.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
+        let draft = "Keep this draft. Do not send."
+        composer.typeText(draft)
+        let done = app.buttons["coach-chat-keyboard-done"]
+        XCTAssertTrue(done.waitForExistence(timeout: 3))
+        done.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3))
+        XCTAssertEqual(composer.value as? String, draft)
+        composer.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
+        let handle = app.descendants(matching: .any)["keyboard-dismiss-bar"]
+        XCTAssertTrue(handle.waitForExistence(timeout: 3))
+        handle.swipeDown()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3))
+        XCTAssertEqual(composer.value as? String, draft)
+        XCTAssertFalse(app.buttons["Cancel coach request"].exists)
+        XCTAssertFalse(app.staticTexts["SPOTTR · GEMINI"].exists)
+    }
+
     @MainActor func testCoachSettingsDoneScrollAndExplanationDismissKeyboardWithoutSavingDraft() {
         continueAfterFailure = false
         let app = XCUIApplication()

@@ -116,16 +116,21 @@ struct CoachView: View {
     }
 
     private var composer: some View {
-        HStack(alignment: .bottom, spacing: 12) {
-            TextField("Ask your coach", text: $message, axis: .vertical).lineLimit(1...4).font(.subheadline)
-                .focused($composerFocused)
-                .padding(13).background(Palette.surface, in: RoundedRectangle(cornerRadius: 15)).accessibilityIdentifier("coach-message")
-            Button {
-                let text = message; message = ""
-                run { await model.send(message: text, history: store.history, support: support) }
-            } label: { Image(systemName: "arrow.up").font(.headline).frame(width: 44, height: 44).background(Palette.blue, in: Circle()).foregroundStyle(.white) }
-                .accessibilityLabel("Send message").disabled(model.isLoading || message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || message.count > 4000)
-        }.padding(.horizontal, 20).padding(.vertical, 12).background(.white)
+        VStack(spacing: 0) {
+            if composerFocused {
+                KeyboardDismissBar(identifier: "coach-chat-keyboard-done") { composerFocused = false }
+            }
+            HStack(alignment: .bottom, spacing: 12) {
+                TextField("Ask your coach", text: $message, axis: .vertical).lineLimit(1...4).font(.subheadline)
+                    .focused($composerFocused)
+                    .padding(13).background(Palette.surface, in: RoundedRectangle(cornerRadius: 15)).accessibilityIdentifier("coach-message")
+                Button {
+                    let text = message; message = ""
+                    run { await model.send(message: text, history: store.history, support: support) }
+                } label: { Image(systemName: "arrow.up").font(.headline).frame(width: 44, height: 44).background(Palette.blue, in: Circle()).foregroundStyle(.white) }
+                    .accessibilityLabel("Send message").disabled(model.isLoading || message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || message.count > 4000)
+            }.padding(.horizontal, 20).padding(.vertical, 12)
+        }.background(.white)
     }
 
     private func proposalReview(_ proposal: WorkoutProposal) -> some View {

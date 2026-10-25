@@ -1,4 +1,4 @@
-# Connection and manual-form keyboard dismissal
+# Chat and form keyboard dismissal
 
 Verified on the existing iPhone simulator on 25 October 2026. Coach settings, side-camera pairing and manual workout logging now support explicit keyboard **Done**, downward form scrolling and tapping their explanatory text to dismiss the keyboard. Edited and cleared drafts remain unchanged until the user explicitly saves or cancels.
 
@@ -17,3 +17,11 @@ Thus all three cases passed **across two final runs**, rather than in one combin
 Every test used a fresh UUID data namespace. These checks did not send provider requests, save a pairing, or start side-camera capture. The side-camera navigation passes through Start session, which can enter the phone-camera simulator path; this receipt does not assert that every camera request was absent. Test code did not inspect or alter secure token values.
 
 Independent source reviews found no change to explicit Save/Forget behavior or interference with fields and buttons. Physical iPhone keyboard acceptance remains pending.
+
+## Chat Done and swipe handle follow-up
+
+The new chat test first failed at the absent Done button (`05:42:09_92c4b248`). Chat now exposes the same bar while its composer is focused, with a visible handle and Done action. A downward, predominantly vertical drag on the bar clears focus. The gesture is confined to the bar; it does not attach to text editing or the whole conversation.
+
+In `05:55:53_9c04bbe2`, the chat case **passed in 24.0 seconds**, with zero reported runtime warnings: Done and the handle swipe hid the real simulator keyboard and preserved the exact unsent draft. No Send/model request was started. That run deliberately included the next feature’s missing rewards-entry test, which failed as expected; the combined run was therefore **one pass and one failure**, not a fully passing suite.
+
+An earlier combined chat/settings follow-up passed chat in 26.3 seconds, then exceeded the MCP 300-second limit while XCTest waited for repeated settings animation notifications. Root interrupted only that owned test process. This is not a settings regression pass. A subsequent direct CUA check on the same binary focused the existing connection URL without editing, used Done, visibly confirmed the keyboard was hidden and the URL unchanged, then left with Cancel. The three complete pre-handle form cases above remain separate evidence. Source review confirmed the shared bar still only clears field focus. The Watch currently has no text-entry field to dismiss; its workout navigation uses its existing pages and scrolling.
