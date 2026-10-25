@@ -28,11 +28,12 @@ final class DemoVoicePlayback: VoicePlayback {
 
     private static func clipNames(reason: CoachingReason?, priority: CoachingPriority,
                                   recovery: DemoVoiceRecoveryReason?) -> [String] {
+        if priority == .rest, reason == .workoutCompleted { return ["completion"] }
         if priority == .rest, reason == nil, recovery != nil { return ["recovery", "recovery-2"] }
         guard priority == .pacing else { return [] }
         switch reason {
-        case .steadyRhythm: return ["positive-1", "positive-2", "positive-3", "positive-4"]
-        case .slowerRep: return ["slower-1", "slower-2", "slower-3"]
+        case .steadyRhythm: return ["positive-1", "positive-2", "positive-3", "positive-4", "positive-5"]
+        case .slowerRep: return ["slower-1", "slower-2", "slower-3", "slower-4"]
         default: return []
         }
     }
@@ -111,7 +112,7 @@ private final class DemoBundledAudioOutput: NSObject, VoiceAudioOutput, AVAudioP
     private let player: AVAudioPlayer
 
     init(name: String, bundle: Bundle = .main) throws {
-        guard ["positive-1", "positive-2", "positive-3", "positive-4", "slower-1", "slower-2", "slower-3", "recovery", "recovery-2"].contains(name),
+        guard ["positive-1", "positive-2", "positive-3", "positive-4", "slower-1", "slower-2", "slower-3", "recovery", "recovery-2", "positive-5", "slower-4", "completion"].contains(name),
               let url = bundle.url(forResource: name, withExtension: "mp3", subdirectory: "DemoVoice/arnold") else {
             throw CocoaError(.fileNoSuchFile)
         }

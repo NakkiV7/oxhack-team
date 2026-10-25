@@ -5,17 +5,17 @@ import { createHash } from 'node:crypto';
 
 const directory = new URL('../../Native/Resources/DemoVoice/arnold/', import.meta.url);
 
-test('authorized preview bank contains nine bounded clips matching actual decode receipts', async () => {
+test('authorized preview bank contains twelve bounded clips matching actual decode receipts', async () => {
   const manifest = JSON.parse(await readFile(new URL('manifest.json', directory), 'utf8'));
   assert.equal(manifest.model, 'eleven_flash_v2_5');
   assert.equal(manifest.format, 'mp3_22050_32');
   assert.equal(manifest.purpose, 'TestFlight preview only');
   assert.equal(manifest.keyCapChanged, false);
   assert.equal(manifest.retries, 0);
-  assert.equal(manifest.clips.length, 9);
+  assert.equal(manifest.clips.length, 12);
   assert.equal(manifest.totalCharacters, manifest.clips.reduce((sum, clip) => sum + clip.text.length, 0));
-  assert.ok(manifest.totalCharacters <= 191);
-  assert.deepEqual(manifest.clips.map(clip => clip.name), ['positive-1', 'positive-2', 'slower-1', 'slower-2', 'recovery', 'positive-3', 'positive-4', 'slower-3', 'recovery-2']);
+  assert.ok(manifest.totalCharacters <= 284);
+  assert.deepEqual(manifest.clips.map(clip => clip.name), ['positive-1', 'positive-2', 'slower-1', 'slower-2', 'recovery', 'positive-3', 'positive-4', 'slower-3', 'recovery-2', 'completion', 'positive-5', 'slower-4']);
   for (const clip of manifest.clips) {
     assert.equal(clip.attempts, 1);
     assert.equal(clip.status, 200);

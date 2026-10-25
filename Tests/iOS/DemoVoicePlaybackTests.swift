@@ -5,7 +5,7 @@ import XCTest
 @MainActor
 final class DemoVoicePlaybackTests: XCTestCase {
     func testBundledBankExistsAndDecodesWithoutPlayingAudio() throws {
-        for name in ["positive-1", "positive-2", "positive-3", "positive-4", "slower-1", "slower-2", "slower-3", "recovery", "recovery-2"] {
+        for name in ["positive-1", "positive-2", "positive-3", "positive-4", "slower-1", "slower-2", "slower-3", "recovery", "recovery-2", "positive-5", "slower-4", "completion"] {
             let url = try XCTUnwrap(Bundle.main.url(forResource: name, withExtension: "mp3", subdirectory: "DemoVoice/arnold"))
             let player = try AVAudioPlayer(contentsOf: url)
             XCTAssertEqual(player.format.sampleRate, 22_050)
@@ -56,19 +56,38 @@ final class DemoVoicePlaybackTests: XCTestCase {
         XCTAssertEqual(audio.stops, 1)
     }
 
+    func testCompletedWorkoutUsesSignatureLineOnceAndStopsOnMute() {
+        let local = DemoSilentVoice(), output = DemoSilentAudio()
+        var names: [String] = []
+        let playback = DemoVoicePlayback(local: local, makeAudio: { names.append($0); return output }, uptime: { 2 })
+        let controller = VoiceCuePlaybackController(playback: playback)
+        let completion = cue(reason: .workoutCompleted, kind: .coaching(.rest))
+        let context = VoiceCueContext(sessionID: completion.sessionID, generation: completion.generation, phase: .finished)
+        controller.update(context: context, event: completion, enabled: true, now: 2)
+        controller.update(context: context, event: completion, enabled: true, now: 2)
+        XCTAssertEqual(names, ["completion"])
+        XCTAssertEqual(output.plays, 1)
+        XCTAssertTrue(local.spoken.isEmpty)
+        controller.update(context: context, event: completion, enabled: false, now: 2)
+        XCTAssertEqual(output.stops, 1)
+        controller.update(context: context, event: completion, enabled: true, now: 2)
+        XCTAssertEqual(output.plays, 1)
+        XCTAssertNil(DemoVoicePlayback.clipName(reason: .workoutCompleted, priority: .pacing, variant: 0))
+    }
+
     func testEveryCategoryRotatesIndependentlyThroughAllVariants() {
         let local = DemoSilentVoice(), audio = DemoSilentAudio()
         var names: [String] = []
         let playback = DemoVoicePlayback(local: local, makeAudio: { names.append($0); return audio },
             recoveryReason: { $0.kind == .coaching(.rest) && $0.reason == nil ? .endedSet : nil }, uptime: { 2 })
-        for _ in 0..<5 {
+        for _ in 0..<6 {
             playback.speak(cue())
             playback.speak(cue(reason: .slowerRep))
             playback.speak(cue(reason: nil, kind: .coaching(.rest)))
         }
         XCTAssertEqual(names, ["positive-1", "slower-1", "recovery", "positive-2", "slower-2", "recovery-2",
-            "positive-3", "slower-3", "recovery", "positive-4", "slower-1", "recovery-2",
-            "positive-1", "slower-2", "recovery"])
+            "positive-3", "slower-3", "recovery", "positive-4", "slower-4", "recovery-2",
+            "positive-5", "slower-1", "recovery", "positive-1", "slower-2", "recovery-2"])
     }
 
     func testCachedPlaybackAlternatesAndStopInterruptsWithImmediateLocalSpeech() {
