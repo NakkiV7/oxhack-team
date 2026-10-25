@@ -34,6 +34,7 @@ The test uses a unique data namespace, verifies normal empty progress, explicitl
 | `demo-insight-workout-<UUID>` | Insights workout navigation |
 | `demo-workout-detail-<UUID>` | Sample workout detail |
 | `demo-workout-full-report` | Existing report navigation |
+| `demo-full-report-preview-badge` | Synthetic-workout label retained on full report |
 | `demo-grade-explanation` | Sample scoring explanation |
 
 Visual checks pending integration: small iPhone and accessibility text sizes, VoiceOver labels, workout order against fixture dates, zero-history preview, and mode switching back to unchanged real history. No physical, provider or deployed acceptance is claimed.

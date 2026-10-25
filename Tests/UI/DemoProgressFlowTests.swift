@@ -37,6 +37,7 @@ final class DemoProgressFlowTests: XCTestCase {
         XCTAssertTrue(report.exists)
         report.tap()
         XCTAssertTrue(app.navigationBars["Session report"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["demo-full-report-preview-badge"].exists)
 
         app.tabBars.buttons["Today"].tap()
         app.buttons["profile-settings"].tap()

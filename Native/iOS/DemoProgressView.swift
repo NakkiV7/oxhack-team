@@ -265,6 +265,13 @@ private struct DemoWorkoutInsightDetail: View {
                 }
                 NavigationLink {
                     SessionReportView(record: record, profile: profile, history: history)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Text("Preview").font(.caption.weight(.semibold)).foregroundStyle(Palette.blue)
+                                    .accessibilityLabel("Synthetic preview workout")
+                                    .accessibilityIdentifier("demo-full-report-preview-badge")
+                            }
+                        }
                 } label: {
                     Label("Open full workout report", systemImage: "arrow.up.right")
                         .font(.headline).frame(maxWidth: .infinity).padding(18)
