@@ -8,6 +8,8 @@ On **25 October 2026**, a local configuration-only check of the primary environm
 
 From `server/`, `npm run snowflake:configuration` loads the local `.env` and prints **only** readiness plus missing/invalid environment names. It reads no artifacts, opens no network connection, runs no SQL and consumes no warehouse credits. Exit 0 means syntactically complete configuration; exit 1 lists the configuration gate. Neither proves authentication, privileges, table existence or sufficient credits. The normal `snowflake:benchmark` dry run still does not load or inspect credentials.
 
+The importer and configuration check reject `USER$` personal-database names before network access. Snowflake [personal databases cannot store table data](https://docs.snowflake.com/en/user-guide/personal-databases); an existing writable **standard database** is required. The 25 October account inspection initially selected a personal namespace; that plan was stopped before execution. The corrected namespace and restricted token remain subject to their actual account setup and acceptance receipts.
+
 Implementation and fake-network tests are complete. No Snowflake query, table creation, import or warehouse execution has been performed by this task. The existing fixed connection-check command remains available; configured credentials alone do not establish a successful analytics import.
 
 From `server/`:

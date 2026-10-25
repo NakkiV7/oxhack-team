@@ -39,7 +39,8 @@ SELECT TO_JSON(ARRAY_AGG(OBJECT_CONSTRUCT_KEEP_NULL('subject',SUBJECT,'horizon',
 
 const identifier = z.string().min(1).max(128).regex(/^[a-zA-Z_][a-zA-Z0-9_$]*$/);
 const configuration = snowflakeConfiguration.extend({
-  SNOWFLAKE_DATABASE: identifier, SNOWFLAKE_SCHEMA: identifier, SNOWFLAKE_WAREHOUSE: identifier, SNOWFLAKE_ROLE: identifier.optional()
+  SNOWFLAKE_DATABASE: identifier.refine(name => !name.toUpperCase().startsWith('USER$')),
+  SNOWFLAKE_SCHEMA: identifier, SNOWFLAKE_WAREHOUSE: identifier, SNOWFLAKE_ROLE: identifier.optional()
 });
 
 export function snowflakeBenchmarkConfiguration({ env = process.env } = {}) {

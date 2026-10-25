@@ -59,6 +59,9 @@ test('Snowflake configuration check lists exact missing or invalid names without
   const invalid = run({ ...env, SNOWFLAKE_TOKEN_TYPE: 'bad-private-type', SNOWFLAKE_SCHEMA: 'private schema name' });
   assert.equal(invalid.status, 1);
   assert.deepEqual(JSON.parse(invalid.stdout), { mode: 'configuration', ready: false, missing: [], invalid: ['SNOWFLAKE_TOKEN_TYPE', 'SNOWFLAKE_SCHEMA'] });
+  const personalDatabase = run({ ...env, SNOWFLAKE_DATABASE: 'USER$OMAR' });
+  assert.equal(personalDatabase.status, 1);
+  assert.deepEqual(JSON.parse(personalDatabase.stdout), { mode: 'configuration', ready: false, missing: [], invalid: ['SNOWFLAKE_DATABASE'] });
   for (const result of [ready, missing, invalid]) assert.equal(/private-token|organization-account|EXISTING_WH|private schema name|bad-private-type/.test(result.stdout + result.stderr), false);
 });
 
@@ -172,7 +175,7 @@ test('No live opt-in means no environment access or transport, and invalid live 
   const forbiddenEnv = new Proxy({}, { get() { throw Error('must not inspect credentials'); } });
   assert.equal((await runSnowflakeBenchmark({ plan, env: forbiddenEnv, fetchImpl })).mode, 'dry-run');
   assert.equal((await runSnowflakeBenchmark({ plan, allowLivePublicData: 'false', env: forbiddenEnv, fetchImpl })).mode, 'dry-run');
-  for (const configuration of [{}, { ...env, SNOWFLAKE_SCHEMA: 'PUBLIC;DROP TABLE X' }]) {
+  for (const configuration of [{}, { ...env, SNOWFLAKE_SCHEMA: 'PUBLIC;DROP TABLE X' }, { ...env, SNOWFLAKE_DATABASE: 'USER$OMAR' }]) {
     await assert.rejects(runSnowflakeBenchmark({ plan, allowLivePublicData: true, env: configuration, fetchImpl }), error => error.code === 'missing_configuration');
   }
   assert.equal(calls, 0);
