@@ -5,13 +5,14 @@ import { GatewayError } from './errors.mjs';
 export const voiceRequest = z.object({
   generationID: z.string().uuid(), sessionID: z.string().uuid(), cueID: z.string().uuid(), playbackToken: z.string().uuid(),
   voice: z.enum(['david', 'arnold']), priority: z.enum(['form', 'pacing', 'rest']),
+  tone: z.enum(['calm', 'intense']).optional(),
   text: z.string().trim().min(1).max(500).refine(text => !/[\u0000-\u001f\u007f]/u.test(text)),
   expiresAt: z.iso.datetime({ precision: 3 })
-}).strict();
+}).strict().refine(data => data.tone !== 'intense' || data.voice === 'david' && data.priority === 'pacing');
 
 const aliases = [['david', 'David', 'ELEVENLABS_DAVID_VOICE_ID'], ['arnold', 'Arnold', 'ELEVENLABS_ARNOLD_VOICE_ID']];
 const validID = value => typeof value === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value);
-export const configuredVoices = env => env.ELEVENLABS_API_KEY ? aliases.filter(([, , key]) => validID(env[key])).map(([id, name]) => ({ id, name })) : [];
+export const configuredVoices = env => env.ELEVENLABS_API_KEY ? aliases.filter(([, , key]) => validID(env[key])).map(([id, name]) => ({ id, name, ...(id === 'david' && validID(env.ELEVENLABS_DAVID_INTENSE_VOICE_ID) ? { tones: ['calm', 'intense'] } : {}) })) : [];
 const failure = (status, code, message) => new GatewayError(status, code, message);
 
 function validMP3(bytes) {
@@ -21,9 +22,11 @@ function validMP3(bytes) {
     offset = 10 + bytes.subarray(6, 10).reduce((size, byte) => (size << 7) | byte, 0);
     if (bytes[3] === 4 && (bytes[5] & 0x10)) offset += 10;
   }
-  // MPEG-2 Layer III, 22.05 kHz, 32 kbps, with at least one complete frame.
-  return offset + 104 <= bytes.length && bytes[offset] === 0xff && (bytes[offset + 1] & 0xfe) === 0xf2 &&
-    (bytes[offset + 2] & 0xfc) === 0x40;
+  if (offset + 4 > bytes.length || bytes[offset] !== 0xff || (bytes[offset + 1] & 0xfe) !== 0xf2 ||
+      (bytes[offset + 2] & 0x0c) !== 0) return false;
+  const bitrate = [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 0][bytes[offset + 2] >> 4];
+  const frameLength = Math.floor(72_000 * bitrate / 22_050) + ((bytes[offset + 2] >> 1) & 1);
+  return bitrate > 0 && offset + frameLength <= bytes.length;
 }
 
 export function createVoiceService({ env, fetchImpl, now }) {
@@ -35,7 +38,7 @@ export function createVoiceService({ env, fetchImpl, now }) {
       if (demoExpiresAt !== undefined && now() >= demoExpiresAt) throw failure(503, 'demo_expired', 'The owner demo session has expired.');
       const expiresAt = Date.parse(data.expiresAt), remaining = expiresAt - now();
       if (!(remaining > 0 && remaining <= 6000)) throw failure(422, 'invalid_request', 'Voice requires the original future cue expiry within six seconds.');
-      const keyName = aliases.find(([id]) => id === data.voice)?.[2], voiceID = env[keyName];
+      const keyName = data.tone === 'intense' ? 'ELEVENLABS_DAVID_INTENSE_VOICE_ID' : aliases.find(([id]) => id === data.voice)?.[2], voiceID = env[keyName];
       const timeout = Number(env.ELEVENLABS_TIMEOUT_MS ?? 5000);
       if (!env.ELEVENLABS_API_KEY || !validID(voiceID) || !Number.isInteger(timeout) || timeout < 1 || timeout > 6000) {
         throw failure(503, 'missing_configuration', 'Configure the selected account-enabled voice and a voice timeout from 1 to 6000 milliseconds.');
