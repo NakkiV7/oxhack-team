@@ -29,6 +29,9 @@ export class CoachLoop {
       if (this.validCount('baseline') >= MIN_VALID) { this.requestId = this.uuid(); this.#go('preparing_cue', 'baseline complete'); return { event: 'baseline_complete', requestId: this.requestId, baseline: this.baseline }; }
       return { event: 'baseline_rep', valid: this.validCount('baseline') };
     }
+    // A rep that was already under way when Start retry was pressed (it ends sooner after the press than it lasted, with a
+    // quarter-second allowance for reaction) is not a retry rep: the person had not heard the cue yet.
+    if (this.state === 'ready_to_retry' && this.retryFrom != null && rep.secs && this.clock() - this.retryFrom < rep.secs * 1000 - 250) return { event: 'retry_ignored', reason: 'began before Start retry' };
     if (this.state === 'ready_to_retry' || this.state === 'retry') {
       if (this.state === 'ready_to_retry') this.#go('retry', 'first retry rep');
       this.#record(rep, 'retry');
@@ -47,7 +50,7 @@ export class CoachLoop {
   cueFailed() { if (this.state !== 'preparing_cue') return false; return this.cueReady({ ...deterministicCue(this.contract, this.baseline), provenance: 'deterministic' }, this.requestId); }
 
   // The user explicitly starts the retry. The target cannot change after this.
-  startRetry() { if (this.state !== 'cue_ready') return false; this.#go('ready_to_retry', 'user started retry'); return true; }
+  startRetry() { if (this.state !== 'cue_ready') return false; this.retryFrom = this.clock(); this.#go('ready_to_retry', 'user started retry'); return true; }
 
   #verify() {
     this.outcome = { ...compare(this.baseline, this.retry, this.contract), target: this.target.value, verifiedAt: this.clock() };

@@ -70,7 +70,7 @@ test('node contract: first completion needs one qualifying attempt, consistency 
 });
 
 test('the coaching loop walks setup to result and ignores late or foreign cues', () => {
-  let t = 0; const loop = new CoachLoop({ contract: SQ, attemptId: '11111111-1111-4111-8111-111111111111', uuid: () => 'req-1', clock: () => ++t });
+  let t = 0; const loop = new CoachLoop({ contract: SQ, attemptId: '11111111-1111-4111-8111-111111111111', uuid: () => 'req-1', clock: () => (t += 5000) });
   assert.equal(loop.state, 'setup'); assert.equal(loop.onRep(rep(1, 0.8)), null); // reps before begin are ordinary training
   assert.ok(loop.begin());
   assert.deepEqual(loop.onRep(rep(1, 0.8)).event, 'baseline_rep'); loop.onRep(rep(2, 9, { counted: false })); loop.onRep(rep(3, 0.9));
@@ -86,6 +86,14 @@ test('the coaching loop walks setup to result and ignores late or foreign cues',
   assert.equal(res.event, 'result'); assert.equal(loop.state, 'result'); assert.equal(res.outcome.classification, 'closer');
   assert.equal(JSON.stringify(loop.target), frozen); assert.equal(loop.cancel(), false); // a finished attempt stays finished
   const snap = loop.snapshot(); assert.equal(snap.status, 'result'); assert.equal(snap.retryReps.length, 3); assert.equal(snap.baselineReps[1].valid, false);
+});
+
+test('a rep already under way when Start retry is pressed does not count as a retry rep', () => {
+  let now = 0; const loop = new CoachLoop({ contract: SQ, uuid: () => 'r', clock: () => now });
+  loop.begin(); [0.8, 0.9, 0.7].forEach((d, i) => { now += 4000; loop.onRep(rep(i + 1, d)); });
+  loop.cueFailed(); now += 2000; assert.ok(loop.startRetry());
+  now += 600; assert.equal(loop.onRep(rep(4, 1.4)).event, 'retry_ignored'); assert.equal(loop.state, 'ready_to_retry'); assert.equal(loop.retry.length, 0);
+  now += 4000; assert.equal(loop.onRep(rep(5, 1.4)).event, 'retry_rep'); assert.equal(loop.state, 'retry');
 });
 
 test('pause, camera change, cancel and the deterministic cue fallback', () => {

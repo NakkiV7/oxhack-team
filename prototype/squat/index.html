@@ -480,11 +480,13 @@ $('startCam').onclick = async () => {
     const opened = await navigator.mediaDevices.getUserMedia({ video: { width: 960, height: 720 } });
     if (generation !== inputGeneration) { opened.getTracks().forEach(track => track.stop()); return; }
     stream = opened;
+    // Camera unplugged, taken by another app or permission revoked: pause the attempt instead of scoring a broken set.
+    stream.getVideoTracks()[0]?.addEventListener('ended', () => { if (generation !== inputGeneration) return; stopAll(); $('status').textContent = 'Camera disconnected. Start the camera again to continue.'; });
     video.srcObject = stream; video.loop = false;
     const began = await begin(generation);
     if (generation !== inputGeneration) return;
     cameraStarting = false;
-    if (began) { $('status').textContent = 'Running. Stand tall with your feet in frame.'; say("Let's go. Stand tall.", 2, 'push'); }
+    if (began) { $('status').textContent = 'Running. Stand tall with your feet in frame.'; say("Let's go. Stand tall.", 2, 'push'); coachAfterInput(); }
   } catch (e) {
     if (generation !== inputGeneration) return;
     stopAll(); $('status').textContent = 'Camera error: ' + e.message + ' (grant camera access to your browser).';
@@ -506,7 +508,7 @@ $('file').onchange = async (e) => {
   video.src = URL.createObjectURL(f); video.loop = !replayOnce; // replays until the user pauses or stops, unless a held-out replay
   try {
     if (!await begin(generation)) return;
-    $('status').textContent = replayOnce ? 'Held-out replay: plays once and pauses at each forecast.' : 'Analysing video (looping). Press Pause to stop.'; setPause(true);
+    $('status').textContent = replayOnce ? 'Held-out replay: plays once and pauses at each forecast.' : 'Analysing video (looping). Press Pause to stop.'; setPause(true); coachAfterInput();
   } catch (err) {
     if (generation !== inputGeneration) return;
     console.error('[video] play failed', err);
@@ -729,7 +731,16 @@ const coachParams = new URL(location.href).searchParams;
 // ?check=squat runs the same loop as a placement check from the path survey: stored as evidence, tied to no programme step.
 const coachCheck = coachParams.get('check') === 'squat';
 const coachNode = coachCheck ? 'placement-check' : coachParams.get('node'), coachProgramme = coachCheck ? null : coachParams.get('programme'), coachUser = coachParams.get('user');
-let cl = null, coachInfo = null;
+let cl = null, coachInfo = null, coachSource = null;
+// Which input the attempt's baseline came from: the camera device, or the uploaded file. A different one after the baseline
+// ends the attempt as unable to assess; the same one resumes it.
+const inputSource = () => stream ? 'camera:' + (stream.getVideoTracks()[0]?.getSettings().deviceId ?? '') : video.src ? 'file:' + (tgNote ?? '') : null;
+function coachAfterInput() {
+  if (!cl || cl.state !== 'paused') return;
+  const ev = coachSource && inputSource() !== coachSource ? cl.cameraChanged() : null;
+  if (ev) { coachShowResult(ev); return; }
+  if (cl.resume()) { coachRender(); coachSave(); }
+}
 const coachApi = async (path, body) => { const url = coachUser ? path + (path.includes('?') ? '&' : '?') + 'user=' + encodeURIComponent(coachUser) : path; const r = await fetch(url, body ? { method: 'POST', body: JSON.stringify(body) } : {}); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error ?? r.statusText); return j; };
 async function coachInit() {
   if (!coachNode) return;
@@ -748,7 +759,7 @@ async function coachInit() {
   if (coachCheck) $('coachSub').textContent = 'Camera check: start the camera and do three squats at your normal pace. You can stop after the baseline.';
 }
 function coachNew() {
-  cl = new CoachLoop({ contract: coachContractFor(coachInfo.node.exerciseId) });
+  cl = new CoachLoop({ contract: coachContractFor(coachInfo.node.exerciseId) }); coachSource = null;
   $('coachRetryBtn').hidden = true; $('coachAgainBtn').hidden = true; $('coachStopBtn').hidden = false; $('coachCue').textContent = ''; $('coachResult').textContent = '';
   coachRender();
 }
@@ -757,14 +768,14 @@ function coachRender() {
   const c = cl.contract, b = cl.validCount('baseline'), r = cl.validCount('retry');
   const lines = {
     setup: ['Setting up', `Start the camera, side-on, hips and knees in frame. Target: ${c.label} about ${c.target} ${c.unit}.`],
-    baseline: [`Baseline: ${b} of 3 counted reps`, `Squat at your natural pace. ${c.label} is being timed; nothing is judged yet.`],
+    baseline: [`Baseline: ${b} of 3 counted reps`, `Squat at your natural pace. ${c.label[0].toUpperCase() + c.label.slice(1)} is being timed; nothing is judged yet.`],
     preparing_cue: ['Preparing one cue…', 'The coach is choosing one thing to change.'],
     cue_ready: ['Your cue', `Target frozen at ${c.target} ${c.unit} (within ${c.tolerance}). Press Start retry when ready, then do three reps.`],
     ready_to_retry: ['Retry: 0 of 3', 'Go when ready.'],
     retry: [`Retry: ${r} of 3 counted reps`, 'Same movement, same camera.'],
     verifying: ['Comparing…', ''],
     result: ['Result', ''],
-    paused: ['Paused', 'Camera interrupted. Resume to continue the same phase.'],
+    paused: ['Paused', 'The camera stopped. Start it again to continue the same phase; a different camera after the baseline ends the attempt.'],
     cancelled: ['Attempt cancelled', 'Nothing was scored. Try again when ready.'],
   }[cl.state] ?? ['', ''];
   $('coachState').textContent = lines[0]; $('coachSub').textContent = lines[1]; $('coachCard').dataset.state = cl.state;
@@ -775,10 +786,11 @@ async function coachSave(extra = {}) {
 }
 async function coachRep(rep) {
   if (!cl || !coachInfo || coachInfo.capability !== 'assessable') return;
-  if (cl.state === 'setup' && running && !counter.warn) cl.begin();
+  if (cl.state === 'setup' && running && !counter.warn && cl.begin()) coachSource = inputSource();
   const ev = cl.onRep(rep);
   coachRender();
   if (!ev) return;
+  if (ev.event === 'retry_ignored') { $('coachSub').textContent = 'That rep began before you pressed Start retry, so it does not count. Go when ready.'; return; }
   if (ev.event === 'baseline_complete') {
     coachSave();
     let cue;
@@ -790,15 +802,20 @@ async function coachRep(rep) {
     if (cl.cue.action === 'request_better_view' || cl.cue.action === 'no_assessment') { $('coachSub').textContent = 'Fix the view, then start a new attempt.'; $('coachAgainBtn').hidden = false; }
     else $('coachRetryBtn').hidden = false;
     coachRender(); coachSave();
-  } else if (ev.event === 'result') {
-    const o = ev.outcome, label = { closer: 'Closer to the target', similar: 'About the same', further: 'Further from the target', unable: 'Unable to assess' }[o.classification];
-    $('coachResult').innerHTML = `<b>${label}.</b> ${o.classification === 'unable' ? o.reason : `Baseline median ${o.baselineMedian} s, retry median ${o.retryMedian} s against ${o.target} s (${o.baselineN} and ${o.retryN} valid reps; "similar" within ${o.noiseTolerance} s).`}<br><span class="sub">Explaining…</span>`;
-    $('coachRetryBtn').hidden = true; $('coachAgainBtn').hidden = false; $('coachStopBtn').hidden = true; coachRender();
-    const saved = await coachSave();
-    if (saved?.node) { const v = saved.node.verification; $('coachResult').innerHTML += v !== 'none' ? `<br><span class="pill" style="color:var(--acc)">${v === 'consistent' ? 'Milestone: verified on two days' : 'Milestone: first completion verified'} · ${saved.node.xp} XP</span>` : `<br><span class="sub">No milestone this time: ${o.classification === 'unable' ? 'the attempt could not be assessed' : 'the retry median must land within tolerance of the target to count'}.</span>`; }
-    try { const { explanation } = await coachApi('/coach/explain', { attemptId: cl.attemptId }); cl.explained(explanation); $('coachResult').querySelector('.sub').textContent = explanation.text + (explanation.provenance === 'gemini' ? '' : ' (deterministic explanation)'); if (typeof say === 'function') say(explanation.text, 2); }
-    catch (e) { $('coachResult').querySelector('.sub').textContent = 'No explanation available.'; }
-  }
+  } else if (ev.event === 'result') coachShowResult(ev);
+}
+// The computed result: shown, saved with the progress it earns, then explained by Gemini (which cannot change it).
+async function coachShowResult(ev) {
+  const o = ev.outcome, label = { closer: 'Closer to the target', similar: 'About the same', further: 'Further from the target', unable: 'Unable to assess' }[o.classification];
+  $('coachResult').innerHTML = `<b>${label}.</b> ${o.classification === 'unable' ? o.reason[0].toUpperCase() + o.reason.slice(1) + '.' : `Baseline median ${o.baselineMedian} s, retry median ${o.retryMedian} s against ${o.target} s (${o.baselineN} and ${o.retryN} valid reps; "similar" within ${o.noiseTolerance} s).`}<br><span class="sub">Explaining…</span>`;
+  $('coachRetryBtn').hidden = true; $('coachAgainBtn').hidden = false; $('coachStopBtn').hidden = true; coachRender();
+  const saved = await coachSave();
+  // The milestone line describes this attempt: an attempt that does not qualify never shows a milestone, even when the step
+  // is already verified from an earlier one.
+  const qualifies = o.classification !== 'unable' && (o.retryMeets || (o.baselineMeets && o.classification !== 'further'));
+  if (saved?.node) { const v = saved.node.verification; $('coachResult').innerHTML += qualifies && v !== 'none' ? `<br><span class="pill" style="color:var(--acc)">${v === 'consistent' ? 'Milestone: verified on two days' : 'Milestone: first completion verified'} · ${saved.node.xp} XP</span>` : `<br><span class="sub">This attempt does not count towards the milestone: ${o.classification === 'unable' ? 'it could not be assessed' : 'the retry median must land within tolerance of the target'}.${v !== 'none' ? ' The step stays verified from an earlier attempt.' : ''}</span>`; }
+  try { const { explanation } = await coachApi('/coach/explain', { attemptId: cl.attemptId }); cl.explained(explanation); $('coachResult').querySelector('.sub').textContent = explanation.text + (explanation.provenance === 'gemini' ? '' : ' (deterministic explanation)'); if (typeof say === 'function') say(explanation.text, 2); }
+  catch (e) { $('coachResult').querySelector('.sub').textContent = 'No explanation available.'; }
 }
 $('coachRetryBtn').onclick = () => { if (cl?.startRetry()) { $('coachRetryBtn').hidden = true; coachRender(); coachSave(); } };
 $('coachStopBtn').onclick = () => { if (cl?.cancel()) { coachRender(); coachSave(); $('coachAgainBtn').hidden = false; $('coachStopBtn').hidden = true; } };
