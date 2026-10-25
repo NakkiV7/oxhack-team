@@ -389,7 +389,7 @@ let inputGeneration = 0, cameraStarting = false;
 
 function endWorkout() {
   clockPause(); stopAll(); showClock(); workoutEnded = true;
-  say(CLOSING[counter.count % CLOSING.length], 3);
+  if (typeof say === 'function' && typeof CLOSING !== 'undefined') say(CLOSING[counter.count % CLOSING.length], 3); // voice is optional
   const st = summaryStats();
   const tile = (v, l) => `<div class="tile"><b>${v}</b><span>${l}</span></div>`;
   const s1 = (v) => v == null ? '–' : v.toFixed(1) + ' s';
