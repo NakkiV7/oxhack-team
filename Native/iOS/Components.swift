@@ -15,7 +15,7 @@ enum Palette {
             switch decision.reason {
             case .discomfort: return red
             case .tracking, .alignment, .slowerRep: return amber
-            case .targetReached: return green
+            case .targetReached, .steadyRhythm, .workoutCompleted: return green
             case .restReminder: return ink
             }
         }

@@ -25,10 +25,7 @@ struct SessionView: View {
                 Image(systemName: store.session.phase == .rest ? "wind" : "figure.strengthtraining.traditional").frame(width: 40, height: 40)
             }.padding(.horizontal, 14).padding(.top, 8)
             if store.session.phase == .active || store.session.phase == .paused || store.session.phase == .rest {
-                Toggle("Voice feedback", isOn: Binding(get: { store.voiceFeedbackEnabled }, set: { store.setVoiceFeedback($0) }))
-                    .font(.caption)
-                    .accessibilityIdentifier("voice-feedback-toggle")
-                    .padding(.horizontal, 24).padding(.vertical, 6)
+                WorkoutVoiceControls(store: store, identifier: "voice-feedback-toggle")
             }
             switch store.session.phase {
             case .active, .paused: LiveSetView(store: store)
@@ -73,6 +70,9 @@ struct LiveSetView: View {
                         }
                     }
                 }
+                if store.usingSecondaryCamera {
+                    DualCameraPreview(store: store, exercise: store.session.exercise)
+                } else {
                 ZStack(alignment: .topLeading) {
                     Palette.surface
                     if case .camera = store.visionState, store.session.phase == .active, !store.usingSecondaryCamera {
@@ -86,6 +86,7 @@ struct LiveSetView: View {
                     Text(store.session.phase == .paused ? "Paused" : (store.source == .manual ? "Manual self-report" : (store.hasInput ? inputStatus : "Movement guide")))
                         .font(.caption.weight(.medium)).padding(8).background(.white.opacity(0.9), in: Capsule()).padding(12)
                 }.frame(height: 295).clipShape(RoundedRectangle(cornerRadius: 23))
+                }
                 if !store.hasInput {
                     Picker("Movement phase", selection: $guide) {
                         Text("Top").tag("top"); Text("Middle").tag("mid"); Text("Bottom").tag("bottom")
@@ -196,7 +197,7 @@ struct LiveSetView: View {
         .confirmationDialog("Start a fresh side camera set?", isPresented: $replaceSecondaryCamera) {
             Button("Start fresh set") { store.secondaryCamera() }
         } message: { Text("The current set’s count will reset.") }
-        .sheet(isPresented: $pairingPresented) { SecondaryCameraSettingsView() }
+        .sheet(isPresented: $pairingPresented) { SecondaryCameraSettingsView(preview: store.previewMode) }
     }
     private var validManualQuantity: Int? {
         Int(manualQuantity).flatMap { (1...200).contains($0) ? $0 : nil }

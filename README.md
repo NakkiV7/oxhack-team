@@ -1,6 +1,16 @@
-# Spottr
-
-Native iPhone + Apple Watch training companion for OxHack 2026. Repository: [NakkiV7/oxhack-team](https://github.com/NakkiV7/oxhack-team).
+<div align="center">
+  <img src="docs/media/app/app-icon.png" alt="Spottr app icon: a flexed arm with green accents" width="112">
+  <h1>Spottr</h1>
+  <p><strong>Your next rep. Your next level.</strong></p>
+  <p>A native iPhone + Apple Watch training companion.<br>Track your workouts, see your progress and plan your next session.</p>
+  <p>
+    <a href="https://testflight.apple.com/join/f3MhePbf"><strong>Try the beta</strong></a> ·
+    <a href="https://spottr.omarchoudhry.co.uk/">Website</a> ·
+    <a href="#inside-spottr">App tour</a> ·
+    <a href="docs/SETUP.md">Developer setup</a>
+  </p>
+  <p>Built for OxHack 2026</p>
+</div>
 
 ![Swift](https://img.shields.io/badge/Swift-SwiftUI-F05138?logo=swift&logoColor=white)
 ![iOS](https://img.shields.io/badge/iOS-26-000000?logo=apple&logoColor=white)
@@ -11,9 +21,89 @@ Native iPhone + Apple Watch training companion for OxHack 2026. Repository: [Nak
 ![Tiger Data](https://img.shields.io/badge/Tiger_Data-adapter-FDB515)
 ![Status](https://img.shields.io/badge/status-hackathon_prototype-orange)
 
+## Inside Spottr
+
+From your first session to your next training plan. Select any screenshot to view it at full size.
+
+### Your training, at a glance
+
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <a href="docs/media/app/01-home.png"><img src="docs/media/app/01-home.png" alt="Home and daily training" width="250"></a><br>
+      <strong>01 · Home and daily training</strong>
+    </td>
+    <td align="center" width="33%">
+      <a href="docs/media/app/02-progress.png"><img src="docs/media/app/02-progress.png" alt="Weekly progress" width="250"></a><br>
+      <strong>02 · Weekly progress</strong>
+    </td>
+    <td align="center" width="33%">
+      <a href="docs/media/app/03-session.png"><img src="docs/media/app/03-session.png" alt="Session overview" width="250"></a><br>
+      <strong>03 · Session overview</strong>
+    </td>
+  </tr>
+</table>
+
+### Every session has a story
+
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <a href="docs/media/app/04-history.png"><img src="docs/media/app/04-history.png" alt="Recent workouts" width="250"></a><br>
+      <strong>04 · Recent workouts</strong>
+    </td>
+    <td align="center" width="33%">
+      <a href="docs/media/app/05-insights.png"><img src="docs/media/app/05-insights.png" alt="Workout insights" width="250"></a><br>
+      <strong>05 · Workout insights</strong>
+    </td>
+    <td align="center" width="33%">
+      <a href="docs/media/app/06-workout.png"><img src="docs/media/app/06-workout.png" alt="Start a workout" width="250"></a><br>
+      <strong>06 · Start a workout</strong>
+    </td>
+  </tr>
+</table>
+
+### Move with control. Build your skills.
+
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <a href="docs/media/app/07-squat-start.png"><img src="docs/media/app/07-squat-start.png" alt="Squat: standing position" width="250"></a><br>
+      <strong>07 · Squat: standing position</strong>
+    </td>
+    <td align="center" width="33%">
+      <a href="docs/media/app/08-squat-bottom.png"><img src="docs/media/app/08-squat-bottom.png" alt="Squat: lowered position" width="250"></a><br>
+      <strong>08 · Squat: lowered position</strong>
+    </td>
+    <td align="center" width="33%">
+      <a href="docs/media/app/09-skills.png"><img src="docs/media/app/09-skills.png" alt="Skill progression" width="250"></a><br>
+      <strong>09 · Skill progression</strong>
+    </td>
+  </tr>
+</table>
+
+### Make a plan with Coach
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <a href="docs/media/app/10-coach.png"><img src="docs/media/app/10-coach.png" alt="Ask Coach for a plan" width="250"></a><br>
+      <strong>10 · Ask Coach for a plan</strong>
+    </td>
+    <td align="center" width="50%">
+      <a href="docs/media/app/11-plan.png"><img src="docs/media/app/11-plan.png" alt="Review a workout plan" width="250"></a><br>
+      <strong>11 · Review a workout plan</strong>
+    </td>
+  </tr>
+</table>
+
+The tour includes sample progress, reports and Coach plans shown in the app’s preview mode.
+
+## About the project
+
 The working baseline includes on-device MediaPipe push-up/squat tracking, manual and timed custom workouts, a 19-exercise library with lessons and private demo-video imports, local profiles/goals, connected skill progression and deterministic session/week reports. Most exercises use manual logging or a timer; only push-ups and squats currently have camera tracking. Attribute points are game progress, not measured physiology. Local training needs no sign-in or cloud sync.
 
-Start with the [morning handoff](docs/morning-handoff.md) for the current MVP, startup steps, owners and device checks. Merged milestones through [PR #69](https://github.com/NakkiV7/oxhack-team/pull/69) include profile-aware Coach, Pi/local voice, mixed camera/manual workout plans, public-data research, the judges' guide and reduced repeated work in Skills/history. Provider integrations and physical-device evidence have separate acceptance gates. A passing simulator test does not establish rep accuracy or real Watch sensor capture. The [current evidence ledger](docs/integration-readiness.md) distinguishes implemented, offline-tested, live and pending paths.
+Start with the [morning handoff](docs/morning-handoff.md) for the current MVP, startup steps, owners and device checks. Merged milestones include profile-aware Coach, Pi/local voice, mixed camera/manual workout plans, public-data research and the judges' guide; [PR #69](https://github.com/NakkiV7/oxhack-team/pull/69) reduced repeated work in Skills/history. Provider integrations and physical-device evidence have separate acceptance gates. A passing simulator test does not establish rep accuracy or real Watch sensor capture. The [current evidence ledger](docs/integration-readiness.md) distinguishes implemented, offline-tested, live and pending paths.
 
 ## What the demo can show
 
@@ -21,11 +111,11 @@ Start with the [morning handoff](docs/morning-handoff.md) for the current MVP, s
 - Nineteen exercise icons, six push-up/squat phase illustrations and recording guides. User-filmed demonstration videos remain to be recorded; illustrations and imported fixtures are not physical exercise evidence.
 - Optional grounded Gemini chat, two report types and selected workout proposals. All four request types have real synthetic responses in the signed simulator. A later real proposal was explicitly approved for Squats alone, then completed as three synthetic manual sets of 3/2/1 reps and saved in order. A one-attempt loopback guard rejected the next chat before contacting the provider. Physical phone networking, real exercise and guidance quality remain pending. [Structured responses](docs/evidence/gemini-structured-compatibility-2026-10-25.md), [approved-plan execution](docs/evidence/native-gemini-plan-execution-2026-10-25.md).
 - Push-up prototype (`prototype/pushup`, web page plus iPhone display): rep counting with form cues and rep timing, a personal profile trained from past workouts, a choice between the default rule and a personal rule, and saving finished workouts to Tiger Data with visible sync status. The profile is trained on generated mock history so far; see [Push-up CV prototype](#push-up-cv-prototype) for exactly what is and is not established.
-- Opt-in standard local voice and a paired Pi side-camera path. Audible phone acceptance remains pending; the actual Pi camera disconnects after roughly two seconds, so sustained tracking is not established.
+- Opt-in local voice and a paired Pi side-camera path. A later LifeCam check delivered 600 frames over 60 seconds; phone/Pi end-to-end tracking and rep accuracy remain pending. Audible phone acceptance is separate.
 
-**[Install Spottr with TestFlight](https://testflight.apple.com/join/f3MhePbf)** — latest beta **0.1 (4)** is approved and available internally and externally, limited to 25 testers. It adds confirmed saved-workout removal and clearer final-set guidance. Phone/Watch installation and physical rehearsal remain morning checks. [Build 4 evidence](docs/evidence/testflight-build-4-2026-10-25.md), [installation guide](docs/testflight.md).
+**[Install Spottr with TestFlight](https://testflight.apple.com/join/f3MhePbf)** — beta **0.1 (5)** is approved internally and externally, with the existing 25-person invitation. A tester reported a crash after onboarding in build 5; the cause remains unresolved despite passing frozen-source Release simulator checks. Physical installation and rehearsal remain separate. [Build 5 evidence](docs/evidence/testflight-build-5-2026-10-25.md), [installation guide](docs/testflight.md).
 
-Gemini runs through the separately configured gateway. Native Tiger persistence, hosted Vultr, physical Watch sensors, Presage and actual Delta usage have open acceptance gates; the [integration ledger](docs/integration-readiness.md) records their exact state. The standalone Python camera demo has its own setup and tests below.
+The [public landing page](https://spottr.omarchoudhry.co.uk/) is live. Its gateway routes remain restricted; a public landing page does not grant API access. Provider source work below is newer than build 5 and does not imply a new TestFlight release.
 
 How the pieces connect (offline-first; gateway and providers are optional):
 
@@ -41,6 +131,21 @@ flowchart LR
   Store --> Voice[Voice cues]
 ```
 
+## Provider integrations and OxHack prizes
+
+The [official MLH OxHack ’26 page](https://www.mlh.com/events/oxhack-26) lists these six provider categories. This maps Spottr’s implementation to them; it does not claim prize eligibility, provider acceptance or measured exercise accuracy. Status checked **25 October 2026**; exact access gates are in the [integration ledger](docs/integration-readiness.md).
+
+| Official category | What Spottr uses / code | How to demonstrate | Verified / still pending |
+| --- | --- | --- | --- |
+| [Gemini API](https://www.mlh.com/events/oxhack-26/challenges/01953de4-ee8b-0807-88b1-86bb6abbf410) | Grounded chat, workout/week proposals and report summaries. [Gateway](server/src/gateway.mjs), [native model](Native/iOS/CoachModel.swift). | Explicitly Send/Propose/Generate from synthetic training facts; select and approve a proposal separately. | Real native synthetic request types accepted; hosted HTTPS chat returned factual 200. Weekly CLI success and fixture approval UI are separate. Physical phone networking and real-user guidance remain pending. |
+| [Vultr](https://www.mlh.com/events/oxhack-26/challenges/019a0ccc-7154-9378-095c-2a7be06a0378) | London VM runs the restricted gateway behind Caddy; also serves the public landing. [Container](server/Dockerfile), [Compose/Caddy](deploy/), [receipt](docs/evidence/vultr-owner-gateway-2026-10-25.md). | Show public landing; operator demonstrates trusted HTTPS health/auth boundaries and the retained synthetic Gemini response. | Actual AMD64 build/runtime, TLS/allowlist checks and hosted Gemini accepted. API access is operator-restricted; current phone egress and physical networking remain gates. The VM destruction deadline is 26 October 06:47 UTC. |
+| [Tiger Data](https://www.mlh.com/events/oxhack-26/challenges/019fcfdb-abbc-d470-b762-e73f1ee414d2) | Explicit workout snapshot/observed-sensor storage; bounded scalar rollups prepared in PR #132. [Adapter](server/src/tiger.mjs), [active schema](server/migrations/001_workouts.sql). | Show schema and offline SQL tests. Run the gated synthetic ingest/replay/readback smoke only after strict TLS/auth succeeds. | Empty schema accepted in provider console. Original Node service still fails strict certificate-chain verification; no live gateway workout ingestion or rollup acceptance. Prototype storage is a separate path. |
+| [Snowflake API](https://www.mlh.com/events/oxhack-26/challenges/01964000-e99a-a874-3f87-b5f811a39e65) | SQL API batch import/reconciliation of frozen public PAMAP2 forecasts. [Workflow](server/src/snowflake-benchmark-cli.mjs), [guide](docs/snowflake-analytics.md). | Run `cd server && npm run snowflake:benchmark` for the network-free dry run; show forecast lineage and coverage. | Offline import/reconciliation tests pass. Missing token/database/schema block live SQL. This is analytics preparation, **not** a demonstrated Snowflake LLM/Cortex integration. |
+| [ElevenLabs](https://www.mlh.com/events/oxhack-26/challenges/01999bc7-ad70-0ba6-f3ff-d7eb57ff56d1) | Optional synthesis of existing expiring cue text; local speech remains the default and stop cues stay local. [Server](server/src/voice.mjs), [native adapter](Native/iOS/RemoteVoicePlayback.swift). | Show fake-provider/client checks and configured-only discovery; demonstrate one selected voice only after authorized account configuration. | Bounded adapter/native tests pass. A usable API secret and account-enabled voice IDs are still missing; no real synthesis, Goggins voice entitlement or audible acceptance is established. |
+| [Presage](https://www.mlh.com/events/oxhack-26/challenges/019a3ac5-3f5e-8da6-2088-a201b011e9ac) | SmartSpectra 3.4.0 custom-input adapter for an opt-in stationary front-camera check. [Driver](Native/iOS/SmartSpectraDriver.swift), [controller](Native/iOS/PresageCaptureController.swift), [privacy boundary](docs/presage-integration.md). | Show SDK compile/fake-driver checks and source-labelled freshness rules. A real check needs consent, native authentication and credits first. | Default build excludes the SDK because its runtime conflicts with MediaPipe. Fake-driver and default-unavailability checks pass; no SDK start or physiology capture. Runtime compatibility, consent, authentication and physical acceptance remain gates. No medical/readiness claim. |
+
+Delta evaluation, running, workout zones, full cloud accounts and Watch complications are [deferred](docs/POST-HACKATHON.md). Local profiles are guest data, not authentication. Do not put keys or private account receipts in a prize submission.
+
 Current contributor boundaries:
 
 | Track | Owner | State |
@@ -51,8 +156,8 @@ Current contributor boundaries:
 | Manual/timed logging, profile, lessons, skill tree, reports | @omariosc | Merged local implementation |
 | Gemini chat, summaries, proposals | @omariosc | Real synthetic native chat/proposal/session/week responses and approved Squats-only manual execution accepted; physical networking, real exercise and real-user quality pending |
 | Local voice | @omariosc | Merged; fake playback tests passed, audible acceptance pending |
-| ElevenLabs and landing page | @MishaGitnik | Local page work exists; remote synthesis and public deployment pending |
-| Pi side camera | @omariosc | Native client merged; companion deployed, sustained USB capture blocked |
+| ElevenLabs and landing page | @MishaGitnik | Public white landing deployed; bounded voice adapter implemented, real synthesis/audible acceptance pending |
+| Pi side camera | @omariosc | Native client/companion implemented; LifeCam-only 60-second capture passed, phone/Pi tracking acceptance pending |
 | Physical Watch and remaining providers | @omariosc | See the evidence ledger for each distinct gate |
 
 ## Start locally
@@ -69,7 +174,7 @@ cd server && npm ci && cd ..
 open Spottr.xcodeproj
 ```
 
-Bootstrap downloads only missing, pinned MediaPipe 1.1.1 XCFrameworks, verifies their archive hashes and regenerates the Xcode project. The model is already bundled. Dependency provenance is in [THIRD-PARTY.md](Native/Resources/THIRD-PARTY.md). The app needs no provider keys to use local training and reports.
+Bootstrap downloads missing, pinned MediaPipe 1.1.1 frameworks, verifies archive hashes and regenerates the Xcode project. Presage is excluded by default because its runtime currently conflicts with MediaPipe. `SPOTTR_EXPERIMENTAL_PRESAGE=1` explicitly enables the investigated SmartSpectra 3.4.0 download/link path; it is not approved for the demo release. The model is already bundled. Dependency provenance is in [THIRD-PARTY.md](Native/Resources/THIRD-PARTY.md). Local training and reports require no provider keys.
 
 In Xcode, select `Spottr` and an **existing** iPhone simulator. Use `xcrun simctl list devices available` to find your own device; for Watch work select an existing paired Watch and `SpottrWatch`. Reuse installed devices; do not automatically create or erase them. Physical phone/Watch builds need your own signing team and a matching phone/Watch bundle-ID pair. Coordinate generator changes before sharing signing edits.
 
@@ -90,13 +195,13 @@ For hidden key entry, run `./scripts/local-config.py GEMINI_API_KEY` (Python 3).
 
 Use the variable descriptions in [.env.example](.env.example) and the [gateway setup](integrations/gateway/README.md). `.env` is ignored. Keep Gemini, database and other provider credentials on the server. The app receives only the gateway base URL and its separate gateway access token through local settings. Do not put provider keys in Swift, Xcode build settings, a committed plist, screenshots or PR text. Use a per-developer local token; a shared hackathon token is not production identity management.
 
-The gateway defaults to `http://127.0.0.1:8787`; `GET /health` reports configuration without a provider call. Health readiness and a configured key do not prove a provider request succeeded. In **Coach → Coach settings** (sliders), enter the gateway URL and gateway access token, then save. The app stores the token in this-device Keychain. It accepts HTTPS and permits HTTP for localhost development; a physical phone needs a reachable HTTPS gateway. The current development gateway on Omar’s Mac uses **8788** because another process occupies 8787; do not stop an unrelated service. [Vultr packaging](docs/vultr-deployment.md) passed local image, nonroot runtime and Caddy parsing checks. Hosted HTTPS is pending, no VM is deployed and the bearer token remains a single-owner demo boundary. The [bounded owner-demo guide](integrations/gateway/OWNER-DEMO.md) documents the optional shared quota/expiry mode; its offline tests and [one-attempt local acceptance](docs/evidence/native-gemini-plan-execution-2026-10-25.md) do not establish a public HTTPS relay.
+The gateway defaults to `http://127.0.0.1:8787`; `GET /health` reports configuration without a provider call. Health readiness and a configured key do not prove a provider request succeeded. In **Coach → Coach settings** (sliders), enter the gateway URL and gateway access token, then save. The app stores the token in this-device Keychain. It accepts HTTPS and permits HTTP for localhost development; a physical phone needs a reachable HTTPS gateway. The current development gateway on Omar’s Mac uses **8788** because another process occupies 8787; do not stop an unrelated service. [Vultr hosting](docs/vultr-deployment.md) now serves the restricted owner gateway with trusted HTTPS and the public landing. The 07:13 UTC hosted synthetic chat check returned 200 in 935 ms; the earlier 06:57 runtime/auth check used zero AI calls. The bearer token remains a single-owner demo boundary. Use the [owner-demo guide](integrations/gateway/OWNER-DEMO.md) and [integration ledger](docs/integration-readiness.md) for its attempt/expiry and access limits; a health response alone is not a provider response.
 
 Use Send, Propose or Generate summary to explicitly share saved training, skill game points, recorded Watch summaries and saved goals/weekly target; raw sensor streams and the optional profile name are not sent. Proposals start unselected: choose exercises, then **Approve & save selected exercises**. **Start saved workout** runs the approved plan with explicit set controls; base push-up/squat additionally offer opt-in phone/Pi camera tracking. See [custom workouts](docs/custom-workouts.md). Cancel/failure/invalid coaching preserves local reports and the current plan. See [goals and privacy](docs/coach-goals.md) and the gateway README.
 
 The local coaching policy evaluates form and pacing every second and at rep boundaries, using personal mean/sample SD from valid observed camera reps. It records actual rest between sets and emits expiring, prioritized events. An explicit **Voice feedback** toggle speaks new events through Apple's local synthesizer; it starts off for every new tracked workout. No per-second provider call is made. See [coaching policy](docs/coaching-policy.md) and [voice feedback](docs/voice-feedback.md).
 
-The [Pi camera companion](hardware/pi/README.md) is deployed with authenticated HTTPS capture, certificate pinning, freshness and expiring leases. The native client feeds preview frames into phone inference; it does not claim Pi inference. Native/UI tests passed 31/31 and Python tests 23/23. Real capture produced frames, then the USB device disconnected after roughly two seconds. Sustained iPhone tracking and rep accuracy remain pending; see [physical evidence](hardware/pi/EVIDENCE-2026-10-24.md).
+The [Pi camera companion](hardware/pi/README.md) is deployed with authenticated HTTPS capture, certificate pinning, freshness and expiring leases. The native client feeds preview frames into phone inference; it does not claim Pi inference. Native/UI tests passed 31/31 and Python tests 23/23. Earlier capture produced frames before a USB disconnect; a later LifeCam-only check passed 600 frames/60 seconds and stopped. Sustained iPhone tracking and rep accuracy remain pending; see [physical evidence](hardware/pi/EVIDENCE-2026-10-24.md).
 
 ## Standalone Python camera demo
 
@@ -170,7 +275,7 @@ Push-up CV belongs to [@azhar-rafiq](https://github.com/azhar-rafiq); squat CV t
 | `Shared/Apple` | Apple companion transport |
 | `Tests/Core`, `Tests/iOS`, `Tests/UI` | Offline behavior, native pipeline and UI checks |
 | `server` | Optional local gateway; credentials stay here at runtime |
-| `deploy` | Prepared Docker/Caddy single-owner hosting configuration; no deployed VM implied |
+| `deploy` | Docker/Caddy configuration used by the restricted Vultr gateway and public static landing |
 | `evaluations` | Authored synthetic judge fixtures and run evidence; prepared packets are not judge results |
 | `integrations` | Provider contracts, schemas, SQL preparation and integration setup |
 | `scripts` | Pinned SDK fetch, Xcode generator and local checks |
@@ -180,18 +285,10 @@ Push-up CV belongs to [@azhar-rafiq](https://github.com/azhar-rafiq); squat CV t
 
 Historical design documents describe intentions at their recorded date; source and the current evidence ledger take precedence for implementation status. The 19 icons and six phase illustrations are merged. Coordinate any further artwork changes; real demonstration recordings remain separate from generated illustrations.
 
-## Prizes we are aiming for
+## Other judging material
 
-These are targets, not claims of completed sponsor acceptance.
-| Prize | Track |
-|---|---|
-| Best Use of Gemini API (MLH) | Gemini chat, summaries, proposals |
-| Best Use of ElevenLabs (MLH) | Voice cues |
-| Best Use of Tiger Data (MLH) | Time-series ingestion and rollups. Push-up prototype: per-rep hypertable, continuous aggregate and immutable workout receipts. Original contributor reports a trial-service check; corrected-path live SQL and native-app persistence remain pending |
-| Best Use of Snowflake API, Vultr, Presage (MLH) | Optional tracks, see roadmap |
-| DEV Writing Challenge (MLH) | Write-up, after the evidence ledger |
-| HRT: Best of Data for Predictions and Decision Making | [Held-out public wearable HR forecast](docs/public-data-benchmark.md), with coverage and negative results retained. Secondary: the push-up personal profile and rule choice (data-driven decision, trained on mock history so far; no real-data result yet) |
-| Zed: Built with Delta | Delta prompt evaluation, see [plan](docs/delta-prompt-evaluation.md) |
-| Best Handmade Project, overall prizes | Pi camera companion, whole demo |
+The six provider mappings above are grounded in the [official MLH categories](https://www.mlh.com/events/oxhack-26). The page also lists Solana and the DEV Writing Challenge; Spottr has no Solana integration and no submitted DEV article.
+
+The separate [public wearable HR forecast](docs/public-data-benchmark.md) retains participant-held-out errors, sparse coverage and negative results. The push-up personal profile is trained on mock history so far, with no real-data accuracy result. Delta evaluation is [deferred](docs/POST-HACKATHON.md); authored controls and Codex calibration are not Delta usage. Overall hardware/demo claims still need real phone/Watch/camera acceptance.
 
 Event: [OxHack 26](https://26.oxhack.net) and [Devpost](https://oxhack-2026.devpost.com/).

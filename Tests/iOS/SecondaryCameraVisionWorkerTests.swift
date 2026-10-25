@@ -9,7 +9,9 @@ final class SecondaryCameraVisionWorkerTests: XCTestCase {
         return try Data(contentsOf: url)
     }
     private func client(jpeg: Data, uptime: @escaping () -> Double = { ProcessInfo.processInfo.systemUptime },
-                        received: @escaping (String) -> Void = { _ in }) throws -> SecondaryCameraClient {
+                        received: @escaping (String) -> Void = { _ in },
+                        age: @escaping (Int) -> String = { _ in "0" },
+                        repeatFirstFrame: Bool = false) throws -> SecondaryCameraClient {
         let config = try SecondaryCameraConfig(url: "https://camera.local:8765", certificateSHA256: String(repeating: "b", count: 64))
         var sequence = 0
         return try SecondaryCameraClient(configuration: config, token: "private-fixture", uptime: uptime, transport: { request in
@@ -19,9 +21,9 @@ final class SecondaryCameraVisionWorkerTests: XCTestCase {
             if request.httpMethod == "POST" {
                 data = Data((request.url?.path == "/camera/start" ? "{\"capture_id\":\"\(self.captureID)\",\"lease_seconds\":60}" : #"{"camera":"stopped"}"#).utf8)
             } else {
-                sequence += 1; data = jpeg
+                if !repeatFirstFrame || sequence == 0 { sequence += 1 }; data = jpeg
                 let formatter = ISO8601DateFormatter(); formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-                headers = ["Content-Type": "image/jpeg", "X-Frame-ID": self.captureID + ":\(sequence)", "X-Captured-At": formatter.string(from: Date()), "X-Frame-Age-Ms": "0"]
+                headers = ["Content-Type": "image/jpeg", "X-Frame-ID": self.captureID + ":\(sequence)", "X-Captured-At": formatter.string(from: Date()), "X-Frame-Age-Ms": age(sequence)]
             }
             return (data, HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: headers)!)
         })
@@ -66,28 +68,70 @@ final class SecondaryCameraVisionWorkerTests: XCTestCase {
         XCTAssertNil(worker.image)
         XCTAssertEqual(worker.state, .idle)
     }
-    func testExpiredFrameDuringInferenceClearsPreviewAndReportsTrackingFailure() async throws {
-        var uptime = 100.0
-        let client = try client(jpeg: jpeg(), uptime: { uptime })
-        let entered = expectation(description: "Inference entered")
-        let failed = expectation(description: "Tracking paused")
+    func testExpiredInferenceIsDiscardedAndNextFreshFrameRecoversSameLease() async throws {
+        var starts = 0
+        let client = try client(jpeg: jpeg(), received: { if $0 == "/camera/start" { starts += 1 } },
+                                age: { $0 == 1 ? "1950" : "0" })
+        let entered = expectation(description: "First inference entered")
+        let recovered = expectation(description: "Next fresh frame published")
         var pending: CheckedContinuation<(PoseFrame, UIImage), Error>?
-        let worker = SecondaryCameraVisionWorker(infer: { _, _ in
-            try await withCheckedThrowingContinuation { pending = $0; entered.fulfill() }
-        })
+        var inferenceCount = 0
+        var failures = 0
         var delivered = 0
-        worker.onFrame = { _, _, _ in delivered += 1 }
-        worker.onState = { state, _ in if case .failed = state { failed.fulfill() } }
-        worker.start(client: client, generation: UUID())
+        let generation = UUID()
+        let worker = SecondaryCameraVisionWorker(infer: { _, time in
+            inferenceCount += 1
+            if inferenceCount == 1 {
+                return try await withCheckedThrowingContinuation { pending = $0; entered.fulfill() }
+            }
+            return (PoseFrame(time: time, width: 640, height: 360, points: []), UIImage())
+        })
+        defer { worker.stop() }
+        worker.onFrame = { frame, _, token in
+            XCTAssertEqual(token, generation)
+            XCTAssertNotEqual(frame.time, -1)
+            delivered += 1; recovered.fulfill(); worker.stop()
+        }
+        worker.onState = { state, _ in if case .failed = state { failures += 1 } }
+        worker.start(client: client, generation: generation)
         await fulfillment(of: [entered], timeout: 2)
-        uptime = 103
-        await fulfillment(of: [failed], timeout: 2)
-        pending?.resume(returning: (PoseFrame(time: 100, width: 1, height: 1, points: []), UIImage()))
-        try await Task.sleep(for: .milliseconds(50))
+        try await Task.sleep(for: .milliseconds(150))
         XCTAssertNil(worker.image)
+        XCTAssertNil(worker.frame)
+        pending?.resume(returning: (PoseFrame(time: -1, width: 1, height: 1, points: []), UIImage()))
+        await fulfillment(of: [recovered], timeout: 2)
+        XCTAssertEqual(delivered, 1)
+        XCTAssertEqual(failures, 0)
+        XCTAssertEqual(starts, 1)
+    }
+
+    func testExpiredPublishedPreviewClearsAndPersistentOutageStopsWithinFiveSeconds() async throws {
+        let client = try client(jpeg: jpeg(), repeatFirstFrame: true)
+        let published = expectation(description: "Initial preview published")
+        let failed = expectation(description: "Bounded outage stops capture")
+        let worker = SecondaryCameraVisionWorker(infer: { _, time in
+            (PoseFrame(time: time, width: 640, height: 360, points: []), UIImage())
+        })
+        defer { worker.stop() }
+        var deliveries = 0
+        var failedAt: TimeInterval?
+        let began = ProcessInfo.processInfo.systemUptime
+        worker.onFrame = { _, _, _ in deliveries += 1; published.fulfill() }
+        worker.onState = { state, _ in
+            if case .failed = state { failedAt = ProcessInfo.processInfo.systemUptime; failed.fulfill() }
+        }
+        worker.start(client: client, generation: UUID())
+        await fulfillment(of: [published], timeout: 2)
+        try await Task.sleep(for: .milliseconds(2300))
+        XCTAssertNil(worker.image)
+        XCTAssertNil(worker.frame)
+        XCTAssertNil(failedAt)
+        XCTAssertEqual(client.status, .streaming)
+        await fulfillment(of: [failed], timeout: 4)
+        XCTAssertLessThan(try XCTUnwrap(failedAt) - began, 6)
+        XCTAssertEqual(deliveries, 1)
         XCTAssertEqual(client.status, .stopped)
-        XCTAssertEqual(delivered, 0)
-        worker.stop()
+        XCTAssertNil(worker.image)
     }
     func testActiveLoopRenewsTheSameLeaseAndStopsRenewingOnExit() async throws {
         var starts = 0

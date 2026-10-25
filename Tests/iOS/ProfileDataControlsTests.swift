@@ -3,6 +3,85 @@ import XCTest
 
 @MainActor
 final class ProfileDataControlsTests: XCTestCase {
+    func testMeasurementDraftOnlyPersistsCompleteValidEditsAndCancelsEarlierPendingValues() throws {
+        var saved: LocalBodyMeasurements?
+        var writes = 0
+        let draft = MeasurementsDraftPersistence { saved = $0; writes += 1 }
+        XCTAssertEqual(writes, 0)
+        draft.edit(heightCM: "170", weightKG: "70", bmiEligible: true, thresholds: .lower)
+        XCTAssertTrue(draft.prepareToLeave())
+        let accepted = try XCTUnwrap(saved)
+        XCTAssertEqual(accepted.heightCM, 170)
+        XCTAssertEqual(accepted.weightKG, 70)
+        XCTAssertEqual(writes, 1)
+        draft.edit(heightCM: "180", weightKG: "80", bmiEligible: true, thresholds: .standard)
+        draft.edit(heightCM: "180", weightKG: "", bmiEligible: true, thresholds: .standard)
+        XCTAssertNotNil(draft.validationError)
+        XCTAssertTrue(draft.prepareToLeave())
+        XCTAssertEqual(saved, accepted)
+        XCTAssertEqual(writes, 1)
+        draft.edit(heightCM: "nan", weightKG: "70", bmiEligible: true, thresholds: nil)
+        XCTAssertNotNil(draft.validationError)
+        XCTAssertEqual(saved, accepted)
+    }
+
+    func testMeasurementWriteFailureCanRetryAndClearWithoutReplacingOtherProfileDetails() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let store = NativeProfileStore(url: folder.appendingPathComponent("profile.json"))
+        let original = try LocalProfile(name: "Guest", weeklyTarget: 5, goals: [.mobility], baselineAbility: .somePractice)
+        try store.save(original)
+        var fail = true
+        let draft = MeasurementsDraftPersistence { measurements in
+            if fail { throw CocoaError(.fileWriteNoPermission) }
+            try store.saveMeasurements(measurements)
+        }
+        draft.edit(heightCM: "170", weightKG: "70", bmiEligible: false, thresholds: nil)
+        XCTAssertFalse(draft.prepareToLeave())
+        XCTAssertTrue(draft.blocksDismissal)
+        XCTAssertEqual(store.profile, original)
+        fail = false
+        XCTAssertTrue(draft.prepareToLeave())
+        XCTAssertNotNil(store.profile?.bodyMeasurements)
+        XCTAssertTrue(draft.clear())
+        XCTAssertEqual(NativeProfileStore(url: folder.appendingPathComponent("profile.json")).profile, original)
+        XCTAssertFalse(draft.blocksDismissal)
+    }
+
+    func testMeasurementsCannotSilentlyReplaceAnUnreadableProfile() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appendingPathComponent("profile.json")
+        let original = Data("unreadable profile must survive".utf8)
+        try original.write(to: url)
+        let store = NativeProfileStore(url: url)
+        let measurements = try LocalBodyMeasurements(heightCM: 170, weightKG: 70)
+        XCTAssertThrowsError(try store.saveMeasurements(measurements))
+        XCTAssertThrowsError(try store.saveMeasurements(nil))
+        XCTAssertEqual(try Data(contentsOf: url), original)
+        XCTAssertNotNil(store.loadError)
+    }
+
+    func testEditingAndExplicitlySavingProfileDetailsPreservesOptionalMeasurements() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appendingPathComponent("profile.json")
+        let store = NativeProfileStore(url: url)
+        let measurements = try LocalBodyMeasurements(heightCM: 170, weightKG: 70, bmiEligible: true, thresholds: .lower)
+        try store.save(LocalProfile(name: "Guest", baselineAbility: .somePractice, bodyMeasurements: measurements))
+        let draft = ProfileDraftPersistence(store: store)
+        draft.edit(name: "Edited guest", weeklyTarget: 5, goals: [.mobility])
+        XCTAssertTrue(draft.prepareToLeave())
+        XCTAssertEqual(NativeProfileStore(url: url).profile?.bodyMeasurements, measurements)
+        XCTAssertEqual(store.profile?.name, "Edited guest")
+        XCTAssertEqual(store.profile?.goals, [.mobility])
+        XCTAssertTrue(draft.save(name: "Saved guest", weeklyTarget: 2, goals: [.balance]))
+        XCTAssertEqual(NativeProfileStore(url: url).profile?.bodyMeasurements, measurements)
+        XCTAssertEqual(store.profile?.weeklyTarget, 2)
+        XCTAssertEqual(store.profile?.baselineAbility, .somePractice)
+    }
+
     func testFailedPendingProfileSavePreventsLeavingUntilTheSameDraftCanBeRetried() throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }

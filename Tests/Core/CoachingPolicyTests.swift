@@ -10,10 +10,10 @@ final class CoachingPolicyTests: XCTestCase {
                        duration: Double? = nil, cue: Cue = .controlled, heartRate: [SensorReading] = [],
                        rest: Double? = nil, target: Int = 12, stop: StopReason? = nil,
                        generation: UUID? = nil, sessionID: UUID? = nil, exercise: Exercise = .squat,
-                       source: InputSource = .camera) -> CoachingInput {
+                       source: InputSource = .camera, encouragementEnabled: Bool = false) -> CoachingInput {
         .init(sessionID: sessionID ?? self.sessionID, generation: generation ?? self.generation,
               phase: phase, now: now, exercise: exercise, repCount: reps, lastRepDuration: duration,
-              cue: cue, heartRate: heartRate, wallTime: wallTime, restElapsed: rest, target: target, stopReason: stop, source: source)
+              cue: cue, heartRate: heartRate, wallTime: wallTime, restElapsed: rest, target: target, stopReason: stop, source: source, encouragementEnabled: encouragementEnabled)
     }
 
     func testDiscomfortStopsCoachingImmediatelyAndOnlyOnceForTheSession() {
@@ -269,5 +269,143 @@ extension CoachingPolicyTests {
             XCTAssertEqual(decision?.reason, eligible ? CoachingReason.slowerRep : nil)
             if eligible { XCTAssertTrue(decision?.facts.contains { $0.contains("5 prior reps") } == true) }
         }
+    }
+}
+
+
+extension CoachingPolicyTests {
+    private func rhythmPolicy(_ durations: [Double] = [1, 2, 3, 4, 5], exercise: Exercise = .squat) -> CoachingPolicy {
+        CoachingPolicy(history: [SessionRecord(id: UUID(), date: wallTime,
+            sets: [recordedSet(exercise: exercise, durations: durations)])])
+    }
+
+    func testSteadyRhythmRequiresExplicitOptInAndUsesOnlyPriorSameExerciseSamples() {
+        var disabled = rhythmPolicy()
+        XCTAssertNil(disabled.evaluate(input(reps: 1, duration: 3)))
+        var enabled = rhythmPolicy()
+        let cue = enabled.evaluate(input(reps: 1, duration: 3, encouragementEnabled: true))
+        XCTAssertEqual(cue?.reason.rawValue, "steadyRhythm")
+        XCTAssertEqual(cue?.text, "Keep a steady rhythm.")
+        XCTAssertEqual(cue?.priority, .pacing)
+        XCTAssertEqual(cue?.elapsed, 3)
+        XCTAssertTrue(cue?.facts.contains { $0.contains("5 prior") && $0.contains("3.00") && $0.contains("1.58") } == true)
+        for (durations, exercise) in [([1.0, 2, 3, 4], Exercise.squat), ([1.0, 2, 3, 4, 5], .pushup)] {
+            var insufficient = rhythmPolicy(durations, exercise: exercise)
+            XCTAssertNil(insufficient.evaluate(input(reps: 1, duration: 3, encouragementEnabled: true)))
+        }
+    }
+
+    func testEncouragementRejectsFastInvalidAndOutlyingRepsButSlowCueWins() {
+        for duration in [Double.nan, .infinity, 0.5, 16, 1.4] {
+            var policy = rhythmPolicy()
+            XCTAssertNil(policy.evaluate(input(reps: 1, duration: duration, encouragementEnabled: true)))
+        }
+        var slow = rhythmPolicy()
+        XCTAssertEqual(slow.evaluate(input(reps: 1, duration: 4.6, encouragementEnabled: true))?.reason, .slowerRep)
+        for duration in [0.75, 1.25] {
+            var consistent = rhythmPolicy([1, 1, 1, 1, 1])
+            XCTAssertEqual(consistent.evaluate(input(reps: 1, duration: duration, encouragementEnabled: true))?.reason.rawValue, "steadyRhythm")
+        }
+        var fast = rhythmPolicy([1, 1, 1, 1, 1])
+        XCTAssertNil(fast.evaluate(input(reps: 1, duration: 0.74, encouragementEnabled: true)))
+    }
+
+    func testEncouragementNeverOverridesStopFormTargetRestOrCooldown() {
+        for (cue, reason) in [(Cue.tracking, CoachingReason.tracking), (.alignment, .alignment)] {
+            var policy = rhythmPolicy()
+            XCTAssertEqual(policy.evaluate(input(reps: 1, duration: 3, cue: cue, encouragementEnabled: true))?.reason, reason)
+            XCTAssertNil(policy.evaluate(input(now: 1, reps: 2, duration: 3, encouragementEnabled: true)))
+        }
+        var stopped = rhythmPolicy()
+        XCTAssertEqual(stopped.evaluate(input(reps: 1, duration: 3, stop: .discomfort, encouragementEnabled: true))?.reason, .discomfort)
+        XCTAssertNil(stopped.evaluate(input(now: 20, reps: 2, duration: 3, encouragementEnabled: true)))
+        var target = rhythmPolicy()
+        XCTAssertEqual(target.evaluate(input(reps: 1, duration: 3, target: 1, encouragementEnabled: true))?.reason, .targetReached)
+        XCTAssertNil(target.evaluate(input(now: 20, reps: 2, duration: 3, target: 1, encouragementEnabled: true)))
+        for target in [0, -1] {
+            var unspecified = rhythmPolicy()
+            XCTAssertNil(unspecified.evaluate(input(reps: 1, duration: 3, target: target, encouragementEnabled: true)))
+        }
+        var rest = rhythmPolicy()
+        XCTAssertEqual(rest.evaluate(input(phase: .rest, rest: 45, encouragementEnabled: true))?.reason, .restReminder)
+        var cooldown = rhythmPolicy()
+        XCTAssertEqual(cooldown.evaluate(input(reps: 1, duration: 3, encouragementEnabled: true))?.reason.rawValue, "steadyRhythm")
+        XCTAssertNil(cooldown.evaluate(input(now: 9.99, reps: 2, duration: 3, encouragementEnabled: true)))
+        XCTAssertEqual(cooldown.evaluate(input(now: 10, reps: 3, duration: 3, encouragementEnabled: true))?.reason.rawValue, "steadyRhythm")
+    }
+
+    func testEncouragementCannotReplayDuplicateStaleNonCameraOrPausedObservations() {
+        var policy = rhythmPolicy()
+        XCTAssertEqual(policy.evaluate(input(now: 10, reps: 1, duration: 3, encouragementEnabled: true))?.reason.rawValue, "steadyRhythm")
+        XCTAssertNil(policy.evaluate(input(now: 20, reps: 1, duration: 3, encouragementEnabled: true)))
+        XCTAssertNil(policy.evaluate(input(now: 19, reps: 2, duration: 3, encouragementEnabled: true)))
+        for source in [InputSource.manual, .video] {
+            var replay = rhythmPolicy()
+            XCTAssertNil(replay.evaluate(input(reps: 1, duration: 3, source: source, encouragementEnabled: true)))
+            XCTAssertNil(replay.evaluate(input(now: 20, reps: 1, duration: 3, encouragementEnabled: true)))
+        }
+        var paused = rhythmPolicy()
+        XCTAssertNil(paused.evaluate(input(phase: .paused, reps: 1, duration: 3, encouragementEnabled: true)))
+        let resumed = UUID()
+        XCTAssertNil(paused.evaluate(input(now: 1, reps: 1, duration: 3, generation: resumed, encouragementEnabled: true)))
+        XCTAssertEqual(paused.evaluate(input(now: 20, reps: 2, duration: 3, generation: resumed, encouragementEnabled: true))?.reason.rawValue, "steadyRhythm")
+        XCTAssertNil(paused.evaluate(input(now: 40, reps: 3, duration: 3, encouragementEnabled: true)))
+    }
+
+    func testHeartRateCannotEnableEncouragementWithoutRhythmEvidence() {
+        var policy = CoachingPolicy()
+        let readings = [SensorReading(value: 80, date: wallTime)]
+        XCTAssertNil(policy.evaluate(input(reps: 1, duration: 3, heartRate: readings, encouragementEnabled: true)))
+        var sufficient = rhythmPolicy()
+        let cue = sufficient.evaluate(input(reps: 1, duration: 3, heartRate: readings, encouragementEnabled: true))
+        XCTAssertEqual(cue?.reason.rawValue, "steadyRhythm")
+        XCTAssertFalse(cue?.facts.contains { $0.contains("bpm") } == true)
+    }
+}
+
+
+extension CoachingPolicyTests {
+    func testEncouragementLearnsOnlyDistinctControlledCameraRepsAndRejectsRepJumps() {
+        for cue in [Cue.tracking, .alignment, .paused, .ready] {
+            var policy = CoachingPolicy()
+            for rep in 1...5 {
+                _ = policy.evaluate(input(now: Double(rep), reps: rep, duration: 3, cue: cue, encouragementEnabled: true))
+            }
+            XCTAssertNil(policy.evaluate(input(now: 20, reps: 6, duration: 3, encouragementEnabled: true)))
+        }
+        var live = CoachingPolicy()
+        for rep in 1...5 {
+            XCTAssertNil(live.evaluate(input(now: Double(rep), reps: rep, duration: 3, encouragementEnabled: true)))
+        }
+        XCTAssertEqual(live.evaluate(input(now: 6, reps: 6, duration: 3, encouragementEnabled: true))?.reason.rawValue, "steadyRhythm")
+        var jump = rhythmPolicy()
+        XCTAssertNil(jump.evaluate(input(reps: 4, duration: 3, encouragementEnabled: true)))
+        for stop in [StopReason.form, .failure, .voluntary, .target] {
+            var ending = rhythmPolicy()
+            XCTAssertNil(ending.evaluate(input(reps: 1, duration: 3, stop: stop, encouragementEnabled: true)))
+        }
+    }
+}
+
+
+extension CoachingPolicyTests {
+    func testFirstResumeSnapshotCannotEncourageAnUnseenRep() {
+        var policy = rhythmPolicy()
+        XCTAssertNil(policy.evaluate(input(phase: .paused, encouragementEnabled: true)))
+        let resumed = UUID()
+        XCTAssertNil(policy.evaluate(input(now: 1, reps: 1, duration: 3, generation: resumed, encouragementEnabled: true)))
+        XCTAssertNil(policy.evaluate(input(now: 11, reps: 1, duration: 3, generation: resumed, encouragementEnabled: true)))
+        XCTAssertEqual(policy.evaluate(input(now: 20, reps: 2, duration: 3, generation: resumed, encouragementEnabled: true))?.reason.rawValue, "steadyRhythm")
+    }
+}
+
+
+extension CoachingPolicyTests {
+    func testNewSessionAfterPauseCanUseSavedRhythmWithoutReplayingOldSession() {
+        var policy = rhythmPolicy()
+        XCTAssertNil(policy.evaluate(input(phase: .paused, encouragementEnabled: true)))
+        let newSession = UUID()
+        XCTAssertEqual(policy.evaluate(input(reps: 1, duration: 3, sessionID: newSession, encouragementEnabled: true))?.reason.rawValue, "steadyRhythm")
+        XCTAssertNil(policy.evaluate(input(now: 20, reps: 1, duration: 3, encouragementEnabled: true)))
     }
 }

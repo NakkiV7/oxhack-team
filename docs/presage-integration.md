@@ -1,6 +1,20 @@
-# Proposed Presage recovery measurement
+# Presage front-camera integration
 
-Research snapshot: **24 October 2026**. This is a proposal, with no SDK integration or live measurement yet. No camera, account, API key, credit balance or physiological data was accessed in this research.
+## Current offline checkpoint · 25 October 2026
+
+The new `CameraVitalsRun` keeps session/measurement identity, original observation time, confidence and stable flags separate from Watch telemetry. It rejects invalid validation, movement context, unsupported ranges, incomplete 12/30-second windows, stale/future samples and prior runs. `VitalsDisplay` prefers fresh, matching-session Watch heart rate under the existing 12-second policy; camera pulse and breathing remain Presage estimates. No calories, medical readiness, HealthKit writes or Coach/Tiger export are inferred.
+
+The default app deliberately excludes SmartSpectra. The downloaded v3.4.0 SDK and the pinned MediaPipe runtime contain four duplicate Objective-C classes (`MPPMetalUtil`, `MPPMetalSharedResources`, `TFLBufferConvert`, `GUSUtilStatusWrapper`). Loading both remains a release blocker; this is not established as the cause of the earlier build 5 onboarding report. `SPOTTR_EXPERIMENTAL_PRESAGE=1` is an investigation opt-in, not release approval. A fresh default phone build and embedded Watch bundle were checked to contain no SmartSpectra framework/dependency; 41 native checks passed, including fake-driver lifecycle and default-unavailability checks. No Presage authentication or live measurement has been performed. The supplied key is stored only in ignored local configuration and must not be used until Omar explicitly authorizes a check.
+
+The official v3.4.0 archive was inspected privately: 62,810,487 bytes, SHA-256 `eb99a609fc8069de020e0cf4328fb4a81a48b0aff7499348c6aa23e6fcb09947`. Its outer XCFramework signature verifies as Presage Security, Inc.; both slices contain a privacy manifest. It is a dynamic framework requiring host-app Embed & Sign in an experimental build.
+
+The adapter uses the documented [custom-input API](https://smartspectra.presagetech.com/docs/swift/api-reference/): app-owned front-camera preview buffers feed Presage after `start()` completes, while Pi side-view frames stay on their separate pose path. It requests only pulse and breathing, disables optional diagnostic telemetry and logs, serializes SDK teardown, invalidates publication at a 30-second deadline, and never retries automatically. This permits the two views without claiming valid vitals during workout motion. The caller must stop on dismissal, backgrounding, session/set change or departure from the stationary check. A pending SDK startup can delay teardown; physical cancellation timing is unverified.
+
+**Start must disclose and obtain explicit consent for automatic numeric sharing.** [Presage's Insights overview](https://smartspectra.presagetech.com/docs/llm-insights/) says buffered pulse/HRV/breathing series, request/session metadata and a prompt go to Presage's Analytics Gateway, then an LLM. It excludes raw images from that feature but does not name the downstream LLM provider or establish retention here. No automatic-insights opt-out appears in the inspected public Swift interface. `enableTelemetry = false` disables diagnostic summaries, not those insights. Link the [vendor privacy policy](https://api.physiology.presagetech.com/privacypolicy); do not describe all SDK processing as local-only. The controller refuses to construct/start the SDK without the explicit consent flag and a stationary-check context.
+
+## Historical proposal · 24 October 2026
+
+The following proposal predates the offline implementation above. Its camera-ownership and source-selection suggestions are superseded by the current custom-input/Watch-preference boundary; its planned device acceptance is still outstanding.
 
 ## Recommended role
 
@@ -26,7 +40,7 @@ The SDK's [LLM Insights documentation](https://github.com/Presage-Security/Smart
 
 The public [Swift configuration reference](https://github.com/Presage-Security/SmartSpectra/blob/v3.4.0/swift/docs/api-reference.md) reviewed exposes no verified switch to disable those automatic insights. Resolve this with a documented supported setting/version or account configuration before describing the measurement as local-only. If automatic metric transmission cannot be disabled, enabling it needs a separate explicit product decision, accurate user disclosure and approval of the actual data path. This proposal does not authorize biometric egress.
 
-Set `config.enableTelemetry = false` before any measurement. This disables the SDK's optional diagnostic summaries according to [its telemetry documentation](https://github.com/Presage-Security/SmartSpectra/blob/v3.4.0/docs/telemetry-and-privacy.md); it does **not** disable authentication, metering or LLM Insights. Do not request expressions, EDA, pressure waveforms or HRV. Do not retain frames, send measurements to Gemini/Tiger, or add HealthKit writes in this first integration. Review the actual SDK privacy manifest, signature and transitive dependencies before release; no SDK archive was downloaded or inspected here.
+Set `config.enableTelemetry = false` before any measurement. This disables the SDK's optional diagnostic summaries according to [its telemetry documentation](https://github.com/Presage-Security/SmartSpectra/blob/v3.4.0/docs/telemetry-and-privacy.md); it does **not** disable authentication, metering or LLM Insights. Do not request expressions, EDA, pressure waveforms or HRV. Do not retain frames, send measurements to Gemini/Tiger, or add HealthKit writes in this first integration. Review the actual SDK privacy manifest, signature and transitive dependencies before release; that proposal predated the archive inspection and release blocker documented above.
 
 ## Authentication and budget
 

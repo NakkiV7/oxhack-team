@@ -17,7 +17,7 @@ final class CoachingVoiceBridge {
         let cue = event.map {
             VoiceCue(id: $0.id, sessionID: $0.sessionID, generation: $0.generation,
                      text: $0.decision.text, kind: .coaching($0.decision.priority),
-                     issuedAt: $0.issuedAt, expiresAt: $0.expiresAt)
+                     issuedAt: $0.issuedAt, expiresAt: $0.expiresAt, reason: $0.decision.reason)
         }
         controller.update(context: context, event: cue, enabled: enabled, now: now)
     }

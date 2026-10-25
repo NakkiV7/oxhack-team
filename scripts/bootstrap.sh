@@ -1,6 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+case "${SPOTTR_EXPERIMENTAL_PRESAGE:-0}" in
+  0|1) ;;
+  *) printf 'SPOTTR_EXPERIMENTAL_PRESAGE must be 0 or 1.\n' >&2; exit 2 ;;
+esac
 
 fail() { printf 'Setup: %s\n' "$1" >&2; exit 1; }
 require_command() { command -v "$1" >/dev/null 2>&1 || fail "Missing $1. $2"; }
@@ -13,6 +17,9 @@ require_command ruby 'Install Ruby and the xcodeproj gem in your preferred envir
 require_command curl 'Install curl before fetching the pinned SDK.'
 require_command unzip 'Install unzip before fetching the pinned SDK.'
 require_command shasum 'Install shasum before verifying the pinned SDK.'
+if [[ "${SPOTTR_EXPERIMENTAL_PRESAGE:-0}" == 1 ]]; then
+  require_command codesign 'Select Xcode command-line tools before verifying the experimental Presage SDK.'
+fi
 
 xcodebuild -version || fail 'Xcode is not ready. Open Xcode to finish its setup and select its developer directory.'
 for sdk in iphoneos watchos; do
@@ -22,6 +29,7 @@ done
 ruby -e 'require "xcodeproj"' 2>/dev/null || fail 'Ruby cannot load xcodeproj. Install the xcodeproj gem yourself, then rerun bootstrap.'
 
 bash scripts/fetch-mediapipe.sh
+bash scripts/fetch-presage.sh
 ruby scripts/generate-project.rb
 if [[ ! -f .env && -f .env.example ]]; then
   cp .env.example .env

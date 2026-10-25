@@ -151,7 +151,9 @@ final class SecondaryCameraClient {
                 throw CancellationError()
             }
             let failure = (error as? SecondaryCameraError) ?? .invalidResponse
-            fail(failure)
+            if failure == .staleFrame {
+                expiryTask?.cancel(); expiryTask = nil; frame = nil
+            } else { fail(failure) }
             throw failure
         }
     }
@@ -173,6 +175,10 @@ final class SecondaryCameraClient {
               let frameID = http.value(forHTTPHeaderField: "X-Frame-ID"),
               let timestamp = http.value(forHTTPHeaderField: "X-Captured-At"),
               let age = http.value(forHTTPHeaderField: "X-Frame-Age-Ms") else { throw SecondaryCameraError.invalidResponse }
+        let identity = frameID.split(separator: ":", omittingEmptySubsequences: false)
+        guard identity.count == 2, identity[0] == captureID,
+              let sequence = Int64(identity[1]), sequence > 0,
+              sequence >= (lastSequence ?? 0) else { throw SecondaryCameraError.invalidResponse }
         let metadata = try SecondaryCameraFrameMetadata(frameID: frameID, capturedAt: timestamp,
             serverAgeMilliseconds: age, expectedCaptureID: captureID, receivedAt: now(),
             requestDuration: uptime() - began, afterSequence: lastSequence)
@@ -184,7 +190,7 @@ final class SecondaryCameraClient {
             do { try await Task.sleep(nanoseconds: UInt64(metadata.validFor * 1_000_000_000)) }
             catch { return }
             guard let self, self.generation == attempt, self.frame?.metadata.frameID == metadata.frameID else { return }
-            self.fail(.staleFrame)
+            self.frame = nil; self.expiryTask = nil
         }
         return snapshot
     }

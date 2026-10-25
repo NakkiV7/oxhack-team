@@ -183,10 +183,30 @@ struct CoachView: View {
 private struct CoachGoalContext: View {
     let profile: LocalProfile?
     let identifier: String
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     var body: some View {
         if let profile {
-            Text("\(profile.goals.map(\.title).sorted().joined(separator: " · ")) · \(profile.weeklyTarget) \(profile.weeklyTarget == 1 ? "day" : "days")/week")
-                .font(.caption.weight(.medium)).accessibilityIdentifier(identifier)
+            VStack(alignment: .leading, spacing: 10) {
+                LazyVGrid(columns: dynamicTypeSize.isAccessibilitySize
+                          ? [GridItem(.flexible(), alignment: .leading)]
+                          : [GridItem(.adaptive(minimum: 110), alignment: .leading)], alignment: .leading, spacing: 9) {
+                    ForEach(TrainingAttribute.allCases.filter { profile.goals.contains($0) }, id: \.self) { goal in
+                        HStack(spacing: 7) {
+                            Image(goal.rawValue).resizable().scaledToFit().frame(width: 24, height: 24)
+                                .accessibilityHidden(true)
+                            Text(goal.title).font(.caption.weight(.medium))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }.frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                Label("\(profile.weeklyTarget) \(profile.weeklyTarget == 1 ? "day" : "days")/week", systemImage: "calendar")
+                    .font(.caption.weight(.medium)).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }.accessibilityElement(children: .ignore)
+                .accessibilityLabel("Training goals")
+                .accessibilityValue("\(profile.goals.map(\.title).sorted().joined(separator: ", ")). Weekly target: \(profile.weeklyTarget) \(profile.weeklyTarget == 1 ? "day" : "days") per week.")
+                .accessibilityAddTraits(.isStaticText)
+                .accessibilityIdentifier(identifier)
         }
     }
 }

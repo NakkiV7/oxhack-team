@@ -3,6 +3,27 @@ import XCTest
 
 @MainActor
 final class VoiceFeedbackTests: XCTestCase {
+    func testAppOwnsAnExplicitLocalCoachChoiceAndPreservesInjectedPlayback() {
+        let store = TrainingStore()
+        XCTAssertEqual(store.remoteVoice?.preference, .local)
+        XCTAssertFalse(store.voiceFeedbackEnabled)
+        XCTAssertTrue(store.remoteVoice?.configuredVoices.isEmpty == true)
+
+        let remote = RemoteVoicePlayback(local: FakeVoicePlayback(), client: {
+            XCTFail("Creating a workout must not contact a voice provider")
+            throw RemoteVoiceError.configuration
+        })
+        let injected = TrainingStore(voicePlayback: remote)
+        XCTAssertTrue(injected.remoteVoice === remote)
+        injected.start()
+        XCTAssertTrue(injected.remoteVoice === remote)
+        XCTAssertFalse(injected.voiceFeedbackEnabled)
+
+        let fake = FakeVoicePlayback()
+        XCTAssertNil(TrainingStore(voicePlayback: fake).remoteVoice,
+                     "An injected test playback must not be replaced by a second voice engine")
+    }
+
     func testVoiceDefaultsOffAndEnablingDoesNotReplayExistingCue() {
         let playback = FakeVoicePlayback()
         let store = TrainingStore(voicePlayback: playback)
