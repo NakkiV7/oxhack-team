@@ -56,4 +56,64 @@ final class CoachWeekPlanTests: XCTestCase {
         var invalid = declined; invalid["days"] = []
         XCTAssertThrowsError(try parse(invalid))
     }
+
+    func testSavedRestEvidenceExcludesMovedWorkoutsAndDoesNotInventRestForUnselectedWorkouts() throws {
+        var value = fixture()
+        var days = value["days"] as! [[String: Any]]
+        days[2]["kind"] = "workout"; days[2]["workout"] = days[0]["workout"]
+        value["days"] = days
+        let saved = try CoachSavedWeek(proposal: parse(value), selectedDates: ["2026-10-25"], movedDates: ["2026-10-25": "2026-10-29"], context: context, request: request, guidance: guidance)
+        XCTAssertEqual(saved.restDates, ["2026-10-26", "2026-10-28", "2026-10-30", "2026-10-31"])
+        XCTAssertEqual(try CoachSavedWeek.decode(JSONEncoder().encode(saved)).restDates, saved.restDates)
+        XCTAssertFalse(saved.restDates?.contains("2026-10-25") ?? true)
+        XCTAssertFalse(saved.restDates?.contains("2026-10-27") ?? true)
+    }
+
+    func testLegacySavedWeekHasNoExplicitRestEvidence() throws {
+        let saved = try CoachSavedWeek(proposal: parse(fixture()), selectedDates: ["2026-10-25"], movedDates: [:], context: context, request: request, guidance: guidance)
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(saved)) as? [String: Any])
+        json.removeValue(forKey: "restDates")
+        let legacy = try CoachSavedWeek.decode(JSONSerialization.data(withJSONObject: json))
+        XCTAssertNil(legacy.restDates)
+        XCTAssertTrue(legacy.plannedRestDays(calendar: londonCalendar, at: instant("2026-11-01T12:00:00Z")).isEmpty)
+        XCTAssertEqual(legacy.version, 1)
+    }
+
+    func testSavedRestDatesMustBeSortedUniqueInsideWeekAndOutsideWorkouts() throws {
+        let saved = try CoachSavedWeek(proposal: parse(fixture()), selectedDates: ["2026-10-25"], movedDates: [:], context: context, request: request, guidance: guidance)
+        let original = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(saved)) as? [String: Any])
+        for dates in [["2026-10-26", "2026-10-26"], ["2026-10-27", "2026-10-26"], ["2026-11-01"], ["2026-10-25"], ["2026-10-32"], ["2026-10-6"]] {
+            var json = original; json["restDates"] = dates
+            XCTAssertThrowsError(try CoachSavedWeek.decode(JSONSerialization.data(withJSONObject: json)), "\(dates)")
+        }
+    }
+
+    func testRestProtectionOnlyIncludesElapsedDaysOnOrAfterLocalApprovalDay() throws {
+        let approvedAt = instant("2026-10-27T12:00:00Z")
+        let saved = try CoachSavedWeek(proposal: parse(fixture()), selectedDates: ["2026-10-25"], movedDates: [:], context: context, request: request, guidance: guidance, approvedAt: approvedAt)
+        XCTAssertEqual(saved.plannedRestDays(calendar: londonCalendar, at: instant("2026-10-30T12:00:00Z")),
+                       [27, 28, 29].map { instant("2026-10-\($0)T00:00:00Z") })
+        XCTAssertTrue(saved.plannedRestDays(calendar: londonCalendar, at: approvedAt.addingTimeInterval(-1)).isEmpty)
+        var otherZone = londonCalendar; otherZone.timeZone = TimeZone(secondsFromGMT: 0)!
+        XCTAssertTrue(saved.plannedRestDays(calendar: otherZone, at: instant("2026-10-30T12:00:00Z")).isEmpty)
+    }
+
+    func testRestDateUsesExactPinnedCalendarMidnightAcrossAutumnClockChange() throws {
+        var value = fixture()
+        var days = value["days"] as! [[String: Any]]
+        days[2]["kind"] = "workout"; days[2]["workout"] = days[0]["workout"]
+        days[0]["kind"] = "rest"; days[0]["workout"] = NSNull()
+        value["days"] = days
+        let saved = try CoachSavedWeek(proposal: parse(value), selectedDates: ["2026-10-27"], movedDates: [:], context: context, request: request, guidance: guidance, approvedAt: instant("2026-10-24T12:00:00Z"))
+        let result = saved.plannedRestDays(calendar: londonCalendar, at: instant("2026-10-26T12:00:00Z"))
+        XCTAssertEqual(result, [instant("2026-10-24T23:00:00Z")])
+        XCTAssertEqual(londonCalendar.dateInterval(of: .day, for: try XCTUnwrap(result.first))?.duration, 25 * 3_600)
+    }
+
+    private var londonCalendar: Calendar {
+        var value = Calendar(identifier: .gregorian)
+        value.timeZone = TimeZone(identifier: "Europe/London")!
+        return value
+    }
+    private func instant(_ value: String) -> Date { ISO8601DateFormatter().date(from: value)! }
 }
