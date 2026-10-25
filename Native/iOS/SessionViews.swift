@@ -114,7 +114,7 @@ struct LiveSetView: View {
                 if case .failed(let message) = store.visionState {
                     Text(message).font(.caption).foregroundStyle(Palette.red)
                         .accessibilityIdentifier("camera-tracking-error")
-                } else if !store.hasInput {
+                } else if !store.hasInput && store.source != .manual {
                     Text(store.visionState.message).font(.caption).foregroundStyle(.secondary)
                 }
                 if store.source == .manual {
