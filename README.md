@@ -151,6 +151,14 @@ npm run train:tiger   # train from Tiger instead of the CSV
 
 See the [architecture](docs/ARCHITECTURE.md), [accounts and keys](docs/SETUP.md), and [integration evidence](docs/integration-readiness.md) for how the pieces fit together.
 
+## Tiger Data: implemented scope and live blocker
+
+The gateway implements owner-scoped, immutable workout snapshots, deduplicated observed sensor samples and bounded 5-/60-second scalar rollups in `spottr_gateway`. Offline checks exercise ingest, replay/conflict handling, readback, half-open windows and rollup SQL. Tiger's authenticated console separately accepted the migration and verified two **empty** tables, the scalar hypertable and indexes. These are the successfully implemented and verified parts; they do not establish live gateway uploads.
+
+Live acceptance is blocked by certificate trust/access. The original service's last strict Node connection failed with `SELF_SIGNED_CERT_IN_CHAIN` before SQL. After unlocking the Mac, we inspected its Security and Connect panels; neither exposed a supported CA download, fingerprint or certificate-repair control. The documented teammate-project URL redirected this account to the original project, leaving that service's authorized credentials unavailable. No insecure TLS fallback was used.
+
+For the demo, run the offline checks and show the schema and retained console evidence. Local workouts and reports remain available without Tiger. Live gateway ingestion, synthetic replay/readback and provider rollups remain **unverified**; no real health data was uploaded in this acceptance attempt. A provider-authenticated trust fix or authorized teammate URI is needed before the strict catalogue check and gated synthetic smoke. The standalone push-up prototype uses a separate schema and has separate acceptance evidence. See the [dated checkpoint and remaining steps](docs/evidence/tiger-access-checkpoint-2026-10-25.md).
+
 ## Pick up a feature
 
 - [Morning handoff](docs/morning-handoff.md): current implementation, local startup and physical acceptance checklist.
