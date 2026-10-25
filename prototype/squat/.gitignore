@@ -1,0 +1,5 @@
+node_modules/
+models/*.task
+.env
+.DS_Store
+.control-token

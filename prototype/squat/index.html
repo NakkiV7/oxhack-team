@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Squat Coach</title>
+<style>
+  :root { --bg:#0f1115; --card:#181b22; --fg:#e8eaed; --mut:#8b93a1; --ok:#3ddc84; --warn:#ffb74d; --bad:#ff6b6b; --acc:#6ea8fe; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f5f6f8; --card:#fff; --fg:#1a1d23; --mut:#667085; --acc:#1d6fe0; } }
+  * { box-sizing:border-box; }
+  html, body { height:100%; }
+  body { margin:0; padding:12px; background:var(--bg); color:var(--fg); font:14px/1.4 system-ui,sans-serif; overflow:hidden; }
+  /* One screen, no page scroll: video column on the left, panels on the right; long lists scroll inside their card. */
+  .wrap { height:100%; max-width:1400px; margin:0 auto; display:grid; gap:12px; grid-template-columns:minmax(0,1.7fr) minmax(300px,1fr); }
+  @media (max-width:800px) { body { overflow:auto; } .wrap { height:auto; grid-template-columns:1fr; } .stage { min-height:50vh; } .side { min-height:70vh; } }
+  .main, .side { display:flex; flex-direction:column; gap:10px; min-height:0; min-width:0; }
+  .card { background:var(--card); border-radius:12px; padding:12px; min-height:0; }
+  h1 { font-size:17px; margin:0; } h2 { font-size:11px; margin:0 0 6px; color:var(--mut); text-transform:uppercase; letter-spacing:.06em; }
+  .head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .stage { position:relative; background:#000; border-radius:12px; overflow:hidden; flex:1; min-height:0; }
+  video, canvas { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  button, select, .btn { font:inherit; padding:7px 12px; border-radius:8px; border:1px solid var(--mut); background:var(--card); color:var(--fg); cursor:pointer; }
+  button:disabled { opacity:.4; cursor:default; }
+  button.primary { background:var(--acc); border-color:var(--acc); color:#06142e; font-weight:600; }
+  #file { display:none; }
+  .top { display:flex; align-items:center; gap:14px; }
+  .stats { min-width:0; flex:1; }
+  .count { font-size:56px; font-weight:700; line-height:1; } .sub { color:var(--mut); }
+  .feedback { font-size:15px; font-weight:600; min-height:2.8em; margin-top:8px; overflow-wrap:anywhere; } .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+  .bar { height:6px; background:var(--bg); border-radius:4px; overflow:hidden; margin:3px 0 2px; } .bar > i { display:block; height:100%; background:var(--acc); width:0; transition:width .1s; }
+  .bar > i.g0 { background:var(--ok); } .bar > i.g1 { background:var(--warn); } .bar > i.g2 { background:var(--bad); }
+  .gauges { display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:12px; }
+  ul { list-style:none; margin:0; padding:0; overflow:auto; flex:1; min-height:0; } li { padding:4px 0; border-bottom:1px solid var(--bg); font-size:13px; }
+  .tip { font-size:12px; color:var(--mut); }
+  .panel { position:absolute; inset:0; z-index:2; display:flex; align-items:center; justify-content:center; padding:16px; overflow:auto; background:rgba(15,17,21,.86); color:#e8eaed; backdrop-filter:blur(4px); }
+  .panel[hidden] { display:none; }
+  .panel .box { width:100%; max-width:440px; text-align:center; }
+  .panel h3 { margin:0 0 12px; font-size:20px; }
+  .tiles { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+  .tile { background:rgba(255,255,255,.08); border-radius:10px; padding:8px 4px; min-width:0; }
+  .tile b { display:block; font-size:22px; line-height:1.2; } .tile span { font-size:11px; color:#aab1bd; text-transform:uppercase; letter-spacing:.05em; }
+  .panel .note { font-size:13px; color:#c4c9d2; margin-bottom:12px; overflow-wrap:anywhere; }
+  .panel .row { justify-content:center; margin-top:0; }
+  li .slow { color:color-mix(in srgb, var(--warn) 75%, var(--fg)); } li .fast { color:color-mix(in srgb, var(--ok) 75%, var(--fg)); }
+  a, a:visited { color:var(--acc); } a:hover { text-decoration:underline; }
+  .split { flex:1; display:flex; flex-direction:column; gap:10px; min-height:0; }
+  .split > .card { flex:1; display:flex; flex-direction:column; }
+  .split > .coach { flex:1.6; }
+  dialog#refs { width:min(820px, calc(100vw - 32px)); max-height:calc(100vh - 48px); padding:0; border:1px solid var(--mut); border-radius:12px; background:var(--card); color:var(--fg); }
+  dialog#refs::backdrop { background:rgba(0,0,0,.55); }
+  .refs-head { position:sticky; top:0; display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:var(--card); border-bottom:1px solid var(--bg); }
+  .refs-body { padding:4px 16px 16px; overflow:auto; max-height:calc(100vh - 110px); }
+  .refs-body h3 { font-size:15px; margin:18px 0 6px; }
+  .refs-body p, .refs-body li { font-size:13px; line-height:1.5; }
+  .refs-body ul { list-style:disc; padding-left:18px; overflow:visible; } .refs-body ol { padding-left:22px; }
+  .refs-body li { border:0; padding:2px 0; }
+  .tbl { width:100%; overflow-x:auto; } .tbl table { border-collapse:collapse; width:100%; font-size:12px; }
+  .tbl th, .tbl td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--bg); vertical-align:top; }
+  .tbl th { color:var(--mut); font-weight:600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="main">
+    <div class="head">
+      <h1>Squat Coach</h1>
+      <span class="tip" id="codeTip" title="Enter this code in a phone client to pause / stop from the phone"></span>
+      <span class="tip">Camera <b>side-on</b> or facing you, 2–3 m away, feet in frame. Runs on your Mac.</span>
+    </div>
+    <div class="stage">
+      <video id="video" playsinline muted></video>
+      <canvas id="overlay"></canvas>
+      <div class="panel" id="panel" hidden></div>
+    </div>
+    <div class="row">
+      <select id="variation"></select>
+      <button class="primary" id="startCam">Start camera</button>
+      <label class="btn" for="file">Upload video</label><input type="file" id="file" accept="video/*">
+      <button id="pause" disabled>Pause</button>
+      <button id="stop">Stop</button>
+      <button id="reset">Reset reps</button>
+      <button id="refsBtn" title="How reps are judged, squat types and sources">References</button>
+    </div>
+    <div class="tip" id="status">Loading pose model…</div>
+  </div>
+  <div class="side">
+    <div class="card">
+      <div class="top">
+        <div class="count" id="count">0</div>
+        <div class="stats">
+          <div class="sub"><span id="good">0</span> good form</div>
+          <div class="sub" id="clock" title="Workout time (stops while paused)">⏱ 00:00</div>
+          <div class="sub" id="pace">– s/rep</div>
+        </div>
+      </div>
+      <div class="feedback" id="feedback"></div>
+      <div class="gauges" style="margin-top:10px">
+        <div><h2>Hip travel</h2><div class="bar"><i id="travelBar"></i></div><div class="sub" id="travelTxt">–</div></div>
+        <div><h2>Depth</h2><div class="bar"><i id="depthBar"></i></div><div class="sub" id="depthTxt">–</div></div>
+        <div><h2 id="metric3Label">Lean</h2><div class="bar"><i id="metric3Bar"></i></div><div class="sub" id="metric3Txt">–</div></div>
+        <div><h2 id="metric4Label">Balance</h2><div class="bar"><i id="metric4Bar"></i></div><div class="sub" id="metric4Txt">–</div></div>
+      </div>
+    </div>
+    <div class="split">
+      <div class="card">
+        <h2>History</h2>
+        <ul id="history"></ul>
+      </div>
+      <div class="card coach">
+        <h2>AI coach</h2>
+        <ul id="coachLog"><li class="sub" id="coachEmpty">Gemini chimes in every few reps or when your form slips. Ask a short question below (answers come from WHO, CDC, NHS, NIH).</li></ul>
+        <form id="askForm" class="row" autocomplete="off" style="margin-top:8px">
+          <input id="askQ" maxlength="256" placeholder="Ask a short question…" style="flex:1;min-width:120px;font:inherit;padding:7px;border-radius:8px;border:1px solid var(--mut);background:var(--bg);color:var(--fg)">
+          <button class="primary" id="askBtn">Ask</button>
+          <span class="sub" id="askCount">0/256</span>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<dialog id="refs" aria-labelledby="refsTitle">
+  <div class="refs-head"><h1 id="refsTitle">How it works and references</h1><button id="refsClose" aria-label="Close">Close</button></div>
+  <div class="refs-body">
+    <h3>How a rep is judged</h3>
+    <ul>
+      <li><b>Pose:</b> MediaPipe Pose Landmarker finds 33 body points per frame <a href="#ref-1">[1]</a>. The app uses the leg the camera sees best and works from the side, the front or in between: the view is detected from shoulder width against torso height.</li>
+      <li><b>Hip travel</b> counts reps: how far the hip drops, as a fraction of standing leg length (hip height above the ankle, so a panning camera does not fake a rep). A rep starts past 15% and ends back under 8%. The 2D knee angle only confirms that the legs actually bend, so stepping toward the camera is not a rep, and every visible leg must bend, so a leg lift is not one either.</li>
+      <li><b>Depth</b> is where the hip crease sits against the knee at the bottom, in thigh lengths: 0 is level with the knee (parallel), negative is above. Attempts that never travel 22% of leg length are listed but not counted.</li>
+      <li><b>Lean</b> (side view) is the torso angle from vertical on the worst frame. <b>Knees</b> (front view) is knee width over ankle width, so knees caving in show as a low ratio. <b>Balance</b> (front view) is the hip line's tilt minus the shoulder line's tilt, which cancels the tilt perspective adds and leaves real weight shift.</li>
+      <li><b>Not a squat:</b> bending over without sitting down (lean over 80°, or over 60° with shallow depth), a hallucinated hip below the frame, a rep that lasts under half a second or over 15 s, or travel over 90% of leg length, which only a camera cut produces.</li>
+      <li><b>Image shape:</b> MediaPipe gives x and y as fractions of width and height, so x is scaled by the video's width/height before measuring angles.</li>
+    </ul>
+
+    <h3>Squat types</h3>
+    <p>Both use the same counting logic; they differ only in how depth is judged.</p>
+    <div class="tbl"><table id="varTable"></table></div>
+
+    <h3>What the standards say</h3>
+    <ul>
+      <li><b>Depth:</b> competition and test rules define a full squat by the hip crease passing below the top of the knee, which is the 0 line of the depth gauge <a href="#ref-2">[2]</a>. A parallel squat (thigh horizontal) is the usual training target <a href="#ref-3">[3]</a>.</li>
+      <li><b>Knees:</b> knees tracking over the toes, not collapsing inward (valgus), is the most common form cue in screening tests <a href="#ref-4">[4]</a>.</li>
+      <li><b>Lean:</b> a forward trunk lean is normal in a squat; excessive lean with a rounded back shifts load to the spine. No standard gives a number in degrees, so the 40°/55° limits are this app's starting points.</li>
+    </ul>
+
+    <h3>Calibration notes</h3>
+    <ul>
+      <li>The counting rules were tuned on 16 Creative Commons clips (front, side, three-quarter and low angles, bodyweight, goblet, racked and overhead squats) and one webcam session with three testers. Every clean set counts exactly; the only misses are on footage that cuts away mid-rep.</li>
+      <li>This page runs the same rules as the Python reference in <code>squat/</code>; on identical landmark input the two agree on every clip (17 of 17).</li>
+      <li>Depth and knee tracking need the knees and feet actually in frame. From a desk-height laptop camera the app still counts, but those two gauges switch off rather than guess.</li>
+    </ul>
+
+    <h3>Limits</h3>
+    <ul>
+      <li>2D only: back rounding and bar path are not checked.</li>
+      <li>Loose clothing, poor light or a very close camera reduce landmark accuracy, especially at the feet.</li>
+      <li>Not medical advice or a certified coaching tool.</li>
+    </ul>
+
+    <h3>References</h3>
+    <ol>
+      <li id="ref-1">Google AI Edge. MediaPipe Pose Landmarker. <a href="https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker" target="_blank" rel="noopener">ai.google.dev</a></li>
+      <li id="ref-2">International Powerlifting Federation. Technical Rules Book: squat depth (hip joint below the top of the knee). <a href="https://www.powerlifting.sport/rules/codes/info/technical-rules" target="_blank" rel="noopener">powerlifting.sport</a></li>
+      <li id="ref-3">Schoenfeld BJ. Squatting kinematics and kinetics and their application to exercise performance. J Strength Cond Res. 2010;24(12):3497-3506. <a href="https://pubmed.ncbi.nlm.nih.gov/21088548/" target="_blank" rel="noopener">PubMed 21088548</a></li>
+      <li id="ref-4">Cook G, Burton L, Hoogenboom B. Pre-participation screening: the use of fundamental movements as an assessment of function, part 1. N Am J Sports Phys Ther. 2006;1(2):62-72. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC2953313/" target="_blank" rel="noopener">PMC2953313</a></li>
+    </ol>
+  </div>
+</dialog>
+<script type="module">
+import { PoseLandmarker, FilesetResolver } from '/vendor/vision_bundle.mjs';
+import { VARIATIONS, JOINTS, METRICS, RepCounter, GREEN, AMBER, RED } from '/squat.mjs';
+
+const $ = (id) => document.getElementById(id);
+const video = $('video'), canvas = $('overlay'), ctx = canvas.getContext('2d');
+const sel = $('variation');
+for (const [k, v] of Object.entries(VARIATIONS)) sel.add(new Option(v.label, k));
+const DEFAULT_VARIATION = 'standard';
+sel.value = DEFAULT_VARIATION;
+const counter = new RepCounter(DEFAULT_VARIATION);
+sel.onchange = () => { counter.setVariation(sel.value); newWorkout(); render(null); };
+$('reset').onclick = () => { newWorkout(); render(null); };
+
+// references dialog: the variation table is built from VARIATIONS so it always shows the live thresholds
+function fillVarTable() {
+  const head = '<tr><th>Type</th><th>Good depth (hip vs knee, thigh lengths)</th><th>Amber down to</th><th>Counts when hip travel reaches</th></tr>';
+  const rows = Object.entries(VARIATIONS).map(([, v]) => `<tr><td><b>${v.label}</b></td><td>${v.depthGood} or deeper</td><td>${v.depthWarn}</td><td>22% of leg length</td></tr>`).join('');
+  $('varTable').innerHTML = head + rows;
+}
+$('refsBtn').onclick = () => { fillVarTable(); $('refs').showModal(); };
+$('refsClose').onclick = () => $('refs').close();
+$('refs').addEventListener('click', (e) => { if (e.target === $('refs')) $('refs').close(); });
+
+let lm0Logged = false;
+let landmarker, running = false, stream = null, lastTs = -1;
+
+async function init() {
+  const files = await FilesetResolver.forVisionTasks('/vendor/wasm');
+  const make = (delegate) => PoseLandmarker.createFromOptions(files, {
+    baseOptions: { modelAssetPath: '/models/pose_landmarker_full.task', delegate },
+    runningMode: 'VIDEO', numPoses: 1,
+  });
+  try { landmarker = await make('GPU'); } catch { landmarker = await make('CPU'); }
+  $('status').textContent = 'Model ready. Pick a squat type and start the camera (or upload a video).';
+}
+init().catch((e) => { console.error('[model] load failed', e); $('status').textContent = 'Model failed to load: ' + e.message; });
+
+// Workout clock: counts only while the workout is running (pause and stop freeze it).
+let clockAcc = 0, clockSince = null, workoutEnded = false;
+const clockMs = () => clockAcc + (clockSince != null ? performance.now() - clockSince : 0);
+const clockStart = () => { if (clockSince == null) clockSince = performance.now(); };
+const clockPause = () => { if (clockSince != null) { clockAcc += performance.now() - clockSince; clockSince = null; } };
+const clockReset = () => { clockAcc = 0; clockSince = running ? performance.now() : null; showClock(); };
+const fmtTime = (ms) => { const s = Math.round(ms / 1000), h = Math.floor(s / 3600); return `${h ? h + ':' : ''}${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
+const showClock = () => { $('clock').textContent = '⏱ ' + fmtTime(clockMs()); };
+setInterval(showClock, 250);
+
+const panel = $('panel');
+const hidePanel = () => { const was = !panel.hidden && workoutEnded; panel.hidden = true; panel.innerHTML = ''; if (was) publish(null, true); };
+function newWorkout() {
+  hidePanel(); workoutEnded = false; counter.reset(); $('history').innerHTML = ''; clockReset();
+}
+
+function askEnd() {
+  panel.innerHTML = '<div class="box"><h3>End this workout?</h3><div class="note">Your reps and time so far will be summarised.</div><div class="row"><button id="keepGoing">Keep going</button><button class="primary" id="endNow">End workout</button></div></div>';
+  panel.hidden = false;
+  $('keepGoing').onclick = hidePanel;
+  $('endNow').onclick = endWorkout;
+  $('keepGoing').focus();
+}
+
+// Numbers for the workout summary. Shown on this page and sent to a phone (see publish()).
+function summaryStats() {
+  const done = counter.reps.filter((r) => r.counted);
+  const secs = done.filter((r) => r.secs != null).map((r) => r.secs);
+  const issues = {};
+  for (const r of done) for (const f of r.faults) issues[f] = (issues[f] ?? 0) + 1;
+  const top = Object.entries(issues).sort((a, b) => b[1] - a[1])[0];
+  return {
+    timeMs: Math.round(clockMs()), reps: done.length, good: done.filter((r) => r.good).length,
+    avg: secs.length ? secs.reduce((x, y) => x + y, 0) / secs.length : null,
+    fastest: secs.length ? Math.min(...secs) : null, slowest: secs.length ? Math.max(...secs) : null,
+    notCounted: counter.reps.length - done.length, label: VARIATIONS[counter.variation].label,
+    topIssue: top?.[0] ?? null, topIssueCount: top?.[1] ?? 0,
+  };
+}
+
+let inputGeneration = 0, cameraStarting = false;
+
+function endWorkout() {
+  clockPause(); stopAll(); showClock(); workoutEnded = true;
+  const st = summaryStats();
+  const tile = (v, l) => `<div class="tile"><b>${v}</b><span>${l}</span></div>`;
+  const s1 = (v) => v == null ? '–' : v.toFixed(1) + ' s';
+  panel.innerHTML = `<div class="box"><h3>Workout summary</h3>
+    <div class="tiles">
+      ${tile(fmtTime(st.timeMs), 'Total time')}${tile(st.reps, 'Reps')}${tile(st.good, 'Good form')}
+      ${tile(s1(st.avg), 'Avg / rep')}${tile(s1(st.fastest), 'Fastest')}${tile(s1(st.slowest), 'Slowest')}
+    </div>
+    <div class="note">${st.label}${st.notCounted ? ` · ${st.notCounted} not counted` : ''}${st.topIssue ? `<br>Most common issue: ${st.topIssue} (×${st.topIssueCount})` : st.reps ? '<br>Clean form all the way. Nice.' : ''}</div>
+    <div class="row"><button class="primary" id="closeSummary">Start again</button></div></div>`;
+  panel.hidden = false;
+  $('closeSummary').onclick = hidePanel;
+  $('status').textContent = 'Workout finished. Start the camera or upload a video to begin a new one.';
+}
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hidePanel(); });
+
+async function begin(generation = inputGeneration) {
+  if (generation !== inputGeneration) return false;
+  video.muted = true;
+  await video.play();
+  if (generation !== inputGeneration) return false;
+  running = true; lastTs = -1; lm0Logged = false;
+  clockStart();
+  if (video.src) setPause(true); // uploaded video only; covers the click-to-start path too
+  requestAnimationFrame(loop);
+  return true;
+}
+
+$('startCam').onclick = async () => {
+  stopAll();
+  const generation = inputGeneration;
+  try {
+    cameraStarting = true;
+    newWorkout();
+    const opened = await navigator.mediaDevices.getUserMedia({ video: { width: 960, height: 720 } });
+    if (generation !== inputGeneration) { opened.getTracks().forEach(track => track.stop()); return; }
+    stream = opened;
+    video.srcObject = stream; video.loop = false;
+    const began = await begin(generation);
+    if (generation !== inputGeneration) return;
+    cameraStarting = false;
+    if (began) $('status').textContent = 'Running. Stand tall with your feet in frame.';
+  } catch (e) {
+    if (generation !== inputGeneration) return;
+    stopAll(); $('status').textContent = 'Camera error: ' + e.message + ' (grant camera access to your browser).';
+  }
+};
+$('file').onchange = async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  console.log('[video] picked', { name: f.name, type: f.type, size: f.size, landmarkerReady: !!landmarker, canPlay: video.canPlayType(f.type) || '(no)' });
+  stopAll(); newWorkout();
+  const generation = inputGeneration;
+  if (!landmarker) { console.warn('[video] model not loaded yet'); $('status').textContent = 'Model is still loading, pick the video again in a moment.'; return; }
+  $('status').textContent = 'Loading video…';
+  video.onerror = () => { if (generation !== inputGeneration) return; console.error('[video] element error', video.error); running = false; clockPause(); $('status').textContent = 'Cannot play this video (codec not supported by the browser). Try an .mp4 (H.264).'; };
+  video.onended = null; // looping, so it never ends
+  video.onloadedmetadata = () => console.log('[video] metadata', { w: video.videoWidth, h: video.videoHeight, duration: video.duration });
+  video.src = URL.createObjectURL(f); video.loop = true; // replays until the user pauses or stops
+  try {
+    if (!await begin(generation)) return;
+    $('status').textContent = 'Analysing video (looping). Press Pause to stop.'; setPause(true);
+  } catch (err) {
+    if (generation !== inputGeneration) return;
+    console.error('[video] play failed', err);
+    if (err.name === 'NotAllowedError') {
+      running = false;
+      $('status').textContent = 'Browser blocked autoplay. Click the video to start.';
+      canvas.addEventListener('click', async () => {
+        if (generation !== inputGeneration) return;
+        try { if (await begin(generation)) $('status').textContent = 'Analysing video…'; }
+        catch (e2) { if (generation === inputGeneration) $('status').textContent = 'Video error: ' + e2.message; }
+      }, { once: true });
+    } else $('status').textContent = 'Video error: ' + err.message + ' (try an .mp4 H.264 file).';
+  }
+  e.target.value = '';
+};
+// Pause/Resume only applies to an uploaded video (the camera has nothing to pause).
+let paused = false;
+function setPause(enabled) { paused = false; $('pause').disabled = !enabled; $('pause').textContent = 'Pause'; }
+$('pause').onclick = async () => {
+  const generation = inputGeneration;
+  if (!video.src) return;
+  if (!paused) {
+    paused = true; running = false; video.pause(); clockPause();
+    setTimeout(() => publish(null, true), 0);
+    $('pause').textContent = 'Resume'; $('status').textContent = 'Paused.';
+  } else {
+    paused = false; $('pause').textContent = 'Pause';
+    try { if (await begin(generation)) $('status').textContent = 'Analysing video (looping). Press Pause to stop.'; }
+    catch (err) { if (generation === inputGeneration) $('status').textContent = 'Video error: ' + err.message; }
+  }
+};
+$('stop').onclick = () => {
+  if (cameraStarting) { stopAll(); $('status').textContent = 'Camera start cancelled.'; return; }
+  if (!(running || paused)) { $('status').textContent = 'Nothing is running.'; return; }
+  askEnd();
+};
+function stopAll() {
+  inputGeneration++; cameraStarting = false;
+  running = false; setPause(false); clockPause();
+  setTimeout(() => publish(null, true), 0);
+  stream?.getTracks().forEach((t) => t.stop()); stream = null;
+  video.pause(); video.removeAttribute('src'); video.srcObject = null;
+}
+
+const clock = () => (video.src ? video.currentTime : performance.now() / 1000);
+function loop() {
+  if (!running) return;
+  if (landmarker && video.readyState >= 2 && video.currentTime !== lastTs) {
+    lastTs = video.currentTime;
+    let res;
+    try { res = landmarker.detectForVideo(video, performance.now()); } catch (err) { console.error('[video] detectForVideo failed', err); running = false; $('status').textContent = 'Pose detection error: ' + err.message; return; }
+    if (!lm0Logged) { lm0Logged = true; console.log('[video] first detection', res.landmarks?.length ? 'pose found' : 'no pose'); }
+    const lm = res.landmarks?.[0];
+    if (lm) {
+      const rep = counter.update(lm, clock(), video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 1);
+      if (rep) { rep.pace = timeClass(rep) || null; addHistory(rep); }
+      render(lm);
+      publish(lm, !!rep);
+    } else { render(null); publish(null, false); }
+    publishFrame();
+  }
+  requestAnimationFrame(loop);
+}
+
+// Send the live state to the server, which fans it out to phone clients (~10 Hz, immediately on a finished rep).
+let lastPub = 0;
+function publish(lm, force = false) {
+  const now = performance.now();
+  if (!force && now - lastPub < 100) return;
+  lastPub = now;
+  const cfg = VARIATIONS[counter.variation];
+  const pt = (i) => (lm?.[i] ? [lm[i].x, lm[i].y] : null);
+  const fb = $('feedback');
+  const state = {
+    running, variation: counter.variation, label: cfg.label, view: counter.view,
+    count: counter.count, good: counter.goodCount, total: counter.reps.length,
+    feedback: fb.textContent, tone: fb.className.split(' ')[1] ?? 'ok', phase: counter.state,
+    travel: counter.drop, depth: counter.live.depth, lean: counter.live.lean, knees: counter.live.knees, balance: counter.live.balance,
+    depthGood: cfg.depthGood, depthWarn: cfg.depthWarn, grades: counter.grades, segments: counter.segments,
+    aspect: video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 4 / 3,
+    pose: lm ? Object.fromEntries(Object.entries(JOINTS).map(([j, [l, r]]) => [j, [pt(l), pt(r)]])) : null,
+    reps: counter.reps.slice(-30),
+    paused, canPause: !!video.src && (running || paused), active: running || paused,
+    clockMs: Math.round(clockMs()), avgSecs: paceStats().avg, pace: paceStats().trend,
+    summary: workoutEnded && !panel.hidden ? summaryStats() : null,
+  };
+  fetch('/state', { method: 'POST', body: JSON.stringify(state) }).catch(() => {});
+}
+
+// Send a small JPEG of the camera/video to phone clients (~8 fps, 480 px wide). Skipped while the previous frame is still uploading.
+const frameCanvas = document.createElement('canvas');
+let lastFrame = 0, frameBusy = false;
+function publishFrame() {
+  const now = performance.now();
+  if (frameBusy || now - lastFrame < 125 || !video.videoWidth) return;
+  lastFrame = now; frameBusy = true;
+  frameCanvas.width = 480; frameCanvas.height = Math.round(480 * video.videoHeight / video.videoWidth);
+  frameCanvas.getContext('2d').drawImage(video, 0, 0, frameCanvas.width, frameCanvas.height);
+  const b64 = frameCanvas.toDataURL('image/jpeg', 0.5).split(',')[1];
+  fetch('/frame', { method: 'POST', body: b64 }).catch(() => {}).finally(() => { frameBusy = false; });
+}
+
+// AI coach panel: reads the coach messages the server already generated (no extra Gemini calls) and sends questions to /ask.
+const coachSeen = new Set();
+function fillItem(li, cls, text, sources = []) {
+  li.className = cls;
+  li.replaceChildren(document.createTextNode(text));
+  if (sources.length) {
+    li.append(document.createElement('br'));
+    for (const s of sources) {
+      const a = document.createElement('a');
+      a.href = s.url; a.target = '_blank'; a.rel = 'noopener'; a.title = s.title; a.textContent = `[${s.id}] ${new URL(s.url).hostname.replace('www.', '')}`;
+      a.style.marginRight = '8px';
+      li.append(a);
+    }
+  }
+}
+function coachItem(cls, text, sources = [], t = Date.now()) {
+  $('coachEmpty')?.remove();
+  const li = document.createElement('li');
+  li.dataset.t = t;
+  fillItem(li, cls, text, sources);
+  const log = $('coachLog');
+  log.insertBefore(li, [...log.children].find((c) => Number(c.dataset.t) > t) ?? null);
+  log.scrollTop = log.scrollHeight;
+  return li;
+}
+const qaItems = new Map();
+function showQA(q) {
+  let it = qaItems.get(q.id);
+  if (!it) {
+    it = { q: coachItem('', `🙋 ${q.question}`, [], q.time), a: coachItem('sub', 'Checking official sources…', [], q.time + 0.5) };
+    qaItems.set(q.id, it);
+  }
+  if (q.answer != null) { fillItem(it.a, q.failed ? 'bad' : '', q.answer, q.sources); $('coachLog').scrollTop = $('coachLog').scrollHeight; }
+}
+const coachEvents = new EventSource('/coach-events');
+coachEvents.addEventListener('coach', (e) => {
+  const m = JSON.parse(e.data);
+  if (coachSeen.has(m.time)) return;
+  coachSeen.add(m.time);
+  coachItem('', `✨ ${m.text}`);
+});
+coachEvents.addEventListener('control', (e) => {
+  const { cmd } = JSON.parse(e.data);
+  if (cmd === 'pause' && running && video.src) $('pause').click();
+  else if (cmd === 'resume' && paused) $('pause').click();
+  else if (cmd === 'stop' && (running || paused)) endWorkout();
+});
+fetch('/control-code').then((r) => r.text()).then((c) => { $('codeTip').innerHTML = `Phone code: <b>${c.replace(/[^0-9a-f]/g, '')}</b> ·`; }).catch(() => {});
+coachEvents.addEventListener('qa', (e) => showQA(JSON.parse(e.data)));
+coachEvents.addEventListener('status', (e) => {
+  if (!JSON.parse(e.data).on) { $('coachEmpty') && ($('coachEmpty').textContent = 'AI coach is off: add GEMINI_API_KEY to squat/.env and restart.'); $('askForm').style.display = 'none'; }
+});
+$('askQ').addEventListener('input', () => { $('askCount').textContent = `${$('askQ').value.length}/256`; });
+$('askForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const q = $('askQ').value.trim();
+  if (!q || $('askBtn').disabled) return;
+  $('askQ').value = ''; $('askCount').textContent = '0/256'; $('askBtn').disabled = true;
+  try {
+    const r = await fetch('/ask', { method: 'POST', body: JSON.stringify({ q }) });
+    const d = await r.json();
+    if (d.id == null) coachItem('bad', d.error ?? 'No answer.');
+  } catch { coachItem('bad', 'Could not reach the server.'); }
+  $('askBtn').disabled = false;
+});
+
+// Colour a rep's time against the average of the counted reps before it: slower = soft yellow, really fast = soft green.
+const SLOW = 1.15, FAST = 0.85;
+function timeClass(rep) {
+  if (!rep.counted || rep.secs == null) return '';
+  const before = counter.reps.slice(0, -1).filter((r) => r.counted && r.secs != null).map((r) => r.secs);
+  if (before.length < 2) return '';
+  const avg = before.reduce((x, y) => x + y, 0) / before.length;
+  return rep.secs > avg * SLOW ? 'slow' : rep.secs < avg * FAST ? 'fast' : '';
+}
+
+function addHistory(rep) {
+  const li = document.createElement('li');
+  const time = rep.secs != null ? `${rep.secs.toFixed(1)} s` : '';
+  if (rep.counted) {
+    const depth = rep.depth >= 0 ? `hip ${rep.depth.toFixed(2)} below knee` : `hip ${(-rep.depth).toFixed(2)} above knee`;
+    li.append(`${rep.good ? '✅' : '⚠️'} Rep ${rep.n}: ${depth}, travel ${Math.round(rep.travel * 100)}%`);
+    if (time) { const t = document.createElement('span'); t.textContent = `, ⏱ ${time}`; t.className = rep.pace ?? ''; li.append(t); }
+    if (rep.faults.length) li.append(' – ' + rep.faults.join(', '));
+  } else li.textContent = `✖ Not counted${time ? ' (' + time + ')' : ''} – ${rep.issue}`;
+  $('history').prepend(li);
+}
+
+// Average seconds per counted rep. Trend: last 3 reps vs the reps before them; >15% slower = slowing down (fatigue).
+function paceStats() {
+  const t = counter.reps.filter((r) => r.counted && r.secs != null).map((r) => r.secs);
+  if (!t.length) return { avg: null, trend: null };
+  const avg = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  if (t.length < 6) return { avg: avg(t), trend: null };
+  const recent = avg(t.slice(-3)), before = avg(t.slice(0, -3));
+  return { avg: avg(t), recent, before, trend: recent > before * 1.15 ? 'slowing' : recent < before * 0.85 ? 'faster' : 'steady' };
+}
+function renderPace() {
+  const p = paceStats(), el = $('pace');
+  if (p.avg == null) { el.textContent = '– s/rep'; el.className = 'sub'; return; }
+  el.textContent = `${p.avg.toFixed(1)} s/rep` + ({ slowing: ' ▲ slowing', faster: ' ▼ faster', steady: ' – steady' }[p.trend] ?? '');
+  el.className = p.trend === 'slowing' ? 'sub warn' : p.trend === 'faster' ? 'sub ok' : 'sub';
+  el.title = p.trend ? `Last 3 reps: ${p.recent.toFixed(1)} s, earlier: ${p.before.toFixed(1)} s` : '';
+}
+
+const COLOUR = ['#3ddc84', '#ffb74d', '#ff6b6b'];
+function gauge(bar, txt, value, lo, hi, grade, label) {
+  const el = $(bar), t = $(txt);
+  if (value == null) { el.style.width = '0%'; el.className = ''; t.textContent = '– (not judged from this view)'; return; }
+  el.style.width = Math.max(0, Math.min(100, ((value - lo) / (hi - lo)) * 100)) + '%';
+  el.className = grade == null ? '' : 'g' + grade;
+  t.textContent = label;
+}
+
+function render(lm) {
+  if (canvas.width !== video.videoWidth && video.videoWidth) { canvas.width = video.videoWidth; canvas.height = video.videoHeight; }
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  $('count').textContent = counter.count;
+  $('good').textContent = counter.goodCount;
+  renderPace();
+  const fb = $('feedback'), cfg = VARIATIONS[counter.variation], t = clock();
+  if (!lm) { fb.className = 'feedback warn'; fb.textContent = running ? 'Step back: show your whole body' : ''; return; }
+  const cue = counter.cueText(t);
+  if (counter.warn && counter.warn.startsWith('Step back:')) { fb.className = 'feedback warn'; fb.textContent = counter.warn; }
+  else if (cue) { fb.className = 'feedback ' + cue.tone; fb.textContent = cue.text; }
+  else if (counter.state === 'down') { fb.className = 'feedback ok'; fb.textContent = counter.live.depth != null && counter.live.depth >= cfg.depthGood ? 'Good depth, drive up!' : 'Sit back and down'; }
+  else if (counter.state === 'up') { fb.className = 'feedback ok'; fb.textContent = 'Drive up'; }
+  else { fb.className = 'feedback ' + (counter.warn ? 'warn' : 'ok'); fb.textContent = counter.warn || 'Stand tall, then sit back'; }
+
+  const side = counter.view === 'side';
+  gauge('travelBar', 'travelTxt', counter.drop, 0, 0.8, counter.drop >= 0.22 ? GREEN : null, `${Math.round(counter.drop * 100)}% of leg length (rep from 22%)`);
+  const d = counter.live.depth;
+  gauge('depthBar', 'depthTxt', d, -0.8, 0.4, d == null ? null : d >= cfg.depthGood ? GREEN : d >= cfg.depthWarn ? AMBER : RED,
+    d == null ? '' : `${d >= 0 ? 'hip below knee' : 'hip above knee'} by ${Math.abs(d).toFixed(2)} (good ≥ ${cfg.depthGood})`);
+  $('metric3Label').textContent = side ? 'Lean' : 'Knees';
+  $('metric4Label').textContent = side ? 'Tempo' : 'Balance';
+  if (side) {
+    const l = counter.live.lean;
+    gauge('metric3Bar', 'metric3Txt', l, 0, 90, l == null ? null : l <= METRICS.lean.good ? GREEN : l <= METRICS.lean.warn ? AMBER : RED, l == null ? '' : `${Math.round(l)}° from vertical (aim ≤ ${METRICS.lean.good}°)`);
+    const last = [...counter.reps].reverse().find((r) => r.counted);
+    gauge('metric4Bar', 'metric4Txt', last ? last.secs : null, 0, 5, last ? (last.faults.includes('slow ascent') ? AMBER : GREEN) : null, last ? `last rep ${last.tDown.toFixed(1)} s down, ${last.tUp.toFixed(1)} s up` : '');
+  } else {
+    const k = counter.live.knees;
+    gauge('metric3Bar', 'metric3Txt', k, 0.4, 1.2, k == null ? null : k >= METRICS.knees.good ? GREEN : k >= METRICS.knees.warn ? AMBER : RED, k == null ? '' : `knee width ${k.toFixed(2)} × ankle width (aim ≥ ${METRICS.knees.good})`);
+    const b = counter.live.balance;
+    gauge('metric4Bar', 'metric4Txt', b, 0, 25, b == null ? null : b <= METRICS.balance.good ? GREEN : b <= METRICS.balance.warn ? AMBER : RED, b == null ? '' : `${Math.round(b)}° hip vs shoulder tilt (aim ≤ ${METRICS.balance.good}°)`);
+  }
+
+  // Coloured skeleton: torso by lean (side) or balance (front), thighs and shins by depth, knee line by knee tracking (front).
+  const W = canvas.width, H = canvas.height, g = counter.segments;
+  const P = (i) => [lm[i].x * W, lm[i].y * H];
+  const seg = (a, b, grade, width = 5) => { ctx.strokeStyle = COLOUR[grade]; ctx.lineWidth = width; ctx.beginPath(); ctx.moveTo(...P(a)); ctx.lineTo(...P(b)); ctx.stroke(); };
+  const [sL, sR] = JOINTS.shoulder, [hL, hR] = JOINTS.hip, [kL, kR] = JOINTS.knee, [aL, aR] = JOINTS.ankle;
+  for (const [a, b] of [[sL, sR], [sL, hL], [sR, hR], [hL, hR]]) seg(a, b, g.torso);
+  seg(hL, kL, g.thigh); seg(hR, kR, g.thigh); seg(kL, aL, g.shin); seg(kR, aR, g.shin);
+  if (!side) seg(kL, kR, g.knees, 3);
+  for (const i of [sL, sR, hL, hR, kL, kR, aL, aR]) { ctx.fillStyle = (lm[i].visibility ?? 1) >= 0.5 ? '#fff' : '#ff6b6b'; ctx.beginPath(); ctx.arc(...P(i), 7, 0, 7); ctx.fill(); }
+}
+</script>
+</body>
+</html>

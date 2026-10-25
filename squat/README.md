@@ -1,4 +1,4 @@
-# Form tracker and guided demo: squats and push-ups
+# Squat tracker: reference implementation and evaluation harness
 
 MediaPipe pose → hip travel + joint geometry → green / amber / red skeleton, a side panel with
 reps, live metric bars, tempo, fault tally and per-rep log, and text cues from a single
@@ -23,20 +23,10 @@ warns and skips the knee metrics.
 per clip; use it after changing any threshold. `main.py --record raw.mp4` saves the raw camera
 feed so a failing session can be replayed with `--source raw.mp4`.
 
-**Guided demo** (what to show judges): title screen, the example set with the coach's voice, a
-countdown, your own set against a target, then a results screen. Session logs land in `sessions/`.
-One program, one UI, two exercises:
-
-```bash
-cd squat && ../.venv/bin/python app.py                      # squats;  --target 8, --voice elevenlabs|say|off
-cd squat && ../.venv/bin/python app.py --exercise pushup    # push-ups
-```
-
-Every tool takes `--exercise squat|pushup`. An exercise is one module (`squat.py`, `pushup.py`) that
-exposes `Analyzer`, `METRICS`, `RANGE`, `PRIMARY`, `segments()`, `LINES`, `EXAMPLE` and `HINT`; the app,
-panel, cue channel, voice, eval harness and demo renderer are shared. `pushup.py` is a port of the
-browser prototype's `prototype/pushup/pushup.mjs` (same variations, thresholds, side pick, smoothing and
-hysteresis), so the two push-up paths agree; keep them in step.
+**Browser app:** the judge-facing UI is `prototype/squat` (same shape as `prototype/pushup`); its
+`squat.mjs` is a line-for-line port of `squat.py` here. This folder is the reference implementation and
+the evaluation harness: tune thresholds here, confirm with `eval.py`, then mirror them in `squat.mjs`
+and rerun `npm test` in `prototype/squat`, which includes a real-clip fixture and must agree.
 
 ```bash
 python -m venv .venv && .venv/bin/pip install -r requirements.txt
