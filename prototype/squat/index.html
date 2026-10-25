@@ -44,7 +44,8 @@
   ul { list-style:none; margin:0; padding:0; overflow:auto; flex:1; min-height:0; } li { padding:7px 0; border-bottom:1px solid var(--line); font-size:13.5px; } li:last-child { border-bottom:0; }
   .tip { font-size:12.5px; color:var(--mut); }
   .panel { position:absolute; inset:0; z-index:2; display:flex; align-items:center; justify-content:center; padding:16px; overflow:auto; background:rgba(0,0,0,.45); color:#fff; backdrop-filter:blur(18px) saturate(1.4); }
-  .panel[hidden] { display:none; }
+  .panel[hidden] { display:none; } [hidden] { display:none !important; }
+  .side > *, .split > * { flex-shrink:0; } /* cards keep their content height; the column scrolls instead of squashing them */
   .panel .box { width:100%; max-width:460px; text-align:center; background:rgba(28,28,30,.82); border-radius:24px; padding:26px 24px; }
   .panel h3 { margin:0 0 14px; font-size:22px; font-weight:600; letter-spacing:-.02em; }
   .tiles { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
@@ -58,10 +59,8 @@
   .split { flex:none; display:flex; flex-direction:column; gap:14px; }
   .split > .card { flex:none; display:flex; flex-direction:column; }
   #history { max-height:200px; overflow:auto; } #coachLog { max-height:180px; overflow:auto; }
-  .tiger .tiles { grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:6px; }
-  .tiger .tile { background:var(--bg); border:1px solid var(--line); padding:10px 4px; }
-  .tiger .tile b { font-size:20px; } .tiger .tile span { color:var(--mut); }
-  .tiger svg { width:100%; height:40px; display:block; margin:4px 0 8px; }
+  .tiger .strip { display:flex; flex-wrap:wrap; gap:4px 16px; font-size:13px; color:var(--mut); margin:2px 0 4px; } .tiger .strip b { color:var(--fg); font-size:15px; font-weight:600; }
+  .tiger svg { width:100%; height:34px; display:block; margin:2px 0 4px; } .tiger details summary { cursor:pointer; }
   .hrt .hrt-state { font-size:17px; font-weight:600; margin:6px 0 2px; letter-spacing:-.01em; }
   .hrt[data-state="cue"] .hrt-state { color:var(--acc); } .hrt[data-state="unavailable"] .hrt-state, .hrt[data-state="ended"] .hrt-state { color:var(--mut); }
   .hrt details summary { cursor:pointer; margin-top:6px; } .hrt select { font:inherit; font-size:13px; max-width:100%; } .hrt .opts { display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center; margin:6px 0 2px; font-size:13px; color:var(--mut); } .hrt .opts label { display:inline-flex; align-items:center; gap:4px; }
@@ -150,15 +149,17 @@
       <div class="sub" id="coachResult" style="margin-top:6px"></div>
     </div>
     <div class="card hrt" id="hrtCard" data-state="baseline">
-      <h2 style="margin:0">Tempo forecast <span class="sub" style="text-transform:none;letter-spacing:0">(HRT)</span></h2>
-      <div class="sub">Predicts, a few reps ahead, whether your lowering tempo is about to drift from how you started this set and stay drifted. Shadow mode records forecasts; <b>cue me</b> speaks them.</div>
-      <div class="opts"><select id="hrtTarget" title="Tempo target for the lowering phase"></select><label title="Deliver a cue when the policy fires (otherwise shadow mode: forecasts are only recorded)"><input type="checkbox" id="hrtCoach"> cue me</label><label title="Replay demo: pause the video at each forecast before the next reps are revealed"><input type="checkbox" id="hrtPause"> pause at forecast</label></div>
+      <h2 style="margin:0">Tempo forecast</h2>
       <div class="hrt-state" id="hrtState">Learning your pace</div>
       <div class="sub" id="hrtSub">Forecasts start after three counted reps.</div>
       <details id="hrtWhy"><summary class="sub">Why this?</summary><div class="sub" id="hrtWhyBody">No forecast yet.</div></details>
+      <details><summary class="sub">What this is, and settings</summary>
+        <div class="sub" style="margin:6px 0">A few reps ahead, it predicts whether your lowering tempo is about to drift from how you started this set and stay drifted. By default it only records its forecasts so they can be scored later; <b>cue me</b> speaks them.</div>
+        <div class="opts"><select id="hrtTarget" title="Tempo target for the lowering phase"></select><label title="Deliver a cue when the policy fires (otherwise shadow mode: forecasts are only recorded)"><input type="checkbox" id="hrtCoach"> cue me</label><label title="Replay demo: pause the video at each forecast before the next reps are revealed"><input type="checkbox" id="hrtPause"> pause at forecast</label></div>
+      </details>
     </div>
     <div class="split">
-      <div class="card">
+      <div class="card" id="historyCard" hidden>
         <h2>History</h2>
         <ul id="history"></ul>
       </div>
@@ -174,17 +175,14 @@
     </div>
     <div class="card tiger" id="tigerCard">
       <h2>Tiger Data <span class="sub" id="tgState">connecting…</span></h2>
-      <div class="tiles">
-        <div class="tile"><b id="tgFrames">–</b><span>frames stored</span></div>
-        <div class="tile"><b id="tgRate">–</b><span>rows / sec</span></div>
-        <div class="tile"><b id="tgRatio">–</b><span>compressed</span></div>
-        <div class="tile"><b id="tgMs">–</b><span>rollup query</span></div>
-      </div>
+      <div class="strip"><span><b id="tgFrames">–</b> frames</span><span><b id="tgRate">–</b> rows/s</span><span><b id="tgRatio">–</b> compressed</span><span><b id="tgMs">–</b> rollup</span></div>
       <svg id="tgSpark" viewBox="0 0 300 40" preserveAspectRatio="none" aria-label="Per-second rollup of the last 90 seconds, read back from the database"><polyline id="tgLine" fill="none" stroke="#0a84ff" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>
-      <div class="row" style="justify-content:space-between;align-items:center;gap:8px">
-        <span class="sub" id="tgNote">Every analysed frame is a row in a hypertable. The line is hip travel per second from the continuous aggregate.</span>
-        <button id="tgCompress" title="Convert closed five-minute chunks to columnstore now">Compress now</button>
-      </div>
+      <details><summary class="sub">About this card</summary>
+        <div class="row" style="justify-content:space-between;align-items:center;gap:8px;margin-top:6px">
+          <span class="sub" id="tgNote">Every analysed frame is a row in a hypertable. The line is hip travel per second from the continuous aggregate.</span>
+          <button id="tgCompress" title="Convert closed five-minute chunks to columnstore now">Compress now</button>
+        </div>
+      </details>
     </div>
   </div>
 </div>
@@ -411,7 +409,7 @@ const panel = $('panel');
 const hidePanel = () => { const was = !panel.hidden && workoutEnded; panel.hidden = true; panel.innerHTML = ''; if (was) publish(null, true); };
 function newWorkout() {
   hrtNew(); tgEnd(); // the forecaster closes the old set (its outcomes join that set's batch) and opens a fresh one
-  hidePanel(); workoutEnded = false; counter.reset(); $('history').innerHTML = ''; clockReset();
+  hidePanel(); workoutEnded = false; counter.reset(); $('history').innerHTML = ''; $('historyCard').hidden = true; clockReset();
 }
 
 function askEnd() {
@@ -875,6 +873,7 @@ function timeClass(rep) {
 }
 
 function addHistory(rep) {
+  $('historyCard').hidden = false;
   const li = document.createElement('li');
   const time = rep.secs != null ? `${rep.secs.toFixed(1)} s` : '';
   if (rep.counted) {
