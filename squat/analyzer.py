@@ -191,7 +191,7 @@ class SquatAnalyzer:
         rep = Rep(len(self.reps) + 1, dict(self.cur), grades, self.max_drop, down, up, faults)
         self.reps.append(rep)
 
-        events = [(2, str(rep.n))]
+        events = [(3, str(rep.n))]                       # the count comes first, then any fault cue
         bad = max(valid, key=lambda k: grades[k])
         if grades[bad] >= AMBER:
             events.append((grades[bad] + 1, METRICS[bad][4]))

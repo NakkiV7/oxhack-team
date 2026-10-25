@@ -40,7 +40,8 @@ def main():
     ap.add_argument("--model", default="full", choices=list(MODELS))
     ap.add_argument("--out", help="write annotated video here")
     ap.add_argument("--record", help="write the raw camera feed here (to share a failing session)")
-    ap.add_argument("--log", help="write per-rep JSON here")
+    ap.add_argument("--log", help="write reps and timed cues as JSON here")
+    ap.add_argument("--caption", help="small caption burnt into the video (e.g. footage credit)")
     ap.add_argument("--headless", action="store_true", help="no window (CI / remote)")
     args = ap.parse_args()
 
@@ -70,6 +71,8 @@ def main():
                 f = analyzer.update(lm, t, img.shape[0])
                 coach.handle(f.events, t)
                 draw(img, lm, f, coach.showing(t))
+            if args.caption:
+                text(img, args.caption, (10, 18), 0.45, (200, 200, 200))
             img = np.hstack([img, panel(f, img.shape[0]) if f else np.full((img.shape[0], W, 3), BG, np.uint8)])
             write("out", args.out, img)
             if not args.headless:
@@ -88,7 +91,7 @@ def main():
     for r in reps:
         print(f"#{r.n:<3} travel {r.drop:.2f}  depth {r.worst['depth']:+.2f}  down {r.t_down:.2f}s  up {r.t_up:.2f}s  {', '.join(r.faults) or 'clean'}")
     if args.log:
-        json.dump([vars(r) for r in reps], open(args.log, "w"), indent=1, default=float)
+        json.dump({"reps": [vars(r) for r in reps], "cues": coach.history}, open(args.log, "w"), indent=1, default=float)
     cap.release(), pose.close()
 
 

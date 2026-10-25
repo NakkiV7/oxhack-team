@@ -11,6 +11,14 @@ descent, so walking toward the camera is not a rep. Shallow dips are shown but n
 Joints below 50% visibility are ignored; with feet out of frame the tracker still counts but
 warns and skips the knee metrics.
 
+**Demo video**: annotate a clip, then add a spoken cue track and re-encode to H.264:
+
+```bash
+../.venv/bin/python main.py --source clip.mp4 --headless --out annotated.mp4 --log reps.json --caption "Footage: <credit>"
+../.venv/bin/python demo.py --video annotated.mp4 --log reps.json --out demo.mp4            # free macOS voice
+../.venv/bin/python demo.py --video annotated.mp4 --log reps.json --out demo.mp4 --voice elevenlabs   # needs ELEVENLABS_API_KEY in squat/.env
+```
+
 `eval.py CLIP_DIR --plots out/` scores every clip in a folder and prints a hip-travel sparkline
 per clip; use it after changing any threshold. `main.py --record raw.mp4` saves the raw camera
 feed so a failing session can be replayed with `--source raw.mp4`.
