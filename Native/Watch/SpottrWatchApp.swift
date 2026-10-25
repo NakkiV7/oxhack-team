@@ -27,7 +27,7 @@ struct WatchTrainingView: View {
                 if let snapshot = store.state.snapshot, snapshot.isFresh(at: context.date), snapshot.phase != .idle {
                     TabView(selection: $page) {
                         metrics(snapshot, now: context.date).tag(Page.metrics)
-                        controls(snapshot).tag(Page.controls)
+                        controls(snapshot, now: context.date).tag(Page.controls)
                     }.tabViewStyle(.verticalPage)
                         .containerBackground(.black, for: .tabView)
                 } else {
@@ -56,38 +56,54 @@ struct WatchTrainingView: View {
             }
     }
     private func metrics(_ snapshot: CompanionSnapshot, now: Date) -> some View {
-        ScrollView {
-            VStack(spacing: 9) {
-                Text(snapshot.configured.flatMap { ExerciseCatalog.find($0.exerciseID)?.name } ?? snapshot.exercise?.title ?? "Workout")
-                    .font(.caption.weight(.semibold)).multilineTextAlignment(.center)
-                if snapshot.phase == .finished {
-                    Image(systemName: "checkmark.circle.fill").font(.largeTitle).foregroundStyle(.green)
-                    Text("Session complete").font(.headline)
-                    Text("Your review is on iPhone.").font(.caption)
-                } else {
-                    HStack(alignment: .firstTextBaseline, spacing: 3) {
-                        Text(quantity(snapshot)).font(.system(size: countFontSize, weight: .semibold, design: .rounded)).monospacedDigit()
-                        Text("/ \(snapshot.target)\(snapshot.configured?.unit == .seconds ? " s" : "")").font(.caption).foregroundStyle(.secondary)
-                    }.accessibilityIdentifier("watch-quantity")
+        VStack(spacing: 4) {
+            HStack(spacing: 4) {
+                Text(exerciseName(snapshot)).font(.system(size: 11, weight: .semibold))
+                    .lineLimit(1).minimumScaleFactor(0.8)
+                Spacer(minLength: 0)
+                Text("\(snapshot.setNumber)/\(snapshot.configured?.totalSets ?? 3)")
+                    .font(.system(size: 10)).foregroundStyle(.secondary)
+                    .accessibilityLabel(setDescription(snapshot))
+            }
+            if snapshot.phase == .finished {
+                Image(systemName: "checkmark.circle.fill").font(.largeTitle).foregroundStyle(.green)
+                Text("Session complete").font(.headline)
+                Text("Your review is on iPhone.").font(.caption)
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    Text(quantity(snapshot)).font(.system(size: min(countFontSize, 48), weight: .semibold, design: .rounded))
+                        .monospacedDigit().lineLimit(1).minimumScaleFactor(0.6)
+                    Text("/ \(snapshot.target)\(snapshot.configured?.unit == .seconds ? " s" : "")")
+                        .font(.system(size: 12)).foregroundStyle(.secondary)
+                }.accessibilityIdentifier("watch-quantity")
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Quantity and target")
+                    .accessibilityValue(quantity(snapshot) == "—" ? "No count entered. Target \(snapshot.target) reps." : "\(quantity(snapshot)) of \(snapshot.target) \(snapshot.configured?.unit == .seconds ? "seconds" : "reps")")
+                HStack(spacing: 6) {
                     let heartRate = store.heart?.heartRate(at: now)
                     Label(heartRate.map { "\(Int($0.rounded())) BPM" } ?? "— BPM", systemImage: "heart.fill")
-                        .font(.title3.weight(.semibold)).monospacedDigit()
+                        .font(.system(size: 16, weight: .semibold)).monospacedDigit().lineLimit(1)
                         .foregroundStyle(heartRate == nil ? Color.gray : Color.red)
+                        .accessibilityLabel(heartRate.map { "\(Int($0.rounded())) beats per minute" } ?? "No recent heart-rate reading")
                         .accessibilityIdentifier("watch-heart-rate")
-                    recordingControl(snapshot)
-                    Text(instruction(snapshot)).font(.caption2).multilineTextAlignment(.center)
-                        .foregroundStyle(snapshot.configured?.stoppedForDiscomfort == true ? Color.red : Color.white)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text("Set \(snapshot.setNumber)\(snapshot.configured.map { " of \($0.totalSets)" } ?? " of 3")")
-                        .font(.caption2).foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
+                    recordingControl(snapshot, compact: true)
                 }
-            }.frame(maxWidth: .infinity).padding(.horizontal, 12).padding(.vertical, 6)
-        }.accessibilityIdentifier("watch-metrics-page")
+                Text(instruction(snapshot)).font(.system(size: 11)).multilineTextAlignment(.center).lineLimit(2)
+                    .foregroundStyle(snapshot.configured?.stoppedForDiscomfort == true ? Color.red : Color.white)
+                    .accessibilityLabel(instruction(snapshot))
+            }
+        }.padding(.horizontal, 12).padding(.vertical, 4).frame(maxWidth: .infinity, maxHeight: .infinity)
+            .accessibilityIdentifier("watch-metrics-page")
     }
-    private func controls(_ snapshot: CompanionSnapshot) -> some View {
+    private func controls(_ snapshot: CompanionSnapshot, now: Date) -> some View {
         ScrollView {
             VStack(spacing: 11) {
                 Text("Controls").font(.headline)
+                if snapshot.configured?.stoppedForDiscomfort != true, snapshot.configured?.currentWasSkipped != true {
+                    Text(store.status ?? store.recordingState.message).font(.caption2).foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                }
                 if [.active, .paused, .rest].contains(snapshot.phase) {
                     VStack(spacing: 10) {
                         if snapshot.configured?.stoppedForDiscomfort == true {
@@ -110,28 +126,56 @@ struct WatchTrainingView: View {
                     }.disabled(!store.reachable)
                     if !store.reachable { Text("Open iPhone to reconnect.").font(.caption2).foregroundStyle(.secondary) }
                 }
-                Text(store.status ?? store.recordingState.message).font(.caption2).foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
-                if store.recording, store.heart?.heartRate(at: Date()) == nil {
+                recordingControl(snapshot)
+                if store.recording, store.heart?.heartRate(at: now) == nil {
                     Text("No recent heart-rate reading. Check Watch fit and Health access.")
                         .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 }
+                Divider()
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Session details").font(.headline)
+                    Text(exerciseName(snapshot)).font(.body)
+                    Text(setDescription(snapshot)).font(.body)
+                    if snapshot.phase == .finished {
+                        Text("Session complete. Your review is on iPhone.").font(.body)
+                    } else {
+                        Text(quantity(snapshot) == "—" ? "No count entered. Target \(snapshot.target) reps." : "\(quantity(snapshot)) / \(snapshot.target) \(snapshot.configured?.unit == .seconds ? "seconds" : "reps")")
+                            .font(.title3).monospacedDigit()
+                        let heartRate = store.heart?.heartRate(at: now)
+                        Label(heartRate.map { "\(Int($0.rounded())) BPM" } ?? "No recent heart-rate reading", systemImage: "heart.fill")
+                            .font(.body).foregroundStyle(heartRate == nil ? Color.gray : Color.red)
+                        Text(instruction(snapshot)).font(.body)
+                            .foregroundStyle(snapshot.configured?.stoppedForDiscomfort == true ? Color.red : Color.white)
+                    }
+                }.frame(maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("watch-session-details")
             }.frame(maxWidth: .infinity).padding(.horizontal, 12).padding(.vertical, 6)
         }.accessibilityIdentifier("watch-controls-page")
     }
-    @ViewBuilder private func recordingControl(_ snapshot: CompanionSnapshot) -> some View {
+    @ViewBuilder private func recordingControl(_ snapshot: CompanionSnapshot, compact: Bool = false) -> some View {
         if snapshot.configured?.stoppedForDiscomfort != true, snapshot.configured?.currentWasSkipped != true {
             if store.recordingBusy {
-                Text(store.recordingState.message).font(.caption2).foregroundStyle(.secondary)
-            } else if [.active, .rest].contains(snapshot.phase) {
-                Button("Start Watch workout", systemImage: "heart") { store.record() }
-                    .buttonStyle(.bordered).controlSize(.small).font(.caption2)
-                    .accessibilityIdentifier("watch-start-workout")
-                if store.recordingState != .idle {
-                    Text(store.recordingState.message).font(.caption2).foregroundStyle(.secondary)
+                if compact {
+                    Text(store.recording ? (store.recordingState == .paused ? "Paused" : "Recording") : (store.recordingState == .saving ? "Saving…" : "Starting…"))
+                        .font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(1)
+                        .accessibilityLabel(store.recordingState.message)
                 }
+            } else if [.active, .rest].contains(snapshot.phase) {
+                Button(compact ? "Record" : "Start Watch workout", systemImage: "heart") {
+                    store.record()
+                    if compact { page = .controls }
+                }
+                    .buttonStyle(.bordered).controlSize(.small).font(compact ? .system(size: 11) : .caption2)
+                    .accessibilityLabel("Start Watch workout")
+                    .accessibilityIdentifier(compact ? "watch-start-workout" : "watch-start-workout-controls")
             }
         }
+    }
+    private func exerciseName(_ snapshot: CompanionSnapshot) -> String {
+        snapshot.configured.flatMap { ExerciseCatalog.find($0.exerciseID)?.name } ?? snapshot.exercise?.title ?? "Workout"
+    }
+    private func setDescription(_ snapshot: CompanionSnapshot) -> String {
+        "Set \(snapshot.setNumber) of \(snapshot.configured?.totalSets ?? 3)"
     }
     private func quantity(_ snapshot: CompanionSnapshot) -> String {
         guard let configured = snapshot.configured else {
