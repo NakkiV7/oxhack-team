@@ -190,27 +190,105 @@ enum CoachSettings {
         #endif
         return defaults.data(forKey: "coach.approvedPlan")
     }
-    static var gatewayURL: String { UserDefaults.standard.string(forKey: "coach.gatewayURL") ?? "" }
+    static let demoGatewayURL = "https://spottr.omarchoudhry.co.uk/demo"
+    static var gatewayURL: String { address() }
+    static var isCustomConnection: Bool { UserDefaults.standard.string(forKey: "coach.gatewayURL") != nil }
+    static func address(defaults: UserDefaults = .standard) -> String {
+        defaults.string(forKey: "coach.gatewayURL") ?? demoGatewayURL
+    }
+    static func resetAddress(defaults: UserDefaults = .standard) {
+        defaults.removeObject(forKey: "coach.gatewayURL")
+    }
+    private enum ConnectionError: LocalizedError {
+        case unavailable, expired, storage
+        var errorDescription: String? {
+            switch self {
+            case .unavailable: return "Demo access is not included in this build. Update Spottr or add a custom connection in Coach settings."
+            case .expired: return "Demo access has expired. Install an updated demo build or add a custom connection in Coach settings."
+            case .storage: return "Coach access could not be saved securely. Unlock this iPhone and try again in Coach settings."
+            }
+        }
+    }
+    private struct DemoAccess: Decodable {
+        let token: String
+        let expiresAt: String
+    }
+    static func demoToken(injected: Data?, now: Date, read: () -> Data?, write: (Data) throws -> Void) throws -> String {
+        let format = ISO8601DateFormatter()
+        format.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        func valid(_ data: Data?) -> DemoAccess? {
+            guard let data, data.count <= 1024, let access = try? JSONDecoder().decode(DemoAccess.self, from: data),
+                  (32...256).contains(access.token.utf8.count),
+                  access.token.range(of: "[^A-Za-z0-9_-]", options: .regularExpression) == nil,
+                  let expiry = format.date(from: access.expiresAt), format.string(from: expiry) == access.expiresAt,
+                  expiry > now, expiry.timeIntervalSince(now) <= 86_400 else { return nil }
+            return access
+        }
+        let stored = read()
+        if let access = valid(injected), let injected {
+            if stored != injected { try write(injected) }
+            return access.token
+        }
+        if let access = valid(stored) { return access.token }
+        if let data = injected ?? stored, let access = try? JSONDecoder().decode(DemoAccess.self, from: data),
+           let expiry = format.date(from: access.expiresAt), expiry <= now { throw ConnectionError.expired }
+        throw ConnectionError.unavailable
+    }
+    private static func includedToken() throws -> String {
+        let injected = Bundle.main.url(forResource: "SpottrDemoAccess", withExtension: "json").flatMap { try? Data(contentsOf: $0) }
+        return try demoToken(injected: injected, now: Date(), read: { keychainData(account: "demo-access-v1") },
+                             write: { try saveKeychain($0, account: "demo-access-v1") })
+    }
+    static var connectionStatus: String {
+        if isCustomConnection { return token() == nil ? "Custom connection needs an access token." : "Custom connection saved. Network not checked." }
+        do {
+            _ = try includedToken()
+            return "Included demo access is ready. Network not checked. Requests are sent only when you ask the coach or enable remote voice."
+        } catch { return error.localizedDescription }
+    }
     static func client() throws -> CoachGatewayClient {
-        guard let url = URL(string: gatewayURL), !gatewayURL.isEmpty, let token = token(), !token.isEmpty else { throw CoachGatewayError.configuration }
-        return CoachGatewayClient(baseURL: url, token: token)
+        let access: String
+        if isCustomConnection {
+            guard let saved = token(), !saved.isEmpty else { throw CoachGatewayError.configuration }
+            access = saved
+        } else { access = try includedToken() }
+        guard let url = URL(string: gatewayURL), !gatewayURL.isEmpty else { throw CoachGatewayError.configuration }
+        return CoachGatewayClient(baseURL: url, token: access)
     }
     static func save(url: String, token: String) throws {
         let address = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        let token = token.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let parsed = URL(string: address), parsed.scheme == "https" || (parsed.scheme == "http" && ["localhost", "127.0.0.1", "::1"].contains(parsed.host ?? "")), parsed.host != nil,
               parsed.user == nil, parsed.password == nil, parsed.query == nil, parsed.fragment == nil, !token.isEmpty else { throw CoachGatewayError.configuration }
-        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "com.spottr.coach.gateway", kSecAttrAccount as String: "access-token"]
-        let attributes: [String: Any] = [kSecValueData as String: Data(token.utf8), kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly]
-        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-        if status == errSecItemNotFound {
-            guard SecItemAdd(query.merging(attributes) { _, new in new } as CFDictionary, nil) == errSecSuccess else { throw CoachGatewayError.configuration }
-        } else if status != errSecSuccess { throw CoachGatewayError.configuration }
+        try saveKeychain(Data(token.utf8), account: "access-token")
         UserDefaults.standard.set(address, forKey: "coach.gatewayURL")
     }
+    static func reset() throws {
+        for account in ["access-token", "demo-access-v1"] {
+            let status = SecItemDelete(keychainQuery(account: account) as CFDictionary)
+            guard status == errSecSuccess || status == errSecItemNotFound else { throw ConnectionError.storage }
+        }
+        resetAddress()
+    }
+    private static func keychainQuery(account: String) -> [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "com.spottr.coach.gateway", kSecAttrAccount as String: account]
+    }
+    private static func saveKeychain(_ data: Data, account: String) throws {
+        let query = keychainQuery(account: account)
+        let attributes: [String: Any] = [kSecValueData as String: data, kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly]
+        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        if status == errSecItemNotFound {
+            guard SecItemAdd(query.merging(attributes) { _, new in new } as CFDictionary, nil) == errSecSuccess else { throw ConnectionError.storage }
+        } else if status != errSecSuccess { throw ConnectionError.storage }
+    }
     static func token() -> String? {
-        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "com.spottr.coach.gateway", kSecAttrAccount as String: "access-token", kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]
+        if !isCustomConnection { return try? includedToken() }
+        return keychainData(account: "access-token").flatMap { String(data: $0, encoding: .utf8) }
+    }
+    private static func keychainData(account: String) -> Data? {
+        let query = keychainQuery(account: account).merging([kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]) { _, new in new }
         var result: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess, let data = result as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess else { return nil }
+        return result as? Data
     }
 }

@@ -19,6 +19,22 @@
         root * /srv/landing
         file_server
     }
+    @demo path /demo/v1/chat /demo/v1/summary /demo/v1/proposal /demo/v1/week-proposal /demo/v1/voice /demo/v1/voices
+    handle @demo {
+        request_body {
+            max_size 65536
+        }
+        reverse_proxy gateway:8787 {
+            unhealthy_request_count 4
+            lb_retries 0
+            transport http {
+                dial_timeout 3s
+                response_header_timeout 65s
+                read_timeout 70s
+                write_timeout 15s
+            }
+        }
+    }
     handle {
         @outside not remote_ip {$SPOTTR_ALLOWED_CIDRS}
         respond @outside "Demo access restricted" 403
