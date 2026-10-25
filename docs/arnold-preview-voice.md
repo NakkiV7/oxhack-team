@@ -49,3 +49,9 @@ The asset test first failed as expected (five clips present, nine expected), the
 Omar explicitly approved coordinating native simulation with the main Spottr chat, which retains ownership of simulator/compiler/project changes. Execution results will be recorded after that lane runs the updated fixtures.
 
 Follow-up executed checks: all 96 server tests passed against the nine-clip bank, and isolated `swift test --filter VoiceCuePlaybackTests` passed 8/8. These Core tests exercise the actual shared controller; the native DemoVoicePlayback/TrainingStore/app-bundle fixtures remain with the main compiler lane.
+
+### Executed adapter simulation on macOS
+
+The permitted isolated SwiftPM harness ran the actual current `DemoVoicePlayback` and shared `VoiceCuePlaybackController`: **11 tests passed, zero failures**, 0.927 seconds after a 147-second build, on arm64 macOS. All nine MP3s decoded through AVAudioPlayer without `play()`. The actual adapter was copied unchanged apart from adding the Core module import. Real boundary declarations were extracted verbatim from the primary remote adapter; the local-driver host copy guards the iOS-only audio-session assignment; test resources use Bundle.module instead of Bundle.main. Production iOS sources were not altered for the harness.
+
+Re-run this preserved local harness with `swift test --package-path .local/voice-simulation-harness`. Its local `acceptance.json` records source hashes and exact adaptations. This establishes the real adapter/controller behavior with silent outputs and actual media decoding. It does not establish iOS app-bundle packaging, TrainingStore routing or audible iPhone output; the main chat retains those integration checks.
