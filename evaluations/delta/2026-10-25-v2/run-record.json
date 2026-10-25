@@ -1,0 +1,16 @@
+{
+  "fixtureVersion": "spottr-cue-contract-v2",
+  "preparedAtUTC": "2026-10-25T00:49:22.691209+00:00",
+  "status": "prepared-not-run",
+  "deltaRequestCount": 0,
+  "otherJudgeRequestCount": 0,
+  "generatedCandidateCount": 0,
+  "provider": null,
+  "model": null,
+  "settings": null,
+  "threadID": null,
+  "rawJudgeResult": null,
+  "humanReviewResult": null,
+  "heldOutStatus": "authored and structurally inspected; not submitted to any judge; not used to revise a prompt",
+  "authorizationBoundary": "Offline preparation only. Actual Delta availability, agreement/account/provider checks and an explicitly authorized bounded review remain pending."
+}

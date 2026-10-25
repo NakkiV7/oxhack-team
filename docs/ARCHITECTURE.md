@@ -42,7 +42,7 @@ The public PAMAP2 experiment has frozen participant-held-out 10/30-second HR for
 
 Pinned gateway packaging passed an actual local Linux/ARM64 build, restricted nonroot/read-only runtime, health/auth/HTTP checks, Compose and Caddy parsing with zero provider calls. No hosted Vultr VM, public HTTPS or AMD64 build is accepted. [Deployment receipt](vultr-deployment.md).
 
-Presage remains a bounded opt-in proposal pending SDK derived-vitals LLM-egress and credit decisions; no capture is integrated. A separate Codex review exercised authored cue controls and retained an action-contract disagreement. It is not Delta usage, generated-output quality or runtime validation. Delta installation/agreement and an actual review remain pending. [Presage](presage-integration.md), [Codex receipt](../evaluations/codex/2026-10-24-cue-review/), [Delta](delta-workflow.md).
+Presage remains a bounded opt-in proposal pending SDK derived-vitals LLM-egress and credit decisions; no capture is integrated. The original Codex control review retained an action-contract disagreement. A later explicit v2 rubric matched author expectations on six calibration pairs (12 verdicts); human adjudication and ten unjudged held-out pairs remain pending. Neither review establishes Delta usage, generated-output quality or runtime validation. Delta installation/agreement and an actual review remain pending. [Presage](presage-integration.md), [Codex calibration](../evaluations/codex/2026-10-25-cue-calibration/), [Delta](delta-workflow.md).
 
 ## Distribution and extension
 

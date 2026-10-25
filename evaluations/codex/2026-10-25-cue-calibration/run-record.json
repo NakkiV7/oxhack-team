@@ -1,0 +1,24 @@
+{
+  "status": "calibration_response_compared_with_author_key",
+  "preparedAtUTC": "2026-10-25T00:59:44.524320+00:00",
+  "requestPath": "evaluations/delta/2026-10-25-v2/judge-request-development.md",
+  "requestSHA256": "12002bf7ea13d1a6d82af795475959b61ac535f6251489bd33f895fa31578dae",
+  "scope": "six calibration pairs only; no held-out cases",
+  "method": "fresh Codex subagent with no parent history; exactly one explicit input-file read allowed for bootstrap, then no tools/files/agents or follow-up model calls",
+  "blindingLimit": "tools remain available; input-only bootstrap differs from strict no-tool Delta instructions and must be disclosed; observed access to any other file invalidates this review",
+  "model": "inherited current Codex model; exact model build/sampling not exposed",
+  "providersCalled": {
+    "Delta": 0,
+    "Gemini": 0,
+    "ElevenLabs": 0
+  },
+  "humanAdjudication": "pending; author key is not ground truth",
+  "heldOutJudgeRequests": 0,
+  "agent": "/root/cue_judge_v2",
+  "observedCompletionAtUTC": "2026-10-25T01:00:34.095404+00:00",
+  "rawResponseSHA256": "94c6f4c3f7a6c71dd464f29ed9583818bab1fa9d115e79455a49343ac2c8e13e",
+  "agentReportedBootstrapToolCalls": 1,
+  "agentReportedSubsequentToolCalls": 0,
+  "toolAuditLimit": "Parent received the final response and setup request; tool-use counts are the agent self-report, not an independently audited trace. Full history was not forked and no answer key or held-out input was provided.",
+  "comparisonSHA256": "6bac687f4fb49140eb4f27263c27af481512984f69b32792e88d321c0c150033"
+}
