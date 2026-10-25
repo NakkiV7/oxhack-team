@@ -15,6 +15,8 @@ Use Node 22.9 or newer for `--env-file-if-exists` (current Node is suitable). De
 
 `GET /health` needs no authentication and performs no provider or database calls. It returns only readiness booleans (`configured`, `adapterImplemented`), plus `authenticationConfigured`; it never proves a connection. All `/v1/` routes require `Authorization: Bearer <SPOTTR_GATEWAY_TOKEN>`. This is a single-owner local gateway: `SPOTTR_INSTALLATION_ID` binds that owner token to one installation, and caller IDs cannot change the scope. For remote use, add TLS and a deliberate installation authentication/rate-limit design before exposing it publicly. Presage and Vultr currently have configuration placeholders only; this server is not evidence of using those services.
 
+For a temporary synthetic phone demo, the optional [bounded owner mode](OWNER-DEMO.md) adds a shared attempt allowance, one active request, an absolute expiry and HTTP read limits. It disables Tiger and leaves default local behavior unchanged. It has offline acceptance only; no relay or physical HTTPS path has been started.
+
 ## Gemini
 
 Set `GEMINI_API_KEY` and explicitly choose an account-enabled `GEMINI_MODEL`. `GEMINI_TIMEOUT_MS` defaults to 20000, with a permitted range of 1–60000. No automatic retries or fake fallback responses are performed. Each accepted user action sends at most one model request.
