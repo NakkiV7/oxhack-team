@@ -98,6 +98,10 @@ The local coaching policy evaluates form and pacing every second and at rep boun
 
 The [Pi camera companion](hardware/pi/README.md) is deployed with authenticated HTTPS capture, certificate pinning, freshness and expiring leases. The native client feeds preview frames into phone inference; it does not claim Pi inference. Native/UI tests passed 31/31 and Python tests 23/23. Real capture produced frames, then the USB device disconnected after roughly two seconds. Sustained iPhone tracking and rep accuracy remain pending; see [physical evidence](hardware/pi/EVIDENCE-2026-10-24.md).
 
+## Standalone Python camera demo
+
+Nakki’s [squat/push-up demo](squat/README.md) is an optional desktop contributor tool. Its scoped setup, pinned model download and 13 offline regression checks are documented there. Voice starts off; repeated sets and early finish/save are guarded. It is separate from native tracking and Tiger ingestion, with inference accuracy and audible behavior still pending. Future changes to the teammate branch should start from current main to retain the integration fixes.
+
 ## Push-up CV prototype
 
 A standalone Node prototype for exploring the push-up counter and a personal, data-driven rule. It is a reference for the native counter, not a replacement for it. Full guide: [prototype/pushup/README-pushup.md](prototype/pushup/README-pushup.md).
@@ -170,6 +174,7 @@ Push-up CV belongs to [@azhar-rafiq](https://github.com/azhar-rafiq); squat CV t
 | `evaluations` | Authored synthetic judge fixtures and run evidence; prepared packets are not judge results |
 | `integrations` | Provider contracts, schemas, SQL preparation and integration setup |
 | `scripts` | Pinned SDK fetch, Xcode generator and local checks |
+| `squat` | Standalone Python/OpenCV squat and push-up demo, scoped dependencies and offline regression checks; no native/Tiger adapter. |
 | `prototype/pushup` | Standalone push-up prototype, not part of the native build: web page (MediaPipe + rep state machine, standard/knee/incline/wall variations), a small iPhone display app in `ios/`, an experimental Gemini coach with cited Q&A, a personal profile and rule choice, and Tiger Data storage with cloud-sync status (`pushup` schema). It has its own `.env` and does not use the gateway. Thresholds are untuned guesses and the profile is trained on mock data so far. See `README-pushup.md` there. |
 | `design`, `research`, `docs` | Existing approved graphics, research and historical design notes |
 

@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+models/
+assets/
+voice_cache/
+sessions/
+*.mp4
+*.m4a
+*.wav
+*.mp3

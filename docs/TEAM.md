@@ -35,3 +35,7 @@ Good help-wanted tasks are bounded and independently reviewable:
 - Fact-check the landing page, slides and eventual DEV draft against the integration evidence ledger.
 
 There is no CI/CD. Authors attach local checks and a short smoke-test result to each feature PR. The 19 icons and six phase illustrations are merged; coordinate further artwork changes. Container packaging is prepared, but creating a VM, spending credits, firmware changes and public publication remain separately scoped actions. Do not use a historical pending milestone or a prepared fixture as current live evidence.
+
+## Python camera-demo contributions
+
+Nakki’s `42043df` standalone source is integrated under [`squat/`](../squat/README.md), with timing, save and voice-default regressions corrected. Rebase future `nakki-squat-model` work on main or carry these focused fixes before opening another PR; coordinate shared native geometry separately. Binary example footage was omitted pending provenance. The demo JSON is diagnostic output, not a native/Tiger workout contract. Run its documented standard-library checks before proposing changes; physical count/cue validation remains [#4](https://github.com/NakkiV7/oxhack-team/issues/4).
