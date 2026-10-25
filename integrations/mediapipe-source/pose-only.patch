@@ -1,0 +1,87 @@
+--- a/WORKSPACE
++++ b/WORKSPACE
+@@ -598,6 +598,8 @@
+ # Task libraries are built.
+ http_archive(
+     name = "ios_opencv_source",
++    patch_args = ["-p1"],
++    patches = ["@//third_party:opencv_ios_jobs2.diff"],
+     build_file = "@//third_party:opencv_ios_source.BUILD",
+     sha256 = "a61e7a4618d353140c857f25843f39b2abe5f451b018aab1604ef0bc34cd23d5",
+     type = "zip",
+--- a/mediapipe/tasks/ios/BUILD
++++ b/mediapipe/tasks/ios/BUILD
+@@ -454,3 +454,59 @@
+     # built as static libraries and force loaded.
+     deps = MEDIAPIPE_TASKS_COMMON_DEPS,
+ )
++
++
++# Local reduced Pose API variant. Added 25 October 2026 for analysis only.
++# Append in the existing mediapipe/tasks/ios package; retain original targets.
++# Local reduced API variant of 50505c8, not Google's stock release distribution.
++
++SPOTTR_POSE_GRAPHS = [
++    "//mediapipe/calculators/core:flow_limiter_calculator",
++    "//mediapipe/tasks/cc/vision/pose_landmarker:pose_landmarker_graph",
++    "//mediapipe/calculators/tensor:inference_calculator_litert",
++]
++
++objc_library(
++    name = "SpottrPoseTaskGraphs",
++    deps = SPOTTR_POSE_GRAPHS,
++    alwayslink = 1,
++)
++
++mediapipe_static_xcframework(
++    name = "SpottrPoseTaskGraphs_library",
++    bundle_name = "MediaPipeTaskGraphs_library",
++    deps = [":SpottrPoseTaskGraphs"],
++)
++
++mediapipe_static_xcframework(
++    name = "SpottrPoseCommon_framework",
++    bundle_format = "framework",
++    bundle_name = "MediaPipeTasksCommon",
++    avoid_deps = SPOTTR_POSE_GRAPHS,
++    deps = TENSORFLOW_LITE_C_DEPS + [
++        ":OpenCV",
++        "//mediapipe/gpu:metal_shared_resources",
++        "//mediapipe/tasks/ios/vision/pose_landmarker:MPPPoseLandmarker",
++    ],
++)
++
++mediapipe_static_xcframework(
++    name = "SpottrPoseVision_framework",
++    bundle_format = "framework",
++    bundle_name = "MediaPipeTasksVision",
++    public_hdrs = [
++        ":MPPCommon.h",
++        ":MPPConnection.h",
++        ":MPPLandmark.h",
++        ":MPPBaseOptions.h",
++        ":MPPCoreRunningMode.h",
++        ":MPPTaskOptions.h",
++        ":MPPTaskResult.h",
++        ":MPPImage.h",
++        ":MPPMask.h",
++        ":MPPRunningMode.h",
++        ":MPPPoseLandmarker.h",
++        ":MPPPoseLandmarkerOptions.h",
++        ":MPPPoseLandmarkerResult.h",
++    ],
++)
+--- /dev/null
++++ b/third_party/opencv_ios_jobs2.diff
+@@ -0,0 +1,11 @@
++--- a/opencv-4.5.3/platforms/ios/build_framework.py
+++++ b/opencv-4.5.3/platforms/ios/build_framework.py
++@@ -233,7 +233,7 @@
++             "-sdk", target.lower(),
++             "-configuration", self.getConfiguration(),
++             "-parallelizeTargets",
++-            "-jobs", str(multiprocessing.cpu_count()),
+++            "-jobs", "2",
++         ]
++ 
++         return buildcmd

@@ -4,6 +4,8 @@ Research checkpoint: **25 October 2026, 00:51 UTC**. This is an execution handof
 
 A later [bounded build attempt](evidence/sdk-source-build-attempt-2026-10-25.md) reached source analysis and stopped at an absent upstream package; no SDK was compiled or integrated. The prepared recipe below remains the historical research handoff.
 
+The later [reduced Pose variant](../integrations/mediapipe-source/README.md) passed configured analysis and exposes its exact patch. This is a reduced API experiment, with no replacement of the app dependency.
+
 ## Resolve the source identity first
 
 The official [1.1.1 release](https://github.com/google-ai-edge/mediapipe/releases/tag/v1.1.1) resolves to **`50505c8312c7eacb1bd411cecdc4cc9fd08d53cb`**. Its [Package.swift](https://github.com/google-ai-edge/mediapipe/blob/50505c8312c7eacb1bd411cecdc4cc9fd08d53cb/Package.swift) selects the same three Google ZIP URLs and SHA-256 values as our [fetch script](../scripts/fetch-mediapipe.sh). No corrected distribution was identified in the official release/package examined at this checkpoint; changing to that Swift package would select those same binaries.
