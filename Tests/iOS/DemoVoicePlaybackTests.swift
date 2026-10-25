@@ -5,7 +5,7 @@ import XCTest
 @MainActor
 final class DemoVoicePlaybackTests: XCTestCase {
     func testBundledBankExistsAndDecodesWithoutPlayingAudio() throws {
-        for name in ["positive-1", "positive-2", "positive-3", "positive-4", "slower-1", "slower-2", "slower-3", "recovery", "recovery-2", "positive-5", "slower-4", "completion"] {
+        for name in ["positive-1", "positive-2", "positive-3", "positive-4", "slower-1", "slower-2", "slower-3", "recovery", "recovery-2", "positive-5", "slower-4", "completion", "tracking", "alignment", "target", "rest", "stop"] {
             let url = try XCTUnwrap(Bundle.main.url(forResource: name, withExtension: "mp3", subdirectory: "DemoVoice/arnold"))
             let player = try AVAudioPlayer(contentsOf: url)
             XCTAssertEqual(player.format.sampleRate, 22_050)
@@ -28,11 +28,11 @@ final class DemoVoicePlaybackTests: XCTestCase {
         XCTAssertEqual(DemoVoicePlayback.clipName(reason: .steadyRhythm, priority: .pacing, variant: 1), "positive-2")
         XCTAssertEqual(DemoVoicePlayback.clipName(reason: .slowerRep, priority: .pacing, variant: 0), "slower-1")
         XCTAssertEqual(DemoVoicePlayback.clipName(reason: .slowerRep, priority: .pacing, variant: 1), "slower-2")
-        XCTAssertNil(DemoVoicePlayback.clipName(reason: .tracking, priority: .form, variant: 0))
-        XCTAssertNil(DemoVoicePlayback.clipName(reason: .alignment, priority: .form, variant: 0))
-        XCTAssertNil(DemoVoicePlayback.clipName(reason: .targetReached, priority: .pacing, variant: 0))
-        XCTAssertNil(DemoVoicePlayback.clipName(reason: .restReminder, priority: .rest, variant: 0))
-        XCTAssertNil(DemoVoicePlayback.clipName(reason: .discomfort, priority: .stop, variant: 0))
+        XCTAssertEqual(DemoVoicePlayback.clipName(reason: .tracking, priority: .form, variant: 0), "tracking")
+        XCTAssertEqual(DemoVoicePlayback.clipName(reason: .alignment, priority: .form, variant: 0), "alignment")
+        XCTAssertEqual(DemoVoicePlayback.clipName(reason: .targetReached, priority: .pacing, variant: 0), "target")
+        XCTAssertEqual(DemoVoicePlayback.clipName(reason: .restReminder, priority: .rest, variant: 0), "rest")
+        XCTAssertEqual(DemoVoicePlayback.clipName(reason: .discomfort, priority: .stop, variant: 0), "stop")
         XCTAssertNil(DemoVoicePlayback.clipName(reason: .steadyRhythm, priority: .form, variant: 0))
         XCTAssertNil(DemoVoicePlayback.clipName(reason: nil, priority: .pacing, variant: 0))
     }
@@ -52,7 +52,7 @@ final class DemoVoicePlaybackTests: XCTestCase {
         XCTAssertEqual(names, ["recovery"])
         let stop = cue(reason: .discomfort, kind: .coaching(.stop), expiry: nil)
         playback.speak(stop)
-        XCTAssertEqual(local.spoken, [stop])
+        XCTAssertTrue(local.spoken.isEmpty)
         XCTAssertEqual(audio.stops, 1)
     }
 
@@ -90,7 +90,7 @@ final class DemoVoicePlaybackTests: XCTestCase {
             "positive-5", "slower-1", "recovery", "positive-1", "slower-2", "recovery-2"])
     }
 
-    func testCachedPlaybackAlternatesAndStopInterruptsWithImmediateLocalSpeech() {
+    func testCachedPlaybackAlternatesAndStopInterruptsWithImmediateArnoldAudio() {
         let local = DemoSilentVoice(), first = DemoSilentAudio(), second = DemoSilentAudio()
         var names: [String] = []
         let playback = DemoVoicePlayback(local: local, makeAudio: { name in
@@ -109,19 +109,52 @@ final class DemoVoicePlaybackTests: XCTestCase {
         let stop = cue(reason: .discomfort, kind: .coaching(.stop), expiry: nil)
         playback.speak(stop)
         XCTAssertEqual(second.stops, 1)
-        XCTAssertEqual(local.spoken, [stop])
-        local.onFinish?(stop.id)
+        XCTAssertTrue(local.spoken.isEmpty)
+        second.onFinish?()
         XCTAssertEqual(finished, [stop.id])
     }
 
-    func testUnknownTrackingAndRestUseOriginalLocalWordsAndNeverEncouragement() {
-        let local = DemoSilentVoice()
-        let playback = DemoVoicePlayback(local: local, makeAudio: { _ in XCTFail("Unsafe cached cue"); throw DemoFailure.missing }, prepareAudioSession: {}, releaseAudioSession: {}, uptime: { 2 })
-        let events = [cue(reason: nil), cue(reason: .tracking, kind: .coaching(.form)),
-                      cue(reason: .alignment, kind: .coaching(.form)), cue(reason: .restReminder, kind: .coaching(.rest)),
-                      cue(reason: .targetReached)]
+    func testEveryWorkoutReasonUsesItsArnoldClipIncludingImmediateStop() {
+        let local = DemoSilentVoice(), output = DemoSilentAudio()
+        var names: [String] = []
+        let playback = DemoVoicePlayback(local: local, makeAudio: { names.append($0); return output },
+            prepareAudioSession: {}, releaseAudioSession: {}, uptime: { 2 })
+        let events = [cue(reason: .tracking, kind: .coaching(.form)),
+            cue(reason: .alignment, kind: .coaching(.form)), cue(reason: .targetReached),
+            cue(reason: .restReminder, kind: .coaching(.rest)),
+            cue(reason: .discomfort, kind: .coaching(.stop), expiry: nil)]
         for event in events { playback.speak(event) }
-        XCTAssertEqual(local.spoken, events)
+        XCTAssertEqual(names, ["tracking", "alignment", "target", "rest", "stop"])
+        XCTAssertEqual(output.plays, 5)
+        XCTAssertTrue(local.spoken.isEmpty)
+    }
+
+    func testUnavailableArnoldSafetyClipStillSpeaksImmediateStop() {
+        for missing in [true, false] {
+            let local = DemoSilentVoice(), output = DemoSilentAudio()
+            output.willPlay = false
+            let playback = DemoVoicePlayback(local: local, makeAudio: { _ in
+                if missing { throw DemoFailure.missing }
+                return output
+            }, prepareAudioSession: {}, releaseAudioSession: {}, uptime: { 2 })
+            let stop = cue(reason: .discomfort, kind: .coaching(.stop), expiry: nil)
+            playback.speak(stop)
+            XCTAssertEqual(local.spoken, [stop])
+        }
+    }
+
+    func testUnmappedOrdinaryCueNeverSwitchesToAppleOrInventsEncouragement() {
+        let local = DemoSilentVoice()
+        let playback = DemoVoicePlayback(local: local, makeAudio: { _ in
+            XCTFail("No recording can be chosen for an unknown reason")
+            throw DemoFailure.missing
+        }, prepareAudioSession: {}, releaseAudioSession: {}, uptime: { 2 })
+        let event = cue(reason: nil)
+        var finished: [UUID] = []
+        playback.onFinish = { finished.append($0) }
+        playback.speak(event)
+        XCTAssertEqual(finished, [event.id])
+        XCTAssertTrue(local.spoken.isEmpty)
     }
 
     func testExpiredFutureAndMalformedCuesNeverStartAudio() {
@@ -192,23 +225,23 @@ final class DemoVoicePlaybackTests: XCTestCase {
         let stop = event(.discomfort, priority: .stop, expiry: nil)
         controller.update(context: context, event: stop, enabled: true, now: 2)
         XCTAssertEqual(audio.stops, 1)
-        XCTAssertEqual(local.spoken, [stop])
+        XCTAssertTrue(local.spoken.isEmpty)
         staleCompletion?()
         controller.update(context: context, event: event(), enabled: true, now: 2)
-        XCTAssertEqual(names, ["positive-1"], "A stale audio callback cannot clear the active stop")
+        XCTAssertEqual(names, ["positive-1", "stop"], "A stale audio callback cannot clear the active stop")
         controller.cancel()
         controller.update(context: context, event: event(.slowerRep), enabled: true, now: 2)
         XCTAssertEqual(names.last, "slower-1")
         controller.update(context: .init(sessionID: session, generation: generation, phase: .paused), event: nil, enabled: true, now: 2)
-        XCTAssertEqual(audio.stops, 2)
-        controller.update(context: context, event: event(), enabled: true, now: 2)
-        controller.update(context: context, event: nil, enabled: false, now: 2)
         XCTAssertEqual(audio.stops, 3)
         controller.update(context: context, event: event(), enabled: true, now: 2)
-        controller.update(context: .init(sessionID: session, generation: UUID(), phase: .active), event: first, enabled: true, now: 2)
+        controller.update(context: context, event: nil, enabled: false, now: 2)
         XCTAssertEqual(audio.stops, 4)
-        XCTAssertEqual(audio.plays, 4)
-        XCTAssertEqual(names, ["positive-1", "slower-1", "positive-2", "positive-3"])
+        controller.update(context: context, event: event(), enabled: true, now: 2)
+        controller.update(context: .init(sessionID: session, generation: UUID(), phase: .active), event: first, enabled: true, now: 2)
+        XCTAssertEqual(audio.stops, 5)
+        XCTAssertEqual(audio.plays, 5)
+        XCTAssertEqual(names, ["positive-1", "stop", "slower-1", "positive-2", "positive-3"])
     }
 
     func testAudioSessionActivatesOnlyForMappedClipsAndReleasesAfterCompletion() {
@@ -220,7 +253,7 @@ final class DemoVoicePlaybackTests: XCTestCase {
             releaseAudioSession: { events.append("release") }, uptime: { 2 })
         XCTAssertTrue(events.isEmpty)
         playback.speak(cue(expiry: 2))
-        playback.speak(cue(reason: .tracking, kind: .coaching(.form)))
+        playback.speak(cue(reason: nil))
         XCTAssertTrue(events.isEmpty, "Expired and local fallback cues must not activate cached audio")
         let event = cue()
         var finished: [UUID] = []

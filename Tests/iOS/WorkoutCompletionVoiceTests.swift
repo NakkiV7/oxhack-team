@@ -3,14 +3,14 @@ import XCTest
 
 @MainActor
 final class WorkoutCompletionVoiceTests: XCTestCase {
-    private func makeStore(url: URL? = nil) -> (TrainingStore, CompletionRecordingVoice) {
+    private func makeStore(url: URL? = nil, previewMode: Bool = true) -> (TrainingStore, CompletionRecordingVoice) {
         let cached = CompletionRecordingVoice()
         let remote = RemoteVoicePlayback(local: CompletionRecordingVoice(), previewPlayback: cached, client: {
             XCTFail("Workout completion cannot contact the gateway")
             throw RemoteVoiceError.configuration
         })
         let history = url ?? FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("history.json")
-        return (TrainingStore(historyURL: history, voicePlayback: remote, previewMode: true, previewPlayback: cached), cached)
+        return (TrainingStore(historyURL: history, voicePlayback: remote, previewMode: previewMode, previewPlayback: cached), cached)
     }
     private func endManualSet(_ store: TrainingStore) {
         store.switchToManualReps(); store.setManualReps(2); store.endSet()
@@ -33,6 +33,14 @@ final class WorkoutCompletionVoiceTests: XCTestCase {
         XCTAssertEqual(cached.stops, 0, "The ordinary timer must not cut off the completion clip")
         store.finish(); store.coachingTick()
         XCTAssertEqual(cached.spoken.count, 1, "Repeated finish/ticks cannot replay completion")
+    }
+
+    func testSelectedArnoldCompletesActualWorkoutOutsidePreview() {
+        let (store, cached) = makeStore(previewMode: false)
+        defer { store.cancelCoaching() }
+        store.start(); store.setVoiceFeedback(true); endManualSet(store)
+        store.finish()
+        XCTAssertEqual(cached.spoken.map(\.reason), [.workoutCompleted])
     }
 
     func testLastConfiguredNextAfterEndedWorkPlaysCompletionOnce() throws {

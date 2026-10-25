@@ -127,12 +127,13 @@ protocol VoiceAudioOutput: AnyObject {
 @MainActor @Observable
 final class RemoteVoicePlayback: VoicePlayback {
     var onFinish: ((UUID) -> Void)?
-    private(set) var preference: VoiceCoachPreference = .local
-    private(set) var configuredVoices: [VoiceCoachPreference] = []
+    private(set) var preference: VoiceCoachPreference = .arnold
+    private(set) var configuredVoices: [VoiceCoachPreference] = [.arnold]
     private(set) var errorMessage: String?
     var isPreview: Bool { previewPlayback != nil }
     private let local: VoicePlayback
     private let previewPlayback: VoicePlayback?
+    private let arnoldPlayback: VoicePlayback
     private let client: @MainActor () throws -> VoiceGatewayClient
     private let makeAudio: @MainActor (Data) throws -> VoiceAudioOutput
     private let wallNow: () -> Date
@@ -145,20 +146,22 @@ final class RemoteVoicePlayback: VoicePlayback {
     @ObservationIgnored private var localCueID: UUID?
     @ObservationIgnored private var previewCueID: UUID?
 
-    init(local: VoicePlayback? = nil, previewPlayback: VoicePlayback? = nil, client: @escaping @MainActor () throws -> VoiceGatewayClient = { try VoiceGatewayClient.configured() },
+    init(local: VoicePlayback? = nil, previewPlayback: VoicePlayback? = nil, arnoldPlayback: VoicePlayback? = nil, client: @escaping @MainActor () throws -> VoiceGatewayClient = { try VoiceGatewayClient.configured() },
          makeAudio: (@MainActor (Data) throws -> VoiceAudioOutput)? = nil,
          wallNow: @escaping () -> Date = Date.init, uptime: @escaping () -> Double = { ProcessInfo.processInfo.systemUptime }) {
         self.local = local ?? LocalVoicePlayback(); self.previewPlayback = previewPlayback
+        self.arnoldPlayback = previewPlayback ?? arnoldPlayback ?? DemoVoicePlayback()
         self.client = client; self.makeAudio = makeAudio ?? { try SystemVoiceAudioOutput(data: $0) }
         self.wallNow = wallNow; self.uptime = uptime
         if previewPlayback != nil { preference = .arnold; configuredVoices = [.arnold] }
         self.local.onFinish = { [weak self] id in self?.finishedPlayback(id) }
-        self.previewPlayback?.onFinish = { [weak self] id in self?.finishedPlayback(id) }
+        self.arnoldPlayback.onFinish = { [weak self] id in self?.finishedPlayback(id) }
     }
     func refreshVoices() async throws {
         guard previewPlayback == nil else { return }
         let options = try await client().voices()
         availability = options; configuredVoices = options.map(\.id)
+        if !configuredVoices.contains(.arnold) { configuredVoices.append(.arnold) }
     }
     func select(_ preference: VoiceCoachPreference) throws {
         guard preference == .local || configuredVoices.contains(preference) else { throw RemoteVoiceError.unavailable }
@@ -168,11 +171,16 @@ final class RemoteVoicePlayback: VoicePlayback {
     func speak(_ cue: VoiceCue) {
         stop(); errorMessage = nil
         let token = UUID(); active = (cue.id, token)
-        if cue.reason == .workoutCompleted && !(previewPlayback != nil && preference == .arnold) {
+        if cue.reason == .workoutCompleted && preference != .arnold {
             complete(token: token); return
         }
-        if preference == .local || cue.kind == .coaching(.stop) {
+        if preference == .local || (cue.kind == .coaching(.stop) && preference != .arnold) {
             localCueID = cue.id; local.speak(cue); return
+        }
+        if preference == .arnold && cue.kind == .coaching(.stop) {
+            previewCueID = cue.id
+            arnoldPlayback.speak(cue)
+            return
         }
         let now = uptime(), wall = wallNow(), text = cue.text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard configuredVoices.contains(preference), case .coaching = cue.kind,
@@ -186,9 +194,9 @@ final class RemoteVoicePlayback: VoicePlayback {
             do { try await Task.sleep(for: .seconds(deadline - now)) } catch { return }
             self?.complete(token: token, error: RemoteVoiceError.invalidResponse)
         }
-        if let previewPlayback, voice == .arnold {
+        if voice == .arnold {
             previewCueID = cue.id
-            previewPlayback.speak(cue)
+            arnoldPlayback.speak(cue)
             return
         }
         // Existing pacing cautions remain calm. Only a short positive rhythm cue can use the separately configured voice.
@@ -219,7 +227,7 @@ final class RemoteVoicePlayback: VoicePlayback {
         active = nil; pending?.cancel(); pending = nil; expiry?.cancel(); expiry = nil
         output?.onFinish = nil; output?.stop(); output = nil
         if localCueID != nil { localCueID = nil; local.stop() }
-        if previewCueID != nil { previewCueID = nil; previewPlayback?.stop() }
+        if previewCueID != nil { previewCueID = nil; arnoldPlayback.stop() }
     }
     private func finishedPlayback(_ id: UUID) {
         guard localCueID == id || previewCueID == id, let active, active.cueID == id else { return }
