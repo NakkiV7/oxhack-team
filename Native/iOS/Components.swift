@@ -40,6 +40,27 @@ struct PrimaryButton: View {
     }
 }
 
+struct KeyboardDismissBar: View {
+    let identifier: String
+    let dismiss: () -> Void
+    var body: some View {
+        HStack {
+            Capsule().fill(.secondary.opacity(0.4)).frame(width: 32, height: 4)
+                .accessibilityHidden(true)
+            Spacer()
+            Button(action: dismiss) {
+                Label("Done", systemImage: "keyboard.chevron.compact.down").padding(.vertical, 12)
+            }.font(.subheadline.weight(.semibold)).accessibilityIdentifier(identifier)
+                .accessibilityHint("Dismisses the keyboard without saving.")
+        }.padding(.horizontal, 20).background(.regularMaterial)
+            .contentShape(Rectangle())
+            .gesture(DragGesture(minimumDistance: 12).onEnded { value in
+                if value.translation.height > 12, value.translation.height > abs(value.translation.width) { dismiss() }
+            })
+            .accessibilityElement(children: .contain).accessibilityIdentifier("keyboard-dismiss-bar")
+    }
+}
+
 struct Metric: View {
     let value: String
     let title: String

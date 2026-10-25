@@ -116,16 +116,21 @@ struct CoachView: View {
     }
 
     private var composer: some View {
-        HStack(alignment: .bottom, spacing: 12) {
-            TextField("Ask your coach", text: $message, axis: .vertical).lineLimit(1...4).font(.subheadline)
-                .focused($composerFocused)
-                .padding(13).background(Palette.surface, in: RoundedRectangle(cornerRadius: 15)).accessibilityIdentifier("coach-message")
-            Button {
-                let text = message; message = ""
-                run { await model.send(message: text, history: store.history, support: support) }
-            } label: { Image(systemName: "arrow.up").font(.headline).frame(width: 44, height: 44).background(Palette.blue, in: Circle()).foregroundStyle(.white) }
-                .accessibilityLabel("Send message").disabled(model.isLoading || message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || message.count > 4000)
-        }.padding(.horizontal, 20).padding(.vertical, 12).background(.white)
+        VStack(spacing: 0) {
+            if composerFocused {
+                KeyboardDismissBar(identifier: "coach-chat-keyboard-done") { composerFocused = false }
+            }
+            HStack(alignment: .bottom, spacing: 12) {
+                TextField("Ask your coach", text: $message, axis: .vertical).lineLimit(1...4).font(.subheadline)
+                    .focused($composerFocused)
+                    .padding(13).background(Palette.surface, in: RoundedRectangle(cornerRadius: 15)).accessibilityIdentifier("coach-message")
+                Button {
+                    let text = message; message = ""
+                    run { await model.send(message: text, history: store.history, support: support) }
+                } label: { Image(systemName: "arrow.up").font(.headline).frame(width: 44, height: 44).background(Palette.blue, in: Circle()).foregroundStyle(.white) }
+                    .accessibilityLabel("Send message").disabled(model.isLoading || message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || message.count > 4000)
+            }.padding(.horizontal, 20).padding(.vertical, 12)
+        }.background(.white)
     }
 
     private func proposalReview(_ proposal: WorkoutProposal) -> some View {
@@ -187,7 +192,9 @@ private struct CoachGoalContext: View {
 }
 
 struct CoachSettingsView: View {
+    private enum Field: Hashable { case url, token }
     @Environment(\.dismiss) private var dismiss
+    @FocusState private var focusedField: Field?
     @State private var url = CoachSettings.gatewayURL
     @State private var token = CoachSettings.token() ?? ""
     @State private var error: String?
@@ -196,19 +203,28 @@ struct CoachSettingsView: View {
             Form {
                 Section("Connection") {
                     TextField("Gateway URL", text: $url).textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
+                        .focused($focusedField, equals: .url)
                     SecureField("Gateway access token", text: $token).textInputAutocapitalization(.never).autocorrectionDisabled()
+                        .focused($focusedField, equals: .token)
                     Text("Use the access token for your Spottr gateway. Your Gemini provider key stays on the server. The access token is stored in this iPhone’s Keychain.").font(.caption)
+                        .contentShape(Rectangle()).onTapGesture { focusedField = nil }
                 }
                 Section {
                     Button("Save connection") {
+                        focusedField = nil
                         do { try CoachSettings.save(url: url, token: token); dismiss() }
                         catch { self.error = "Use an HTTPS gateway URL and its access token. Localhost HTTP is supported for development." }
                     }
                     if let error { Text(error).font(.caption).foregroundStyle(Palette.red) }
                 }
-            }.navigationTitle("Coach settings").navigationBarTitleDisplayMode(.inline)
+            }.scrollDismissesKeyboard(.immediately).accessibilityIdentifier("coach-settings-form")
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    if focusedField != nil { KeyboardDismissBar(identifier: "coach-settings-keyboard-done") { focusedField = nil } }
+                }
+                .navigationTitle("Coach settings").navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) { Button("Cancel") { dismiss() } } }
+                    ToolbarItem(placement: .topBarTrailing) { Button("Cancel") { focusedField = nil; dismiss() } }
+                }
         }
     }
 }

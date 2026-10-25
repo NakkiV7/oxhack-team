@@ -378,6 +378,7 @@ private struct ExerciseDetailView: View {
 }
 
 struct ManualWorkoutView: View {
+    private enum Field: Hashable { case quantity, sets }
     @Bindable var store: TrainingStore
     let entry: ExerciseEntry
     @Environment(\.dismiss) private var dismiss
@@ -386,6 +387,7 @@ struct ManualWorkoutView: View {
     @State private var reason: StopReason = .voluntary
     @State private var saved = false
     @State private var error: String?
+    @FocusState private var focusedField: Field?
 
     init(store: TrainingStore, entry: ExerciseEntry, initialCount: Int, initialSets: Int) {
         self.store = store; self.entry = entry
@@ -407,16 +409,19 @@ struct ManualWorkoutView: View {
                     Form {
                         Section(entry.name) {
                             Text("Log only the sets you completed. For different quantities, save them separately.").font(.subheadline).foregroundStyle(.secondary)
+                                .contentShape(Rectangle()).onTapGesture { focusedField = nil }
                             HStack {
                                 Text(entry.unit == .reps ? "Reps per set" : "Seconds per set")
                                 Spacer()
                                 TextField(entry.unit == .reps ? "Reps per set" : "Seconds per set", text: $quantity)
                                     .keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(width: 70)
+                                    .focused($focusedField, equals: .quantity)
                                     .accessibilityIdentifier(entry.unit == .reps ? "Reps per set" : "Seconds per set")
                             }
                             HStack {
                                 Text("Number of sets"); Spacer()
                                 TextField("Number of sets", text: $sets).keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(width: 70)
+                                    .focused($focusedField, equals: .sets)
                                     .accessibilityIdentifier("Number of sets")
                             }
                             Picker("Why did you stop?", selection: $reason) {
@@ -428,14 +433,22 @@ struct ManualWorkoutView: View {
                             PrimaryButton(title: "Save workout", symbol: "checkmark", action: save)
                             if let error { Text(error).font(.caption).foregroundStyle(Palette.red) }
                         }
-                    }
+                    }.scrollDismissesKeyboard(.immediately)
                 }
             }.navigationTitle(saved ? "Saved" : "Log exercise").navigationBarTitleDisplayMode(.inline)
-                .toolbar { if !saved { ToolbarItem(placement: .topBarTrailing) { Button("Cancel") { dismiss() } } } }
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    if focusedField != nil { KeyboardDismissBar(identifier: "manual-workout-keyboard-done") { focusedField = nil } }
+                }
+                .toolbar {
+                    if !saved {
+                        ToolbarItem(placement: .topBarTrailing) { Button("Cancel") { focusedField = nil; dismiss() } }
+                    }
+                }
         }
     }
 
     private func save() {
+        focusedField = nil
         guard let count = Int(quantity), let number = Int(sets) else { error = "Enter whole numbers for quantity and sets."; return }
         do {
             let record = try LoggedWorkout.make(exerciseID: entry.id, count: count, sets: number, reason: reason)

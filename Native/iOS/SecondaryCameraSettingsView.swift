@@ -38,38 +38,49 @@ final class SecondaryCameraPairingForm {
 }
 
 struct SecondaryCameraSettingsView: View {
+    private enum Field: Hashable { case url, fingerprint, token }
     @Environment(\.dismiss) private var dismiss
     @State private var form = SecondaryCameraPairingForm()
+    @FocusState private var focusedField: Field?
     var body: some View {
         NavigationStack {
             Form {
                 Section("Private camera pairing") {
                     TextField("HTTPS address", text: $form.url)
+                        .focused($focusedField, equals: .url)
                         .accessibilityIdentifier("secondary-camera-address")
                     TextField("Certificate SHA256 fingerprint", text: $form.certificateSHA256, axis: .vertical)
+                        .focused($focusedField, equals: .fingerprint)
                         .accessibilityIdentifier("secondary-camera-pin")
                     SecureField("Access token", text: $form.token)
+                        .focused($focusedField, equals: .token)
                         .privacySensitive()
                         .accessibilityIdentifier("secondary-camera-token")
                     Text("Enter the private address, certificate fingerprint, and token supplied by your Pi. Pairing stays in this device’s Keychain. Saving does not start the camera.")
                         .font(.caption).foregroundStyle(.secondary)
+                        .contentShape(Rectangle()).onTapGesture { focusedField = nil }
                 }
                 if let error = form.errorMessage {
                     Text(error).foregroundStyle(.red).accessibilityIdentifier("secondary-camera-pairing-error")
                 }
                 Section {
-                    Button("Save pairing") { if form.save() { dismiss() } }
+                    Button("Save pairing") { focusedField = nil; if form.save() { dismiss() } }
                         .accessibilityIdentifier("secondary-camera-save")
-                    Button("Forget camera", role: .destructive) { if form.forget() { dismiss() } }
+                    Button("Forget camera", role: .destructive) { focusedField = nil; if form.forget() { dismiss() } }
                         .accessibilityIdentifier("secondary-camera-forget")
                 }
-            }
+            }.scrollDismissesKeyboard(.immediately).accessibilityIdentifier("secondary-camera-settings-form")
             #if os(iOS)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
             #endif
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if focusedField != nil { KeyboardDismissBar(identifier: "secondary-camera-keyboard-done") { focusedField = nil } }
+            }
             .navigationTitle("Side camera")
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { focusedField = nil; dismiss() } }
+            }
         }
     }
 }

@@ -1,6 +1,84 @@
 import XCTest
 
 final class CoachFlowTests: XCTestCase {
+    @MainActor func testChatDoneAndDismissHandlePreserveTheUnsentDraft() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
+        app.launch()
+        app.tabBars.buttons["Coach"].tap()
+        let composer = app.descendants(matching: .any)["coach-message"]
+        XCTAssertTrue(composer.waitForExistence(timeout: 3))
+        composer.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
+        let draft = "Keep this draft. Do not send."
+        composer.typeText(draft)
+        let done = app.buttons["coach-chat-keyboard-done"]
+        XCTAssertTrue(done.waitForExistence(timeout: 3))
+        done.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3))
+        XCTAssertEqual(composer.value as? String, draft)
+        composer.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
+        let handle = app.descendants(matching: .any)["keyboard-dismiss-bar"]
+        XCTAssertTrue(handle.waitForExistence(timeout: 3))
+        handle.swipeDown()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3))
+        XCTAssertEqual(composer.value as? String, draft)
+        XCTAssertFalse(app.buttons["Cancel coach request"].exists)
+        XCTAssertFalse(app.staticTexts["SPOTTR · GEMINI"].exists)
+    }
+
+    @MainActor func testCoachSettingsDoneScrollAndExplanationDismissKeyboardWithoutSavingDraft() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
+        app.launch()
+        app.tabBars.buttons["Coach"].tap()
+        app.buttons["Coach settings"].tap()
+        let address = app.textFields["Gateway URL"]
+        XCTAssertTrue(address.waitForExistence(timeout: 3))
+        let original = address.value as? String ?? ""
+        address.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
+        address.typeText(".synthetic")
+        let draft = address.value as? String ?? ""
+        XCTAssertEqual(draft, original + ".synthetic")
+        let done = app.buttons["Done"]
+        XCTAssertTrue(done.waitForExistence(timeout: 3), "Settings need an explicit keyboard dismissal action.")
+        done.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3))
+        XCTAssertEqual(address.value as? String, draft)
+
+        address.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
+        address.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: draft.count))
+        let blank = address.value as? String ?? ""
+        XCTAssertTrue(blank.isEmpty || blank == address.placeholderValue)
+        app.descendants(matching: .any)["coach-settings-form"].swipeDown()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3))
+        XCTAssertEqual(address.value as? String ?? "", blank)
+
+        address.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
+        address.typeText("synthetic")
+        let explanation = app.staticTexts.matching(NSPredicate(format: "label == %@", "Use the access token for your Spottr gateway. Your Gemini provider key stays on the server. The access token is stored in this iPhone’s Keychain.")).firstMatch
+        XCTAssertTrue(explanation.isHittable)
+        explanation.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3))
+        XCTAssertEqual(address.value as? String, "synthetic")
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(app.staticTexts["Your next move."].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["Cancel coach request"].exists)
+        app.terminate()
+        app.launch()
+        app.tabBars.buttons["Coach"].tap()
+        app.buttons["Coach settings"].tap()
+        XCTAssertTrue(address.waitForExistence(timeout: 3))
+        XCTAssertEqual(address.value as? String, original)
+        app.buttons["Cancel"].tap()
+    }
+
     @MainActor func testCoachTitleAndDownwardScrollDismissKeyboardWithoutSendingTheDraft() {
         continueAfterFailure = false
         let app = XCUIApplication()
