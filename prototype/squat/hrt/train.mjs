@@ -1,21 +1,24 @@
 // Offline experiment for the tempo forecast: builds prediction origins from hrt/data/reps.csv with the same code the
 // page runs (../hrt.mjs), fits the baselines and the L2 logistic model under grouped cross-validation, selects the
 // cue threshold under a false-alert budget, and writes the artifacts the page and the paper read:
-//   hrt/model.json          the deployable model (features, scaling, coefficients, threshold)
-//   hrt/results.json        every table and curve shown in the evidence dialog
+//   hrt/model-<target>.json    the deployable model (features, scaling, coefficients, threshold)
+//   hrt/results-<target>.json  every table and curve shown in the evidence dialog
 //   hrt/data/split-manifest.json
-// Usage: node hrt/train.mjs [--target controlled] [--budget 1.0] [--seed 7] [--boot 1000]
+// Usage: node hrt/train.mjs [--target controlled|relative|slow] [--budget 0.5] [--seed 7] [--boot 1000]
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { execSync } from 'node:child_process';
-import { TARGETS, DEFAULT_TARGET, FEATURES, FEATURE_SETS, HORIZON, MIN_REPS, LABEL_VERSION, FEATURE_VERSION, POLICY_VERSION, violates, featuresAt, ineligible, labelAt, heuristicAlert, sigmoid } from '../hrt.mjs';
+import { TARGETS, DEFAULT_TARGET, FEATURES, FEATURE_SETS, MIN_REPS, LABEL_VERSION, FEATURE_VERSION, POLICY_VERSION, featuresAt, ineligible, labelAt, heuristicAlert, sigmoid, setHorizon } from '../hrt.mjs';
 
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
-const TARGET = TARGETS[opt('--target', DEFAULT_TARGET)];
+const KEY = TARGETS[opt('--target', DEFAULT_TARGET)] ? opt('--target', DEFAULT_TARGET) : DEFAULT_TARGET;
+const TARGET = TARGETS[KEY];
 const BUDGET = Number(opt('--budget', 0.5));   // false alerts per monitored set: a product choice (one unnecessary interruption per two sets), not a medical constant
 const SEED = Number(opt('--seed', 7)), BOOT = Number(opt('--boot', 1000));
-const LAMBDAS = [0.01, 0.1, 1, 10];
+const HORIZON = Number(opt('--horizon', 2)); setHorizon(HORIZON); // reps ahead; an artifact records the horizon it was evaluated with
+const GROUP_BY = opt('--group', 'person'); // cross-validation and bootstrap unit: 'person' (default; several recordings of one person stay together) or 'recording'
+const LAMBDAS = [0.01, 0.1, 1, 10, 100];
 const TAUS = Array.from({ length: 19 }, (_, i) => Math.round((i + 1) * 0.05 * 100) / 100);
 const DATA = new URL('./data/reps.csv', import.meta.url);
 
@@ -27,7 +30,7 @@ const cols = head.split(',');
 const rows = lines.map((l) => Object.fromEntries(l.split(',').map((v, i) => [cols[i], v])));
 const groups = {};
 for (const r of rows) {
-  const g = (groups[r.recording] ??= { recording: r.recording, split: r.split, person: r.person, provenance: r.provenance, variation: r.variation, reps: [] });
+  const g = (groups[r.recording] ??= { recording: r.recording, split: r.split, person: r.person, provenance: r.provenance, variation: r.variation, seq: Number(r.seq || 0), reps: [] });
   g.reps.push({ n: r.rep_n === '' ? null : Number(r.rep_n), counted: r.counted === 'true', tDown: r.down === '' ? null : Number(r.down), tUp: r.up === '' ? null : Number(r.up),
     secs: Number(r.secs || 0), depth: r.depth === '' ? null : Number(r.depth), tEnd: Number(r.t_end) });
 }
@@ -42,15 +45,25 @@ for (const g of Object.values(groups)) {
     audit.origins++;
     const why = ineligible(g.reps, t, TARGET);
     if (why) { audit.ineligible[why] = (audit.ineligible[why] ?? 0) + 1; continue; }
-    const lab = labelAt(g.reps, t, TARGET, { setEnded: true });
+    const lab = labelAt(g.reps, t, TARGET, { setEnded: true, horizon: HORIZON });
     if (lab.state !== 'observed') { audit.excluded[lab.reason] = (audit.excluded[lab.reason] ?? 0) + 1; continue; }
     audit.observed++; audit.positives += lab.y;
     const origin = counted[t - 1];
-    examples.push({ group: g.recording, person: g.person, split: g.split, t, x: featuresAt(g.reps, t, TARGET), y: lab.y, onset: lab.onsetOffset,
+    const groupId = GROUP_BY === 'person' && g.person && g.person !== '?' ? g.person : g.recording;
+    examples.push({ group: groupId, recording: g.recording, person: g.person, split: g.split, seq: g.seq, t, x: featuresAt(g.reps, t, TARGET), y: lab.y, onset: lab.onsetOffset,
       leadSecs: lab.onsetOffset ? lab.futureReps[lab.onsetOffset - 1].tEnd - origin.tEnd : null, heuristic: heuristicAlert(g.reps, t), tEnd: origin.tEnd,
       nextDown: lab.futureReps[0].tDown });
   }
 }
+// Personal history: the median lowering duration of the same person's earlier sets (lower seq, same split), available at
+// prediction time because those sets happened before. Clips have no earlier sets, so the flag marks them missing.
+const medianOf = (a) => { const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const NEUTRAL_DOWN = (TARGET.L != null ? (TARGET.L + TARGET.U) / 2 : 1.0); // fixed imputation, no data leakage
+for (const e of examples) {
+  const earlier = Object.values(groups).filter((g) => g.person === e.person && g.seq > 0 && g.seq < e.seq && g.split === e.split).flatMap((g) => g.reps.filter((r) => r.counted).map((r) => r.tDown));
+  e.x.prior_down = earlier.length ? medianOf(earlier) : NEUTRAL_DOWN; e.x.prior_missing = earlier.length ? 0 : 1;
+}
+const HISTORY_FEATURES = [...FEATURE_SETS.full, 'prior_down', 'prior_missing'];
 const dev = examples.filter((e) => e.split === 'dev'), testSet = examples.filter((e) => e.split === 'test');
 const groupsOf = (ex) => [...new Set(ex.map((e) => e.group))];
 
@@ -180,19 +193,27 @@ const results = {
 
 if (enough) {
   const cvFull = crossValidate(dev, FEATURE_SETS.full, LAMBDAS), cvTempo = crossValidate(dev, FEATURE_SETS.tempo, LAMBDAS), cvPos = crossValidate(dev, FEATURE_SETS.position, LAMBDAS), cvConst = constantCV(dev);
-  const models = { constant: cvConst.oof, position: cvPos.oof, tempo: cvTempo.oof, full: cvFull.oof };
+  const anyHistory = dev.some((e) => !e.x.prior_missing);
+  const cvHist = anyHistory ? crossValidate(dev, HISTORY_FEATURES, LAMBDAS) : null;
+  const models = { constant: cvConst.oof, position: cvPos.oof, tempo: cvTempo.oof, full: cvFull.oof, ...(cvHist ? { history: cvHist.oof } : {}) };
   const probMetrics = Object.fromEntries(Object.entries(models).map(([k, oof]) => [k, summarise(dev, oof)]));
   // Policies: frontier over tau for each probability model, the heuristic, and silence.
   const frontier = Object.fromEntries(Object.entries(models).map(([k, oof]) => [k, TAUS.map((tau) => policy(dev, (e, t) => oof.get(e) >= t, tau))]));
   const heuristic = policy(dev, (e) => e.heuristic, null);
   const silent = policy(dev, () => false, null);
+  // E: drift rule. Alert when the last-three median lowering has drifted from the set's first-three median by at least
+  // theta of the baseline (the band itself sits at TARGET.rel or at the fixed edges). One feature, no fitting.
+  const THETAS = Array.from({ length: 24 }, (_, i) => Math.round((i + 1) * 0.01 * 100) / 100);
+  const driftRatio = (e) => Math.abs(e.x.down_drift) / (e.x.down_med - e.x.down_drift || 1); // drift relative to the first-three median
+  const driftFrontier = THETAS.map((th) => ({ ...policy(dev, (e) => driftRatio(e) >= th, th), theta: th }));
   const pick = (fr) => { const ok = fr.filter((p) => p.falseAlertsPerSet <= BUDGET); if (!ok.length) return null; const best = Math.max(...ok.map((p) => p.recall ?? 0)); return ok.filter((p) => (p.recall ?? 0) === best).sort((a, b) => b.tau - a.tau)[0]; };
   const operating = Object.fromEntries(Object.entries(frontier).map(([k, fr]) => [k, pick(fr)]));
+  const driftRule = pick(driftFrontier);
   // Paired cluster bootstrap over recordings of the out-of-fold predictions (fixed models; see docs for the caveat).
   for (const e of dev) e.pred = { full: cvFull.oof.get(e), constant: cvConst.oof.get(e), position: cvPos.oof.get(e) }; // travels with resampled copies
   const r = rng(SEED), gs = groupsOf(dev), byG = Object.fromEntries(gs.map((g) => [g, dev.filter((e) => e.group === g)]));
-  const diffs = { brierFullMinusConstant: [], recallFullMinusHeuristic: [], falseAlertsFullMinusHeuristic: [], brierFullMinusPosition: [] };
-  const tauStar = operating.full?.tau ?? 0.5;
+  const diffs = { brierFullMinusConstant: [], recallFullMinusHeuristic: [], falseAlertsFullMinusHeuristic: [], brierFullMinusPosition: [], recallDriftMinusHeuristic: [], falseAlertsDriftMinusHeuristic: [] };
+  const tauStar = operating.full?.tau ?? 0.5, thetaStar = driftRule?.theta ?? 1;
   for (let b = 0; b < BOOT; b++) {
     const sample = Array.from({ length: gs.length }, () => byG[gs[Math.floor(r() * gs.length)]]).flatMap((list, i) => list.map((e) => ({ ...e, group: `${e.group}#${i}` })));
     const ys = sample.map((e) => e.y);
@@ -201,20 +222,44 @@ if (enough) {
     const pf = policy(sample, (e) => e.pred.full >= tauStar, tauStar), ph = policy(sample, (e) => e.heuristic, null);
     diffs.recallFullMinusHeuristic.push((pf.recall ?? 0) - (ph.recall ?? 0));
     diffs.falseAlertsFullMinusHeuristic.push((pf.falseAlertsPerSet ?? 0) - (ph.falseAlertsPerSet ?? 0));
+    const pd = policy(sample, (e) => driftRatio(e) >= thetaStar, thetaStar);
+    diffs.recallDriftMinusHeuristic.push((pd.recall ?? 0) - (ph.recall ?? 0));
+    diffs.falseAlertsDriftMinusHeuristic.push((pd.falseAlertsPerSet ?? 0) - (ph.falseAlertsPerSet ?? 0));
   }
   const ci = (a) => { const s = [...a].sort((x, y) => x - y); return { low: s[Math.floor(0.025 * s.length)], high: s[Math.floor(0.975 * s.length)], mean: mean(s) }; };
   const ps = dev.map((e) => cvFull.oof.get(e)), ys = dev.map((e) => e.y);
   const calibratable = ys.filter(Boolean).length >= 10 && ys.filter((y) => !y).length >= 10;
   results.dev = {
-    protocol: 'leave-one-recording-out; lambda by nested leave-one-recording-out log loss', groups: gs.length, lambdas: { full: cvFull.lambda, tempo: cvTempo.lambda, position: cvPos.lambda },
+    protocol: `leave-one-${GROUP_BY}-out; lambda by nested leave-one-${GROUP_BY}-out log loss`, groupBy: GROUP_BY, groups: gs.length, lambdas: { full: cvFull.lambda, tempo: cvTempo.lambda, position: cvPos.lambda },
     probability: probMetrics, prevalence: ys.filter(Boolean).length / ys.length,
-    policies: { ...Object.fromEntries(Object.entries(operating).map(([k, v]) => [k, v])), heuristic, silent }, frontier, budget: BUDGET,
+    policies: { ...Object.fromEntries(Object.entries(operating).map(([k, v]) => [k, v])), drift: driftRule, heuristic, silent }, frontier: { ...frontier, drift: driftFrontier }, budget: BUDGET,
     reliability: { full: reliability(ps, ys), status: calibratable ? 'preliminary (out-of-fold, no recalibration applied)' : 'preliminary: too few events per class to assess or fit calibration' },
-    bootstrap: { resamples: BOOT, unit: 'recording', seed: SEED, intervals: Object.fromEntries(Object.entries(diffs).map(([k, v]) => [k, ci(v)])), note: 'Fixed out-of-fold predictions resampled by recording; does not include model-selection uncertainty.' },
+    bootstrap: { resamples: BOOT, unit: GROUP_BY, seed: SEED, intervals: Object.fromEntries(Object.entries(diffs).map(([k, v]) => [k, ci(v)])), note: 'Fixed out-of-fold predictions resampled by recording; does not include model-selection uncertainty.' },
     ablations: Object.fromEntries(Object.entries(probMetrics).map(([k, m]) => [k, { ...m, recallAtBudget: operating[k]?.recall ?? null, falseAlertsPerSet: operating[k]?.falseAlertsPerSet ?? null, tau: operating[k]?.tau ?? null }])),
     perGroup: gs.map((g) => { const list = byG[g]; const p = list.map((e) => cvFull.oof.get(e)), y = list.map((e) => e.y); return { group: g, n: list.length, positives: y.filter(Boolean).length, brierFull: brier(p, y), brierConstant: brier(list.map((e) => cvConst.oof.get(e)), y) }; }),
     primaryComparison: 'Brier score of the full logistic model against the constant baseline (bootstrap interval of the difference); policy: event recall of the full model at the selected threshold against the existing slow-ascent rule, both under the false-alert budget.',
   };
+  // Personalisation, chronological: for a person with several dev sets, predict each set from models trained on the clips
+  // plus only that person's earlier sets. Reported apart from unseen-person generalisation.
+  const persons = [...new Set(dev.filter((e) => e.seq > 0).map((e) => e.person))];
+  for (const person of persons) {
+    const seqs = [...new Set(dev.filter((e) => e.person === person && e.seq > 0).map((e) => e.seq))].sort((a, b) => a - b);
+    if (seqs.length < 3) continue;
+    const perSet = [], pooled = { history: [], full: [], constant: [], y: [], ex: [] };
+    for (let i = 2; i < seqs.length; i++) {
+      const k = seqs[i - 1], next = seqs[i];
+      const train = dev.filter((e) => !(e.person === person && e.seq > k)), held = dev.filter((e) => e.person === person && e.seq === next);
+      if (!held.length || !train.some((e) => e.y) || train.every((e) => e.y)) continue;
+      const mH = fitLogistic(train, HISTORY_FEATURES, cvHist?.lambda ?? cvFull.lambda), mF = fitLogistic(train, FEATURE_SETS.full, cvFull.lambda), mC = constant(train);
+      const pH = held.map((e) => mH.predict(e.x)), pF = held.map((e) => mF.predict(e.x)), pC = held.map(() => mC.predict()), y = held.map((e) => e.y);
+      perSet.push({ seq: next, n: held.length, positives: y.filter(Boolean).length, brierHistory: brier(pH, y), brierFull: brier(pF, y), brierConstant: brier(pC, y) });
+      pooled.history.push(...pH); pooled.full.push(...pF); pooled.constant.push(...pC); pooled.y.push(...y); pooled.ex.push(...held.map((e, j) => ({ ...e, pH: pH[j] })));
+    }
+    if (!perSet.length) continue;
+    results.personal = { person, sets: seqs.length, perSet, pooled: { n: pooled.y.length, positives: pooled.y.filter(Boolean).length, brierHistory: brier(pooled.history, pooled.y), brierFull: brier(pooled.full, pooled.y), brierConstant: brier(pooled.constant, pooled.y), logLossHistory: logloss(pooled.history, pooled.y), logLossFull: logloss(pooled.full, pooled.y) },
+      policy: { history: policy(pooled.ex, (e) => e.pH >= tauStar, tauStar), heuristic: policy(pooled.ex, (e) => e.heuristic, null) }, note: 'Each held set is predicted using the clips and only this person\'s earlier sets; threshold frozen from the main development selection.' };
+    break; // one person at a time for now
+  }
   // Regression fallback: next lowering duration, out of fold.
   const oofR = new Map(), oofLast = new Map(), oofMed = new Map();
   for (const g of gs) { const tr = dev.filter((e) => e.group !== g), m = fitRidge(tr, FEATURE_SETS.tempo, 1); for (const e of dev.filter((e) => e.group === g)) { oofR.set(e, m.predict(e.x)); oofLast.set(e, e.x.down); oofMed.set(e, e.x.down_med); } }
@@ -227,8 +272,9 @@ if (enough) {
   results.modelRun = modelRun;
   const artifact = { modelRun, status: results.status, target: TARGET.id, labelVersion: LABEL_VERSION, featureVersion: FEATURE_VERSION, policyVersion: POLICY_VERSION, horizon: HORIZON, minReps: MIN_REPS,
     features: finalModel.features, mean: finalModel.mean, sd: finalModel.sd, coef: finalModel.coef, intercept: finalModel.intercept, lambda: finalModel.lambda, threshold: tauStar, calibration: null,
+    policy: driftRule && (driftRule.recall ?? 0) > (operating.full?.recall ?? 0) ? { kind: 'drift', theta: thetaStar, recall: driftRule.recall, falseAlertsPerSet: driftRule.falseAlertsPerSet } : { kind: 'logistic', threshold: tauStar },
     trainedOn: { split: 'dev', examples: dev.length, recordings: gs.length, datasetSha256: datasetSha }, generatedAt: results.generatedAt, note: 'Probabilities are out-of-fold preliminary; see results.json before quoting them.' };
-  writeFileSync(new URL('./model.json', import.meta.url), JSON.stringify(artifact, null, 2) + '\n');
+  writeFileSync(new URL(`./model-${KEY}${opt('--suffix', '')}.json`, import.meta.url), JSON.stringify(artifact, null, 2) + '\n');
   // Locked test evaluation, only if held-out recordings exist. Run once; changing anything above invalidates it.
   if (testSet.length) {
     const ysT = testSet.map((e) => e.y);
@@ -242,7 +288,7 @@ if (enough) {
   }
 }
 
-writeFileSync(new URL('./results.json', import.meta.url), JSON.stringify(results, null, 2) + '\n');
+writeFileSync(new URL(`./results-${KEY}${opt('--suffix', '')}.json`, import.meta.url), JSON.stringify(results, null, 2) + '\n');
 writeFileSync(new URL('./data/split-manifest.json', import.meta.url), JSON.stringify({ datasetSha256: datasetSha, groups: Object.fromEntries(Object.values(groups).map((g) => [g.recording, g.split])) }, null, 2) + '\n');
 
 // ---------- console summary ----------
@@ -253,9 +299,11 @@ if (results.dev) {
   console.log('model      n   pos  brier  logloss  AP     recall@budget  FA/set  tau');
   for (const [k, m] of Object.entries(results.dev.ablations)) console.log(k.padEnd(9), String(m.n).padStart(3), String(m.positives).padStart(4), f3(m.brier), f3(m.logLoss), f3(m.averagePrecision), '   ', f3(m.recallAtBudget), '   ', f3(m.falseAlertsPerSet), ' ', m.tau ?? '');
   const h = results.dev.policies.heuristic; console.log('heuristic (slow ascent rule): recall', f3(h.recall), 'FA/set', f3(h.falseAlertsPerSet), 'alerts', h.alerts, 'events', h.events, 'median lead', h.medianLeadSecs, 's');
+  const dr = results.dev.policies.drift; console.log('drift rule:', dr ? `theta ${dr.theta} recall ${f3(dr.recall)} FA/set ${f3(dr.falseAlertsPerSet)} alerts ${dr.alerts} lead ${dr.medianLeadSecs}s/${dr.medianLeadReps} reps` : 'none within budget');
   console.log('bootstrap:', JSON.stringify(results.dev.bootstrap.intervals));
   console.log('regression MAE:', JSON.stringify(results.regression.mae));
-  console.log('lambda', results.dev.lambdas.full, 'threshold', results.modelRun && JSON.parse(readFileSync(new URL('./model.json', import.meta.url), 'utf8')).threshold);
+  console.log('lambda', results.dev.lambdas.full, 'threshold', results.modelRun && JSON.parse(readFileSync(new URL(`./model-${KEY}.json`, import.meta.url), 'utf8')).threshold);
+  if (results.personal) console.log('personal (chronological):', JSON.stringify(results.personal.pooled), 'policy history recall', results.personal.policy.history.recall, 'FA/set', results.personal.policy.history.falseAlertsPerSet);
 }
 if (results.test) console.log('TEST (locked):', JSON.stringify(results.test.probability.full), 'policy', JSON.stringify(results.test.policies.full));
-console.log('wrote hrt/results.json, hrt/model.json, hrt/data/split-manifest.json');
+console.log(`wrote hrt/results-${KEY}.json, hrt/model-${KEY}.json, hrt/data/split-manifest.json`);

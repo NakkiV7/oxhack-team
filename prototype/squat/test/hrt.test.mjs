@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { TARGETS, HORIZON, MIN_REPS, FEATURES, violates, featuresAt, ineligible, labelAt, heuristicAlert, predictProb, Forecaster, cueText } from '../hrt.mjs';
+import { TARGETS, HORIZON, MIN_REPS, FEATURES, violates, bounds, featuresAt, ineligible, labelAt, heuristicAlert, predictProb, Forecaster, cueText } from '../hrt.mjs';
 
 const T = TARGETS.controlled;
 // A set as the counter would report it: counted reps with lowering/rising durations, plus one shallow attempt.
@@ -22,6 +22,7 @@ test('features need three counted reps and use only reps up to the origin', () =
   assert.equal(Math.round(x.down_range * 10) / 10, 0.2); assert.equal(Math.round(x.margin * 100) / 100, Math.round((0.4 / 0.9) * 100) / 100);
   assert.equal(x.rep_n, 4); assert.equal(Math.round(x.elapsed * 10) / 10, 10.8); // 12.0 minus the start of rep 1 (3.0 - 1.8)
   assert.equal(x.depth_missing, 0);
+  assert.equal(x.down_drift, 0); assert.equal(Math.round(x.up_drift * 10) / 10, 0.1); // last three ups 0.8, 0.9, 1.0 vs first three 0.8, 0.8, 0.9
   const later = SET.map((r, i) => (i >= 4 ? { ...r, tDown: 9 } : r)); // changing future reps cannot change the origin's features
   assert.deepEqual(featuresAt(later, 4, T), x);
 });
@@ -69,7 +70,7 @@ test('predictProb standardises and stays inside (0, 1)', () => {
 
 const run = (mode, intercept, reps = SET, endIt = true) => {
   let id = 0;
-  const f = new Forecaster({ artifact: { ...artifact, intercept }, mode, uuid: () => `p${++id}`, clock: () => 1_800_000_000_000 });
+  const f = new Forecaster({ artifact: { ...artifact, intercept }, target: T, mode, uuid: () => `p${++id}`, clock: () => 1_800_000_000_000 });
   const log = reps.map((r) => f.onRep(r, r.tEnd));
   const tail = endIt ? f.end() : [];
   return { f, log, tail };
@@ -98,9 +99,10 @@ test('below the threshold the forecast is recorded as silent', () => {
 test('outcomes link to forecasts, carry lead time, and ending the set excludes open ones', () => {
   const { f, log, tail } = run('shadow', 0);
   const byId = Object.fromEntries(f.outcomes.map((o) => [o.predictionId, o]));
-  assert.deepEqual(log[4].outcomes.map((o) => o.predictionId), ['p1']); // after rep 5 the forecast at rep 3 resolves
-  assert.equal(byId.p1.outcome, 1); assert.equal(byId.p1.onsetOffset, 2); assert.equal(byId.p1.leadSecs, 5.5); // rep 5 ends 14.5, origin rep 3 ends 9.0
-  assert.equal(log[5].outcomes[0].predictionId, 'p2'); assert.equal(byId.p2.onsetOffset, 1); assert.equal(byId.p2.leadSecs, 2.5);
+  assert.deepEqual(log[4].outcomes, []); // after rep 5 alone a departure is not yet settled
+  assert.deepEqual(log[5].outcomes.map((o) => o.predictionId), ['p1', 'p2']); // reps 5 and 6 both outside: settled, both forecasts resolve
+  assert.equal(byId.p1.outcome, 1); assert.equal(byId.p1.onsetOffset, 2); assert.equal(byId.p1.leadSecs, 5.5); // departure at rep 5 (ends 14.5), origin rep 3 ends 9.0
+  assert.equal(byId.p2.onsetOffset, 1); assert.equal(byId.p2.leadSecs, 2.5);
   assert.deepEqual(tail, []); // nothing left open: reps 5 and 6 were never origins
   const short = run('shadow', 0, SET.slice(0, 4));
   assert.equal(short.tail.length, 2); assert.ok(short.tail.every((o) => o.state === 'excluded' && o.exclusionReason === 'set_ended')); // origins at reps 3 and 4 were open
@@ -117,7 +119,7 @@ test('forecast records are immutable and features match the offline definition',
 });
 
 test('without a model the forecaster reports unavailable and still tracks the baseline', () => {
-  const f = new Forecaster({ artifact: null, mode: 'shadow' });
+  const f = new Forecaster({ artifact: null, target: T, mode: 'shadow' });
   SET.slice(0, 2).forEach((r) => f.onRep(r, r.tEnd));
   assert.deepEqual(f.state, { kind: 'baseline', have: 2, need: MIN_REPS });
   f.onRep(SET[2], 9);
@@ -128,4 +130,30 @@ test('cue text names the criterion and the horizon, never a probability', () => 
   const t = cueText(T);
   assert.match(t.why, new RegExp(`${T.L} to ${T.U} s`)); assert.match(t.why, new RegExp(`${HORIZON} reps`));
   assert.doesNotMatch(t.cue + t.why, /%/);
+});
+
+test('a relative target takes its bounds from the set\'s first three reps and freezes them', () => {
+  const R = TARGETS.relative;
+  assert.equal(bounds(R, SET.slice(0, 2)), null);
+  const b = bounds(R, SET); // first three lowering: 1.0, 1.1, 0.9 -> median 1.0 -> [0.75, 1.25]
+  assert.deepEqual([b.L, b.U, b.base], [0.75, 1.25, 1.0]);
+  assert.deepEqual(bounds(R, [...SET, rep(7, 3, 3, 20)]), b); // later reps never move the bounds
+  assert.equal(ineligible(SET, 4, R), null); assert.equal(ineligible(SET, 5, R), 'current_rep_outside_target'); // 0.5 is below 0.75
+  assert.equal(labelAt(SET, 3, R).y, 1); assert.equal(labelAt(SET, 3, R).onsetOffset, 2);
+  assert.ok(Math.abs(featuresAt(SET, 4, R).margin - 0.5) < 1e-9); // 1.0 sits in the middle of [0.75, 1.25]
+  const f = new Forecaster({ artifact, target: R, mode: 'shadow' }); SET.forEach((r) => f.onRep(r, r.tEnd));
+  assert.deepEqual([f.bounds.L, f.bounds.U], [0.75, 1.25]); assert.equal(f.outcomes[0].futureReps[1].violates, true);
+  assert.match(cueText(f.bounds).why, /0\.75 to 1\.25 s/);
+});
+
+test('a single rep outside the band is a blip, not a departure; two of three is', () => {
+  const blip = [rep(1, 1.0, 0.8, 3), rep(2, 1.0, 0.8, 6), rep(3, 1.0, 0.8, 9), rep(4, 0.4, 0.8, 12), rep(5, 1.0, 0.8, 15), rep(6, 1.0, 0.8, 18), rep(7, 1.0, 0.8, 21)];
+  assert.equal(labelAt(blip, 3, T).y, 0); assert.equal(ineligible(blip, 5, T), null); // rep 4 was a blip; forecasting continues
+  const dep = [...blip.slice(0, 6), rep(7, 0.4, 0.8, 21), rep(8, 0.4, 0.8, 24), rep(9, 1.0, 0.8, 27)];
+  assert.equal(labelAt(dep, 3, T).y, 0); // the blip at 4 is followed by two reps inside
+  assert.deepEqual([labelAt(dep, 5, T).y, labelAt(dep, 5, T).onsetOffset], [1, 2]); // 7 and 8 outside: departure at 7
+  assert.deepEqual([labelAt(dep, 6, T).y, labelAt(dep, 6, T).onsetOffset], [1, 1]);
+  assert.equal(ineligible(dep, 9, T), 'after_departure'); assert.equal(labelAt(dep, 8, T).reason, 'after_departure');
+  const twoOfThree = [...blip.slice(0, 3), rep(4, 0.4, 0.8, 12), rep(5, 1.0, 0.8, 15), rep(6, 0.4, 0.8, 18)];
+  assert.deepEqual([labelAt(twoOfThree, 3, T).y, labelAt(twoOfThree, 3, T).onsetOffset], [1, 1]); // out, in, out counts as a departure at 4
 });

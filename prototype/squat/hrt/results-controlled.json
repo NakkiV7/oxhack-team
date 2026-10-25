@@ -1,0 +1,219 @@
+{
+  "generatedAt": "2026-10-25T05:41:43.000Z",
+  "gitCommit": "2522221911dba6cb248427ffac649d5db8942a0e",
+  "datasetSha256": "d516d9b45ae7e4f571579eeded02a11bbef951ddabdd491d5bad08b171661ff0",
+  "target": {
+    "id": "controlled-v1",
+    "label": "Controlled lowering, 0.6 to 1.5 s",
+    "L": 0.6,
+    "U": 1.5
+  },
+  "horizon": 5,
+  "minReps": 3,
+  "labelVersion": "tempo-v2",
+  "featureVersion": "f2",
+  "policyVersion": "budget-v1",
+  "budget": 0.5,
+  "seed": 7,
+  "datasetCard": {
+    "recordings": 26,
+    "people": 15,
+    "attempts": 717,
+    "countedReps": 710,
+    "bySplit": {
+      "dev": {
+        "recordings": 26,
+        "eligibleOrigins": 12,
+        "positives": 3
+      },
+      "test": {
+        "recordings": 0,
+        "eligibleOrigins": 0,
+        "positives": 0
+      }
+    },
+    "provenance": {
+      "tiger/ce15f91b/s1": {
+        "split": "dev",
+        "person": "nakki",
+        "provenance": "live",
+        "reps": 15
+      },
+      "tiger/ce15f91b/s2": {
+        "split": "dev",
+        "person": "nakki",
+        "provenance": "live",
+        "reps": 15
+      },
+      "tiger/ce15f91b/s3": {
+        "split": "dev",
+        "person": "nakki",
+        "provenance": "live",
+        "reps": 15
+      },
+      "tiger/ce15f91b/s4": {
+        "split": "dev",
+        "person": "nakki",
+        "provenance": "live",
+        "reps": 15
+      },
+      "barbell_squat_powerlifting_comp_01": {
+        "split": "dev",
+        "person": "cc-1",
+        "provenance": "imported",
+        "reps": 2
+      },
+      "cc_2G9exNOTjvs_day25_220": {
+        "split": "dev",
+        "person": "yt-chan",
+        "provenance": "imported",
+        "reps": 153
+      },
+      "cc_2yL3JSswZzg_tedcarr100_side": {
+        "split": "dev",
+        "person": "yt-tedcarr",
+        "provenance": "imported",
+        "reps": 100
+      },
+      "cc_7KiYUhaC-A0_100nopause": {
+        "split": "dev",
+        "person": "yt-bombe",
+        "provenance": "imported",
+        "reps": 100
+      },
+      "cc_9XKSFVupLfk_fastest50": {
+        "split": "dev",
+        "person": "yt-coeur",
+        "provenance": "imported",
+        "reps": 50
+      },
+      "cc_OiBjzZDnvuo_day9_100": {
+        "split": "dev",
+        "person": "yt-chan",
+        "provenance": "imported",
+        "reps": 89
+      },
+      "cc_PuAk7OZblH8_day7_80": {
+        "split": "dev",
+        "person": "yt-chan",
+        "provenance": "imported",
+        "reps": 80
+      },
+      "demo_front": {
+        "split": "dev",
+        "person": "cc-3",
+        "provenance": "imported",
+        "reps": 2
+      },
+      "goblet_squat_kb_01": {
+        "split": "dev",
+        "person": "cc-4",
+        "provenance": "imported",
+        "reps": 2
+      },
+      "half_squat_home_cdc_01": {
+        "split": "dev",
+        "person": "cc-5",
+        "provenance": "imported",
+        "reps": 6
+      },
+      "kb_clean_squat_thruster_01": {
+        "split": "dev",
+        "person": "cc-4",
+        "provenance": "imported",
+        "reps": 3
+      },
+      "kb_complex_ia_01": {
+        "split": "dev",
+        "person": "cc-6",
+        "provenance": "imported",
+        "reps": 2
+      },
+      "kb_racked_squat_01": {
+        "split": "dev",
+        "person": "cc-4",
+        "provenance": "imported",
+        "reps": 5
+      },
+      "kb_side": {
+        "split": "dev",
+        "person": "cc-4",
+        "provenance": "imported",
+        "reps": 6
+      },
+      "overhead_kb_squat_01": {
+        "split": "dev",
+        "person": "cc-4",
+        "provenance": "imported",
+        "reps": 1
+      },
+      "overhead_kb_squat_single_arm_01": {
+        "split": "dev",
+        "person": "cc-4",
+        "provenance": "imported",
+        "reps": 16
+      },
+      "overhead_kb_waiters_squat_01": {
+        "split": "dev",
+        "person": "cc-4",
+        "provenance": "imported",
+        "reps": 1
+      },
+      "screen_cam/team-1": {
+        "split": "dev",
+        "person": "team-1",
+        "provenance": "live-recorded",
+        "reps": 7
+      },
+      "screen_cam/team-2": {
+        "split": "dev",
+        "person": "team-2",
+        "provenance": "live-recorded",
+        "reps": 8
+      },
+      "screen_cam/team-3": {
+        "split": "dev",
+        "person": "team-3",
+        "provenance": "live-recorded",
+        "reps": 6
+      },
+      "squat_frontal_raise_01": {
+        "split": "dev",
+        "person": "cc-8",
+        "provenance": "imported",
+        "reps": 6
+      },
+      "squat_jump_army_front_01": {
+        "split": "dev",
+        "person": "cc-9",
+        "provenance": "imported",
+        "reps": 5
+      }
+    },
+    "audit": {
+      "origins": 710,
+      "ineligible": {
+        "baseline": 50,
+        "current_rep_outside_target": 614,
+        "after_departure": 20
+      },
+      "excluded": {
+        "after_departure": 2,
+        "set_ended": 12
+      },
+      "observed": 12,
+      "positives": 3
+    },
+    "labelDefinition": "v_t = 1 when the lowering duration of counted rep t is outside [0.6, 1.5] s; Y_t = 1 when v = 1 for rep t+1 or t+2; origins need 3 counted reps and v_t = 0; horizons with an uncounted attempt or fewer than 2 further reps are excluded.",
+    "limitations": [
+      "Labels are produced by the rep counter, not by independent annotation.",
+      "Development clips were used to tune the counter.",
+      "Most recordings are single short sets of different people under different loads and camera angles.",
+      "Test split is empty until the team's held-out recordings are added."
+    ]
+  },
+  "status": "insufficient-data",
+  "dev": null,
+  "test": null,
+  "regression": null
+}

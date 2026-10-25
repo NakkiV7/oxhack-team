@@ -200,7 +200,7 @@ export class RepCounter {
     const issue = worst && grades[worst] >= AMBER ? METRICS[worst].cue : slow ? "You're slowing down" : null;
     const rep = {
       n: this.count + 1, counted: true, good: !faults.some((f) => !['fast descent', 'slow ascent'].includes(f)), issue, faults, secs,
-      tDown: Math.round(down * 10) / 10, tUp: Math.round(up * 10) / 10, travel: Math.round(this.maxDrop * 100) / 100,
+      tDown: Math.round(down * 100) / 100, tUp: Math.round(up * 100) / 100, travel: Math.round(this.maxDrop * 100) / 100, // phases to 0.01 s (frame time is 0.033 s)
       depth: Math.round(this.cur.depth * 100) / 100, lean: Math.round(this.cur.lean), knees: Math.round(this.cur.knees * 100) / 100,
       balance: Math.round(this.cur.balance), grades,
     };

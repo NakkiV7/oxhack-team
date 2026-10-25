@@ -21,43 +21,53 @@ The task brief was written for the native app. The feature was built into the sq
 
 Verified before building: rows arrive (TIGER.md), workout and rep identifiers join, timestamps are the page's clock in seconds (replays use video time, so offline and live agree), replays are deduplicated by natural keys, and `received_at` is kept apart from `measured_at` so late rows are distinguishable from live ones.
 
-## 2. The prediction task (frozen 25 October 2026, before fitting)
+## 2. The prediction task (frozen 25 October 2026 06:30, before any held-out evaluation)
 
-- **Unit**: a counted squat rep `t` in one set. `d_t` = lowering duration (first frame past 15% hip travel to the bottom).
-- **Programme target** `[L, U]`: "Controlled lowering, 0.6 to 1.5 s" by default (a second programme, 2 to 4 s, is selectable). A target is a prescription, not a definition of correct technique. `v_t = 1` when `d_t` is outside `[L, U]`.
-- **Outcome** `Y_t = 1` if `v = 1` for rep `t+1` or `t+2`; `Y_t = 0` if both are counted reps that meet the target.
-- **Eligible origin**: at least 3 counted reps, `v_t = 0`, same variation and target throughout the set. The forecast is emitted at the rep boundary (measured latency below 1 ms), so the horizon is never already spent.
-- **Excluded horizons**, never labelled negative: `set_ended` (fewer than two further counted reps), `invalid_rep_in_horizon` (an attempt that did not count inside the next two attempts), target or variation change (a change starts a new set in the page).
-- **Features** (`f1`, window 3, past only): latest lowering duration, median of the last three, change against the median of the previous reps, range of the last three, normalised distance to the nearer edge of the target, latest rising duration and its change, rep number, elapsed time since the first rep began, depth change against the previous reps, and a flag when depth is not judged. No personal history across sessions yet (cold start is the baseline state).
-- **Model**: L2 logistic regression on standardised features, intercept unpenalised, λ chosen by nested leave-one-recording-out log loss from {0.01, 0.1, 1, 10}.
-- **Baselines**: A constant (Laplace-smoothed training prevalence); B set position only; C the page's existing slow-ascent rule (ascent over 2.2 s or 1.6× the median of earlier ascents) as a deterministic alert; D the model above. Ablations: position, tempo, tempo + pose.
-- **Policy**: alert when `p ≥ τ`, at most one alert per horizon (2 reps). `τ` maximises event recall subject to at most **0.5 false alerts per monitored set** (a product choice). Events are onsets: the first violating rep after a compliant one; a warning matches an onset in its horizon once; lead time is the time from the origin rep's end to the onset rep's end.
-- **Splits**: recordings are the groups. All 17 current recordings are development material (the counter was tuned on them). Held-out recordings made by the team go to the locked test split and are evaluated once.
-- **Metrics**: Brier (primary), log loss, average precision, event recall at the budget, false alerts per set, lead time, coverage; paired cluster bootstrap over recordings (1000 resamples, seed 7) for the differences. Primary comparison: D against A on Brier; policy: D against C on recall under the budget.
+**Protocol log.** The specification was revised three times on development data, each time before any held-out recording existed, and each revision is recorded here with its reason:
 
-## 3. Evidence today
+| when | change | why |
+|---|---|---|
+| 25 Oct 03:40 | v1: fixed programme range 0.6 to 1.5 s, any single rep outside the range within the next 2 reps, phase durations to 0.1 s | the task brief's preferred target |
+| 25 Oct 05:40 | relative target added and made primary; durations to 0.01 s; set-baseline drift features (f2); λ grid to 100 | the author's natural pace sits on the fixed 0.6 s edge, so labels there were rounding noise; the apparent gain on 56 origins vanished at 520 |
+| 25 Oct 06:05 | label v2: the event is the **first sustained departure** of the set (a rep outside the band with at least two of three consecutive reps outside); origins after it are excluded | long sets showed the tempo shifts regime once and flickers at the boundary afterwards; half the single-rep "onsets" were blips at the noise floor |
+| 25 Oct 06:30 | horizon 5 reps primary (2 reported); prespecified one-feature drift rule added as policy E; cross-validation grouped by person | a drift that builds over tens of reps gives two positive origins at a two-rep horizon; three of the Creative Commons sets share one subject |
 
-Development set: 14 recordings with counted reps, 78 counted reps, **22 eligible observed origins, 8 positive**, in 8 recordings (the others are too short). Out of fold:
+- **Unit**: a counted squat rep `t` in one set; a set ends at a rest pause longer than 12 s. `d_t` = lowering duration (first frame past 15% hip travel to the bottom), to 0.01 s.
+- **Bounds**: relative (primary, `relative-v1`): within 25% of the median lowering duration of the set's first three counted reps, frozen once they exist. Fixed (`controlled-v1`): 0.6 to 1.5 s. A second fixed programme (2 to 4 s) is selectable. None defines correct technique. `v_t = 1` when `d_t` is outside.
+- **Event** (`tempo-v2`): the set's first sustained departure, at the first rep `k` with `v_k = 1` and at least two of reps `k..k+2` outside. One event per set at most.
+- **Outcome** `Y_t = 1` if the first departure starts at any of reps `t+1 .. t+5`; `Y_t = 0` when those reps are observed and none starts one. A rep inside the band rules itself out immediately; a rep outside needs the two after it to tell a blip from a departure.
+- **Eligible origin**: at least 3 counted reps, `v_t = 0`, no departure yet, same variation and target throughout the set. Forecasts are emitted at the rep boundary (measured latency under 1 ms).
+- **Excluded horizons**, never labelled negative: `set_ended`, `invalid_rep_in_horizon` (an attempt that did not count inside the deciding window), `after_departure`.
+- **Features** (`f2`, window 3, past only): latest lowering duration, median of the last three, change against the median of the previous reps, range of the last three, drift of the last-three median from the set's first-three median, normalised distance to the nearer bound, the same for the rising phase (latest, change, drift), rep number, elapsed time since the first rep began, depth change against the previous reps, a flag when depth is not judged. Offline only: the median lowering of the same person's earlier sets (ablation "history").
+- **Model**: L2 logistic regression on standardised features, intercept unpenalised, λ by nested leave-one-person-out log loss from {0.01, 0.1, 1, 10, 100}.
+- **Baselines and policies**: A constant (Laplace-smoothed training prevalence); B set position only; C the page's slow-ascent rule as a deterministic alert; D the model above; E a prespecified one-feature **drift rule**: alert when the last-three median lowering has drifted from the first-three median by at least θ of it (θ chosen under the budget like τ). Ablations: position, tempo, tempo + pose, + history.
+- **Policy**: alert when `p ≥ τ` (or drift ≥ θ), at most one alert per horizon. τ and θ maximise event recall subject to at most **0.5 false alerts per monitored set**. A warning matches the departure once if it precedes it within the horizon; lead time runs from the origin rep's end to the departure rep's end. The deployed artifact carries whichever of D or E recalled more on development data.
+- **Splits**: groups are people where known (several recordings of one person stay together), recordings otherwise. Everything to date is development material. Held-out recordings of other people go to the locked test split, assigned in `hrt/data/recordings.json` before being examined, and are evaluated once for both targets and both horizons.
+- **Metrics**: Brier (primary), log loss, average precision, event recall at the budget, false alerts per set, lead time, coverage; paired cluster bootstrap over people (1000 resamples, seed 7). Primary comparisons: D against A on Brier; D and E against C on recall under the budget.
 
-| model | Brier | log loss | recall at budget | false alerts/set |
+## 3. Evidence today (25 October 06:30)
+
+Development set: 23 recordings of 11 people, 710 counted reps: 16 Creative Commons clips, the team session as three recordings, the author's four webcam sets of 15 fast air squats, and six long YouTube Creative Commons sets (50 to 153 reps; three of them one subject).
+
+Under the relative target and the first-departure label, **only five sets contain a departure**, all in the long sets. At a five-rep horizon that is 15 positive origins of 376 in 7 groups; at two reps, 8 of 401. Out of fold:
+
+| | Brier | AP | recall at budget | false alerts/set |
 |---|---|---|---|---|
-| A constant | 0.479 | 1.19 | 0 | 0 |
-| B set position | 0.701 | 6.96 | none within budget | |
-| D tempo + pose | 0.537 | 1.36 | 0 (τ = 0.95) | 0 |
-| C slow-ascent rule | | | 0.17 (1 of 6 events) | 0 |
+| A constant | 0.041 | 0.023 | 0 | 0 |
+| D tempo + pose | 0.041 | 0.024 | 0 (none within budget) | |
+| C slow-ascent rule | | | 0 | 0 |
+| E drift rule (θ = 0.23) | | | 0.20 (1 of 5), 5.8 s / 3 reps ahead | 0.43 |
 
-Bootstrap difference in Brier, D − A: +0.048 [0.007, 0.085]. **The model is worse than the constant baseline on this data, and no threshold meets the budget, so the deployed policy stays silent.** The existing rule catches one event in six with no false alerts. The regression fallback (next lowering duration) is also lost by the ridge model: MAE 0.87 s against 0.25 s for last-value persistence.
+The logistic model cannot learn from five events and matches the constant; the drift rule gives one early warning. On the fixed range at a natural pace almost every rep is already outside (614 of 710 origins ineligible) and the experiment has insufficient data. The earlier single-rep label produced many more "events", and an apparent model win on 56 origins that disappeared at 520: those events were boundary flicker, and that finding is why the label changed.
 
-This is the expected result for 22 examples from eight unrelated clips of different people, loads and angles. It is reported as such in the evidence dialog and the paper. What is demonstrable now is the infrastructure: forecasts at every eligible origin in shadow mode, persisted before their outcome, resolved and scored, read back into the review and the evidence panel.
-
-Held-out recordings change this. The plan: each teammate records two or three ordinary sets side-on; sets from two people join the development split (more origins for selection), sets from the other two are the locked test. The assignment is written into `hrt/data/recordings.json` before any of them is looked at.
+What is demonstrable now is the infrastructure and the honesty of the evaluation: forecasts at every eligible origin in shadow mode, persisted before their outcome, resolved and scored, read back into the review and the evidence panel, with a frozen protocol and an empty test split. What decides the result is data: each set recorded to natural slowing contributes one event. More long Creative Commons sets are being collected, and the team's own recordings become the locked test.
 
 ## 4. Run-time behaviour (page)
 
 1. The counter finishes a rep. `Forecaster.onRep` checks eligibility, builds past-only features, predicts, applies the policy, and returns an immutable forecast record plus any outcomes the new rep resolves.
 2. The forecast is queued and flushed to Tiger at once (`spottr_cv.prediction`); outcomes follow when the horizon closes (`spottr_cv.prediction_outcome`). The model is registered once in `spottr_cv.model_run`.
 3. **Shadow mode** (default): forecasts are recorded and shown in "Why this?", nothing is spoken. **Cue me** turns on coaching mode: a forecast at or above the threshold speaks one cue through the existing queue, with one cue per horizon; outcomes after a cue are flagged `coached` and the review labels them "observed after coaching".
-4. Card states: learning your pace (n of 3), tracking your next reps, last rep outside the range, cue, framing problem (hips and knees not tracked), prediction unavailable (no model), set finished. The card changes only at rep boundaries. No red styling.
+4. Card states: learning your pace (n of 3), tracking your next reps, last rep outside the range, cue, your tempo has shifted (forecasting stops for the set), framing problem (hips and knees not tracked), prediction unavailable (no model), set finished. The card changes only at rep boundaries. No red styling.
 5. "Why this?" shows the forecast criterion, the recent lowering durations against the target, the trend, the model id, and the probability labelled preliminary and uncalibrated.
 6. End workout: "What we anticipated" in the summary is rendered from the stored rows: each forecast, whether it would have cued, what was observed, the lead time, horizons left incomplete, and onsets that had no eligible warning.
 7. **Evidence** button: the dialog renders `hrt/results.json` (baselines, bootstrap, calibration, frontier, ablations, dataset card, reproducibility) and the stored timeline of the last workout.
@@ -74,9 +84,10 @@ Held-out recordings change this. The plan: each teammate records two or three or
 
 ```bash
 cd prototype/squat
-node hrt/build_dataset.mjs <dir of landmark JSON dumps>   # writes hrt/data/reps.csv and landmark hashes
-node hrt/train.mjs                                         # writes hrt/model.json, hrt/results.json, split manifest
-npm test                                                   # 39 offline checks incl. 15 for the forecaster
+node --env-file=.env hrt/build_dataset.mjs <dir of landmark JSON dumps> --tiger   # writes hrt/data/reps.csv and landmark hashes; --tiger adds the app's camera sets
+node hrt/train.mjs --target relative --horizon 5           # writes hrt/model-relative.json, hrt/results-relative.json, split manifest
+node hrt/train.mjs --target controlled --horizon 5         # the fixed-range artifacts; --suffix -h2 for the two-rep variant
+npm test                                                   # 41 offline checks incl. 17 for the forecaster
 ```
 
 Landmark dumps are produced from clips with the Python reference (`squat/` at the repository root, MediaPipe full model); their SHA-256s are in `hrt/data/landmark-hashes.json`. Provenance and split for every recording are in `hrt/data/recordings.json`.

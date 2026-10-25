@@ -41,7 +41,7 @@ function timelinePlot(rows) {
 }
 
 export function renderEvidence(results, review) {
-  if (!results) return '<p class="sub">No evaluation artifact found. Run <code>node hrt/train.mjs</code> in prototype/squat.</p>';
+  if (!results) return '<p class="sub">No evaluation artifact for this target yet. Run <code>node hrt/train.mjs --target &lt;key&gt;</code> in prototype/squat.</p>';
   const d = results.dev, t = results.test, card = results.datasetCard;
   const rows = review?.rows ?? [];
   const mode = rows[0]?.mode, prov = rows[0]?.provenance;
@@ -68,7 +68,9 @@ export function renderEvidence(results, review) {
     ['set position only', f(d.ablations.position.brier), f(d.ablations.position.logLoss), f(d.ablations.position.averagePrecision), pct(d.ablations.position.recallAtBudget)],
     ['tempo', f(d.ablations.tempo.brier), f(d.ablations.tempo.logLoss), f(d.ablations.tempo.averagePrecision), pct(d.ablations.tempo.recallAtBudget)],
     ['tempo + pose', f(d.ablations.full.brier), f(d.ablations.full.logLoss), f(d.ablations.full.averagePrecision), pct(d.ablations.full.recallAtBudget)],
-    ['+ prior personal history', 'not evaluated', 'not evaluated', 'not evaluated', 'not evaluated'], ['+ biometrics (Watch)', 'not evaluated', 'not evaluated', 'not evaluated', 'not evaluated']]) +
+    d.ablations.history ? ['+ prior personal history (earlier sets)', f(d.ablations.history.brier), f(d.ablations.history.logLoss), f(d.ablations.history.averagePrecision), pct(d.ablations.history.recallAtBudget)] : ['+ prior personal history', 'not evaluated', 'not evaluated', 'not evaluated', 'not evaluated'],
+    ['+ biometrics (Watch)', 'not evaluated', 'not evaluated', 'not evaluated', 'not evaluated']]) +
+    (results.personal ? `<p class="sub"><b>Personalisation, chronological</b> (${esc(results.personal.person)}, ${results.personal.sets} sets; each set predicted by models trained on the clips plus that person's earlier sets only; separate from unseen-person generalisation): pooled ${results.personal.pooled.n} origins, ${results.personal.pooled.positives} positive; Brier history ${f(results.personal.pooled.brierHistory)}, tempo+pose ${f(results.personal.pooled.brierFull)}, constant ${f(results.personal.pooled.brierConstant)}; recall at the frozen threshold history ${pct(results.personal.policy.history.recall)} (${f(results.personal.policy.history.falseAlertsPerSet, 2)} false alerts/set), rule ${pct(results.personal.policy.heuristic.recall)} (${f(results.personal.policy.heuristic.falseAlertsPerSet, 2)}).</p>` : '') +
     `<p class="sub">All on the same ${d.probability.full.n} origins. History and biometrics: no such data recorded yet.</p>` +
     (results.regression ? `<p class="sub">Separate regression fallback (next lowering duration, MAE): ridge ${f(results.regression.mae.ridgeTempo, 2)} s · last value ${f(results.regression.mae.lastValue, 2)} s · rolling median ${f(results.regression.mae.rollingMedian, 2)} s.</p>` : '')) : ''}
   ${section('F. Dataset card', `<p class="sub">${card.people} people · ${card.recordings} recordings · ${card.attempts} attempts · ${card.countedReps} counted reps · dev: ${card.bySplit.dev.eligibleOrigins} eligible origins (${card.bySplit.dev.positives} positive) in ${card.bySplit.dev.recordings} recordings · test: ${card.bySplit.test.eligibleOrigins} origins in ${card.bySplit.test.recordings} recordings.</p>
@@ -80,22 +82,24 @@ export function renderEvidence(results, review) {
 }
 
 // "What we anticipated" for the set summary, from stored rows. Returns HTML.
-export function renderReview(review, target, localReps = []) {
+export function renderReview(review, target, localReps = []) { // target: the set's bounds { L, U }
   const rows = review?.rows ?? [];
   if (!rows.length) return `<b>What we anticipated.</b> ${review?.persisted ? 'No forecast was eligible in this set (forecasts need three counted reps in range and two more reps to resolve).' : 'Forecasts were not persisted (Tiger Data off).'}`;
+  if (!target) target = { L: -Infinity, U: Infinity };
   const items = rows.map((r) => {
     const head = `After rep ${r.rep_n}: ${r.action === 'cue' ? 'cued' : r.action === 'suppressed' && r.suppressed_reason === 'shadow_mode' ? 'would have cued (shadow)' : r.action === 'suppressed' ? 'cue held (cooldown)' : 'no cue'} · p=${f(r.probability, 2)} (preliminary).`;
     let body;
     if (!r.state) body = 'Horizon still open.';
-    else if (r.state === 'excluded') body = `Horizon incomplete: ${r.exclusion_reason === 'set_ended' ? 'the set ended' : 'an attempt in the horizon did not count'}.`;
-    else if (r.outcome === 1) body = `${r.coached ? 'Observed after coaching' : 'Observed'}: rep ${r.rep_n + r.onset_offset} was outside ${target.L} to ${target.U} s. Warning lead time ${f(r.lead_secs, 1)} s (${r.onset_offset} rep${r.onset_offset > 1 ? 's' : ''}).`;
-    else body = `${r.coached ? 'Observed after coaching' : 'Observed'}: the next two reps stayed in range.`;
+    else if (r.state === 'excluded') body = r.exclusion_reason === 'after_departure' ? 'Made after the tempo had already shifted; not scored.' : `Horizon incomplete: ${r.exclusion_reason === 'set_ended' ? 'the set ended' : 'an attempt in the horizon did not count'}.`;
+    else if (r.outcome === 1) body = `${r.coached ? 'Observed after coaching' : 'Observed'}: the tempo left ${target.L} to ${target.U} s from rep ${r.rep_n + r.onset_offset} and stayed out. Warning lead time ${f(r.lead_secs, 1)} s (${r.onset_offset} rep${r.onset_offset > 1 ? 's' : ''}).`;
+    else body = `${r.coached ? 'Observed after coaching' : 'Observed'}: no sustained departure began in the next two reps.`;
     return `<li><b>${esc(head)}</b><br>${esc(body)}</li>`;
   });
   // Onsets that no eligible forecast preceded (from the page's own rep list, labelled as such).
   const counted = localReps.filter((r) => r.counted);
-  const onsets = counted.map((r, i) => (i > 0 && !(r.tDown >= target.L && r.tDown <= target.U) && counted[i - 1].tDown >= target.L && counted[i - 1].tDown <= target.U ? i + 1 : null)).filter(Boolean);
+  const v = counted.map((r) => !(r.tDown >= target.L && r.tDown <= target.U));
+  let k = null; for (let i = 0; i < v.length; i++) if (v[i] && i + 2 < v.length && v[i] + v[i + 1] + v[i + 2] >= 2) { k = i + 1; break; }
   const warned = new Set(rows.filter((r) => r.probability >= (r.threshold ?? 1)).flatMap((r) => [r.rep_n + 1, r.rep_n + 2]));
-  const missed = onsets.filter((k) => !warned.has(k));
-  return `<b>What we anticipated</b> <span class="sub">(${review.persisted ? 'from stored records' : 'not persisted'})</span><ul>${items.join('')}${missed.map((k) => `<li>Rep ${k} left the tempo range without an eligible warning.</li>`).join('')}</ul>`;
+  const missed = k != null && !warned.has(k) ? `<li>The tempo shifted from rep ${k} without an eligible warning.</li>` : '';
+  return `<b>What we anticipated</b> <span class="sub">(${review.persisted ? 'from stored records' : 'not persisted'})</span><ul>${items.join('')}${missed}</ul>`;
 }

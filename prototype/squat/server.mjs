@@ -143,8 +143,10 @@ function tigerLib() {
     const pool = await lib.createPool({ Pool, url: TIGER_URL });
     await lib.migrate(pool); // idempotent schema + rollups
     // Register the shipped forecast model once, so stored predictions can be traced to their artifact.
-    const [model, results] = await Promise.all(['./hrt/model.json', './hrt/results.json'].map((f) => readFile(new URL(f, import.meta.url), 'utf8').then(JSON.parse).catch(() => null)));
-    if (model) await lib.registerModel(pool, model, results).catch((e) => console.error('Tiger model_run:', e.message));
+    for (const key of ['controlled', 'relative', 'slow']) {
+      const [model, results] = await Promise.all([`./hrt/model-${key}.json`, `./hrt/results-${key}.json`].map((f) => readFile(new URL(f, import.meta.url), 'utf8').then(JSON.parse).catch(() => null)));
+      if (model) await lib.registerModel(pool, model, results).catch((e) => console.error('Tiger model_run:', e.message));
+    }
     return { lib, pool };
   })().catch((e) => { tiger = null; tigerFailedAt = Date.now(); throw e; });
   return tiger;
@@ -363,7 +365,7 @@ const server = http.createServer(async (req, res) => {
     let file = null;
     if (path === '/') file = new URL('./index.html', import.meta.url);
     else if (path === '/squat.mjs' || path === '/hrt.mjs' || path === '/hrt-evidence.mjs') file = new URL('.' + path, import.meta.url);
-    else if (path === '/hrt/model.json' || path === '/hrt/results.json') file = new URL('.' + path, import.meta.url);
+    else if (/^\/hrt\/(model|results)-[a-z]+\.json$/.test(path)) file = new URL('.' + path, import.meta.url); // one artifact pair per target
     else {
       for (const [prefix, dir] of Object.entries(MOUNTS)) {
         if (path.startsWith(prefix) && !path.includes('..')) file = new URL(path.slice(prefix.length), dir);

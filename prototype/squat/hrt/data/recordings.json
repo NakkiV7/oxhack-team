@@ -1,24 +1,182 @@
 {
-  "note": "Provenance of every recording in the dataset. Clips used to tune the rep counter are development material (split dev). Held-out recordings made by the team on 25 October 2026 go in with split test and are never used for selection.",
-  "splits": { "dev": "grouped leave-one-recording-out cross-validation for model selection and the development results", "test": "locked; evaluated once after the configuration is frozen" },
+  "note": "Provenance of every recording in the dataset. Clips used to tune the rep counter are development material (split dev). Held-out recordings made by the team on 25 October 2026 go in with split test and are never used for selection. Six long YouTube CC BY sets were added on 25 Oct 2026 ~05:50 as development data (found by metadata licence filter; three share one subject, grouped by person in cross-validation).",
+  "splits": {
+    "dev": "grouped leave-one-recording-out cross-validation for model selection and the development results",
+    "test": "locked; evaluated once after the configuration is frozen"
+  },
   "recordings": {
-    "barbell_squat_powerlifting_comp_01": { "split": "dev", "person": "cc-1", "source": "Wikimedia Commons: 2025 Skelton Gym Powerlifting Competition (977548).webm, CC licence per file page", "provenance": "imported" },
-    "bodyweight_squat_tutorial_01": { "split": "dev", "person": "cc-2", "source": "Wikimedia Commons tutorial clip, CC licence per file page", "provenance": "imported" },
-    "demo_front": { "split": "dev", "person": "cc-3", "source": "YouTube, Gareth Myles (GM-FITNESS), CC BY", "provenance": "imported" },
-    "goblet_squat_kb_01": { "split": "dev", "person": "cc-4", "source": "Wikimedia Commons, Cavemantraining, CC BY-SA 4.0", "provenance": "imported" },
-    "half_squat_home_cdc_01": { "split": "dev", "person": "cc-5", "source": "CDC home exercise clip via Wikimedia Commons, public domain", "provenance": "imported", "variation": "half" },
-    "kb_clean_squat_thruster_01": { "split": "dev", "person": "cc-4", "source": "Wikimedia Commons, Cavemantraining, CC BY-SA 4.0", "provenance": "imported" },
-    "kb_complex_ia_01": { "split": "dev", "person": "cc-6", "source": "Wikimedia Commons, CC licence per file page", "provenance": "imported" },
-    "kb_racked_squat_01": { "split": "dev", "person": "cc-4", "source": "Wikimedia Commons, Cavemantraining, CC BY-SA 4.0", "provenance": "imported" },
-    "kb_side": { "split": "dev", "person": "cc-4", "source": "Wikimedia Commons, Cavemantraining, CC BY-SA 4.0", "provenance": "imported" },
-    "overhead_kb_squat_01": { "split": "dev", "person": "cc-4", "source": "Wikimedia Commons, Cavemantraining, CC BY-SA 4.0", "provenance": "imported" },
-    "overhead_kb_squat_single_arm_01": { "split": "dev", "person": "cc-4", "source": "Wikimedia Commons, Cavemantraining, CC BY-SA 4.0", "provenance": "imported" },
-    "overhead_kb_waiters_squat_01": { "split": "dev", "person": "cc-4", "source": "Wikimedia Commons, Cavemantraining, CC BY-SA 4.0", "provenance": "imported" },
-    "single_leg_squat_front_01": { "split": "dev", "person": "cc-7", "source": "Wikimedia Commons, CC licence per file page", "provenance": "imported" },
-    "squat_3d_animation_01": { "split": "dev", "person": "animation", "source": "Wikimedia Commons animation, CC licence per file page", "provenance": "imported" },
-    "squat_frontal_raise_01": { "split": "dev", "person": "cc-8", "source": "Wikimedia Commons, CC licence per file page", "provenance": "imported" },
-    "squat_jump_army_front_01": { "split": "dev", "person": "cc-9", "source": "Wikimedia Commons, US Army, public domain", "provenance": "imported" },
-    "screen_cam": { "split": "dev", "person": "team", "source": "Team webcam session, 24 October 2026, three testers in turn", "provenance": "live-recorded",
-      "segments": { "team-1": [0, 60], "team-2": [60, 112], "team-3": [112, 100000] } }
+    "barbell_squat_powerlifting_comp_01": {
+      "split": "dev",
+      "person": "cc-1",
+      "source": "Wikimedia Commons: 2025 Skelton Gym Powerlifting Competition (977548).webm, CC licence per file page",
+      "provenance": "imported"
+    },
+    "bodyweight_squat_tutorial_01": {
+      "split": "dev",
+      "person": "cc-2",
+      "source": "Wikimedia Commons tutorial clip, CC licence per file page",
+      "provenance": "imported"
+    },
+    "demo_front": {
+      "split": "dev",
+      "person": "cc-3",
+      "source": "YouTube, Gareth Myles (GM-FITNESS), CC BY",
+      "provenance": "imported"
+    },
+    "goblet_squat_kb_01": {
+      "split": "dev",
+      "person": "cc-4",
+      "source": "Wikimedia Commons, Cavemantraining, CC BY-SA 4.0",
+      "provenance": "imported"
+    },
+    "half_squat_home_cdc_01": {
+      "split": "dev",
+      "person": "cc-5",
+      "source": "CDC home exercise clip via Wikimedia Commons, public domain",
+      "provenance": "imported",
+      "variation": "half"
+    },
+    "kb_clean_squat_thruster_01": {
+      "split": "dev",
+      "person": "cc-4",
+      "source": "Wikimedia Commons, Cavemantraining, CC BY-SA 4.0",
+      "provenance": "imported"
+    },
+    "kb_complex_ia_01": {
+      "split": "dev",
+      "person": "cc-6",
+      "source": "Wikimedia Commons, CC licence per file page",
+      "provenance": "imported"
+    },
+    "kb_racked_squat_01": {
+      "split": "dev",
+      "person": "cc-4",
+      "source": "Wikimedia Commons, Cavemantraining, CC BY-SA 4.0",
+      "provenance": "imported"
+    },
+    "kb_side": {
+      "split": "dev",
+      "person": "cc-4",
+      "source": "Wikimedia Commons, Cavemantraining, CC BY-SA 4.0",
+      "provenance": "imported"
+    },
+    "overhead_kb_squat_01": {
+      "split": "dev",
+      "person": "cc-4",
+      "source": "Wikimedia Commons, Cavemantraining, CC BY-SA 4.0",
+      "provenance": "imported"
+    },
+    "overhead_kb_squat_single_arm_01": {
+      "split": "dev",
+      "person": "cc-4",
+      "source": "Wikimedia Commons, Cavemantraining, CC BY-SA 4.0",
+      "provenance": "imported"
+    },
+    "overhead_kb_waiters_squat_01": {
+      "split": "dev",
+      "person": "cc-4",
+      "source": "Wikimedia Commons, Cavemantraining, CC BY-SA 4.0",
+      "provenance": "imported"
+    },
+    "single_leg_squat_front_01": {
+      "split": "dev",
+      "person": "cc-7",
+      "source": "Wikimedia Commons, CC licence per file page",
+      "provenance": "imported"
+    },
+    "squat_3d_animation_01": {
+      "split": "dev",
+      "person": "animation",
+      "source": "Wikimedia Commons animation, CC licence per file page",
+      "provenance": "imported"
+    },
+    "squat_frontal_raise_01": {
+      "split": "dev",
+      "person": "cc-8",
+      "source": "Wikimedia Commons, CC licence per file page",
+      "provenance": "imported"
+    },
+    "squat_jump_army_front_01": {
+      "split": "dev",
+      "person": "cc-9",
+      "source": "Wikimedia Commons, US Army, public domain",
+      "provenance": "imported"
+    },
+    "screen_cam": {
+      "split": "dev",
+      "person": "team",
+      "source": "Team webcam session, 24 October 2026, three testers in turn",
+      "provenance": "live-recorded",
+      "segments": {
+        "team-1": [
+          0,
+          60
+        ],
+        "team-2": [
+          60,
+          112
+        ],
+        "team-3": [
+          112,
+          100000
+        ]
+      }
+    },
+    "cc_9XKSFVupLfk_fastest50": {
+      "split": "dev",
+      "person": "yt-coeur",
+      "source": "YouTube https://www.youtube.com/watch?v=9XKSFVupLfk, coeur valliant, Creative Commons Attribution (per yt-dlp licence field)",
+      "provenance": "imported",
+      "note": "front-on, 50 fast squats, 69 s, no trim"
+    },
+    "cc_7KiYUhaC-A0_100nopause": {
+      "split": "dev",
+      "person": "yt-bombe",
+      "source": "YouTube https://www.youtube.com/watch?v=7KiYUhaC-A0, Fitness avec Coach Bomb\u00e9, Creative Commons Attribution",
+      "provenance": "imported",
+      "note": "front-on, 100 squats to a 2 s metronome, no trim; tempo control, little drift"
+    },
+    "cc_OiBjzZDnvuo_day9_100": {
+      "split": "dev",
+      "person": "yt-chan",
+      "source": "YouTube https://www.youtube.com/watch?v=OiBjzZDnvuo, Chan Vekaria, Creative Commons Attribution",
+      "provenance": "imported",
+      "note": "front-on, 89 counted of a 100-rep set, 610x360, no trim; clear slowing 0.3 to 0.5 s"
+    },
+    "cc_2yL3JSswZzg_tedcarr100_side": {
+      "split": "dev",
+      "person": "yt-tedcarr",
+      "source": "YouTube https://www.youtube.com/watch?v=2yL3JSswZzg, Ted Carr Business, Creative Commons Attribution",
+      "provenance": "imported",
+      "note": "three-quarter view outdoors, 100 squats, trimmed to 35-268 s (workout chapter)"
+    },
+    "cc_2G9exNOTjvs_day25_220": {
+      "split": "dev",
+      "person": "yt-chan",
+      "source": "YouTube https://www.youtube.com/watch?v=2G9exNOTjvs, Chan Vekaria, Creative Commons Attribution",
+      "provenance": "imported",
+      "note": "front-on, 153 counted reps of a 220-rep set, trimmed to 95-455 s (6 min cap); a faster-pulse block mid-set"
+    },
+    "cc_PuAk7OZblH8_day7_80": {
+      "split": "dev",
+      "person": "yt-chan",
+      "source": "YouTube https://www.youtube.com/watch?v=PuAk7OZblH8, Chan Vekaria, Creative Commons Attribution",
+      "provenance": "imported",
+      "note": "front-on, 80 squats, 610x360, no trim; same subject as day9 and day25"
+    }
+  },
+  "tiger": {
+    "_how": "Camera sets imported from Tiger with --tiger, keyed by the first 8 characters of the workout id (printed by build_dataset as tiger/<id>). Assign person and split here BEFORE looking at the set's outcomes; unlisted sets stay unassigned and are not used.",
+    "_example": {
+      "split": "dev",
+      "person": "nakki",
+      "provenance": "live"
+    },
+    "ce15f91b": {
+      "split": "dev",
+      "person": "nakki",
+      "provenance": "live",
+      "note": "25 Oct 05:20, webcam, four fast air-squat sets of ~15 reps with rest breaks; assigned before outcomes were examined"
+    }
   }
 }

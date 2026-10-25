@@ -271,7 +271,7 @@
 <script type="module">
 import { PoseLandmarker, FilesetResolver } from '/vendor/vision_bundle.mjs';
 import { VARIATIONS, JOINTS, METRICS, RepCounter, GREEN, AMBER, RED } from '/squat.mjs';
-import { Forecaster, TARGETS, DEFAULT_TARGET, MIN_REPS, cueText } from '/hrt.mjs';
+import { Forecaster, TARGETS, DEFAULT_TARGET, MIN_REPS, cueText, bounds } from '/hrt.mjs';
 import { renderEvidence, renderReview } from '/hrt-evidence.mjs';
 
 const $ = (id) => document.getElementById(id);
@@ -648,16 +648,19 @@ $('tgCompress').onclick = async () => {
 // estimates whether the lowering tempo will leave the programme range within the next two reps. Shadow mode only records
 // the forecast; "cue me" routes a cue through the voice queue. The model comes from /hrt/model.json, fitted offline by
 // hrt/train.mjs; the page never fits anything. Forecasts are persisted before their outcome can be known.
-let hrtModel = null, fc = null, hrtResultsCache = null;
+let hrtModels = {}, fc = null, hrtResultsCache = {};
 for (const [k, t] of Object.entries(TARGETS)) $('hrtTarget').add(new Option(t.label, k));
 $('hrtTarget').value = DEFAULT_TARGET;
-const hrtTarget = () => TARGETS[$('hrtTarget').value] ?? TARGETS[DEFAULT_TARGET];
-fetch('/hrt/model.json').then((r) => (r.ok ? r.json() : null)).then((m) => { hrtModel = m; hrtNew(); }).catch(() => hrtNew());
-function hrtNew() {
+const hrtKey = () => (TARGETS[$('hrtTarget').value] ? $('hrtTarget').value : DEFAULT_TARGET);
+const hrtTarget = () => TARGETS[hrtKey()];
+// One model artifact per target (trained offline by hrt/train.mjs --target <key>); a target without one runs unavailable.
+async function hrtModel(key) { if (!(key in hrtModels)) hrtModels[key] = await fetch(`/hrt/model-${key}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null); return hrtModels[key]; }
+async function hrtNew() {
   if (fc && !fc.ended) hrtEnd();
-  fc = new Forecaster({ artifact: hrtModel, target: hrtTarget(), mode: $('hrtCoach').checked ? 'coaching' : 'shadow' });
+  fc = new Forecaster({ artifact: await hrtModel(hrtKey()), target: hrtTarget(), mode: $('hrtCoach').checked ? 'coaching' : 'shadow' });
   hrtRender();
 }
+hrtNew();
 $('hrtTarget').onchange = () => { newWorkout(); render(null); };           // a target change starts a new set (newWorkout calls hrtNew): labels stay frozen within a set
 $('hrtCoach').onchange = () => { if (fc && !fc.ended) fc.mode = $('hrtCoach').checked ? 'coaching' : 'shadow'; hrtRender(); };
 function hrtRep(rep) {
@@ -665,18 +668,19 @@ function hrtRep(rep) {
   const { forecast, outcomes } = fc.onRep(rep, clock());
   if (forecast && tg.id) { tg.forecasts.push({ ...forecast, provenance: video.src ? 'video' : 'live' }); tgFlush(); } // persist before the outcome exists
   for (const o of outcomes) if (tg.id) tg.outcomes.push(o);
-  if (forecast?.action === 'cue') say(cueText(fc.target).cue, 1, 'push');
+  if (forecast?.action === 'cue') say(cueText(fc.bounds).cue, 1, 'push');
   if (forecast && $('hrtPause').checked && video.src && !paused) { $('pause').click(); $('status').textContent = `Paused at the forecast made after rep ${forecast.repN}. Resume to reveal the next two reps.`; }
   hrtRender();
 }
 function hrtEnd() { if (!fc || fc.ended) return; for (const o of fc.end()) if (tg.id) tg.outcomes.push(o); hrtRender(); }
 function hrtRender() {
-  const T = fc?.target ?? hrtTarget(), st = fc?.state ?? { kind: 'unavailable' }, why = cueText(T);
+  const T = fc?.target ?? hrtTarget(), st = fc?.state ?? { kind: 'unavailable' }, b = fc?.bounds ?? (T.rel == null ? T : null), why = cueText(b);
   const lines = {
     baseline: [`Learning your pace, ${st.have ?? 0} of ${st.need ?? MIN_REPS} counted reps`, 'Forecasts start after three counted reps.'],
-    monitoring: st.note === 'current_rep_outside_target' ? ['Last rep was outside the tempo range', 'Forecasting resumes when a rep is back in range.'] : ['Tracking your next reps', `Lowering target ${T.L} to ${T.U} s. Quiet unless a cue is due${fc?.mode === 'shadow' ? ' (shadow mode: forecasts are recorded, not spoken)' : ''}.`],
+    monitoring: st.note === 'current_rep_outside_target' ? ['Last rep was outside the tempo range', 'Forecasting resumes when a rep is back in range.'] : ['Tracking your next reps', `Lowering target ${b ? `${b.L} to ${b.U} s` : 'from your first three reps'}. Quiet unless a cue is due${fc?.mode === 'shadow' ? ' (shadow mode: forecasts are recorded, not spoken)' : ''}.`],
     cue: [why.cue, 'Cue delivered through the coach voice.'],
     unavailable: ['Prediction unavailable', 'No forecast model is loaded. Tracking continues as normal.'],
+    departed: [`Your tempo has shifted from how you started (rep ${st.k ?? '?'})`, 'Forecasting stops for this set; reset reps to start a fresh baseline.'],
     ended: ['Set finished', 'See “What we anticipated” in the summary.'],
   };
   const framing = running && counter.warn && /hips|knees|step back/i.test(counter.warn) ? [counter.warn, 'Forecasts pause until the hips and knees are tracked.'] : null;
@@ -684,24 +688,25 @@ function hrtRender() {
   $('hrtState').textContent = a; $('hrtSub').textContent = b; $('hrtCard').dataset.state = framing ? 'insufficient' : st.kind;
   const f = st.forecast;
   $('hrtWhyBody').innerHTML = f
-    ? `<b>Forecast after rep ${f.repN}.</b> ${why.why}<br>Recent lowering: ${fc.reps.filter((r) => r.counted).slice(-3).map((r) => r.tDown.toFixed(1) + ' s').join(', ')} against ${T.L} to ${T.U} s; trend ${f.features.down_trend >= 0 ? '+' : ''}${f.features.down_trend.toFixed(2)} s versus the previous reps${f.features.depth_missing ? '; depth not judged' : ''}.<br>Model ${f.modelRun}: preliminary out-of-fold probability ${(f.probability * 100).toFixed(0)}%, not calibrated (see Evidence); threshold ${(f.threshold * 100).toFixed(0)}%; ${f.mode} mode; ${f.latencyMs} ms after the rep.<br>These are observations the model associates with a tempo miss, not causes.`
+    ? `<b>Forecast after rep ${f.repN}.</b> ${why.why}<br>Recent lowering: ${fc.reps.filter((r) => r.counted).slice(-3).map((r) => r.tDown.toFixed(2) + ' s').join(', ')} against ${b.L} to ${b.U} s${b.base ? ` (25% around your first-three-rep median ${b.base.toFixed(2)} s)` : ''}; trend ${f.features.down_trend >= 0 ? '+' : ''}${f.features.down_trend.toFixed(2)} s versus the previous reps${f.features.depth_missing ? '; depth not judged' : ''}.<br>Model ${f.modelRun}: preliminary out-of-fold probability ${(f.probability * 100).toFixed(0)}%, not calibrated (see Evidence); ${f.policyKind === 'drift' ? `cue rule: drift of ${(f.driftRatio * 100).toFixed(0)}% from your first three reps against a ${(fc.artifact.policy.theta * 100).toFixed(0)}% trigger` : `threshold ${(f.threshold * 100).toFixed(0)}%`}; ${f.mode} mode; ${f.latencyMs} ms after the rep.<br>These are observations the model associates with a tempo miss, not causes.`
     : 'No forecast yet.';
 }
 async function hrtReview(workoutId) {
   const el = $('hrtReview'); if (!el) return;
-  const T = fc?.target ?? hrtTarget(), reps = fc?.reps ?? [];
+  const T = fc?.target ?? hrtTarget(), reps = fc?.reps ?? [], b = fc?.bounds ?? (T.rel == null ? T : null);
   const fetchReview = async () => { try { return await (await fetch('/hrt/review?workout=' + (workoutId ?? ''))).json(); } catch { return { persisted: false, rows: [] }; } };
   await new Promise((r) => setTimeout(r, 1500)); // the end-of-set batch is still being written
   let review = await fetchReview();
   if (review.persisted && !review.rows.length && fc?.forecasts.length) { await new Promise((r) => setTimeout(r, 1500)); review = await fetchReview(); }
-  if ($('hrtReview')) $('hrtReview').innerHTML = renderReview(review, T, reps);
+  if ($('hrtReview')) $('hrtReview').innerHTML = renderReview(review, b, reps);
 }
 $('evidenceBtn').onclick = async () => {
   $('evidence').showModal();
   try {
-    hrtResultsCache ??= await (await fetch('/hrt/results.json')).json();
+    const key = hrtKey();
+    hrtResultsCache[key] ??= await fetch(`/hrt/results-${key}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
     const review = tgLast ? await (await fetch('/hrt/review?workout=' + tgLast)).json() : { persisted: false, rows: [] };
-    $('evidenceBody').innerHTML = renderEvidence(hrtResultsCache, review);
+    $('evidenceBody').innerHTML = renderEvidence(hrtResultsCache[key], review);
   } catch (e) { $('evidenceBody').innerHTML = `<p class="sub">Could not load the evaluation artifact: ${e.message}</p>`; }
 };
 $('evClose').onclick = () => $('evidence').close();
