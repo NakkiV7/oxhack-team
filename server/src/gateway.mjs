@@ -40,7 +40,7 @@ function authorized(header, token) {
 function ownerDemo(env, now) {
   const attempts = env.SPOTTR_DEMO_MAX_ATTEMPTS, expiry = env.SPOTTR_DEMO_EXPIRES_AT;
   if (attempts === undefined && expiry === undefined) return null;
-  if (env.TIGER_DATABASE_URL) throw new GatewayError(503, 'invalid_demo_configuration', 'Owner demo requires the workout database to be disabled.');
+  if (env.TIGER_DATABASE_URL && !env.SPOTTR_DEMO_ACCESS_TOKEN) throw new GatewayError(503, 'invalid_demo_configuration', 'Owner demo requires the workout database to be disabled.');
   const expiresAt = Date.parse(expiry), remainingMs = expiresAt - now();
   if (typeof attempts !== 'string' || !/^[1-9]\d*$/.test(attempts) || Number(attempts) > 100 ||
       typeof expiry !== 'string' || !Number.isFinite(expiresAt) || new Date(expiresAt).toISOString() !== expiry ||
@@ -136,7 +136,16 @@ async function generate({ env, fetchImpl, data, schema, path, signal, requestedA
   return text;
 }
 
+const demoRoutes = new Map(['chat', 'summary', 'proposal', 'week-proposal', 'voice', 'voices']
+  .map(route => [`/demo/v1/${route}`, `/v1/${route}`]));
+
 export function createGateway({ env = process.env, fetchImpl = fetch, pool, now = Date.now } = {}) {
+  if (env.SPOTTR_DEMO_ACCESS_TOKEN !== undefined &&
+      (!/^[A-Za-z0-9_-]{32,256}$/.test(env.SPOTTR_DEMO_ACCESS_TOKEN) || !env.SPOTTR_GATEWAY_TOKEN ||
+       env.SPOTTR_DEMO_ACCESS_TOKEN === env.SPOTTR_GATEWAY_TOKEN ||
+       env.SPOTTR_DEMO_MAX_ATTEMPTS === undefined || env.SPOTTR_DEMO_EXPIRES_AT === undefined)) {
+    throw new GatewayError(503, 'invalid_demo_configuration', 'Dedicated demo access requires a distinct credential and the finite demo guard.');
+  }
   const demo = ownerDemo(env, now);
   const voice = createVoiceService({ env, fetchImpl, now });
   const database = pool ?? (env.TIGER_DATABASE_URL ? new Pool({ connectionString: env.TIGER_DATABASE_URL, max: 3, connectionTimeoutMillis: 5000, idleTimeoutMillis: 10000, statement_timeout: 10000, query_timeout: 12000 }) : null);
@@ -144,13 +153,16 @@ export function createGateway({ env = process.env, fetchImpl = fetch, pool, now 
   const server = createServer(demo ? { headersTimeout: 5000, requestTimeout: 10000, connectionsCheckingInterval: 1000, maxHeaderSize: 8192 } : {}, async (request, response) => {
     try {
       if (request.url === '/health' && request.method === 'GET') return send(response, 200, health(env));
-      const workoutPath = request.url === '/v1/workouts' || request.url.startsWith('/v1/workouts/');
-      const voicePath = request.url === '/v1/voice' || request.url === '/v1/voices';
-      if (!workoutPath && !voicePath && !['/v1/chat', '/v1/summary', '/v1/proposal', '/v1/week-proposal'].includes(request.url)) throw new GatewayError(404, 'not_found', 'Endpoint not found.');
-      const requiredMethod = request.url === '/v1/voices' || workoutPath && request.url !== '/v1/workouts' ? 'GET' : 'POST';
+      const demoRoute = demoRoutes.has(request.url);
+      const path = demoRoutes.get(request.url) ?? request.url;
+      const workoutPath = path === '/v1/workouts' || path.startsWith('/v1/workouts/');
+      const voicePath = path === '/v1/voice' || path === '/v1/voices';
+      if (!workoutPath && !voicePath && !['/v1/chat', '/v1/summary', '/v1/proposal', '/v1/week-proposal'].includes(path)) throw new GatewayError(404, 'not_found', 'Endpoint not found.');
+      const requiredMethod = path === '/v1/voices' || workoutPath && path !== '/v1/workouts' ? 'GET' : 'POST';
       if (request.method !== requiredMethod) throw new GatewayError(405, 'method_not_allowed', `Use ${requiredMethod} for this endpoint.`);
       if (!env.SPOTTR_GATEWAY_TOKEN) throw new GatewayError(503, 'missing_configuration', 'SPOTTR_GATEWAY_TOKEN must be configured on the server.');
-      if (!authorized(request.headers.authorization, env.SPOTTR_GATEWAY_TOKEN)) throw new GatewayError(401, 'unauthorized', 'A valid gateway bearer token is required.');
+      if (!authorized(request.headers.authorization, demoRoute ? env.SPOTTR_DEMO_ACCESS_TOKEN : env.SPOTTR_GATEWAY_TOKEN)) throw new GatewayError(401, 'unauthorized', 'A valid gateway bearer token is required.');
+      if (demoRoute && (!demo || now() >= demo.expiresAt)) throw new GatewayError(503, 'demo_expired', 'The demo access has expired.');
       if (voicePath) {
         if (demo && now() >= demo.expiresAt) throw new GatewayError(503, 'demo_expired', 'The owner demo session has expired.');
         if (requiredMethod === 'GET') return send(response, 200, { voices: configuredVoices(env), availability: 'configured_not_verified' });
@@ -170,7 +182,7 @@ export function createGateway({ env = process.env, fetchImpl = fetch, pool, now 
         const store = createTigerStore({ pool: database, installationID: env.SPOTTR_INSTALLATION_ID });
         try {
           if (requiredMethod === 'GET') {
-            const url = new URL(request.url, 'http://localhost');
+            const url = new URL(path, 'http://localhost');
             const segments = url.pathname.split('/');
             if (segments.length === 4) return send(response, 200, await store.read(segments[3]));
             if (segments.length !== 5 || segments[4] !== 'telemetry') throw new GatewayError(404, 'not_found', 'Endpoint not found.');
@@ -187,17 +199,17 @@ export function createGateway({ env = process.env, fetchImpl = fetch, pool, now 
       }
       if (!env.GEMINI_API_KEY || !env.GEMINI_MODEL) throw new GatewayError(503, 'missing_configuration', 'GEMINI_API_KEY and GEMINI_MODEL must be configured on the server.');
       if (!request.headers['content-type']?.toLowerCase().startsWith('application/json')) throw new GatewayError(415, 'unsupported_media_type', 'Use application/json.');
-      const data = await readInput(request, request.url === '/v1/week-proposal' ? weekRequest : coachRequest);
-      if (request.url === '/v1/chat' && !data.message) throw new GatewayError(422, 'invalid_request', 'Chat requires a nonempty message.');
-      if (request.url !== '/v1/chat' && !data.facts.length) throw new GatewayError(422, 'invalid_request', 'Structured coaching requires at least one supplied fact.');
-      const scope = request.url === '/v1/summary' ? null : coachScope(data.message);
+      const data = await readInput(request, path === '/v1/week-proposal' ? weekRequest : coachRequest);
+      if (path === '/v1/chat' && !data.message) throw new GatewayError(422, 'invalid_request', 'Chat requires a nonempty message.');
+      if (path !== '/v1/chat' && !data.facts.length) throw new GatewayError(422, 'invalid_request', 'Structured coaching requires at least one supplied fact.');
+      const scope = path === '/v1/summary' ? null : coachScope(data.message);
       if (scope) {
         if (demo && now() >= demo.expiresAt) throw new GatewayError(503, 'demo_expired', 'The owner demo session has expired.');
-        if (request.url === '/v1/week-proposal') return send(response, 200, { generationID: data.generationID, status: 'declined', reason: scope, guidanceIDs: scopeGuidance(scope) });
-        if (request.url === '/v1/chat') return send(response, 200, { generationID: data.generationID, text: scopeMessage(scope) });
+        if (path === '/v1/week-proposal') return send(response, 200, { generationID: data.generationID, status: 'declined', reason: scope, guidanceIDs: scopeGuidance(scope) });
+        if (path === '/v1/chat') return send(response, 200, { generationID: data.generationID, text: scopeMessage(scope) });
         throw new GatewayError(422, 'outside_coaching_scope', scopeMessage(scope));
       }
-      const schema = request.url === '/v1/chat' ? null : request.url === '/v1/week-proposal' ? weekOutputContract(data) : outputContract({ path: request.url, data });
+      const schema = path === '/v1/chat' ? null : path === '/v1/week-proposal' ? weekOutputContract(data) : outputContract({ path: path, data });
       const timeoutMs = Number(env.GEMINI_TIMEOUT_MS ?? 20000);
       if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 60000) throw new GatewayError(503, 'missing_configuration', 'GEMINI_TIMEOUT_MS must be an integer from 1 to 60000.');
       const release = demo?.reserve();
@@ -206,7 +218,7 @@ export function createGateway({ env = process.env, fetchImpl = fetch, pool, now 
       const signal = expirySignal ? AbortSignal.any([timeoutSignal, expirySignal]) : timeoutSignal;
       let text;
       try {
-        text = await generate({ env, fetchImpl, data, schema, path: request.url, signal, requestedAtUTC: new Date(now()).toISOString() });
+        text = await generate({ env, fetchImpl, data, schema, path: path, signal, requestedAtUTC: new Date(now()).toISOString() });
         if (demo && (expirySignal.aborted || now() >= demo.expiresAt)) throw new GatewayError(503, 'demo_expired', 'The owner demo session has expired.');
       }
       catch (error) {

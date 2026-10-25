@@ -195,22 +195,34 @@ struct CoachSettingsView: View {
     private enum Field: Hashable { case url, token }
     @Environment(\.dismiss) private var dismiss
     @FocusState private var focusedField: Field?
-    @State private var url = CoachSettings.gatewayURL
-    @State private var token = CoachSettings.token() ?? ""
+    @State private var url = CoachSettings.isCustomConnection ? CoachSettings.gatewayURL : ""
+    @State private var token = CoachSettings.isCustomConnection ? (CoachSettings.token() ?? "") : ""
+    @State private var status = CoachSettings.connectionStatus
     @State private var error: String?
     var body: some View {
         NavigationStack {
             Form {
-                Section("Connection") {
+                Section("Spottr demo") {
+                    Text(status).font(.caption).accessibilityIdentifier("coach-connection-status")
+                    Button("Reset to included demo connection") {
+                        focusedField = nil
+                        do {
+                            try CoachSettings.reset()
+                            url = ""; token = ""; error = nil
+                            status = CoachSettings.connectionStatus
+                        } catch { self.error = error.localizedDescription }
+                    }.accessibilityIdentifier("coach-reset-connection")
+                }
+                Section("Custom connection (optional)") {
                     TextField("Gateway URL", text: $url).textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
                         .focused($focusedField, equals: .url)
                     SecureField("Gateway access token", text: $token).textInputAutocapitalization(.never).autocorrectionDisabled()
                         .focused($focusedField, equals: .token)
-                    Text("Use the access token for your Spottr gateway. Your Gemini provider key stays on the server. The access token is stored in this iPhone’s Keychain.").font(.caption)
+                    Text("Use the access token for your Spottr gateway. Provider keys stay on the server. Included demo access does not authorize cloud workout sync. The access token is stored in this iPhone’s Keychain.").font(.caption)
                         .contentShape(Rectangle()).onTapGesture { focusedField = nil }
                 }
                 Section {
-                    Button("Save connection") {
+                    Button("Save custom connection") {
                         focusedField = nil
                         do { try CoachSettings.save(url: url, token: token); dismiss() }
                         catch { self.error = "Use an HTTPS gateway URL and its access token. Localhost HTTP is supported for development." }
