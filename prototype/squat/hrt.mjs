@@ -15,9 +15,9 @@ export const POLICY_VERSION = 'budget-v1';
 // Programme tempo targets for the lowering phase, in seconds. A target is a prescription, not a definition of safe or
 // correct technique. "controlled" is the default; the range was frozen before the evaluation (see docs/HRT.md).
 export const TARGETS = {
-  controlled: { id: 'controlled-v1', label: 'Controlled lowering, 0.6 to 1.5 s', L: 0.6, U: 1.5 },
-  relative: { id: 'relative-v1', label: 'Keep your tempo: lowering within 25% of your first three reps', rel: 0.25 },
-  slow: { id: 'slow-v1', label: 'Slow eccentric, 2 to 4 s', L: 2.0, U: 4.0 },
+  controlled: { id: 'controlled-v1', label: 'Controlled lowering, 0.6 to 1.5 s', short: 'Controlled: 0.6 to 1.5 s down', L: 0.6, U: 1.5 },
+  relative: { id: 'relative-v1', label: 'Keep your tempo: lowering within 25% of your first three reps', short: 'Keep your tempo (±25% of your start)', rel: 0.25 },
+  slow: { id: 'slow-v1', label: 'Slow eccentric, 2 to 4 s', short: 'Slow: 2 to 4 s down', L: 2.0, U: 4.0 },
 };
 // Primary target: relative, revised on 25 Oct 2026 05:40 before any held-out evaluation, because at a natural fast pace the
 // fixed 0.6 s edge coincides with the lowering duration itself and labels become rounding noise (see docs/HRT.md).

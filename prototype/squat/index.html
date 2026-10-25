@@ -16,6 +16,7 @@
   .wrap { height:100%; max-width:1440px; margin:0 auto; display:grid; gap:16px; grid-template-columns:minmax(0,1.7fr) minmax(320px,1fr); }
   @media (max-width:800px) { body { overflow:auto; } .wrap { height:auto; grid-template-columns:1fr; } .stage { min-height:50vh; } .side { min-height:70vh; } }
   .main, .side { display:flex; flex-direction:column; gap:14px; min-height:0; min-width:0; }
+  .side { overflow-y:auto; overscroll-behavior:contain; padding-right:2px; scrollbar-width:thin; }
   .card { background:var(--card); border-radius:20px; padding:18px 20px; min-height:0; box-shadow:var(--shadow); }
   .grow { flex:1; display:flex; flex-direction:column; }
   h1 { font-size:22px; font-weight:600; letter-spacing:-.02em; margin:0; }
@@ -54,16 +55,16 @@
   .panel button { background:rgba(255,255,255,.12); border-color:transparent; color:#fff; } .panel button.primary { background:var(--acc); }
   li .slow { color:var(--warn); } li .fast { color:var(--ok); }
   a, a:visited { color:var(--acc); text-decoration:none; } a:hover { text-decoration:underline; }
-  .split { flex:1; display:flex; flex-direction:column; gap:14px; min-height:0; }
-  .split > .card { flex:1; display:flex; flex-direction:column; }
-  .split > .coach { flex:1.6; }
+  .split { flex:none; display:flex; flex-direction:column; gap:14px; }
+  .split > .card { flex:none; display:flex; flex-direction:column; }
+  #history { max-height:200px; overflow:auto; } #coachLog { max-height:180px; overflow:auto; }
   .tiger .tiles { grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:6px; }
   .tiger .tile { background:var(--bg); border:1px solid var(--line); padding:10px 4px; }
   .tiger .tile b { font-size:20px; } .tiger .tile span { color:var(--mut); }
   .tiger svg { width:100%; height:40px; display:block; margin:4px 0 8px; }
   .hrt .hrt-state { font-size:17px; font-weight:600; margin:6px 0 2px; letter-spacing:-.01em; }
   .hrt[data-state="cue"] .hrt-state { color:var(--acc); } .hrt[data-state="unavailable"] .hrt-state, .hrt[data-state="ended"] .hrt-state { color:var(--mut); }
-  .hrt details summary { cursor:pointer; margin-top:6px; } .hrt select { font:inherit; font-size:12px; }
+  .hrt details summary { cursor:pointer; margin-top:6px; } .hrt select { font:inherit; font-size:13px; max-width:100%; } .hrt .opts { display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center; margin:6px 0 2px; font-size:13px; color:var(--mut); } .hrt .opts label { display:inline-flex; align-items:center; gap:4px; }
   .coachloop .hrt-state { font-size:17px; font-weight:600; margin:6px 0 2px; } .coachloop[data-state="result"] .hrt-state { color:var(--acc); } .coachloop #coachCue { font-weight:500; color:var(--fg); }
   .ev table { width:100%; border-collapse:collapse; font-size:13px; margin:6px 0 10px; } .ev th, .ev td { text-align:left; padding:4px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
   .ev svg { width:100%; max-width:520px; height:auto; display:block; margin:6px 0 4px; color:var(--fg); } .ev code { font-size:12px; }
@@ -149,10 +150,9 @@
       <div class="sub" id="coachResult" style="margin-top:6px"></div>
     </div>
     <div class="card hrt" id="hrtCard" data-state="baseline">
-      <div class="row" style="justify-content:space-between;align-items:center;gap:8px;margin:0">
-        <h2 style="margin:0">Tempo forecast</h2>
-        <span class="sub"><select id="hrtTarget" title="Programme tempo target for the lowering phase"></select> <label title="Deliver a cue when the forecast crosses the threshold (otherwise shadow mode: forecasts are only recorded)"><input type="checkbox" id="hrtCoach"> cue me</label> <label title="Replay demo: pause the video at each forecast before the next reps are revealed"><input type="checkbox" id="hrtPause"> pause at forecast</label></span>
-      </div>
+      <h2 style="margin:0">Tempo forecast <span class="sub" style="text-transform:none;letter-spacing:0">(HRT)</span></h2>
+      <div class="sub">Predicts, a few reps ahead, whether your lowering tempo is about to drift from how you started this set and stay drifted. Shadow mode records forecasts; <b>cue me</b> speaks them.</div>
+      <div class="opts"><select id="hrtTarget" title="Tempo target for the lowering phase"></select><label title="Deliver a cue when the policy fires (otherwise shadow mode: forecasts are only recorded)"><input type="checkbox" id="hrtCoach"> cue me</label><label title="Replay demo: pause the video at each forecast before the next reps are revealed"><input type="checkbox" id="hrtPause"> pause at forecast</label></div>
       <div class="hrt-state" id="hrtState">Learning your pace</div>
       <div class="sub" id="hrtSub">Forecasts start after three counted reps.</div>
       <details id="hrtWhy"><summary class="sub">Why this?</summary><div class="sub" id="hrtWhyBody">No forecast yet.</div></details>
@@ -661,7 +661,7 @@ $('tgCompress').onclick = async () => {
 // the forecast; "cue me" routes a cue through the voice queue. The model comes from /hrt/model.json, fitted offline by
 // hrt/train.mjs; the page never fits anything. Forecasts are persisted before their outcome can be known.
 let hrtModels = {}, fc = null, hrtResultsCache = {};
-for (const [k, t] of Object.entries(TARGETS)) $('hrtTarget').add(new Option(t.label, k));
+for (const [k, t] of Object.entries(TARGETS)) $('hrtTarget').add(new Option(t.short ?? t.label, k));
 $('hrtTarget').value = DEFAULT_TARGET;
 const hrtKey = () => (TARGETS[$('hrtTarget').value] ? $('hrtTarget').value : DEFAULT_TARGET);
 const hrtTarget = () => TARGETS[hrtKey()];
