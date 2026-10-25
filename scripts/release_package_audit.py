@@ -17,8 +17,6 @@ import zipfile
 
 HOST_ID = 'com.omarchoudhry.spottr'
 WATCH_ID = HOST_ID + '.watchkitapp'
-SDK_PATH = 'Native/Vendor/SmartSpectra.xcframework/ios-arm64/SmartSpectra.framework'
-SDK_LINK = '@rpath/SmartSpectra.framework/SmartSpectra'
 MODEL_NAMES = {'metrics_cpu_continuous_rest.binarypb', 'pose_detection.tflite', 'pose_landmark_lite.tflite',
                'pose_landmark_full.tflite', 'face_detection_full_range.tflite',
                'face_detection_short_range.tflite', 'face_landmark_with_attention.tflite'}
@@ -186,6 +184,11 @@ def audit_layout(host, source, version, build):
                     or 'SmartSpectra' in str(p.relative_to(watch)) or p.suffix in {'.tflite', '.binarypb'}
                     or 'MediaPipe' in str(p.relative_to(watch)) for p in watch_paths),
             'watch_contains_host_only_resource')
+    require(not any('smartspectra' in str(p.relative_to(host)).lower() or p.name in MODEL_NAMES for p in paths),
+            'smartspectra_release_blocked')
+    binaries = [inspect_macho(p) for p in paths if is_macho(p)]
+    require(not any('smartspectra' in link.lower() for slices in binaries for section in slices
+                    for link in section['links']), 'smartspectra_release_blocked')
     verify_private_material(paths)
     host_info, host_slices = verify_info(host, source / 'Native/iOS', 'host', version, build)
     watch_info, watch_slices = verify_info(watch, source / 'Native/Watch', 'watch', version, build)
@@ -201,28 +204,11 @@ def audit_layout(host, source, version, build):
         require(isinstance(load_plist(privacy).get('NSPrivacyAccessedAPITypes'), list), 'invalid_privacy_manifest')
     guidance = json.loads((host / 'coach-guidance.json').read_bytes())
     require(guidance.get('version') == 1 and bool(guidance.get('sources')), 'invalid_guidance_resource')
-    sdk = host / 'Frameworks/SmartSpectra.framework'
-    require(sdk.is_dir(), 'missing_smartspectra_framework')
-    canonical = source / SDK_PATH
-    expected = resources(canonical)
-    require(MODEL_NAMES | {'PrivacyInfo.xcprivacy'} <= set(expected) and resources(sdk) == expected,
-            'sdk_resources_mismatch')
-    sdk_info, original_info = load_plist(sdk / 'Info.plist'), load_plist(canonical / 'Info.plist')
-    require(all(sdk_info.get(k) == original_info.get(k) for k in
-                ['CFBundleIdentifier', 'CFBundleExecutable', 'CFBundleShortVersionString', 'CFBundleVersion'])
-            and sdk_info.get('CFBundleExecutable') == 'SmartSpectra', 'sdk_identity_mismatch')
-    embedded_slices = inspect_macho(sdk / 'SmartSpectra')
-    require(all(s['kind'] == 6 and s['platform'] == 2 for s in embedded_slices),
-            'sdk_not_device_dynamic_library')
-    require(embedded_slices == inspect_macho(canonical / 'SmartSpectra'), 'sdk_code_mismatch')
-    require(all(SDK_LINK in s['links'] for s in host_slices), 'host_smartspectra_link_missing')
-    require(all('@executable_path/Frameworks' in s['rpaths'] for s in host_slices), 'host_framework_runpath_missing')
-    require(not any('MediaPipe' in str(p.relative_to(host / 'Frameworks')) for p in files(host / 'Frameworks')),
+    require(not any('MediaPipe' in str(p.relative_to(host / 'Frameworks')) for p in paths
+                    if host / 'Frameworks' in p.parents),
             'static_mediapipe_unexpectedly_embedded')
-    load_plist(sdk / 'PrivacyInfo.xcprivacy')
-    return {'hostInfo': host_info, 'watchInfo': watch_info, 'sdkInfo': sdk_info, 'resources': resources(host),
-            'hostMachO': host_slices, 'watchMachO': watch_slices, 'sdkMachO': embedded_slices,
-            'canonicalSDKBinarySHA256': digest(canonical / 'SmartSpectra')}
+    return {'hostInfo': host_info, 'watchInfo': watch_info, 'resources': resources(host),
+            'hostMachO': host_slices, 'watchMachO': watch_slices, 'presageEnabled': False}
 
 
 def verify_source(repo, source, commit):
@@ -328,20 +314,13 @@ def audit_release(args):
             rows.append(verify_signing(app, identity, args.team_id, watch))
             dsym = args.archive / f'dSYMs/{name}.app.dSYM/Contents/Resources/DWARF/{name}'
             require(uuid_map(app / name) == uuid_map(dsym), 'dsym_uuid_mismatch')
-        run(['codesign', '--verify', '--strict', str(host / 'Frameworks/SmartSpectra.framework')],
-            code='sdk_signature_failed')
-        require(signer_certificate(host / 'Frameworks/SmartSpectra.framework') == signer_certificate(host),
-                'sdk_signer_mismatch')
-        sdk_ent = plistlib.loads(run(['codesign', '-d', '--entitlements', ':-', str(host / 'Frameworks/SmartSpectra.framework')],
-                                    code='sdk_entitlements_unavailable') or b'<plist version="1.0"><dict/></plist>')
-        require(not sdk_ent.get('get-task-allow', False), 'sdk_debug_entitlement_present')
         signed.append(rows)
     require(signed[0] == signed[1], 'archive_export_entitlements_mismatch')
     return {'status': 'passed', 'sourceCommit': args.source_commit, 'trackedNativeSharedFilesVerified': count,
             'approvedVendorFilesVerified': vendor_count,
             'version': args.version, 'build': args.build, 'resourceSHA256': layouts[0]['resources'],
             'ipaSHA256': digest(args.ipa),
-            'canonicalSDKBinarySHA256': layouts[0]['canonicalSDKBinarySHA256'],
+            'presageEnabled': False,
             'scope': 'Archive/export packaging, signatures, App Store profiles and app dSYM UUIDs only; '
                      'no runtime, device, provider, privacy/legal acceptance, Apple validation or upload.'}
 

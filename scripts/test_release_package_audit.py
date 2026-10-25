@@ -70,7 +70,7 @@ class ReleasePackagingBehavior(unittest.TestCase):
             plist(self.source / f'Native/{"iOS" if target == "host" else "Watch"}/Info.plist', source_info)
             plist(bundle / 'PrivacyInfo.xcprivacy', privacy)
             plist(self.source / f'Native/{"iOS" if target == "host" else "Watch"}/PrivacyInfo.xcprivacy', privacy)
-            macho(bundle / name, platform=platform, linked=target == 'host')
+            macho(bundle / name, platform=platform)
         for name, data in [('pose_landmarker_lite.task', b'synthetic-model'), ('MediaPipe-LICENSE.txt', b'synthetic-license')]:
             file = self.source / 'Native/Resources' / name
             file.parent.mkdir(parents=True, exist_ok=True)
@@ -88,7 +88,6 @@ class ReleasePackagingBehavior(unittest.TestCase):
                      'face_detection_short_range.tflite', 'face_landmark_with_attention.tflite']:
             (self.sdk / name).write_bytes(b'synthetic-' + name.encode())
         macho(self.sdk / 'SmartSpectra', dynamic=True)
-        shutil.copytree(self.sdk, self.embedded)
 
     def inspect(self):
         self.assertIsNotNone(audit, 'The reusable packaging audit is not implemented')
@@ -104,44 +103,42 @@ class ReleasePackagingBehavior(unittest.TestCase):
         info = plistlib.loads((app / 'Info.plist').read_bytes())
         plist(app / 'Info.plist', {**info, **values})
 
-    def test_accepts_dynamic_host_sdk_and_returns_deterministic_resource_hashes(self):
+    def test_accepts_default_release_without_smartspectra_and_returns_deterministic_hashes(self):
         result = self.inspect()
         self.assertEqual(result, self.inspect())
-        self.assertIn('Frameworks/SmartSpectra.framework/PrivacyInfo.xcprivacy', result['resources'])
+        self.assertFalse(result['presageEnabled'])
         self.assertIn('Watch/SpottrWatch.app/PrivacyInfo.xcprivacy', result['resources'])
 
-    def test_rejects_missing_or_changed_sdk_assets(self):
-        for name in ['PrivacyInfo.xcprivacy', 'metrics_cpu_continuous_rest.binarypb', 'pose_landmark_lite.tflite']:
+    def test_release_rejects_complete_or_incomplete_experimental_smartspectra_bundle(self):
+        shutil.copytree(self.sdk, self.embedded)
+        self.reject('smartspectra_release_blocked')
+        (self.embedded / 'PrivacyInfo.xcprivacy').unlink()
+        self.reject('smartspectra_release_blocked')
+
+    def test_release_rejects_direct_or_weak_sdk_link_even_without_embedding(self):
+        macho(self.host / 'Spottr', linked=True)
+        self.reject('smartspectra_release_blocked')
+
+        raw = bytearray((self.host / 'Spottr').read_bytes())
+        struct.pack_into('<I', raw, 56, 0x80000018)
+        (self.host / 'Spottr').write_bytes(raw)
+        self.reject('smartspectra_release_blocked')
+
+    def test_release_rejects_transitive_smartspectra_dependency_in_another_framework(self):
+        macho(self.host / 'Frameworks/Other.framework/Other', dynamic=True, linked=True)
+        self.reject('smartspectra_release_blocked')
+
+    def test_release_rejects_leftover_sdk_models_and_graphs(self):
+        for name in ['pose_detection.tflite', 'metrics_cpu_continuous_rest.binarypb']:
             with self.subTest(name=name):
-                file = self.embedded / name
-                original = file.read_bytes()
+                file = self.host / name
+                file.write_bytes(b'leftover-synthetic-sdk-resource')
+                self.reject('smartspectra_release_blocked')
                 file.unlink()
-                self.reject('sdk_resources_mismatch')
-                file.write_bytes(original + b'changed')
-                self.reject('sdk_resources_mismatch')
-                file.write_bytes(original)
 
-    def test_rejects_sdk_missing_entirely(self):
-        shutil.rmtree(self.embedded)
-        self.reject('missing_smartspectra_framework')
-
-    def test_rejects_static_sdk_and_simulator_slices(self):
-        macho(self.embedded / 'SmartSpectra')
-        self.reject('sdk_not_device_dynamic_library')
-        macho(self.embedded / 'SmartSpectra', dynamic=True, platform=7)
-        self.reject('sdk_not_device_dynamic_library')
-
-    def test_rejects_changed_sdk_code_even_when_its_resources_and_linkage_match(self):
-        macho(self.embedded / 'SmartSpectra', dynamic=True, code=b'substituted-sdk-code')
-        self.reject('sdk_code_mismatch')
-
-    def test_rejects_unlinked_sdk(self):
-        macho(self.host / 'Spottr')
-        self.reject('host_smartspectra_link_missing')
-
-    def test_rejects_host_without_embedded_framework_runpath(self):
-        macho(self.host / 'Spottr', linked=True, runpath=False)
-        self.reject('host_framework_runpath_missing')
+    def test_default_release_preserves_static_mediapipe_boundary(self):
+        macho(self.host / 'Frameworks/MediaPipeTasksVision.framework/MediaPipeTasksVision', dynamic=True)
+        self.reject('static_mediapipe_unexpectedly_embedded')
 
     def test_rejects_watch_identity_version_companion_and_encryption_drift(self):
         for field, value, code in [('CFBundleIdentifier', 'wrong', 'bundle_identity_mismatch'),
@@ -161,7 +158,7 @@ class ReleasePackagingBehavior(unittest.TestCase):
                 file.write_bytes(b'synthetic')
                 self.reject('watch_contains_host_only_resource')
                 file.unlink()
-        shutil.copytree(self.embedded, self.watch / 'Frameworks/SmartSpectra.framework')
+        shutil.copytree(self.sdk, self.watch / 'Frameworks/SmartSpectra.framework')
         self.reject('watch_contains_host_only_resource')
 
     def test_rejects_missing_or_changed_first_party_privacy_guidance_and_mediapipe(self):
