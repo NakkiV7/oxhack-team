@@ -183,6 +183,7 @@ public struct ConfigurableSession: Sendable {
         guard age >= -2, age <= 12, sample.sentAt > (telemetry.last?.sentAt ?? .distantPast) else { return }
         let readings = [sample.heartRate, sample.accelerationG, sample.rotationRadiansPerSecond].compactMap { $0 }
         guard readings.allSatisfy({ $0.value.isFinite && $0.value >= 0 && $0.date.timeIntervalSince1970.isFinite }) else { return }
+        guard sample.activeEnergy.map({ $0.isValid(at: sample.sentAt) && $0.isValid(at: now) && $0.asOf >= date.addingTimeInterval(-2) }) ?? true else { return }
         telemetry = Array((telemetry + [sample]).suffix(7200))
     }
 }

@@ -30,6 +30,8 @@ final class ReportFlowTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Camera"].firstMatch.exists)
         app.swipeUp()
         XCTAssertTrue(app.staticTexts["No Watch heart-rate readings recorded."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["No Watch active-energy readings recorded."].exists)
+        XCTAssertFalse(app.staticTexts["0 kcal"].exists)
         XCTAssertTrue(app.staticTexts["Rep tempo was not recorded."].exists)
     }
 }

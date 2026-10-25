@@ -203,6 +203,30 @@ struct SessionReportView: View {
                         Text("No Watch heart-rate readings recorded.").font(.subheadline).foregroundStyle(.secondary)
                     }
                 }
+                VStack(alignment: .leading, spacing: 14) {
+                    Label("Watch active energy", systemImage: "flame.fill")
+                        .font(.headline).foregroundStyle(Palette.amber)
+                    if report.activeEnergy.isEmpty {
+                        Text("No Watch active-energy readings recorded.").font(.subheadline).foregroundStyle(.secondary)
+                    } else {
+                        ForEach(Array(report.activeEnergy.enumerated()), id: \.element.recordingID) { index, energy in
+                            VStack(alignment: .leading, spacing: 5) {
+                                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                    Text(energy.kilocalories, format: .number.precision(.fractionLength(0...1)))
+                                        .font(.system(size: 36, weight: .semibold)).monospacedDigit()
+                                    Text("kcal").font(.subheadline).foregroundStyle(.secondary)
+                                }
+                                Text(report.activeEnergy.count == 1 ? "Estimated active energy" : "Recording \(index + 1) · estimated active energy")
+                                    .font(.caption).foregroundStyle(.secondary)
+                                Text("As of \(energy.asOf.formatted(date: .omitted, time: .standard))")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            .accessibilityElement(children: .combine)
+                            .accessibilityIdentifier("watch-active-energy-reading")
+                        }
+                    }
+                }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Palette.surface, in: RoundedRectangle(cornerRadius: 22))
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Tempo & movement").font(.headline)
                     if let average = report.averageRepSeconds {
@@ -230,6 +254,7 @@ struct SessionReportView: View {
                         Text("Camera counts are observations; manual reps are self-reported. Video results describe replayed footage.")
                         Text("Recorded time includes tracked sets, live manual set timers and logged hold durations. Bulk manual rep entries have no recorded duration.")
                         Text("Watch averages weight each distinct reading once. Wrist movement does not establish exercise form. Missing periods stay unknown; timestamps do not establish exact set boundaries.")
+                        Text("Active energy is the latest cumulative Watch estimate for each recording. Repeated readings are not added together. These estimates stay in local history and exports; they are not included in Coach requests or cloud sync.")
                         Text("Count highlights compare earlier saved sets of the same exercise and source; they do not establish strength or fitness changes.")
                     }.font(.caption).foregroundStyle(.secondary).padding(.top, 8)
                 }.font(.subheadline)
