@@ -115,3 +115,8 @@ For training validation, owner/source context, all required Tiger migrations and
 ## Stopping and cleaning up
 
 Press Ctrl+C in the terminal running `npm run ui`. The downloaded model, any trained profile and browser upload outbox remain; stopping the server does not delete them or any uploaded database history.
+
+
+## Tutorial button, voice and theme
+
+The **Tutorial** button opens a how-to guide with an example set and the faults the coach watches for. Pick a voice in the header to have the coach count and cue aloud (needs `ELEVENLABS_API_KEY` in `.env`; see `.env.example` for listing your voices). The Dark/Light button switches the theme. These work the same on the squat prototype.
