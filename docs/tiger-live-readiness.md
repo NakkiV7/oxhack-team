@@ -46,3 +46,13 @@ No provider-managed SSH access endpoint was found for this service. An SSH tunne
 ## Offline acceptance remains separate
 
 `cd server && npm test` passed **36/36 checks** during this review, using provider/database doubles and local test servers. The checks cover immutable snapshots, scoped readback, observed scalar data, rollback, schema/metadata validation and explicit live-smoke opt-in, along with gateway/Snowflake boundaries. They do not prove live Tiger schema execution, persistence, rollups or native sync. Keep the live status **blocked** until the strict read succeeds; the offline adapter remains usable for development.
+
+## TLS-only follow-up — 25 October 00:37 UTC
+
+The current [official strict-SSL documentation](https://www.tigerdata.com/docs/deploy/tiger-cloud/tiger-cloud-aws/security/strict-ssl) still describes temporary self-signed initialization followed by a public certificate, and explicitly documents inspecting whether replacement has occurred. One bounded, strict OpenSSL STARTTLS/hostname probe at **00:37:05 UTC** returned exit 1 / verification error **19**, `self-signed certificate in certificate chain`. No database login, SQL, provider configuration or trust-store change occurred. This confirms the same unresolved trust condition; it does not establish its cause.
+
+### Prepared provider-support text
+
+This is a draft for the account owner to submit through the authenticated support channel; it has **not been sent**.
+
+> Our Tiger service `hndd7wbr1z` in project `ucep75shdl` was converted from shared free compute to the smallest standard service at approximately 18:35 UTC on 24 October 2026. The authenticated Connect dialog confirms host `hndd7wbr1z.ucep75shdl.tsdb.cloud.timescale.com`, port `34147`, database `tsdb`. Strict PostgreSQL TLS still fails with `SELF_SIGNED_CERT_IN_CHAIN` / OpenSSL verification error 19 at 00:37 UTC on 25 October, more than six hours later. Earlier inspection found a Timescale private-CA leaf issued at 18:35:39 UTC. Please confirm public-certificate provisioning status and finish deployment, or provide the supported CA chain and its SHA-256 fingerprint through this authenticated channel. We are retaining full chain and hostname verification and have not imported the unverified socket chain. No database password is included in this request.
