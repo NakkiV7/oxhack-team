@@ -8,7 +8,7 @@
   :root { color-scheme: light; --bg:#f5f5f7; --card:#ffffff; --fg:#1d1d1f; --mut:#6e6e73; --line:#e8e8ed; --fill:#f2f2f7; --acc:#0071e3; --ok:#34c759; --warn:#ff9500; --bad:#ff3b30; --shadow:0 1px 2px rgba(0,0,0,.04), 0 10px 30px rgba(0,0,0,.06); }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark; --bg:#000; --card:#1c1c1e; --fg:#f5f5f7; --mut:#98989d; --line:#2c2c2e; --fill:#2c2c2e; --acc:#0a84ff; --ok:#30d158; --warn:#ff9f0a; --bad:#ff453a; --shadow:0 1px 2px rgba(0,0,0,.5); } }
   :root[data-theme="dark"] { color-scheme: dark; --bg:#000; --card:#1c1c1e; --fg:#f5f5f7; --mut:#98989d; --line:#2c2c2e; --fill:#2c2c2e; --acc:#0a84ff; --ok:#30d158; --warn:#ff9f0a; --bad:#ff453a; --shadow:0 1px 2px rgba(0,0,0,.5); }
-  #themeBtn { margin-left:auto; padding:6px 12px; font-size:13px; }
+  .hdr-right { margin-left:auto; display:flex; gap:8px; align-items:center; } #voiceSel { padding:6px 34px 6px 12px; font-size:13px; max-width:220px; } #themeBtn { padding:6px 12px; font-size:13px; }
   * { box-sizing:border-box; }
   html, body { height:100%; }
   body { margin:0; padding:16px; background:var(--bg); color:var(--fg); font:15px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif; -webkit-font-smoothing:antialiased; overflow:hidden; }
@@ -92,7 +92,7 @@
       <h1>Push-up Coach</h1>
       <span class="tip" id="codeTip" title="Enter this code in the iPhone app settings to pause / stop from the phone"></span>
       <span class="tip">Camera to your <b>side</b>, 2–3 m away, whole body in frame. Runs on your Mac.</span>
-      <button id="themeBtn" title="Switch between light and dark">Dark</button>
+      <span class="hdr-right"><select id="voiceSel" title="Spoken coach: pick a voice or turn it off"><option value="off">Voice off</option></select><button id="themeBtn" title="Switch between light and dark">Dark</button></span>
     </div>
     <div class="stage">
       <video id="video" playsinline muted></video>
@@ -399,6 +399,65 @@ themeBtn.onclick = () => { const next = isDark() ? 'light' : 'dark'; document.do
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', showTheme);
 showTheme();
 
+// Spoken coach: ElevenLabs through the local server (/say, cached on disk). One line at a time, never cut off;
+// a more urgent cue waits its turn, repeats are rate-limited. The chosen voice also sets the Gemini coach's persona.
+const MOTIVATION = ['Nobody is coming to do this for you. Keep moving.', "That's it. Earn every rep.", 'Pain is just information. Keep going.', 'Stay with it. The last reps are the ones that count.', 'Good. Strong. Again.', 'You are not tired, you are warming up. Push.', "Finish it. Don't leave reps on the table.", 'Clean rep. Make the next one better.'];
+const CLOSING = ['Set done. That is how you build it.', 'Done. Come back and beat it next time.', 'Good work. Rest, then go again.'];
+const PREWARM = [...Array.from({ length: 30 }, (_, i) => String(i + 1)), ...['Not low enough: bend your elbows more', 'Hips sagging: squeeze your core and glutes', 'Hips too high: lower them into a straight line', 'Keep your body in one straight line', "Let's go. Get into the top position."], ...MOTIVATION, ...CLOSING];
+const voiceSel = $('voiceSel');
+let voices = [], voiceId = (() => { try { return localStorage.getItem('voice'); } catch { return null; } })();
+const voiceName = () => voices.find((v) => v.id === voiceId)?.name ?? '';
+const personaFor = (n = '') => /arnold/i.test(n) ? 'larger-than-life bodybuilding champion turned coach: booming confidence, dry humour, every rep is a victory'
+  : /goggins/i.test(n) ? 'relentless no-excuses endurance coach: blunt, intense, demands more, never profane' : 'friendly, upbeat';
+async function loadVoices() {
+  try { voices = await (await fetch('/voices')).json(); } catch { voices = []; }
+  for (const v of voices) voiceSel.add(new Option(v.name, v.id));
+  if (!voiceId || (voiceId !== 'off' && !voices.some((v) => v.id === voiceId))) voiceId = voices[0]?.id ?? 'off';
+  voiceSel.value = voiceId;
+  if (!voices.length) voiceSel.hidden = true;
+  prewarm();
+}
+voiceSel.onchange = () => { voiceId = voiceSel.value; try { localStorage.setItem('voice', voiceId); } catch {} prewarm(); publish(null, true); };
+const sayUrl = (text) => `/say?text=${encodeURIComponent(text)}&voice=${encodeURIComponent(voiceId)}`;
+const speech = { queue: [], current: null, said: new Map() };
+window.coachVoice = speech; // debugging aid
+function say(text, prio = 2) {
+  if (voiceId === 'off' || !voices.length || !text) return;
+  text = String(text).slice(0, 240);
+  const now = performance.now();
+  if (!/^\d+$/.test(text) && now - (speech.said.get(text) ?? -1e9) < 8000) return;   // same cue too recently
+  if (speech.queue.some((q) => q.text === text)) return;
+  speech.said.set(text, now);
+  speech.queue.push({ text, prio, t: now });
+  pump();
+}
+function pump() {
+  if (speech.current) return;
+  const now = performance.now();
+  speech.queue = speech.queue.filter((q) => q.prio >= 3 || now - q.t < 4000);        // stale low-priority cues expire
+  if (!speech.queue.length) return;
+  const next = speech.queue.reduce((a, b) => (b.prio > a.prio || (b.prio === a.prio && b.t < a.t) ? b : a));
+  speech.queue.splice(speech.queue.indexOf(next), 1);
+  const a = new Audio(sayUrl(next.text));
+  speech.current = a;
+  const done = () => { speech.current = null; pump(); };
+  a.onended = done; a.onerror = done;
+  a.play().catch(done);
+}
+async function prewarm() {   // synthesise the fixed lines once per voice, in the background, so playback is instant
+  if (voiceId === 'off' || !voices.length) return;
+  const id = voiceId;
+  for (const text of PREWARM) { if (voiceId !== id) return; try { await fetch(sayUrl(text)); } catch { return; } }
+}
+let motivationN = 0;
+function voiceRep(rep) {
+  if (!rep.counted) { say(rep.issue, 2); return; }
+  say(String(rep.n), 3);
+  if (rep.issue) say(rep.issue, 3);
+  else if (rep.n % 3 === 0) say(MOTIVATION[motivationN++ % MOTIVATION.length], 1);
+}
+loadVoices();
+
 
 // Tutorial dialog: videos pause when it closes.
 const tut = $('tutorial');
@@ -536,6 +595,7 @@ function saveWorkout(st) {
 
 function endWorkout() {
   clockPause(); stopAll(); showClock(); workoutEnded = true;
+  say(CLOSING[counter.count % CLOSING.length], 3);
   const st = summaryStats();
   const tile = (v, l) => `<div class="tile"><b>${v}</b><span>${l}</span></div>`;
   const s1 = (v) => v == null ? '–' : v.toFixed(1) + ' s';
@@ -583,7 +643,7 @@ $('startCam').onclick = async () => {
     const began = await begin(generation);
     if (generation !== inputGeneration) return;
     cameraStarting = false;
-    if (began) $('status').textContent = 'Running. Get into position.';
+    if (began) { $('status').textContent = 'Running. Get into position.'; say("Let's go. Get into the top position.", 2); }
   } catch (e) {
     if (generation !== inputGeneration) return;
     stopAll(); $('status').textContent = 'Camera error: ' + e.message + ' (grant camera access to your browser).';
@@ -662,7 +722,7 @@ function loop() {
       const side = pickSide(lm);
       const m = measure(lm, side, counter.variation, video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 1);
       const rep = counter.update(m, video.src ? video.currentTime : performance.now() / 1000);
-      if (rep) { client.observe(rep); rep.pace = timeClass(rep) || null; addHistory(rep); } // pace is sent to the phone with the rep
+      if (rep) { client.observe(rep); rep.pace = timeClass(rep) || null; addHistory(rep); voiceRep(rep); } // pace is sent to the phone with the rep
       render(lm, m, side);
       publish(lm, side, !!rep);
     } else { render(null, null); publish(null, 0, false); }
@@ -681,7 +741,7 @@ function publish(lm, side, force = false) {
   const pt = (j) => { const q = lm?.[JOINTS[j][side]]; return q ? [q.x, q.y] : null; };
   const fb = $('feedback');
   const state = {
-    running, variation: counter.variation, label: cfg.label,
+    running, variation: counter.variation, label: cfg.label, persona: personaFor(voiceName()), voice: voiceName(),
     count: counter.count, good: counter.goodCount, total: counter.reps.length,
     feedback: fb.textContent, tone: fb.className.split(' ')[1] ?? 'ok', phase: counter.state,
     elbow: counter.elbow, line: counter.line,
@@ -752,6 +812,7 @@ coachEvents.addEventListener('coach', (e) => {
   if (coachSeen.has(m.time)) return;
   coachSeen.add(m.time);
   coachItem('', `✨ ${m.text}`);
+  say(m.text, 2);
 });
 // Phone remote control (the server checks the code before forwarding): same actions as the buttons here.
 coachEvents.addEventListener('control', (e) => {
@@ -764,6 +825,7 @@ coachEvents.addEventListener('control', (e) => {
 fetch('/control-code').then((r) => r.text()).then((c) => { $('codeTip').innerHTML = `Phone code: <b>${c.replace(/[^0-9a-f]/g, '')}</b> ·`; }).catch(() => {});
 coachEvents.addEventListener('qa', (e) => showQA(JSON.parse(e.data)));
 coachEvents.addEventListener('status', (e) => {
+  if (!JSON.parse(e.data).voice) voiceSel.hidden = true;
   if (!JSON.parse(e.data).on) { $('coachEmpty') && ($('coachEmpty').textContent = 'AI coach is off: add GEMINI_API_KEY to pushup/.env and restart.'); $('askForm').style.display = 'none'; }
 });
 $('askQ').addEventListener('input', () => { $('askCount').textContent = `${$('askQ').value.length}/256`; });

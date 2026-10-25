@@ -3,3 +3,4 @@ models/*.task
 .env
 .DS_Store
 .control-token
+voice_cache/

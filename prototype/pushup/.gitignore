@@ -7,3 +7,4 @@ ios/build/
 .control-token
 data/profile.json
 certs/
+voice_cache/
