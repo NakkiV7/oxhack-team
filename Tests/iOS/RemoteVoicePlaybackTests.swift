@@ -6,10 +6,15 @@ final class RemoteVoicePlaybackTests: XCTestCase {
     private let baseURL = URL(string: "http://127.0.0.1:8788")!
     private let wall = Date(timeIntervalSince1970: 1_792_915_200)
 
-    func testLocalIsDefaultAndUnavailableRemoteSelectionCannotMakeARequest() throws {
+    func testArnoldIsAvailableOfflineAndLocalRequiresExplicitSelection() throws {
         let local = SilentLocalVoice()
-        let playback = RemoteVoicePlayback(local: local, client: { XCTFail("No gateway access without explicit remote selection"); throw TestFailure.invalid }, uptime: { 2 })
-        XCTAssertEqual(playback.preference, .local)
+        let cached = SilentLocalVoice()
+        let playback = RemoteVoicePlayback(local: local, arnoldPlayback: cached, client: { XCTFail("No gateway access without explicit remote selection"); throw TestFailure.invalid }, uptime: { 2 })
+        XCTAssertEqual(playback.preference, .arnold)
+        playback.speak(cue())
+        XCTAssertEqual(cached.spoken.count, 1)
+        XCTAssertTrue(local.spoken.isEmpty)
+        try playback.select(.local)
         XCTAssertThrowsError(try playback.select(.david))
         let event = cue()
         playback.speak(event)
@@ -65,7 +70,7 @@ final class RemoteVoicePlaybackTests: XCTestCase {
             return try await withCheckedThrowingContinuation { pending = $0 }
         })
         let playback = RemoteVoicePlayback(local: local, client: { client }, makeAudio: { _ in SilentRemoteAudio(onPlay: { lateAudio.fulfill() }) }, wallNow: { self.wall }, uptime: { 2 })
-        try await playback.refreshVoices(); try playback.select(.arnold)
+        try await playback.refreshVoices(); try playback.select(.david)
         let controller = VoiceCuePlaybackController(playback: playback)
         let first = cue(), context = VoiceCueContext(sessionID: first.sessionID, generation: first.generation, phase: .active)
         controller.update(context: context, event: first, enabled: false, now: 2)
@@ -154,11 +159,13 @@ final class RemoteVoicePlaybackTests: XCTestCase {
     }
 
     func testPreferenceChangeStopsAudioAndOldCompletionCannotFinishTheReplacement() async throws {
-        let firstPlayed = expectation(description: "First audio"), secondPlayed = expectation(description: "Replacement audio")
-        let first = SilentRemoteAudio(onPlay: { firstPlayed.fulfill() }), second = SilentRemoteAudio(onPlay: { secondPlayed.fulfill() })
-        var made = 0, finished: [UUID] = []
+        let firstPlayed = expectation(description: "Remote audio")
+        let first = SilentRemoteAudio(onPlay: { firstPlayed.fulfill() })
+        let cached = SilentLocalVoice()
+        var finished: [UUID] = []
         let client = VoiceGatewayClient(baseURL: baseURL, token: "test-owner", transport: { try self.reply($0) })
-        let playback = RemoteVoicePlayback(local: SilentLocalVoice(), client: { client }, makeAudio: { _ in made += 1; return made == 1 ? first : second }, wallNow: { self.wall }, uptime: { 2 })
+        let playback = RemoteVoicePlayback(local: SilentLocalVoice(), arnoldPlayback: cached, client: { client },
+            makeAudio: { _ in first }, wallNow: { self.wall }, uptime: { 2 })
         try await playback.refreshVoices(); try playback.select(.david)
         playback.onFinish = { finished.append($0) }
         playback.speak(cue()); await fulfillment(of: [firstPlayed], timeout: 1)
@@ -166,10 +173,11 @@ final class RemoteVoicePlaybackTests: XCTestCase {
         try playback.select(.arnold)
         XCTAssertEqual(first.stops, 1)
         let replacement = cue()
-        playback.speak(replacement); await fulfillment(of: [secondPlayed], timeout: 1)
+        playback.speak(replacement)
+        XCTAssertEqual(cached.spoken, [replacement])
         oldCompletion?()
         XCTAssertTrue(finished.isEmpty)
-        second.onFinish?()
+        cached.onFinish?(replacement.id)
         XCTAssertEqual(finished, [replacement.id])
     }
 
@@ -240,7 +248,7 @@ final class RemoteVoicePlaybackTests: XCTestCase {
         XCTAssertTrue(local.spoken.isEmpty)
     }
 
-    func testPreviewCompletionAndImmediateLocalStopRespectCurrentCueIdentity() throws {
+    func testPreviewCompletionAndImmediateArnoldStopRespectCurrentCueIdentity() throws {
         let cached = SilentLocalVoice(), local = SilentLocalVoice()
         let playback = RemoteVoicePlayback(local: local, previewPlayback: cached, client: {
             XCTFail("Cached playback cannot contact a provider")
@@ -260,10 +268,11 @@ final class RemoteVoicePlaybackTests: XCTestCase {
         let stop = cue(kind: .coaching(.stop), expiry: nil)
         playback.speak(stop)
         XCTAssertEqual(cached.stops, 2, "Completion and Stop both release the active cached clip")
-        XCTAssertEqual(local.spoken, [stop], "Discomfort/Stop remains immediate local speech")
+        XCTAssertTrue(local.spoken.isEmpty)
+        XCTAssertEqual(cached.spoken.last, stop, "Stop is immediately available offline in Arnold")
         cached.onFinish?(replacement.id)
         XCTAssertEqual(finished, [first.id])
-        local.onFinish?(stop.id)
+        cached.onFinish?(stop.id)
         XCTAssertEqual(finished, [first.id, stop.id])
     }
 
@@ -301,7 +310,7 @@ final class RemoteVoicePlaybackTests: XCTestCase {
             makeAudio: { _ in SilentRemoteAudio(onPlay: {}) }, wallNow: { self.wall }, uptime: { 2 })
         defer { playback.stop() }
         try await playback.refreshVoices()
-        try playback.select(.arnold)
+        try playback.select(.david)
         let completion = VoiceCue(id: UUID(), sessionID: UUID(), generation: UUID(), text: "Workout complete.",
             kind: .coaching(.rest), issuedAt: 2, expiresAt: 6, reason: .workoutCompleted)
         playback.speak(completion)
@@ -324,6 +333,21 @@ final class RemoteVoicePlaybackTests: XCTestCase {
                           event: completion, enabled: true, now: 2)
         XCTAssertEqual(cached.spoken, [completion])
         XCTAssertTrue(local.spoken.isEmpty)
+    }
+
+    func testArnoldWorkoutAndStopUseBundledPlaybackOutsidePreviewWithoutGateway() throws {
+        let cached = SilentLocalVoice(), local = SilentLocalVoice()
+        let playback = RemoteVoicePlayback(local: local, arnoldPlayback: cached, client: {
+            XCTFail("Arnold workout cues must remain offline")
+            throw TestFailure.invalid
+        }, uptime: { 2 })
+        try playback.select(.arnold)
+        let normal = cue(), stop = cue(kind: .coaching(.stop), expiry: nil)
+        playback.speak(normal)
+        playback.speak(stop)
+        XCTAssertEqual(cached.spoken, [normal, stop])
+        XCTAssertTrue(local.spoken.isEmpty)
+        XCTAssertFalse(playback.isPreview)
     }
 
     private var audio: Data { Data([0xff, 0xf3, 0x40, 0xc0] + Array(repeating: 0, count: 100)) }
