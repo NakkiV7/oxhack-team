@@ -674,10 +674,10 @@ function hrtRep(rep) {
 }
 function hrtEnd() { if (!fc || fc.ended) return; for (const o of fc.end()) if (tg.id) tg.outcomes.push(o); hrtRender(); }
 function hrtRender() {
-  const T = fc?.target ?? hrtTarget(), st = fc?.state ?? { kind: 'unavailable' }, b = fc?.bounds ?? (T.rel == null ? T : null), why = cueText(b);
+  const T = fc?.target ?? hrtTarget(), st = fc?.state ?? { kind: 'unavailable' }, bd = fc?.bounds ?? (T.rel == null ? T : null), why = cueText(bd);
   const lines = {
     baseline: [`Learning your pace, ${st.have ?? 0} of ${st.need ?? MIN_REPS} counted reps`, 'Forecasts start after three counted reps.'],
-    monitoring: st.note === 'current_rep_outside_target' ? ['Last rep was outside the tempo range', 'Forecasting resumes when a rep is back in range.'] : ['Tracking your next reps', `Lowering target ${b ? `${b.L} to ${b.U} s` : 'from your first three reps'}. Quiet unless a cue is due${fc?.mode === 'shadow' ? ' (shadow mode: forecasts are recorded, not spoken)' : ''}.`],
+    monitoring: st.note === 'current_rep_outside_target' ? ['Last rep was outside the tempo range', 'Forecasting resumes when a rep is back in range.'] : ['Tracking your next reps', `Lowering target ${bd ? `${bd.L} to ${bd.U} s` : 'from your first three reps'}. Quiet unless a cue is due${fc?.mode === 'shadow' ? ' (shadow mode: forecasts are recorded, not spoken)' : ''}.`],
     cue: [why.cue, 'Cue delivered through the coach voice.'],
     unavailable: ['Prediction unavailable', 'No forecast model is loaded. Tracking continues as normal.'],
     departed: [`Your tempo has shifted from how you started (rep ${st.k ?? '?'})`, 'Forecasting stops for this set; reset reps to start a fresh baseline.'],
@@ -688,7 +688,7 @@ function hrtRender() {
   $('hrtState').textContent = a; $('hrtSub').textContent = b; $('hrtCard').dataset.state = framing ? 'insufficient' : st.kind;
   const f = st.forecast;
   $('hrtWhyBody').innerHTML = f
-    ? `<b>Forecast after rep ${f.repN}.</b> ${why.why}<br>Recent lowering: ${fc.reps.filter((r) => r.counted).slice(-3).map((r) => r.tDown.toFixed(2) + ' s').join(', ')} against ${b.L} to ${b.U} s${b.base ? ` (25% around your first-three-rep median ${b.base.toFixed(2)} s)` : ''}; trend ${f.features.down_trend >= 0 ? '+' : ''}${f.features.down_trend.toFixed(2)} s versus the previous reps${f.features.depth_missing ? '; depth not judged' : ''}.<br>Model ${f.modelRun}: preliminary out-of-fold probability ${(f.probability * 100).toFixed(0)}%, not calibrated (see Evidence); ${f.policyKind === 'drift' ? `cue rule: drift of ${(f.driftRatio * 100).toFixed(0)}% from your first three reps against a ${(fc.artifact.policy.theta * 100).toFixed(0)}% trigger` : `threshold ${(f.threshold * 100).toFixed(0)}%`}; ${f.mode} mode; ${f.latencyMs} ms after the rep.<br>These are observations the model associates with a tempo miss, not causes.`
+    ? `<b>Forecast after rep ${f.repN}.</b> ${why.why}<br>Recent lowering: ${fc.reps.filter((r) => r.counted).slice(-3).map((r) => r.tDown.toFixed(2) + ' s').join(', ')} against ${bd.L} to ${bd.U} s${bd.base ? ` (25% around your first-three-rep median ${bd.base.toFixed(2)} s)` : ''}; trend ${f.features.down_trend >= 0 ? '+' : ''}${f.features.down_trend.toFixed(2)} s versus the previous reps${f.features.depth_missing ? '; depth not judged' : ''}.<br>Model ${f.modelRun}: preliminary out-of-fold probability ${(f.probability * 100).toFixed(0)}%, not calibrated (see Evidence); ${f.policyKind === 'drift' ? `cue rule: drift of ${(f.driftRatio * 100).toFixed(0)}% from your first three reps against a ${(fc.artifact.policy.theta * 100).toFixed(0)}% trigger` : `threshold ${(f.threshold * 100).toFixed(0)}%`}; ${f.mode} mode; ${f.latencyMs} ms after the rep.<br>These are observations the model associates with a tempo miss, not causes.`
     : 'No forecast yet.';
 }
 async function hrtReview(workoutId) {

@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-25T05:50:22.856Z",
-  "gitCommit": "e3bb1e32ecb217edf2dd4a329527044cc576aed4",
-  "datasetSha256": "d516d9b45ae7e4f571579eeded02a11bbef951ddabdd491d5bad08b171661ff0",
+  "generatedAt": "2026-10-25T06:02:50.117Z",
+  "gitCommit": "83b760c2b8533093dcfdae7a6e207b02c69b3523",
+  "datasetSha256": "0ffd558f54204fa1d0f2fe70a0b63376442442a421c46e8e71e75baf2ef18ab6",
   "target": {
     "id": "controlled-v1",
     "label": "Controlled lowering, 0.6 to 1.5 s",
@@ -16,13 +16,13 @@
   "budget": 0.5,
   "seed": 7,
   "datasetCard": {
-    "recordings": 26,
+    "recordings": 29,
     "people": 15,
-    "attempts": 717,
-    "countedReps": 710,
+    "attempts": 1152,
+    "countedReps": 1141,
     "bySplit": {
       "dev": {
-        "recordings": 26,
+        "recordings": 29,
         "eligibleOrigins": 12,
         "positives": 3
       },
@@ -62,6 +62,24 @@
         "person": "cc-1",
         "provenance": "imported",
         "reps": 2
+      },
+      "cc2_CaiwLJ_F9NQ_day14_135": {
+        "split": "dev",
+        "person": "yt-chan",
+        "provenance": "imported",
+        "reps": 132
+      },
+      "cc2_GoeaZGzQruw_day26_225": {
+        "split": "dev",
+        "person": "yt-chan",
+        "provenance": "imported",
+        "reps": 116
+      },
+      "cc2_IzbrO0bK4Kc_day29_240": {
+        "split": "dev",
+        "person": "yt-chan",
+        "provenance": "imported",
+        "reps": 183
       },
       "cc_2G9exNOTjvs_day25_220": {
         "split": "dev",
@@ -191,11 +209,11 @@
       }
     },
     "audit": {
-      "origins": 710,
+      "origins": 1141,
       "ineligible": {
-        "baseline": 50,
-        "current_rep_outside_target": 614,
-        "after_departure": 20
+        "baseline": 56,
+        "current_rep_outside_target": 887,
+        "after_departure": 172
       },
       "excluded": {
         "after_departure": 2,

@@ -11,22 +11,22 @@
 \newcommand{\CFeatureVersion}{f2}
 \newcommand{\CPolicyVersion}{budget-v1}
 \newcommand{\CModelRun}{none}
-\newcommand{\CDatasetSha}{d516d9b45ae7}
-\newcommand{\CGitCommit}{2522221911}
-\newcommand{\CGeneratedAt}{2026-10-25 05:41}
+\newcommand{\CDatasetSha}{0ffd558f5420}
+\newcommand{\CGitCommit}{83b760c2b8}
+\newcommand{\CGeneratedAt}{2026-10-25 06:02}
 \newcommand{\CNPeople}{15}
-\newcommand{\CNRecordings}{26}
-\newcommand{\CNAttempts}{717}
-\newcommand{\CNCounted}{710}
-\newcommand{\CNOrigins}{710}
+\newcommand{\CNRecordings}{29}
+\newcommand{\CNAttempts}{1152}
+\newcommand{\CNCounted}{1141}
+\newcommand{\CNOrigins}{1141}
 \newcommand{\CNObserved}{12}
 \newcommand{\CNPositive}{3}
-\newcommand{\CNIneligibleBaseline}{50}
-\newcommand{\CNIneligibleOutside}{614}
-\newcommand{\CNIneligibleAfter}{20}
+\newcommand{\CNIneligibleBaseline}{56}
+\newcommand{\CNIneligibleOutside}{887}
+\newcommand{\CNIneligibleAfter}{172}
 \newcommand{\CNExcludedEnded}{12}
 \newcommand{\CNExcludedInvalid}{0}
-\newcommand{\CNDevRecordings}{26}
+\newcommand{\CNDevRecordings}{29}
 \newcommand{\CNDevOrigins}{12}
 \newcommand{\CNDevPositive}{3}
 \newcommand{\CNTestRecordings}{0}
@@ -40,6 +40,9 @@ tiger/ce15f91b/s2 & dev & nakki & live & 15 \\
 tiger/ce15f91b/s3 & dev & nakki & live & 15 \\
 tiger/ce15f91b/s4 & dev & nakki & live & 15 \\
 barbell\_squat\_powerlifting\_comp\_01 & dev & cc-1 & imported & 2 \\
+cc2\_CaiwLJ\_F9NQ\_day14\_135 & dev & yt-chan & imported & 132 \\
+cc2\_GoeaZGzQruw\_day26\_225 & dev & yt-chan & imported & 116 \\
+cc2\_IzbrO0bK4Kc\_day29\_240 & dev & yt-chan & imported & 183 \\
 cc\_2G9exNOTjvs\_day25\_220 & dev & yt-chan & imported & 153 \\
 cc\_2yL3JSswZzg\_tedcarr100\_side & dev & yt-tedcarr & imported & 100 \\
 cc\_7KiYUhaC-A0\_100nopause & dev & yt-bombe & imported & 100 \\
@@ -61,4 +64,4 @@ screen\_cam/team-2 & dev & team-2 & live-recorded & 8 \\
 screen\_cam/team-3 & dev & team-3 & live-recorded & 6 \\
 squat\_frontal\_raise\_01 & dev & cc-8 & imported & 6 \\
 squat\_jump\_army\_front\_01 & dev & cc-9 & imported & 5 \\}
-\newcommand{\CLabelDefinition}{v\_t = 1 when the lowering duration of counted rep t is outside [0.6, 1.5] s; Y\_t = 1 when v = 1 for rep t+1 or t+2; origins need 3 counted reps and v\_t = 0; horizons with an uncounted attempt or fewer than 2 further reps are excluded.}
+\newcommand{\CLabelDefinition}{Bounds: 0.6 to 1.5 s. v\_t = 1 when the lowering duration of counted rep t is outside the bounds. The event is the set's first sustained departure: the first rep k with v\_k = 1 and at least 2 of reps k..k+2 outside. Y\_t = 1 when that departure starts at one of reps t+1..t+5. Origins need 3 counted reps, v\_t = 0 and no departure yet; an origin whose deciding reps include an uncounted attempt, or run past the end of the set, or that lies after the departure, is excluded.}

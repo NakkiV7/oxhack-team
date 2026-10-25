@@ -256,10 +256,11 @@ if (enough) {
       pooled.history.push(...pH); pooled.full.push(...pF); pooled.constant.push(...pC); pooled.y.push(...y); pooled.ex.push(...held.map((e, j) => ({ ...e, pH: pH[j] })));
     }
     if (!perSet.length) continue;
-    results.personal = { person, sets: seqs.length, perSet, pooled: { n: pooled.y.length, positives: pooled.y.filter(Boolean).length, brierHistory: brier(pooled.history, pooled.y), brierFull: brier(pooled.full, pooled.y), brierConstant: brier(pooled.constant, pooled.y), logLossHistory: logloss(pooled.history, pooled.y), logLossFull: logloss(pooled.full, pooled.y) },
-      policy: { history: policy(pooled.ex, (e) => e.pH >= tauStar, tauStar), heuristic: policy(pooled.ex, (e) => e.heuristic, null) }, note: 'Each held set is predicted using the clips and only this person\'s earlier sets; threshold frozen from the main development selection.' };
-    break; // one person at a time for now
+    (results.personal ??= []).push({ person, sets: seqs.length, perSet, pooled: { n: pooled.y.length, positives: pooled.y.filter(Boolean).length, brierHistory: brier(pooled.history, pooled.y), brierFull: brier(pooled.full, pooled.y), brierConstant: brier(pooled.constant, pooled.y), logLossHistory: logloss(pooled.history, pooled.y), logLossFull: logloss(pooled.full, pooled.y) },
+      policy: { history: policy(pooled.ex, (e) => e.pH >= tauStar, tauStar), drift: policy(pooled.ex, (e) => driftRatio(e) >= thetaStar, thetaStar), heuristic: policy(pooled.ex, (e) => e.heuristic, null) },
+      note: 'Each held set is predicted using the clips and only this person\'s earlier sets; thresholds frozen from the main development selection.' });
   }
+  if (results.personal) results.personal.sort((a, b) => b.pooled.positives - a.pooled.positives); // the most informative person first
   // Regression fallback: next lowering duration, out of fold.
   const oofR = new Map(), oofLast = new Map(), oofMed = new Map();
   for (const g of gs) { const tr = dev.filter((e) => e.group !== g), m = fitRidge(tr, FEATURE_SETS.tempo, 1); for (const e of dev.filter((e) => e.group === g)) { oofR.set(e, m.predict(e.x)); oofLast.set(e, e.x.down); oofMed.set(e, e.x.down_med); } }
@@ -304,7 +305,7 @@ if (results.dev) {
   console.log('bootstrap:', JSON.stringify(results.dev.bootstrap.intervals));
   console.log('regression MAE:', JSON.stringify(results.regression.mae));
   console.log('lambda', results.dev.lambdas.full, 'threshold', results.modelRun && JSON.parse(readFileSync(new URL(`./model-${KEY}.json`, import.meta.url), 'utf8')).threshold);
-  if (results.personal) console.log('personal (chronological):', JSON.stringify(results.personal.pooled), 'policy history recall', results.personal.policy.history.recall, 'FA/set', results.personal.policy.history.falseAlertsPerSet);
+  for (const pp of results.personal ?? []) console.log(`personal (${pp.person}, ${pp.sets} sets):`, JSON.stringify(pp.pooled), '| drift recall', f3(pp.policy.drift.recall), 'FA/set', f3(pp.policy.drift.falseAlertsPerSet), '| history-model recall', f3(pp.policy.history.recall));
 }
 if (results.test) console.log('TEST (locked):', JSON.stringify(results.test.probability.full), 'policy', JSON.stringify(results.test.policies.full));
 console.log(`wrote hrt/results-${KEY}.json, hrt/model-${KEY}.json, hrt/data/split-manifest.json`);

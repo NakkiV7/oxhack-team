@@ -60,10 +60,11 @@ if dev and dev["ablations"].get("history"):
     h = dev["ablations"]["history"]
     macros.update({"BrierHist": f(h["brier"]), "LogLossHist": f(h["logLoss"]), "RecallHist": pct(h["recallAtBudget"])})
 if R.get("personal"):
-    pp = R["personal"]
+    pp = R["personal"][0]  # the person with the most events
     macros.update({"PersonalPerson": pp["person"], "PersonalSets": pp["sets"], "PersonalN": pp["pooled"]["n"], "PersonalPos": pp["pooled"]["positives"], "PersonalBrierHist": f(pp["pooled"]["brierHistory"]),
                    "PersonalBrierFull": f(pp["pooled"]["brierFull"]), "PersonalBrierConst": f(pp["pooled"]["brierConstant"]), "PersonalRecallHist": pct(pp["policy"]["history"]["recall"]), "PersonalFAHist": f(pp["policy"]["history"]["falseAlertsPerSet"], 2),
-                   "PersonalRecallHeur": pct(pp["policy"]["heuristic"]["recall"]), "PersonalFAHeur": f(pp["policy"]["heuristic"]["falseAlertsPerSet"], 2)})
+                   "PersonalRecallHeur": pct(pp["policy"]["heuristic"]["recall"]), "PersonalFAHeur": f(pp["policy"]["heuristic"]["falseAlertsPerSet"], 2),
+                   "PersonalRecallDrift": pct(pp["policy"]["drift"]["recall"]), "PersonalFADrift": f(pp["policy"]["drift"]["falseAlertsPerSet"], 2)})
 if test:
     tp, tpol = test["probability"], test["policies"]
     macros.update({"TestGroups": test["groups"], "TestPrevalence": pct(test["prevalence"]), "TestBrierConst": f(tp["constant"]["brier"]), "TestBrierFull": f(tp["full"]["brier"]), "TestLogLossFull": f(tp["full"]["logLoss"]),

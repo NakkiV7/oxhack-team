@@ -73,7 +73,7 @@ for (const f of files) {
   const seg = (t) => { if (!m.segments) return [name, m.person]; const hit = Object.entries(m.segments).find(([, [a, b]]) => t >= a && t < b); return hit ? [`${name}/${hit[0]}`, hit[0]] : [null, null]; };
   for (const r of repsFromDump(JSON.parse(raw), m.variation ?? 'standard')) {
     const [recording, person] = seg(r.t_end);
-    if (recording) rows.push({ recording, split: m.split, person, provenance: m.provenance, variation: m.variation ?? 'standard', seq: 0, ...r }); // seq 0: no earlier sets of this person
+    if (recording) rows.push({ recording, split: m.split, person, provenance: m.provenance, variation: m.variation ?? 'standard', seq: m.seq ?? 0, ...r }); // seq: dated order within a person (0 = unknown)
   }
 }
 const csv = [COLUMNS.join(','), ...rows.map((r) => COLUMNS.map((k) => r[k] ?? '').join(','))].join('\n') + '\n';

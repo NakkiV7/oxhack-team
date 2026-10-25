@@ -1,111 +1,2468 @@
 {
-  "workoutId": "1db5bbc2-97ac-4715-97c6-877b4cb3dee5",
-  "note": "held-out-demo_kb_side.webm (Cavemantraining, CC BY-SA 4.0), replayed once in shadow mode on 25 Oct 2026",
+  "workoutId": "ae93286f-18a7-4ffe-925e-665400c92450",
+  "note": "Offline replay of cc_OiBjzZDnvuo_day9_100 (Chan Vekaria, CC BY, 89 reps) through the counter and the forecaster, posted through the squat server and read back from Tiger; shadow mode; relative target, horizon 5",
   "rows": [
     {
-      "prediction_id": "909cebab-c537-4a7c-9f04-a6ed1c250b59",
+      "prediction_id": "a3da91c8-4eb8-43ca-9a64-2ccfe7288489",
       "rep_n": 3,
-      "model_run": "hrt-tempo-v1-c5c7ee36-3b66ec",
-      "target_id": "controlled-v1",
-      "horizon": 2,
-      "probability": 0.3761,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
       "threshold": 0.95,
       "action": "silent",
       "suppressed_reason": null,
       "mode": "shadow",
       "provenance": "video",
-      "cutoff_at": "2026-10-25T04:38:27.422Z",
-      "emitted_at": "2026-10-25T04:38:27.422Z",
+      "cutoff_at": "2026-10-25T06:36:51.427Z",
+      "emitted_at": "2026-10-25T06:36:51.427Z",
       "delivered_at": null,
-      "latency_ms": 0.3,
+      "latency_ms": 0.2,
       "features": {
-        "up": 0.8,
-        "down": 1.4,
+        "up": 0.37,
+        "down": 0.33,
         "rep_n": 3,
-        "margin": 0.1111111111111112,
-        "elapsed": 17.71523,
-        "down_med": 1.3,
-        "up_trend": -0.050000000000000044,
-        "down_range": 0.09999999999999987,
-        "down_trend": 0.09999999999999987,
-        "depth_trend": -0.06500000000000006,
+        "margin": 0.49999999999999983,
+        "elapsed": 4.633333333333334,
+        "down_med": 0.33,
+        "up_drift": 0,
+        "up_trend": -0.015000000000000013,
+        "down_drift": 0,
+        "down_range": 0.07,
+        "down_trend": -0.034999999999999976,
+        "depth_trend": 0.09499999999999997,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 4,
+          "down": 0.33,
+          "tEnd": 13.933333333333334,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 5,
+          "down": 0.37,
+          "tEnd": 15.733333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 6,
+          "down": 0.37,
+          "tEnd": 17.566666666666666,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 7,
+          "down": 0.37,
+          "tEnd": 19.466666666666665,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:00.694Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "bf605e45-192c-4c26-89cb-8d7502042288",
+      "rep_n": 4,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:36:53.227Z",
+      "emitted_at": "2026-10-25T06:36:53.227Z",
+      "delivered_at": null,
+      "latency_ms": 0.13,
+      "features": {
+        "up": 0.33,
+        "down": 0.33,
+        "rep_n": 4,
+        "margin": 0.49999999999999983,
+        "elapsed": 6.4333333333333345,
+        "down_med": 0.33,
+        "up_drift": 0,
+        "up_trend": -0.03999999999999998,
+        "down_drift": 0,
+        "down_range": 0.07,
+        "down_trend": 0,
+        "depth_trend": 0.07000000000000003,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 5,
+          "down": 0.37,
+          "tEnd": 15.733333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 6,
+          "down": 0.37,
+          "tEnd": 17.566666666666666,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 7,
+          "down": 0.37,
+          "tEnd": 19.466666666666665,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 8,
+          "down": 0.37,
+          "tEnd": 21.4,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:02.661Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "e9f4a5f2-4530-4742-a8c9-b17137154782",
+      "rep_n": 5,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:36:55.027Z",
+      "emitted_at": "2026-10-25T06:36:55.027Z",
+      "delivered_at": null,
+      "latency_ms": 0.04,
+      "features": {
+        "up": 0.3,
+        "down": 0.37,
+        "rep_n": 5,
+        "margin": 0.24999999999999992,
+        "elapsed": 8.233333333333334,
+        "down_med": 0.33,
+        "up_drift": -0.03999999999999998,
+        "up_trend": -0.07,
+        "down_drift": 0,
+        "down_range": 0.03999999999999998,
+        "down_trend": 0.03999999999999998,
+        "depth_trend": -0.09000000000000002,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 6,
+          "down": 0.37,
+          "tEnd": 17.566666666666666,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 7,
+          "down": 0.37,
+          "tEnd": 19.466666666666665,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 8,
+          "down": 0.37,
+          "tEnd": 21.4,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 9,
+          "down": 0.3,
+          "tEnd": 23.366666666666667,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:04.661Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "8e4cd4c4-1776-4991-b167-81e9fff9a16d",
+      "rep_n": 6,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0575,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:36:56.861Z",
+      "emitted_at": "2026-10-25T06:36:56.861Z",
+      "delivered_at": null,
+      "latency_ms": 0.05,
+      "features": {
+        "up": 0.33,
+        "down": 0.37,
+        "rep_n": 6,
+        "margin": 0.24999999999999992,
+        "elapsed": 10.066666666666666,
+        "down_med": 0.37,
+        "up_drift": -0.03999999999999998,
+        "up_trend": 0,
+        "down_drift": 0.03999999999999998,
+        "down_range": 0.03999999999999998,
+        "down_trend": 0.03999999999999998,
+        "depth_trend": -0.020000000000000018,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 7,
+          "down": 0.37,
+          "tEnd": 19.466666666666665,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 8,
+          "down": 0.37,
+          "tEnd": 21.4,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 9,
+          "down": 0.3,
+          "tEnd": 23.366666666666667,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 10,
+          "down": 0.33,
+          "tEnd": 25.366666666666667,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:06.594Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "98d2f514-6284-4acd-956f-5e1a340decb3",
+      "rep_n": 7,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0575,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:36:58.761Z",
+      "emitted_at": "2026-10-25T06:36:58.761Z",
+      "delivered_at": null,
+      "latency_ms": 0.03,
+      "features": {
+        "up": 0.3,
+        "down": 0.37,
+        "rep_n": 7,
+        "margin": 0.24999999999999992,
+        "elapsed": 11.966666666666665,
+        "down_med": 0.37,
+        "up_drift": -0.07,
+        "up_trend": -0.030000000000000027,
+        "down_drift": 0.03999999999999998,
+        "down_range": 0,
+        "down_trend": 0,
+        "depth_trend": -0.03999999999999998,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 8,
+          "down": 0.37,
+          "tEnd": 21.4,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 9,
+          "down": 0.3,
+          "tEnd": 23.366666666666667,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 10,
+          "down": 0.33,
+          "tEnd": 25.366666666666667,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 11,
+          "down": 0.37,
+          "tEnd": 27.3,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:08.427Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "53c63482-2193-42cd-99c3-39b9a9901a24",
+      "rep_n": 8,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:00.694Z",
+      "emitted_at": "2026-10-25T06:37:00.694Z",
+      "delivered_at": null,
+      "latency_ms": 0.08,
+      "features": {
+        "up": 0.3,
+        "down": 0.37,
+        "rep_n": 8,
+        "margin": 0.24999999999999992,
+        "elapsed": 13.899999999999999,
+        "down_med": 0.37,
+        "up_drift": -0.07,
+        "up_trend": 0,
+        "down_drift": 0.03999999999999998,
+        "down_range": 0,
+        "down_trend": 0,
+        "depth_trend": -0.07,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 9,
+          "down": 0.3,
+          "tEnd": 23.366666666666667,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 10,
+          "down": 0.33,
+          "tEnd": 25.366666666666667,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 11,
+          "down": 0.37,
+          "tEnd": 27.3,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 12,
+          "down": 0.3,
+          "tEnd": 29.133333333333333,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:10.294Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "e50aea2c-63ec-41d5-ab42-044cd9f92836",
+      "rep_n": 9,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0575,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:02.661Z",
+      "emitted_at": "2026-10-25T06:37:02.661Z",
+      "delivered_at": null,
+      "latency_ms": 0.03,
+      "features": {
+        "up": 0.37,
+        "down": 0.3,
+        "rep_n": 9,
+        "margin": 0.3125,
+        "elapsed": 15.866666666666667,
+        "down_med": 0.37,
+        "up_drift": -0.07,
+        "up_trend": 0.07,
+        "down_drift": 0.03999999999999998,
+        "down_range": 0.07,
+        "down_trend": -0.07,
+        "depth_trend": 0.020000000000000018,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 10,
+          "down": 0.33,
+          "tEnd": 25.366666666666667,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 11,
+          "down": 0.37,
+          "tEnd": 27.3,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 12,
+          "down": 0.3,
+          "tEnd": 29.133333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 13,
+          "down": 0.3,
+          "tEnd": 31,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:12.094Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "d5fb3a54-4a55-4f53-84d6-7df8cf93bb6e",
+      "rep_n": 10,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:04.661Z",
+      "emitted_at": "2026-10-25T06:37:04.661Z",
+      "delivered_at": null,
+      "latency_ms": 0.04,
+      "features": {
+        "up": 0.37,
+        "down": 0.33,
+        "rep_n": 10,
+        "margin": 0.49999999999999983,
+        "elapsed": 17.866666666666667,
+        "down_med": 0.33,
+        "up_drift": 0,
+        "up_trend": 0.07,
+        "down_drift": 0,
+        "down_range": 0.07,
+        "down_trend": -0.03999999999999998,
+        "depth_trend": 0,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 11,
+          "down": 0.37,
+          "tEnd": 27.3,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 12,
+          "down": 0.3,
+          "tEnd": 29.133333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 13,
+          "down": 0.3,
+          "tEnd": 31,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 14,
+          "down": 0.33,
+          "tEnd": 32.8,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:14.094Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "7c2701f5-6318-4f31-98ee-f6502c4303fe",
+      "rep_n": 11,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:06.594Z",
+      "emitted_at": "2026-10-25T06:37:06.594Z",
+      "delivered_at": null,
+      "latency_ms": 0.04,
+      "features": {
+        "up": 0.37,
+        "down": 0.37,
+        "rep_n": 11,
+        "margin": 0.24999999999999992,
+        "elapsed": 19.8,
+        "down_med": 0.33,
+        "up_drift": 0,
+        "up_trend": 0,
+        "down_drift": 0,
+        "down_range": 0.07,
+        "down_trend": 0.03999999999999998,
+        "depth_trend": 0,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 12,
+          "down": 0.3,
+          "tEnd": 29.133333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 13,
+          "down": 0.3,
+          "tEnd": 31,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 14,
+          "down": 0.33,
+          "tEnd": 32.8,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 15,
+          "down": 0.33,
+          "tEnd": 34.8,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:15.927Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "202eb4ee-79bf-45fd-b627-6406ed58bc93",
+      "rep_n": 12,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:08.427Z",
+      "emitted_at": "2026-10-25T06:37:08.427Z",
+      "delivered_at": null,
+      "latency_ms": 0.04,
+      "features": {
+        "up": 0.33,
+        "down": 0.3,
+        "rep_n": 12,
+        "margin": 0.3125,
+        "elapsed": 21.633333333333333,
+        "down_med": 0.33,
+        "up_drift": 0,
+        "up_trend": -0.03999999999999998,
+        "down_drift": 0,
+        "down_range": 0.07,
+        "down_trend": -0.030000000000000027,
+        "depth_trend": -0.010000000000000009,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 13,
+          "down": 0.3,
+          "tEnd": 31,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 14,
+          "down": 0.33,
+          "tEnd": 32.8,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 15,
+          "down": 0.33,
+          "tEnd": 34.8,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 16,
+          "down": 0.33,
+          "tEnd": 36.63333333333333,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:17.727Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "1cdf9566-4c9d-4ee7-af95-3414acff8336",
+      "rep_n": 13,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:10.294Z",
+      "emitted_at": "2026-10-25T06:37:10.294Z",
+      "delivered_at": null,
+      "latency_ms": 0.03,
+      "features": {
+        "up": 0.37,
+        "down": 0.3,
+        "rep_n": 13,
+        "margin": 0.3125,
+        "elapsed": 23.5,
+        "down_med": 0.3,
+        "up_drift": 0,
+        "up_trend": 0,
+        "down_drift": -0.030000000000000027,
+        "down_range": 0.07,
+        "down_trend": -0.030000000000000027,
+        "depth_trend": -0.04999999999999999,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 14,
+          "down": 0.33,
+          "tEnd": 32.8,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 15,
+          "down": 0.33,
+          "tEnd": 34.8,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 16,
+          "down": 0.33,
+          "tEnd": 36.63333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 17,
+          "down": 0.33,
+          "tEnd": 38.43333333333333,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:19.594Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "26d2e288-c57b-4f20-8a95-5f855e9e54e0",
+      "rep_n": 14,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:12.094Z",
+      "emitted_at": "2026-10-25T06:37:12.094Z",
+      "delivered_at": null,
+      "latency_ms": 0.02,
+      "features": {
+        "up": 0.33,
+        "down": 0.33,
+        "rep_n": 14,
+        "margin": 0.49999999999999983,
+        "elapsed": 25.299999999999997,
+        "down_med": 0.3,
+        "up_drift": -0.03999999999999998,
+        "up_trend": -0.03999999999999998,
+        "down_drift": -0.030000000000000027,
+        "down_range": 0.030000000000000027,
+        "down_trend": 0.030000000000000027,
+        "depth_trend": 0.010000000000000009,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 15,
+          "down": 0.33,
+          "tEnd": 34.8,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 16,
+          "down": 0.33,
+          "tEnd": 36.63333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 17,
+          "down": 0.33,
+          "tEnd": 38.43333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 18,
+          "down": 0.33,
+          "tEnd": 40.3,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:21.461Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "02ccdbd0-80ea-4196-9b8c-79e5ecfd699d",
+      "rep_n": 15,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:14.094Z",
+      "emitted_at": "2026-10-25T06:37:14.094Z",
+      "delivered_at": null,
+      "latency_ms": 0.02,
+      "features": {
+        "up": 0.37,
+        "down": 0.33,
+        "rep_n": 15,
+        "margin": 0.49999999999999983,
+        "elapsed": 27.299999999999997,
+        "down_med": 0.33,
+        "up_drift": 0,
+        "up_trend": 0.03999999999999998,
+        "down_drift": 0,
+        "down_range": 0.030000000000000027,
+        "down_trend": 0.030000000000000027,
+        "depth_trend": 0.020000000000000018,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 16,
+          "down": 0.33,
+          "tEnd": 36.63333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 17,
+          "down": 0.33,
+          "tEnd": 38.43333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 18,
+          "down": 0.33,
+          "tEnd": 40.3,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 19,
+          "down": 0.27,
+          "tEnd": 42.166666666666664,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:23.261Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "ecdc3ed7-bd96-4e80-8171-4505654a680b",
+      "rep_n": 16,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:15.927Z",
+      "emitted_at": "2026-10-25T06:37:15.927Z",
+      "delivered_at": null,
+      "latency_ms": 0.02,
+      "features": {
+        "up": 0.33,
+        "down": 0.33,
+        "rep_n": 16,
+        "margin": 0.49999999999999983,
+        "elapsed": 29.133333333333333,
+        "down_med": 0.33,
+        "up_drift": -0.03999999999999998,
+        "up_trend": -0.03999999999999998,
+        "down_drift": 0,
+        "down_range": 0,
+        "down_trend": 0,
+        "depth_trend": -0.04999999999999999,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 17,
+          "down": 0.33,
+          "tEnd": 38.43333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 18,
+          "down": 0.33,
+          "tEnd": 40.3,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 19,
+          "down": 0.27,
+          "tEnd": 42.166666666666664,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 20,
+          "down": 0.33,
+          "tEnd": 43.96666666666667,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:25.127Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "e21488ee-ed9c-4f44-af66-ad22f18747dc",
+      "rep_n": 17,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:17.727Z",
+      "emitted_at": "2026-10-25T06:37:17.727Z",
+      "delivered_at": null,
+      "latency_ms": 0.02,
+      "features": {
+        "up": 0.33,
+        "down": 0.33,
+        "rep_n": 17,
+        "margin": 0.49999999999999983,
+        "elapsed": 30.93333333333333,
+        "down_med": 0.33,
+        "up_drift": -0.03999999999999998,
+        "up_trend": 0,
+        "down_drift": 0,
+        "down_range": 0,
+        "down_trend": 0,
+        "depth_trend": 0,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 18,
+          "down": 0.33,
+          "tEnd": 40.3,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 19,
+          "down": 0.27,
+          "tEnd": 42.166666666666664,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 20,
+          "down": 0.33,
+          "tEnd": 43.96666666666667,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 21,
+          "down": 0.33,
+          "tEnd": 45.833333333333336,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:26.961Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "f01baef3-8da6-4b9b-8ccf-b02335d338eb",
+      "rep_n": 18,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:19.594Z",
+      "emitted_at": "2026-10-25T06:37:19.594Z",
+      "delivered_at": null,
+      "latency_ms": 0.02,
+      "features": {
+        "up": 0.3,
+        "down": 0.33,
+        "rep_n": 18,
+        "margin": 0.49999999999999983,
+        "elapsed": 32.8,
+        "down_med": 0.33,
+        "up_drift": -0.03999999999999998,
+        "up_trend": -0.030000000000000027,
+        "down_drift": 0,
+        "down_range": 0,
+        "down_trend": 0,
+        "depth_trend": -0.020000000000000018,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 19,
+          "down": 0.27,
+          "tEnd": 42.166666666666664,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 20,
+          "down": 0.33,
+          "tEnd": 43.96666666666667,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 21,
+          "down": 0.33,
+          "tEnd": 45.833333333333336,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 22,
+          "down": 0.33,
+          "tEnd": 47.666666666666664,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:28.927Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "402bc130-830c-4d5e-9dc2-3fce6adc93c7",
+      "rep_n": 19,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0575,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:21.461Z",
+      "emitted_at": "2026-10-25T06:37:21.461Z",
+      "delivered_at": null,
+      "latency_ms": 0.02,
+      "features": {
+        "up": 0.33,
+        "down": 0.27,
+        "rep_n": 19,
+        "margin": 0.12500000000000014,
+        "elapsed": 34.666666666666664,
+        "down_med": 0.33,
+        "up_drift": -0.03999999999999998,
+        "up_trend": 0,
+        "down_drift": 0,
+        "down_range": 0.06,
+        "down_trend": -0.06,
+        "depth_trend": 0.04999999999999999,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 20,
+          "down": 0.33,
+          "tEnd": 43.96666666666667,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 21,
+          "down": 0.33,
+          "tEnd": 45.833333333333336,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 22,
+          "down": 0.33,
+          "tEnd": 47.666666666666664,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 23,
+          "down": 0.37,
+          "tEnd": 49.63333333333333,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:30.827Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "57f19846-c5a8-4698-b25e-bf2883d445b1",
+      "rep_n": 20,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:23.261Z",
+      "emitted_at": "2026-10-25T06:37:23.261Z",
+      "delivered_at": null,
+      "latency_ms": 0.02,
+      "features": {
+        "up": 0.33,
+        "down": 0.33,
+        "rep_n": 20,
+        "margin": 0.49999999999999983,
+        "elapsed": 36.46666666666667,
+        "down_med": 0.33,
+        "up_drift": -0.03999999999999998,
+        "up_trend": 0,
+        "down_drift": 0,
+        "down_range": 0.06,
+        "down_trend": 0,
+        "depth_trend": 0.07999999999999999,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 21,
+          "down": 0.33,
+          "tEnd": 45.833333333333336,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 22,
+          "down": 0.33,
+          "tEnd": 47.666666666666664,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 23,
+          "down": 0.37,
+          "tEnd": 49.63333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 24,
+          "down": 0.3,
+          "tEnd": 51.53333333333333,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:32.727Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "ee349e36-fc30-43a7-9899-b1774994dc02",
+      "rep_n": 21,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:25.127Z",
+      "emitted_at": "2026-10-25T06:37:25.127Z",
+      "delivered_at": null,
+      "latency_ms": 0.02,
+      "features": {
+        "up": 0.33,
+        "down": 0.33,
+        "rep_n": 21,
+        "margin": 0.49999999999999983,
+        "elapsed": 38.333333333333336,
+        "down_med": 0.33,
+        "up_drift": -0.03999999999999998,
+        "up_trend": 0,
+        "down_drift": 0,
+        "down_range": 0.06,
+        "down_trend": 0,
+        "depth_trend": -0.06999999999999995,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 22,
+          "down": 0.33,
+          "tEnd": 47.666666666666664,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 23,
+          "down": 0.37,
+          "tEnd": 49.63333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 24,
+          "down": 0.3,
+          "tEnd": 51.53333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 25,
+          "down": 0.33,
+          "tEnd": 53.43333333333333,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:34.661Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "00e234cf-6486-41b0-9e81-8edbc25a7f5b",
+      "rep_n": 22,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:26.961Z",
+      "emitted_at": "2026-10-25T06:37:26.961Z",
+      "delivered_at": null,
+      "latency_ms": 0.07,
+      "features": {
+        "up": 0.37,
+        "down": 0.33,
+        "rep_n": 22,
+        "margin": 0.49999999999999983,
+        "elapsed": 40.166666666666664,
+        "down_med": 0.33,
+        "up_drift": -0.03999999999999998,
+        "up_trend": 0.03999999999999998,
+        "down_drift": 0,
+        "down_range": 0,
+        "down_trend": 0,
+        "depth_trend": 0.020000000000000018,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 23,
+          "down": 0.37,
+          "tEnd": 49.63333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 24,
+          "down": 0.3,
+          "tEnd": 51.53333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 25,
+          "down": 0.33,
+          "tEnd": 53.43333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 26,
+          "down": 0.37,
+          "tEnd": 55.36666666666667,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:36.627Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "ff1f9d29-20e6-443d-afc7-bed089384f71",
+      "rep_n": 23,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:28.927Z",
+      "emitted_at": "2026-10-25T06:37:28.927Z",
+      "delivered_at": null,
+      "latency_ms": 0.02,
+      "features": {
+        "up": 0.3,
+        "down": 0.37,
+        "rep_n": 23,
+        "margin": 0.24999999999999992,
+        "elapsed": 42.13333333333333,
+        "down_med": 0.33,
+        "up_drift": -0.03999999999999998,
+        "up_trend": -0.030000000000000027,
+        "down_drift": 0,
+        "down_range": 0.03999999999999998,
+        "down_trend": 0.03999999999999998,
+        "depth_trend": -0.04999999999999999,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 24,
+          "down": 0.3,
+          "tEnd": 51.53333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 25,
+          "down": 0.33,
+          "tEnd": 53.43333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 26,
+          "down": 0.37,
+          "tEnd": 55.36666666666667,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 27,
+          "down": 0.37,
+          "tEnd": 57.333333333333336,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:38.527Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "e9247600-1348-4434-b476-a6276f5fcecb",
+      "rep_n": 24,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:30.827Z",
+      "emitted_at": "2026-10-25T06:37:30.827Z",
+      "delivered_at": null,
+      "latency_ms": 0.02,
+      "features": {
+        "up": 0.4,
+        "down": 0.3,
+        "rep_n": 24,
+        "margin": 0.3125,
+        "elapsed": 44.03333333333333,
+        "down_med": 0.33,
+        "up_drift": 0,
+        "up_trend": 0.07,
+        "down_drift": 0,
+        "down_range": 0.07,
+        "down_trend": -0.030000000000000027,
+        "depth_trend": 0.03999999999999998,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 25,
+          "down": 0.33,
+          "tEnd": 53.43333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 26,
+          "down": 0.37,
+          "tEnd": 55.36666666666667,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 27,
+          "down": 0.37,
+          "tEnd": 57.333333333333336,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 28,
+          "down": 0.33,
+          "tEnd": 59.233333333333334,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:40.427Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "9e2028f4-f584-42c4-8f66-ea6c42de7b3e",
+      "rep_n": 25,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:32.727Z",
+      "emitted_at": "2026-10-25T06:37:32.727Z",
+      "delivered_at": null,
+      "latency_ms": 0.02,
+      "features": {
+        "up": 0.33,
+        "down": 0.33,
+        "rep_n": 25,
+        "margin": 0.49999999999999983,
+        "elapsed": 45.93333333333333,
+        "down_med": 0.33,
+        "up_drift": -0.03999999999999998,
+        "up_trend": -0.03999999999999998,
+        "down_drift": 0,
+        "down_range": 0.07,
+        "down_trend": 0,
+        "depth_trend": -0.08999999999999997,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 26,
+          "down": 0.37,
+          "tEnd": 55.36666666666667,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 27,
+          "down": 0.37,
+          "tEnd": 57.333333333333336,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 28,
+          "down": 0.33,
+          "tEnd": 59.233333333333334,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 29,
+          "down": 0.33,
+          "tEnd": 61.13333333333333,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:42.394Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "c08dbb89-a19a-483f-8ca6-92919798749a",
+      "rep_n": 26,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0575,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:34.661Z",
+      "emitted_at": "2026-10-25T06:37:34.661Z",
+      "delivered_at": null,
+      "latency_ms": 0.03,
+      "features": {
+        "up": 0.37,
+        "down": 0.37,
+        "rep_n": 26,
+        "margin": 0.24999999999999992,
+        "elapsed": 47.86666666666667,
+        "down_med": 0.33,
+        "up_drift": 0,
+        "up_trend": 0.03999999999999998,
+        "down_drift": 0,
+        "down_range": 0.07,
+        "down_trend": 0.03999999999999998,
+        "depth_trend": 0.07,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 27,
+          "down": 0.37,
+          "tEnd": 57.333333333333336,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 28,
+          "down": 0.33,
+          "tEnd": 59.233333333333334,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 29,
+          "down": 0.33,
+          "tEnd": 61.13333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 30,
+          "down": 0.37,
+          "tEnd": 63.1,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:44.394Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "8904e128-72dc-4ab8-a824-6124d1b0b35f",
+      "rep_n": 27,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0575,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:36.627Z",
+      "emitted_at": "2026-10-25T06:37:36.627Z",
+      "delivered_at": null,
+      "latency_ms": 0.02,
+      "features": {
+        "up": 0.4,
+        "down": 0.37,
+        "rep_n": 27,
+        "margin": 0.24999999999999992,
+        "elapsed": 49.833333333333336,
+        "down_med": 0.37,
+        "up_drift": 0,
+        "up_trend": 0.030000000000000027,
+        "down_drift": 0.03999999999999998,
+        "down_range": 0.03999999999999998,
+        "down_trend": 0.03999999999999998,
+        "depth_trend": -0.03999999999999998,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 28,
+          "down": 0.33,
+          "tEnd": 59.233333333333334,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 29,
+          "down": 0.33,
+          "tEnd": 61.13333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 30,
+          "down": 0.37,
+          "tEnd": 63.1,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 31,
+          "down": 0.33,
+          "tEnd": 65.1,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:46.427Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "a059b293-1f05-4da0-9940-dc9d542b8769",
+      "rep_n": 28,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:38.527Z",
+      "emitted_at": "2026-10-25T06:37:38.527Z",
+      "delivered_at": null,
+      "latency_ms": 0.02,
+      "features": {
+        "up": 0.37,
+        "down": 0.33,
+        "rep_n": 28,
+        "margin": 0.49999999999999983,
+        "elapsed": 51.733333333333334,
+        "down_med": 0.37,
+        "up_drift": 0,
+        "up_trend": 0,
+        "down_drift": 0.03999999999999998,
+        "down_range": 0.03999999999999998,
+        "down_trend": -0.03999999999999998,
+        "depth_trend": 0.03999999999999998,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 29,
+          "down": 0.33,
+          "tEnd": 61.13333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 30,
+          "down": 0.37,
+          "tEnd": 63.1,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 31,
+          "down": 0.33,
+          "tEnd": 65.1,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 32,
+          "down": 0.37,
+          "tEnd": 67.13333333333334,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:48.494Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "e2175126-d304-4719-97e5-57c2bb695ae9",
+      "rep_n": 29,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:40.427Z",
+      "emitted_at": "2026-10-25T06:37:40.427Z",
+      "delivered_at": null,
+      "latency_ms": 0.02,
+      "features": {
+        "up": 0.3,
+        "down": 0.33,
+        "rep_n": 29,
+        "margin": 0.49999999999999983,
+        "elapsed": 53.63333333333333,
+        "down_med": 0.33,
+        "up_drift": 0,
+        "up_trend": -0.07,
+        "down_drift": 0,
+        "down_range": 0.03999999999999998,
+        "down_trend": -0.03999999999999998,
+        "depth_trend": -0.10999999999999999,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 30,
+          "down": 0.37,
+          "tEnd": 63.1,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 31,
+          "down": 0.33,
+          "tEnd": 65.1,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 32,
+          "down": 0.37,
+          "tEnd": 67.13333333333334,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 33,
+          "down": 0.37,
+          "tEnd": 69.2,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:50.627Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "bdc68c94-ecf0-4f24-86f0-199935c57f83",
+      "rep_n": 30,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:42.394Z",
+      "emitted_at": "2026-10-25T06:37:42.394Z",
+      "delivered_at": null,
+      "latency_ms": 0.02,
+      "features": {
+        "up": 0.33,
+        "down": 0.37,
+        "rep_n": 30,
+        "margin": 0.24999999999999992,
+        "elapsed": 55.6,
+        "down_med": 0.33,
+        "up_drift": -0.03999999999999998,
+        "up_trend": -0.03999999999999998,
+        "down_drift": 0,
+        "down_range": 0.03999999999999998,
+        "down_trend": 0.03999999999999998,
+        "depth_trend": -0.04999999999999999,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 31,
+          "down": 0.33,
+          "tEnd": 65.1,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 32,
+          "down": 0.37,
+          "tEnd": 67.13333333333334,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 33,
+          "down": 0.37,
+          "tEnd": 69.2,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 34,
+          "down": 0.37,
+          "tEnd": 71.33333333333333,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:52.861Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "654a7ab7-e07b-422b-bf17-0f52c72e3899",
+      "rep_n": 31,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:44.394Z",
+      "emitted_at": "2026-10-25T06:37:44.394Z",
+      "delivered_at": null,
+      "latency_ms": 0.02,
+      "features": {
+        "up": 0.33,
+        "down": 0.33,
+        "rep_n": 31,
+        "margin": 0.49999999999999983,
+        "elapsed": 57.599999999999994,
+        "down_med": 0.33,
+        "up_drift": -0.03999999999999998,
+        "up_trend": 0,
+        "down_drift": 0,
+        "down_range": 0.03999999999999998,
+        "down_trend": 0,
+        "depth_trend": 0.010000000000000009,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 32,
+          "down": 0.37,
+          "tEnd": 67.13333333333334,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 33,
+          "down": 0.37,
+          "tEnd": 69.2,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 34,
+          "down": 0.37,
+          "tEnd": 71.33333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 35,
+          "down": 0.37,
+          "tEnd": 73.56666666666666,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:54.994Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "057e6177-2fca-4e45-9daa-8318a73dfc12",
+      "rep_n": 32,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0575,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:46.427Z",
+      "emitted_at": "2026-10-25T06:37:46.427Z",
+      "delivered_at": null,
+      "latency_ms": 0.03,
+      "features": {
+        "up": 0.37,
+        "down": 0.37,
+        "rep_n": 32,
+        "margin": 0.24999999999999992,
+        "elapsed": 59.63333333333334,
+        "down_med": 0.37,
+        "up_drift": -0.03999999999999998,
+        "up_trend": 0.03999999999999998,
+        "down_drift": 0.03999999999999998,
+        "down_range": 0.03999999999999998,
+        "down_trend": 0.03999999999999998,
+        "depth_trend": 0.09999999999999998,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 33,
+          "down": 0.37,
+          "tEnd": 69.2,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 34,
+          "down": 0.37,
+          "tEnd": 71.33333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 35,
+          "down": 0.37,
+          "tEnd": 73.56666666666666,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 36,
+          "down": 0.37,
+          "tEnd": 75.7,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:57.294Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "446f3753-5919-4e54-a2d1-a405ddff7419",
+      "rep_n": 33,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0575,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:48.494Z",
+      "emitted_at": "2026-10-25T06:37:48.494Z",
+      "delivered_at": null,
+      "latency_ms": 0.04,
+      "features": {
+        "up": 0.43,
+        "down": 0.37,
+        "rep_n": 33,
+        "margin": 0.24999999999999992,
+        "elapsed": 61.7,
+        "down_med": 0.37,
+        "up_drift": 0,
+        "up_trend": 0.09999999999999998,
+        "down_drift": 0.03999999999999998,
+        "down_range": 0.03999999999999998,
+        "down_trend": 0,
+        "depth_trend": 0.13999999999999999,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 0,
+      "exclusion_reason": null,
+      "onset_offset": null,
+      "lead_secs": null,
+      "future_reps": [
+        {
+          "n": 34,
+          "down": 0.37,
+          "tEnd": 71.33333333333333,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 35,
+          "down": 0.37,
+          "tEnd": 73.56666666666666,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 36,
+          "down": 0.37,
+          "tEnd": 75.7,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 37,
+          "down": 0.37,
+          "tEnd": 78,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:37:59.361Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "2f183bf7-6c7a-4ce1-b59f-4e618271a10a",
+      "rep_n": 34,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:50.627Z",
+      "emitted_at": "2026-10-25T06:37:50.627Z",
+      "delivered_at": null,
+      "latency_ms": 0.02,
+      "features": {
+        "up": 0.4,
+        "down": 0.37,
+        "rep_n": 34,
+        "margin": 0.24999999999999992,
+        "elapsed": 63.83333333333333,
+        "down_med": 0.37,
+        "up_drift": 0.030000000000000027,
+        "up_trend": 0.030000000000000027,
+        "down_drift": 0.03999999999999998,
+        "down_range": 0,
+        "down_trend": 0,
+        "depth_trend": -0.020000000000000018,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 1,
+      "exclusion_reason": null,
+      "onset_offset": 5,
+      "lead_secs": 10.9,
+      "future_reps": [
+        {
+          "n": 35,
+          "down": 0.37,
+          "tEnd": 73.56666666666666,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 36,
+          "down": 0.37,
+          "tEnd": 75.7,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 37,
+          "down": 0.37,
+          "tEnd": 78,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 38,
+          "down": 0.4,
+          "tEnd": 80.06666666666666,
+          "counted": true,
+          "violates": false
+        }
+      ],
+      "observed_at": "2026-10-25T06:38:03.661Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "f0b252d2-7107-4d04-b61c-9caa4819c66d",
+      "rep_n": 35,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:52.861Z",
+      "emitted_at": "2026-10-25T06:37:52.861Z",
+      "delivered_at": null,
+      "latency_ms": 0.02,
+      "features": {
+        "up": 0.47,
+        "down": 0.37,
+        "rep_n": 35,
+        "margin": 0.24999999999999992,
+        "elapsed": 66.06666666666666,
+        "down_med": 0.37,
+        "up_drift": 0.06,
+        "up_trend": 0.06999999999999995,
+        "down_drift": 0.03999999999999998,
+        "down_range": 0,
+        "down_trend": 0,
+        "depth_trend": 0.010000000000000009,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 1,
+      "exclusion_reason": null,
+      "onset_offset": 4,
+      "lead_secs": 8.6,
+      "future_reps": [
+        {
+          "n": 36,
+          "down": 0.37,
+          "tEnd": 75.7,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 37,
+          "down": 0.37,
+          "tEnd": 78,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 38,
+          "down": 0.4,
+          "tEnd": 80.06666666666666,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 39,
+          "down": 0.43,
+          "tEnd": 82.2,
+          "counted": true,
+          "violates": true
+        }
+      ],
+      "observed_at": "2026-10-25T06:38:03.661Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "834376f3-368b-4acc-8626-ad713e0a5d2b",
+      "rep_n": 36,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0574,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:54.994Z",
+      "emitted_at": "2026-10-25T06:37:54.994Z",
+      "delivered_at": null,
+      "latency_ms": 0.02,
+      "features": {
+        "up": 0.43,
+        "down": 0.37,
+        "rep_n": 36,
+        "margin": 0.24999999999999992,
+        "elapsed": 68.2,
+        "down_med": 0.37,
+        "up_drift": 0.06,
+        "up_trend": 0,
+        "down_drift": 0.03999999999999998,
+        "down_range": 0,
+        "down_trend": 0,
+        "depth_trend": -0.020000000000000018,
+        "depth_missing": 0
+      },
+      "state": "observed",
+      "outcome": 1,
+      "exclusion_reason": null,
+      "onset_offset": 3,
+      "lead_secs": 6.5,
+      "future_reps": [
+        {
+          "n": 37,
+          "down": 0.37,
+          "tEnd": 78,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 38,
+          "down": 0.4,
+          "tEnd": 80.06666666666666,
+          "counted": true,
+          "violates": false
+        },
+        {
+          "n": 39,
+          "down": 0.43,
+          "tEnd": 82.2,
+          "counted": true,
+          "violates": true
+        },
+        {
+          "n": 40,
+          "down": 0.43,
+          "tEnd": 84.36666666666666,
+          "counted": true,
+          "violates": true
+        }
+      ],
+      "observed_at": "2026-10-25T06:38:03.661Z",
+      "coached": false
+    },
+    {
+      "prediction_id": "ca1df5aa-3d24-4f73-b94c-f9de2c9f912e",
+      "rep_n": 37,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0575,
+      "threshold": 0.95,
+      "action": "silent",
+      "suppressed_reason": null,
+      "mode": "shadow",
+      "provenance": "video",
+      "cutoff_at": "2026-10-25T06:37:57.294Z",
+      "emitted_at": "2026-10-25T06:37:57.294Z",
+      "delivered_at": null,
+      "latency_ms": 0.04,
+      "features": {
+        "up": 0.43,
+        "down": 0.37,
+        "rep_n": 37,
+        "margin": 0.24999999999999992,
+        "elapsed": 70.5,
+        "down_med": 0.37,
+        "up_drift": 0.06,
+        "up_trend": 0,
+        "down_drift": 0.03999999999999998,
+        "down_range": 0,
+        "down_trend": 0,
+        "depth_trend": 0.060000000000000026,
         "depth_missing": 0
       },
       "state": "observed",
       "outcome": 1,
       "exclusion_reason": null,
       "onset_offset": 2,
-      "lead_secs": 16.4,
+      "lead_secs": 4.2,
       "future_reps": [
         {
-          "n": 4,
-          "down": 1.3,
-          "tEnd": 30.185588,
+          "n": 38,
+          "down": 0.4,
+          "tEnd": 80.06666666666666,
           "counted": true,
           "violates": false
         },
         {
-          "n": 5,
-          "down": 1.6,
-          "tEnd": 38.681183,
+          "n": 39,
+          "down": 0.43,
+          "tEnd": 82.2,
+          "counted": true,
+          "violates": true
+        },
+        {
+          "n": 40,
+          "down": 0.43,
+          "tEnd": 84.36666666666666,
           "counted": true,
           "violates": true
         }
       ],
-      "observed_at": "2026-10-25T04:38:44.970Z",
+      "observed_at": "2026-10-25T06:38:03.661Z",
       "coached": false
     },
     {
-      "prediction_id": "8eec9f28-9990-4f75-8272-6706bb6eecf9",
-      "rep_n": 4,
-      "model_run": "hrt-tempo-v1-c5c7ee36-3b66ec",
-      "target_id": "controlled-v1",
-      "horizon": 2,
-      "probability": 0.3703,
+      "prediction_id": "31253204-6339-459b-acf2-04f1019bf131",
+      "rep_n": 38,
+      "model_run": "hrt-tempo-v2-relative-h5-0ffd558f-eb98db",
+      "target_id": "relative-v1",
+      "horizon": 5,
+      "probability": 0.0575,
       "threshold": 0.95,
       "action": "silent",
       "suppressed_reason": null,
       "mode": "shadow",
       "provenance": "video",
-      "cutoff_at": "2026-10-25T04:38:35.836Z",
-      "emitted_at": "2026-10-25T04:38:35.836Z",
+      "cutoff_at": "2026-10-25T06:37:59.361Z",
+      "emitted_at": "2026-10-25T06:37:59.361Z",
       "delivered_at": null,
-      "latency_ms": 0.1,
+      "latency_ms": 0.03,
       "features": {
-        "up": 0.9,
-        "down": 1.3,
-        "rep_n": 4,
-        "margin": 0.22222222222222215,
-        "elapsed": 25.570757,
-        "down_med": 1.3,
-        "up_trend": 0.09999999999999998,
-        "down_range": 0.09999999999999987,
-        "down_trend": 0,
-        "depth_trend": -0.040000000000000036,
+        "up": 0.43,
+        "down": 0.4,
+        "rep_n": 38,
+        "margin": 0.062499999999999716,
+        "elapsed": 72.56666666666666,
+        "down_med": 0.37,
+        "up_drift": 0.06,
+        "up_trend": 0,
+        "down_drift": 0.03999999999999998,
+        "down_range": 0.030000000000000027,
+        "down_trend": 0.030000000000000027,
+        "depth_trend": 0.06,
         "depth_missing": 0
       },
       "state": "observed",
       "outcome": 1,
       "exclusion_reason": null,
       "onset_offset": 1,
-      "lead_secs": 8.5,
+      "lead_secs": 2.1,
       "future_reps": [
         {
-          "n": 5,
-          "down": 1.6,
-          "tEnd": 38.681183,
+          "n": 39,
+          "down": 0.43,
+          "tEnd": 82.2,
           "counted": true,
           "violates": true
         },
         {
-          "n": 6,
-          "down": 1.6,
-          "tEnd": 46.526911,
+          "n": 40,
+          "down": 0.43,
+          "tEnd": 84.36666666666666,
           "counted": true,
           "violates": true
         }
       ],
-      "observed_at": "2026-10-25T04:38:52.818Z",
+      "observed_at": "2026-10-25T06:38:03.661Z",
       "coached": false
     }
   ],
@@ -113,50 +2470,714 @@
     {
       "rep_n": 1,
       "counted": true,
-      "secs": 2.1,
-      "down_secs": 1.3,
-      "up_secs": 0.8,
-      "t": "1792903091.804000"
+      "secs": 0.7,
+      "down_secs": 0.33,
+      "up_secs": 0.37,
+      "t": "1792910207.494000"
     },
     {
       "rep_n": 2,
       "counted": true,
-      "secs": 2.2,
-      "down_secs": 1.3,
-      "up_secs": 0.9,
-      "t": "1792903099.157000"
+      "secs": 0.8,
+      "down_secs": 0.4,
+      "up_secs": 0.4,
+      "t": "1792910209.494000"
     },
     {
       "rep_n": 3,
       "counted": true,
-      "secs": 2.3,
-      "down_secs": 1.4,
-      "up_secs": 0.8,
-      "t": "1792903107.421000"
+      "secs": 0.7,
+      "down_secs": 0.33,
+      "up_secs": 0.37,
+      "t": "1792910211.427000"
     },
     {
       "rep_n": 4,
       "counted": true,
-      "secs": 2.1,
-      "down_secs": 1.3,
-      "up_secs": 0.9,
-      "t": "1792903115.836000"
+      "secs": 0.7,
+      "down_secs": 0.33,
+      "up_secs": 0.33,
+      "t": "1792910213.227000"
     },
     {
       "rep_n": 5,
       "counted": true,
-      "secs": 2.5,
-      "down_secs": 1.6,
-      "up_secs": 0.9,
-      "t": "1792903124.970000"
+      "secs": 0.7,
+      "down_secs": 0.37,
+      "up_secs": 0.3,
+      "t": "1792910215.027000"
     },
     {
       "rep_n": 6,
       "counted": true,
-      "secs": 2.5,
-      "down_secs": 1.6,
-      "up_secs": 0.9,
-      "t": "1792903132.818000"
+      "secs": 0.7,
+      "down_secs": 0.37,
+      "up_secs": 0.33,
+      "t": "1792910216.861000"
+    },
+    {
+      "rep_n": 7,
+      "counted": true,
+      "secs": 0.7,
+      "down_secs": 0.37,
+      "up_secs": 0.3,
+      "t": "1792910218.761000"
+    },
+    {
+      "rep_n": 8,
+      "counted": true,
+      "secs": 0.7,
+      "down_secs": 0.37,
+      "up_secs": 0.3,
+      "t": "1792910220.694000"
+    },
+    {
+      "rep_n": 9,
+      "counted": true,
+      "secs": 0.7,
+      "down_secs": 0.3,
+      "up_secs": 0.37,
+      "t": "1792910222.661000"
+    },
+    {
+      "rep_n": 10,
+      "counted": true,
+      "secs": 0.7,
+      "down_secs": 0.33,
+      "up_secs": 0.37,
+      "t": "1792910224.661000"
+    },
+    {
+      "rep_n": 11,
+      "counted": true,
+      "secs": 0.7,
+      "down_secs": 0.37,
+      "up_secs": 0.37,
+      "t": "1792910226.594000"
+    },
+    {
+      "rep_n": 12,
+      "counted": true,
+      "secs": 0.6,
+      "down_secs": 0.3,
+      "up_secs": 0.33,
+      "t": "1792910228.427000"
+    },
+    {
+      "rep_n": 13,
+      "counted": true,
+      "secs": 0.7,
+      "down_secs": 0.3,
+      "up_secs": 0.37,
+      "t": "1792910230.294000"
+    },
+    {
+      "rep_n": 14,
+      "counted": true,
+      "secs": 0.7,
+      "down_secs": 0.33,
+      "up_secs": 0.33,
+      "t": "1792910232.094000"
+    },
+    {
+      "rep_n": 15,
+      "counted": true,
+      "secs": 0.7,
+      "down_secs": 0.33,
+      "up_secs": 0.37,
+      "t": "1792910234.094000"
+    },
+    {
+      "rep_n": 16,
+      "counted": true,
+      "secs": 0.7,
+      "down_secs": 0.33,
+      "up_secs": 0.33,
+      "t": "1792910235.927000"
+    },
+    {
+      "rep_n": 17,
+      "counted": true,
+      "secs": 0.7,
+      "down_secs": 0.33,
+      "up_secs": 0.33,
+      "t": "1792910237.727000"
+    },
+    {
+      "rep_n": 18,
+      "counted": true,
+      "secs": 0.6,
+      "down_secs": 0.33,
+      "up_secs": 0.3,
+      "t": "1792910239.594000"
+    },
+    {
+      "rep_n": 19,
+      "counted": true,
+      "secs": 0.6,
+      "down_secs": 0.27,
+      "up_secs": 0.33,
+      "t": "1792910241.461000"
+    },
+    {
+      "rep_n": 20,
+      "counted": true,
+      "secs": 0.7,
+      "down_secs": 0.33,
+      "up_secs": 0.33,
+      "t": "1792910243.261000"
+    },
+    {
+      "rep_n": 21,
+      "counted": true,
+      "secs": 0.7,
+      "down_secs": 0.33,
+      "up_secs": 0.33,
+      "t": "1792910245.127000"
+    },
+    {
+      "rep_n": 22,
+      "counted": true,
+      "secs": 0.7,
+      "down_secs": 0.33,
+      "up_secs": 0.37,
+      "t": "1792910246.961000"
+    },
+    {
+      "rep_n": 23,
+      "counted": true,
+      "secs": 0.7,
+      "down_secs": 0.37,
+      "up_secs": 0.3,
+      "t": "1792910248.927000"
+    },
+    {
+      "rep_n": 24,
+      "counted": true,
+      "secs": 0.7,
+      "down_secs": 0.3,
+      "up_secs": 0.4,
+      "t": "1792910250.827000"
+    },
+    {
+      "rep_n": 25,
+      "counted": true,
+      "secs": 0.7,
+      "down_secs": 0.33,
+      "up_secs": 0.33,
+      "t": "1792910252.727000"
+    },
+    {
+      "rep_n": 26,
+      "counted": true,
+      "secs": 0.7,
+      "down_secs": 0.37,
+      "up_secs": 0.37,
+      "t": "1792910254.661000"
+    },
+    {
+      "rep_n": 27,
+      "counted": true,
+      "secs": 0.8,
+      "down_secs": 0.37,
+      "up_secs": 0.4,
+      "t": "1792910256.627000"
+    },
+    {
+      "rep_n": 28,
+      "counted": true,
+      "secs": 0.7,
+      "down_secs": 0.33,
+      "up_secs": 0.37,
+      "t": "1792910258.527000"
+    },
+    {
+      "rep_n": 29,
+      "counted": true,
+      "secs": 0.6,
+      "down_secs": 0.33,
+      "up_secs": 0.3,
+      "t": "1792910260.427000"
+    },
+    {
+      "rep_n": 30,
+      "counted": true,
+      "secs": 0.7,
+      "down_secs": 0.37,
+      "up_secs": 0.33,
+      "t": "1792910262.394000"
+    },
+    {
+      "rep_n": 31,
+      "counted": true,
+      "secs": 0.7,
+      "down_secs": 0.33,
+      "up_secs": 0.33,
+      "t": "1792910264.394000"
+    },
+    {
+      "rep_n": 32,
+      "counted": true,
+      "secs": 0.7,
+      "down_secs": 0.37,
+      "up_secs": 0.37,
+      "t": "1792910266.427000"
+    },
+    {
+      "rep_n": 33,
+      "counted": true,
+      "secs": 0.8,
+      "down_secs": 0.37,
+      "up_secs": 0.43,
+      "t": "1792910268.494000"
+    },
+    {
+      "rep_n": 34,
+      "counted": true,
+      "secs": 0.8,
+      "down_secs": 0.37,
+      "up_secs": 0.4,
+      "t": "1792910270.627000"
+    },
+    {
+      "rep_n": 35,
+      "counted": true,
+      "secs": 0.8,
+      "down_secs": 0.37,
+      "up_secs": 0.47,
+      "t": "1792910272.861000"
+    },
+    {
+      "rep_n": 36,
+      "counted": true,
+      "secs": 0.8,
+      "down_secs": 0.37,
+      "up_secs": 0.43,
+      "t": "1792910274.994000"
+    },
+    {
+      "rep_n": 37,
+      "counted": true,
+      "secs": 0.8,
+      "down_secs": 0.37,
+      "up_secs": 0.43,
+      "t": "1792910277.294000"
+    },
+    {
+      "rep_n": 38,
+      "counted": true,
+      "secs": 0.8,
+      "down_secs": 0.4,
+      "up_secs": 0.43,
+      "t": "1792910279.361000"
+    },
+    {
+      "rep_n": 39,
+      "counted": true,
+      "secs": 0.9,
+      "down_secs": 0.43,
+      "up_secs": 0.43,
+      "t": "1792910281.494000"
+    },
+    {
+      "rep_n": 40,
+      "counted": true,
+      "secs": 0.9,
+      "down_secs": 0.43,
+      "up_secs": 0.43,
+      "t": "1792910283.661000"
+    },
+    {
+      "rep_n": 41,
+      "counted": true,
+      "secs": 0.9,
+      "down_secs": 0.43,
+      "up_secs": 0.43,
+      "t": "1792910285.994000"
+    },
+    {
+      "rep_n": 42,
+      "counted": true,
+      "secs": 0.8,
+      "down_secs": 0.43,
+      "up_secs": 0.4,
+      "t": "1792910288.294000"
+    },
+    {
+      "rep_n": 43,
+      "counted": true,
+      "secs": 0.9,
+      "down_secs": 0.43,
+      "up_secs": 0.47,
+      "t": "1792910290.727000"
+    },
+    {
+      "rep_n": 44,
+      "counted": true,
+      "secs": 0.8,
+      "down_secs": 0.4,
+      "up_secs": 0.43,
+      "t": "1792910293.061000"
+    },
+    {
+      "rep_n": 45,
+      "counted": true,
+      "secs": 1,
+      "down_secs": 0.47,
+      "up_secs": 0.5,
+      "t": "1792910295.494000"
+    },
+    {
+      "rep_n": 46,
+      "counted": true,
+      "secs": 0.8,
+      "down_secs": 0.37,
+      "up_secs": 0.4,
+      "t": "1792910297.827000"
+    },
+    {
+      "rep_n": 47,
+      "counted": true,
+      "secs": 0.9,
+      "down_secs": 0.4,
+      "up_secs": 0.5,
+      "t": "1792910300.261000"
+    },
+    {
+      "rep_n": 48,
+      "counted": true,
+      "secs": 1,
+      "down_secs": 0.47,
+      "up_secs": 0.53,
+      "t": "1792910302.727000"
+    },
+    {
+      "rep_n": 49,
+      "counted": true,
+      "secs": 1,
+      "down_secs": 0.47,
+      "up_secs": 0.5,
+      "t": "1792910305.327000"
+    },
+    {
+      "rep_n": 50,
+      "counted": true,
+      "secs": 0.9,
+      "down_secs": 0.4,
+      "up_secs": 0.5,
+      "t": "1792910307.861000"
+    },
+    {
+      "rep_n": 51,
+      "counted": true,
+      "secs": 1,
+      "down_secs": 0.47,
+      "up_secs": 0.5,
+      "t": "1792910310.561000"
+    },
+    {
+      "rep_n": 52,
+      "counted": true,
+      "secs": 1,
+      "down_secs": 0.47,
+      "up_secs": 0.53,
+      "t": "1792910313.294000"
+    },
+    {
+      "rep_n": 53,
+      "counted": true,
+      "secs": 1,
+      "down_secs": 0.43,
+      "up_secs": 0.53,
+      "t": "1792910315.894000"
+    },
+    {
+      "rep_n": 54,
+      "counted": true,
+      "secs": 0.9,
+      "down_secs": 0.43,
+      "up_secs": 0.47,
+      "t": "1792910319.094000"
+    },
+    {
+      "rep_n": 55,
+      "counted": true,
+      "secs": 0.9,
+      "down_secs": 0.43,
+      "up_secs": 0.43,
+      "t": "1792910321.627000"
+    },
+    {
+      "rep_n": 56,
+      "counted": true,
+      "secs": 0.9,
+      "down_secs": 0.43,
+      "up_secs": 0.47,
+      "t": "1792910324.161000"
+    },
+    {
+      "rep_n": 57,
+      "counted": true,
+      "secs": 0.9,
+      "down_secs": 0.4,
+      "up_secs": 0.47,
+      "t": "1792910326.494000"
+    },
+    {
+      "rep_n": 58,
+      "counted": true,
+      "secs": 0.9,
+      "down_secs": 0.43,
+      "up_secs": 0.43,
+      "t": "1792910328.994000"
+    },
+    {
+      "rep_n": 59,
+      "counted": true,
+      "secs": 0.9,
+      "down_secs": 0.47,
+      "up_secs": 0.4,
+      "t": "1792910331.894000"
+    },
+    {
+      "rep_n": 60,
+      "counted": true,
+      "secs": 1,
+      "down_secs": 0.47,
+      "up_secs": 0.5,
+      "t": "1792910334.727000"
+    },
+    {
+      "rep_n": 61,
+      "counted": true,
+      "secs": 0.8,
+      "down_secs": 0.4,
+      "up_secs": 0.4,
+      "t": "1792910337.494000"
+    },
+    {
+      "rep_n": 62,
+      "counted": true,
+      "secs": 0.9,
+      "down_secs": 0.43,
+      "up_secs": 0.43,
+      "t": "1792910339.694000"
+    },
+    {
+      "rep_n": 63,
+      "counted": true,
+      "secs": 0.9,
+      "down_secs": 0.47,
+      "up_secs": 0.4,
+      "t": "1792910342.094000"
+    },
+    {
+      "rep_n": 64,
+      "counted": true,
+      "secs": 0.8,
+      "down_secs": 0.4,
+      "up_secs": 0.43,
+      "t": "1792910344.461000"
+    },
+    {
+      "rep_n": 65,
+      "counted": true,
+      "secs": 0.8,
+      "down_secs": 0.4,
+      "up_secs": 0.37,
+      "t": "1792910349.627000"
+    },
+    {
+      "rep_n": 66,
+      "counted": true,
+      "secs": 0.8,
+      "down_secs": 0.47,
+      "up_secs": 0.37,
+      "t": "1792910351.794000"
+    },
+    {
+      "rep_n": 67,
+      "counted": true,
+      "secs": 0.9,
+      "down_secs": 0.43,
+      "up_secs": 0.47,
+      "t": "1792910354.094000"
+    },
+    {
+      "rep_n": 68,
+      "counted": true,
+      "secs": 0.8,
+      "down_secs": 0.43,
+      "up_secs": 0.4,
+      "t": "1792910356.394000"
+    },
+    {
+      "rep_n": 69,
+      "counted": true,
+      "secs": 0.8,
+      "down_secs": 0.43,
+      "up_secs": 0.4,
+      "t": "1792910358.761000"
+    },
+    {
+      "rep_n": 70,
+      "counted": true,
+      "secs": 0.7,
+      "down_secs": 0.37,
+      "up_secs": 0.33,
+      "t": "1792910368.661000"
+    },
+    {
+      "rep_n": 71,
+      "counted": true,
+      "secs": 0.8,
+      "down_secs": 0.37,
+      "up_secs": 0.47,
+      "t": "1792910370.527000"
+    },
+    {
+      "rep_n": 72,
+      "counted": true,
+      "secs": 0.8,
+      "down_secs": 0.37,
+      "up_secs": 0.4,
+      "t": "1792910372.394000"
+    },
+    {
+      "rep_n": 73,
+      "counted": true,
+      "secs": 0.8,
+      "down_secs": 0.43,
+      "up_secs": 0.37,
+      "t": "1792910374.261000"
+    },
+    {
+      "rep_n": 74,
+      "counted": true,
+      "secs": 0.8,
+      "down_secs": 0.4,
+      "up_secs": 0.37,
+      "t": "1792910376.161000"
+    },
+    {
+      "rep_n": 75,
+      "counted": true,
+      "secs": 0.8,
+      "down_secs": 0.37,
+      "up_secs": 0.4,
+      "t": "1792910378.127000"
+    },
+    {
+      "rep_n": 76,
+      "counted": true,
+      "secs": 0.8,
+      "down_secs": 0.4,
+      "up_secs": 0.37,
+      "t": "1792910380.227000"
+    },
+    {
+      "rep_n": 77,
+      "counted": true,
+      "secs": 0.8,
+      "down_secs": 0.43,
+      "up_secs": 0.4,
+      "t": "1792910382.361000"
+    },
+    {
+      "rep_n": 78,
+      "counted": true,
+      "secs": 0.9,
+      "down_secs": 0.43,
+      "up_secs": 0.43,
+      "t": "1792910384.627000"
+    },
+    {
+      "rep_n": 79,
+      "counted": true,
+      "secs": 0.9,
+      "down_secs": 0.4,
+      "up_secs": 0.47,
+      "t": "1792910386.994000"
+    },
+    {
+      "rep_n": 80,
+      "counted": true,
+      "secs": 0.8,
+      "down_secs": 0.37,
+      "up_secs": 0.43,
+      "t": "1792910389.127000"
+    },
+    {
+      "rep_n": 81,
+      "counted": true,
+      "secs": 0.9,
+      "down_secs": 0.43,
+      "up_secs": 0.5,
+      "t": "1792910391.427000"
+    },
+    {
+      "rep_n": 82,
+      "counted": true,
+      "secs": 0.9,
+      "down_secs": 0.43,
+      "up_secs": 0.43,
+      "t": "1792910393.694000"
+    },
+    {
+      "rep_n": 83,
+      "counted": true,
+      "secs": 0.9,
+      "down_secs": 0.47,
+      "up_secs": 0.43,
+      "t": "1792910395.994000"
+    },
+    {
+      "rep_n": 84,
+      "counted": true,
+      "secs": 0.9,
+      "down_secs": 0.47,
+      "up_secs": 0.43,
+      "t": "1792910398.161000"
+    },
+    {
+      "rep_n": 85,
+      "counted": true,
+      "secs": 0.9,
+      "down_secs": 0.47,
+      "up_secs": 0.4,
+      "t": "1792910400.594000"
+    },
+    {
+      "rep_n": 86,
+      "counted": true,
+      "secs": 0.9,
+      "down_secs": 0.47,
+      "up_secs": 0.47,
+      "t": "1792910402.894000"
+    },
+    {
+      "rep_n": 87,
+      "counted": true,
+      "secs": 0.9,
+      "down_secs": 0.47,
+      "up_secs": 0.47,
+      "t": "1792910405.327000"
+    },
+    {
+      "rep_n": 88,
+      "counted": true,
+      "secs": 1,
+      "down_secs": 0.5,
+      "up_secs": 0.47,
+      "t": "1792910407.661000"
+    },
+    {
+      "rep_n": 89,
+      "counted": true,
+      "secs": 1,
+      "down_secs": 0.5,
+      "up_secs": 0.47,
+      "t": "1792910410.261000"
     }
   ]
 }

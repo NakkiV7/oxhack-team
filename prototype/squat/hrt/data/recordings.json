@@ -141,7 +141,8 @@
       "person": "yt-chan",
       "source": "YouTube https://www.youtube.com/watch?v=OiBjzZDnvuo, Chan Vekaria, Creative Commons Attribution",
       "provenance": "imported",
-      "note": "front-on, 89 counted of a 100-rep set, 610x360, no trim; clear slowing 0.3 to 0.5 s"
+      "note": "front-on, 89 counted of a 100-rep set, 610x360, no trim; clear slowing 0.3 to 0.5 s",
+      "seq": 2
     },
     "cc_2yL3JSswZzg_tedcarr100_side": {
       "split": "dev",
@@ -155,14 +156,40 @@
       "person": "yt-chan",
       "source": "YouTube https://www.youtube.com/watch?v=2G9exNOTjvs, Chan Vekaria, Creative Commons Attribution",
       "provenance": "imported",
-      "note": "front-on, 153 counted reps of a 220-rep set, trimmed to 95-455 s (6 min cap); a faster-pulse block mid-set"
+      "note": "front-on, 153 counted reps of a 220-rep set, trimmed to 95-455 s (6 min cap); a faster-pulse block mid-set",
+      "seq": 4
     },
     "cc_PuAk7OZblH8_day7_80": {
       "split": "dev",
       "person": "yt-chan",
       "source": "YouTube https://www.youtube.com/watch?v=PuAk7OZblH8, Chan Vekaria, Creative Commons Attribution",
       "provenance": "imported",
-      "note": "front-on, 80 squats, 610x360, no trim; same subject as day9 and day25"
+      "note": "front-on, 80 squats, 610x360, no trim; same subject as day9 and day25",
+      "seq": 1
+    },
+    "cc2_CaiwLJ_F9NQ_day14_135": {
+      "split": "dev",
+      "person": "yt-chan",
+      "seq": 3,
+      "source": "https://www.youtube.com/watch?v=CaiwLJ_F9NQ, YouTube, Chan Vekaria (Slim Sumo), Creative Commons Attribution (per yt-dlp licence field)",
+      "provenance": "imported",
+      "note": "day 14 (2017-03-05), front view, 132 counted of 135, trimmed before the end card; steady drift 0.39 to 0.48 s"
+    },
+    "cc2_GoeaZGzQruw_day26_225": {
+      "split": "dev",
+      "person": "yt-chan",
+      "seq": 5,
+      "source": "https://www.youtube.com/watch?v=GoeaZGzQruw, YouTube, Chan Vekaria (Slim Sumo), Creative Commons Attribution (per yt-dlp licence field)",
+      "provenance": "imported",
+      "note": "day 26 (2017-03-17), three-quarter view, trimmed to 426 s before a second person enters; 116 counted of 120 attempts in the trimmed part"
+    },
+    "cc2_IzbrO0bK4Kc_day29_240": {
+      "split": "dev",
+      "person": "yt-chan",
+      "seq": 6,
+      "source": "https://www.youtube.com/watch?v=IzbrO0bK4Kc, YouTube, Chan Vekaria (Slim Sumo), Creative Commons Attribution (per yt-dlp licence field)",
+      "provenance": "imported",
+      "note": "day 29 (2017-03-22), front view pillarboxed, no trim; 183 counted of about 240 performed (76%), kept at the 75% threshold"
     }
   },
   "tiger": {
@@ -178,5 +205,14 @@
       "provenance": "live",
       "note": "25 Oct 05:20, webcam, four fast air-squat sets of ~15 reps with rest breaks; assigned before outcomes were examined"
     }
+  },
+  "rejected": {
+    "_rule": "A clip is excluded when the counter detects fewer than 75% of the reps performed (title count or on-screen counter): missing reps would corrupt the timing sequence. Clips with cuts, several people or non-continuous sets are excluded too.",
+    "cc2_Oq6nZytJRWA_day13_130": "81 counted of 130 performed (62%)",
+    "cc2_G5C00HaX420_day23_190": "61 counted of about 190 (hand-held camera carried around)",
+    "cc2_adIhJbeTL2o_day18_155": "54 counted of about 155",
+    "cc2_hakFV8xXdIU_day27_230": "34 counted of about 230; the counter stalls mid-set on this pillarboxed wide shot",
+    "I5rcK-kTEfc, 7SvJCPgETlY, Ab2x-AMu_rY (Chan days 22, 15, 21)": "hard cuts or three people in frame",
+    "others": "see the agent reports: talking-head, montage, follow-along routines, barbell, machine, two people"
   }
 }
