@@ -107,6 +107,51 @@ final class VoiceCuePlaybackTests: XCTestCase {
         XCTAssertEqual(playback.events, [.speak(old.id), .stop, .speak(stop.id), .stop])
     }
 
+    func testWorkoutCompletionSpeaksOnceOnlyInFinishedPhaseAndOrdinaryCuesStaySilent() {
+        let playback = RecordingVoicePlayback()
+        let controller = VoiceCuePlaybackController(playback: playback)
+        let completion = VoiceCue(id: UUID(), sessionID: sessionID, generation: generation,
+            text: "We'll be back.", kind: .coaching(.rest), issuedAt: 0, expiresAt: 6, reason: .workoutCompleted)
+        controller.update(context: context(.finished), event: completion, enabled: true, now: 1)
+        controller.update(context: context(.finished), event: completion, enabled: true, now: 2)
+        XCTAssertEqual(playback.events, [.speak(completion.id)])
+        controller.update(context: context(.finished), event: cue(), enabled: true, now: 2)
+        XCTAssertEqual(playback.events, [.speak(completion.id), .stop])
+        for phase in [SessionPhase.idle, .active, .rest, .paused] {
+            let wrongPhasePlayback = RecordingVoicePlayback()
+            let wrongPhaseController = VoiceCuePlaybackController(playback: wrongPhasePlayback)
+            wrongPhaseController.update(context: context(phase), event: completion, enabled: true, now: 1)
+            XCTAssertTrue(wrongPhasePlayback.events.isEmpty)
+        }
+    }
+
+    func testCompletionReplacesOrdinaryAudioButCannotCutOffAnActiveStop() {
+        for kind in [VoiceCue.Kind.coaching(.pacing), .coaching(.stop)] {
+            let playback = RecordingVoicePlayback()
+            let controller = VoiceCuePlaybackController(playback: playback)
+            let ordinary = cue(kind, expiresAt: kind == .coaching(.stop) ? nil : 6)
+            controller.update(context: context(), event: ordinary, enabled: true, now: 0)
+            let completion = VoiceCue(id: UUID(), sessionID: sessionID, generation: generation,
+                text: "We'll be back.", kind: .coaching(.rest), issuedAt: 1, expiresAt: 6, reason: .workoutCompleted)
+            controller.update(context: context(.finished), event: completion, enabled: true, now: 1)
+            let expected: [RecordingVoicePlayback.Event] = kind == .coaching(.stop)
+                ? [.speak(ordinary.id)] : [.speak(ordinary.id), .stop, .speak(completion.id)]
+            XCTAssertEqual(playback.events, expected)
+        }
+    }
+
+    func testMutedExpiredAndWrongPriorityCompletionNeverSpeaksOrReplays() {
+        for (priority, expiry, enabled) in [(CoachingPriority.rest, 6.0, false), (.rest, 1, true), (.pacing, 6, true), (.stop, 6, true)] {
+            let playback = RecordingVoicePlayback()
+            let controller = VoiceCuePlaybackController(playback: playback)
+            let completion = VoiceCue(id: UUID(), sessionID: sessionID, generation: generation,
+                text: "We'll be back.", kind: .coaching(priority), issuedAt: 0, expiresAt: expiry, reason: .workoutCompleted)
+            controller.update(context: context(.finished), event: completion, enabled: enabled, now: 1)
+            controller.update(context: context(.finished), event: completion, enabled: true, now: 2)
+            XCTAssertTrue(playback.events.isEmpty)
+        }
+    }
+
     func testInvalidTextAndTimeNeverReachPlayback() {
         let playback = RecordingVoicePlayback()
         let controller = VoiceCuePlaybackController(playback: playback)

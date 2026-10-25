@@ -1,0 +1,487 @@
+{
+  "generatedAt": "2026-10-25T08:47:42.798Z",
+  "provider": "ElevenLabs",
+  "alias": "Arnold",
+  "voiceCategory": "generated",
+  "identityClaim": false,
+  "purpose": "TestFlight preview only",
+  "model": "eleven_flash_v2_5",
+  "format": "mp3_22050_32",
+  "plannedCharacters": 143,
+  "estimatedFlashCredits": 71.5,
+  "keyCapCredits": 100,
+  "keyCapChanged": false,
+  "retries": 0,
+  "clips": [
+    {
+      "name": "positive-1",
+      "text": "Strong work. Stay controlled.",
+      "characters": 29,
+      "attempts": 1,
+      "requestedAt": "2026-10-25T08:47:42.809Z",
+      "status": 200,
+      "mimeType": "audio/mpeg",
+      "requestID": "5vIdwK4KYjHP9Xd63eCP",
+      "characterCost": "6",
+      "bytes": 8063,
+      "sha256": "9fac938d680dc88424d5522612cfdace105ecefb6365713267b7f2a1f362b986",
+      "accepted": true,
+      "decode": {
+        "tool": "ffmpeg / ffprobe",
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 1.904036,
+        "audiblePlayback": false
+      }
+    },
+    {
+      "name": "positive-2",
+      "text": "Good rhythm. Keep control.",
+      "characters": 26,
+      "attempts": 1,
+      "requestedAt": "2026-10-25T08:47:44.030Z",
+      "status": 200,
+      "mimeType": "audio/mpeg",
+      "requestID": "TEssZ8Pbl7DdarLEinmo",
+      "characterCost": "6",
+      "bytes": 6809,
+      "sha256": "a77ffa94f6ef09a664604351402eab68c40d8b2eae48179b95d1f5c2e9e8886c",
+      "accepted": true,
+      "decode": {
+        "tool": "ffmpeg / ffprobe",
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 1.578957,
+        "audiblePlayback": false
+      }
+    },
+    {
+      "name": "slower-1",
+      "text": "Steady. Rest if you need.",
+      "characters": 25,
+      "attempts": 1,
+      "requestedAt": "2026-10-25T08:47:44.220Z",
+      "status": 200,
+      "mimeType": "audio/mpeg",
+      "requestID": "ofj1ukZML7cxF8cv5G8N",
+      "characterCost": "6",
+      "bytes": 7018,
+      "sha256": "2aec4644209fbf7ae89eb1714a4d697c2f7697a285afdeea276018ea8f5abbe9",
+      "accepted": true,
+      "decode": {
+        "tool": "ffmpeg / ffprobe",
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 1.625397,
+        "audiblePlayback": false
+      }
+    },
+    {
+      "name": "slower-2",
+      "text": "Take your time. Stay controlled.",
+      "characters": 32,
+      "attempts": 1,
+      "requestedAt": "2026-10-25T08:47:44.413Z",
+      "status": 200,
+      "mimeType": "audio/mpeg",
+      "requestID": "4SczEJdXRRwwIwqJphZj",
+      "characterCost": "7",
+      "bytes": 7958,
+      "sha256": "0042a3b8591265bc1795ede9c02a0895c74ede429f1fa40d7ae0e861a7ab5fdb",
+      "accepted": true,
+      "decode": {
+        "tool": "ffmpeg / ffprobe",
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 1.857596,
+        "audiblePlayback": false
+      }
+    },
+    {
+      "name": "recovery",
+      "text": "Good effort. Rest, then return.",
+      "characters": 31,
+      "attempts": 1,
+      "requestedAt": "2026-10-25T08:47:44.655Z",
+      "status": 200,
+      "mimeType": "audio/mpeg",
+      "requestID": "IjHhLhbBKjszL3qOXzNh",
+      "characterCost": "7",
+      "bytes": 7122,
+      "sha256": "a52e0c8ff75b2de32ac6ee9d04961d383a7bb898e21df978edc80f79c95a0ed5",
+      "accepted": true,
+      "decode": {
+        "tool": "ffmpeg / ffprobe",
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 1.671837,
+        "audiblePlayback": false
+      }
+    },
+    {
+      "name": "positive-3",
+      "text": "Stay smooth.",
+      "characters": 12,
+      "attempts": 1,
+      "requestedAt": "2026-10-25T08:55:55.808Z",
+      "status": 200,
+      "mimeType": "audio/mpeg",
+      "requestID": "4gextX67LZ0MoAhZ2XO3",
+      "characterCost": "3",
+      "bytes": 4197,
+      "sha256": "88d4c5b8f406d42eaf7e3adc9eafeebc1018e1ef48d6d00d4bf97cbafd64f304",
+      "accepted": true,
+      "decode": {
+        "tool": "ffmpeg / ffprobe",
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 0.928798,
+        "audiblePlayback": false
+      }
+    },
+    {
+      "name": "positive-4",
+      "text": "Well done.",
+      "characters": 10,
+      "attempts": 1,
+      "requestedAt": "2026-10-25T08:55:56.267Z",
+      "status": 200,
+      "mimeType": "audio/mpeg",
+      "requestID": "cfvq5Kwtiv7VgTlQ2bl1",
+      "characterCost": "2",
+      "bytes": 3779,
+      "sha256": "08a84d85454d30644432db073f4fbdd6e31b1d744db642e5576bfdd89c90f5f0",
+      "accepted": true,
+      "decode": {
+        "tool": "ffmpeg / ffprobe",
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 0.835918,
+        "audiblePlayback": false
+      }
+    },
+    {
+      "name": "slower-3",
+      "text": "Pause if needed.",
+      "characters": 16,
+      "attempts": 1,
+      "requestedAt": "2026-10-25T08:55:56.419Z",
+      "status": 200,
+      "mimeType": "audio/mpeg",
+      "requestID": "EmJfmy63XQhNDPI5OHFg",
+      "characterCost": "4",
+      "bytes": 5346,
+      "sha256": "96e12e12cf6200322dbc19225a5f5cc00a9b9e9ba365cb2224320191a2950ba0",
+      "accepted": true,
+      "decode": {
+        "tool": "ffmpeg / ffprobe",
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 1.207438,
+        "audiblePlayback": false
+      }
+    },
+    {
+      "name": "recovery-2",
+      "text": "Rest well.",
+      "characters": 10,
+      "attempts": 1,
+      "requestedAt": "2026-10-25T08:55:56.571Z",
+      "status": 200,
+      "mimeType": "audio/mpeg",
+      "requestID": "23cPq3LUNmAtU8rMFtAH",
+      "characterCost": "2",
+      "bytes": 3988,
+      "sha256": "df043db7e24c536e51abab5d520fefc9596379388fc36b2c87155e4c44069db5",
+      "accepted": true,
+      "decode": {
+        "tool": "ffmpeg / ffprobe",
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 0.882358,
+        "audiblePlayback": false
+      }
+    },
+    {
+      "name": "completion",
+      "text": "We'll be back.",
+      "characters": 14,
+      "attempts": 1,
+      "requestedAt": "2026-10-25T09:15:38.117Z",
+      "status": 200,
+      "mimeType": "audio/mpeg",
+      "requestID": "WQzzVvFwWz08qN7DruDe",
+      "characterCost": "3",
+      "bytes": 4406,
+      "sha256": "869c81c1d16f0d14eb8edfceeb66069c2a06f7b315b456e6e5f5b313575a76c0",
+      "accepted": true,
+      "decode": {
+        "tool": "ffmpeg / ffprobe",
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 0.975238,
+        "audiblePlayback": false
+      }
+    },
+    {
+      "name": "positive-5",
+      "text": "Strong work. One controlled rep at a time. You've got it.",
+      "characters": 57,
+      "attempts": 1,
+      "requestedAt": "2026-10-25T09:15:39.606Z",
+      "status": 200,
+      "mimeType": "audio/mpeg",
+      "requestID": "As1aE5nVbC0WBXuRmiDA",
+      "characterCost": "13",
+      "bytes": 11406,
+      "sha256": "c972c89262ad9bec947b60966ad63e3e04d4151110ce0c2a0fc898d869f691ad",
+      "accepted": true,
+      "decode": {
+        "tool": "ffmpeg / ffprobe",
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 2.739955,
+        "audiblePlayback": false
+      }
+    },
+    {
+      "name": "slower-4",
+      "text": "Easy. Stay in control.",
+      "characters": 22,
+      "attempts": 1,
+      "requestedAt": "2026-10-25T09:15:41.714Z",
+      "status": 200,
+      "mimeType": "audio/mpeg",
+      "requestID": "gtbEm7hvXY44tBJDAPmW",
+      "characterCost": "5",
+      "bytes": 6077,
+      "sha256": "dc3b575c76ab625f29d4b3039656f430259c4d04dd47fc066cd6585d14edae0b",
+      "accepted": true,
+      "decode": {
+        "tool": "ffmpeg / ffprobe",
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 1.393197,
+        "audiblePlayback": false
+      }
+    }
+  ],
+  "usageBefore": 4046,
+  "usageAfter": {
+    "status": 200,
+    "character_count": 4046,
+    "observedAccountDelta": 0
+  },
+  "nativePlaybackAcceptance": "pending parent native fake-output tests and physical-device audible acceptance",
+  "billingNote": "Response character-cost headers are retained verbatim. Immediate account-wide usage delta is not proof of final billing; no per-request price claim.",
+  "expansions": [
+    {
+      "authorization": "User requested additional variation after the original five-clip bank",
+      "generatedAt": "2026-10-25T08:55:55.800Z",
+      "provider": "ElevenLabs",
+      "alias": "Arnold",
+      "voiceCategory": "generated",
+      "identityClaim": false,
+      "purpose": "TestFlight preview only",
+      "model": "eleven_flash_v2_5",
+      "format": "mp3_22050_32",
+      "plannedCharacters": 48,
+      "estimatedFlashCredits": 24,
+      "keyCapCredits": 100,
+      "keyCapChanged": false,
+      "retries": 0,
+      "clips": [
+        {
+          "name": "positive-3",
+          "text": "Stay smooth.",
+          "characters": 12,
+          "attempts": 1,
+          "requestedAt": "2026-10-25T08:55:55.808Z",
+          "status": 200,
+          "mimeType": "audio/mpeg",
+          "requestID": "4gextX67LZ0MoAhZ2XO3",
+          "characterCost": "3",
+          "bytes": 4197,
+          "sha256": "88d4c5b8f406d42eaf7e3adc9eafeebc1018e1ef48d6d00d4bf97cbafd64f304",
+          "accepted": true,
+          "decode": {
+            "tool": "ffmpeg / ffprobe",
+            "success": true,
+            "sampleRate": 22050,
+            "durationSeconds": 0.928798,
+            "audiblePlayback": false
+          }
+        },
+        {
+          "name": "positive-4",
+          "text": "Well done.",
+          "characters": 10,
+          "attempts": 1,
+          "requestedAt": "2026-10-25T08:55:56.267Z",
+          "status": 200,
+          "mimeType": "audio/mpeg",
+          "requestID": "cfvq5Kwtiv7VgTlQ2bl1",
+          "characterCost": "2",
+          "bytes": 3779,
+          "sha256": "08a84d85454d30644432db073f4fbdd6e31b1d744db642e5576bfdd89c90f5f0",
+          "accepted": true,
+          "decode": {
+            "tool": "ffmpeg / ffprobe",
+            "success": true,
+            "sampleRate": 22050,
+            "durationSeconds": 0.835918,
+            "audiblePlayback": false
+          }
+        },
+        {
+          "name": "slower-3",
+          "text": "Pause if needed.",
+          "characters": 16,
+          "attempts": 1,
+          "requestedAt": "2026-10-25T08:55:56.419Z",
+          "status": 200,
+          "mimeType": "audio/mpeg",
+          "requestID": "EmJfmy63XQhNDPI5OHFg",
+          "characterCost": "4",
+          "bytes": 5346,
+          "sha256": "96e12e12cf6200322dbc19225a5f5cc00a9b9e9ba365cb2224320191a2950ba0",
+          "accepted": true,
+          "decode": {
+            "tool": "ffmpeg / ffprobe",
+            "success": true,
+            "sampleRate": 22050,
+            "durationSeconds": 1.207438,
+            "audiblePlayback": false
+          }
+        },
+        {
+          "name": "recovery-2",
+          "text": "Rest well.",
+          "characters": 10,
+          "attempts": 1,
+          "requestedAt": "2026-10-25T08:55:56.571Z",
+          "status": 200,
+          "mimeType": "audio/mpeg",
+          "requestID": "23cPq3LUNmAtU8rMFtAH",
+          "characterCost": "2",
+          "bytes": 3988,
+          "sha256": "df043db7e24c536e51abab5d520fefc9596379388fc36b2c87155e4c44069db5",
+          "accepted": true,
+          "decode": {
+            "tool": "ffmpeg / ffprobe",
+            "success": true,
+            "sampleRate": 22050,
+            "durationSeconds": 0.882358,
+            "audiblePlayback": false
+          }
+        }
+      ],
+      "usageBefore": 4078,
+      "preflight": {
+        "observedAccountUsageAboveOriginalBaseline": 41,
+        "conservativeCreditsPerNewCharacter": 1,
+        "conservativeNewCreditUpperBound": 48
+      },
+      "usageAfter": {
+        "status": 200,
+        "character_count": 4078,
+        "observedAccountDelta": 0
+      }
+    },
+    {
+      "authorization": "User requested more Arnold personality, longer encouragement and exact workout-completion line: We will be back",
+      "generatedAt": "2026-10-25T09:15:38.079Z",
+      "provider": "ElevenLabs",
+      "alias": "Arnold",
+      "voiceCategory": "generated",
+      "identityClaim": false,
+      "purpose": "TestFlight preview only",
+      "model": "eleven_flash_v2_5",
+      "format": "mp3_22050_32",
+      "plannedCharacters": 93,
+      "estimatedFlashCredits": 46.5,
+      "keyCapCredits": 100,
+      "keyCapChanged": false,
+      "retries": 0,
+      "clips": [
+        {
+          "name": "completion",
+          "text": "We'll be back.",
+          "characters": 14,
+          "attempts": 1,
+          "requestedAt": "2026-10-25T09:15:38.117Z",
+          "status": 200,
+          "mimeType": "audio/mpeg",
+          "requestID": "WQzzVvFwWz08qN7DruDe",
+          "characterCost": "3",
+          "bytes": 4406,
+          "sha256": "869c81c1d16f0d14eb8edfceeb66069c2a06f7b315b456e6e5f5b313575a76c0",
+          "accepted": true,
+          "decode": {
+            "tool": "ffmpeg / ffprobe",
+            "success": true,
+            "sampleRate": 22050,
+            "durationSeconds": 0.975238,
+            "audiblePlayback": false
+          }
+        },
+        {
+          "name": "positive-5",
+          "text": "Strong work. One controlled rep at a time. You've got it.",
+          "characters": 57,
+          "attempts": 1,
+          "requestedAt": "2026-10-25T09:15:39.606Z",
+          "status": 200,
+          "mimeType": "audio/mpeg",
+          "requestID": "As1aE5nVbC0WBXuRmiDA",
+          "characterCost": "13",
+          "bytes": 11406,
+          "sha256": "c972c89262ad9bec947b60966ad63e3e04d4151110ce0c2a0fc898d869f691ad",
+          "accepted": true,
+          "decode": {
+            "tool": "ffmpeg / ffprobe",
+            "success": true,
+            "sampleRate": 22050,
+            "durationSeconds": 2.739955,
+            "audiblePlayback": false
+          }
+        },
+        {
+          "name": "slower-4",
+          "text": "Easy. Stay in control.",
+          "characters": 22,
+          "attempts": 1,
+          "requestedAt": "2026-10-25T09:15:41.714Z",
+          "status": 200,
+          "mimeType": "audio/mpeg",
+          "requestID": "gtbEm7hvXY44tBJDAPmW",
+          "characterCost": "5",
+          "bytes": 6077,
+          "sha256": "dc3b575c76ab625f29d4b3039656f430259c4d04dd47fc066cd6585d14edae0b",
+          "accepted": true,
+          "decode": {
+            "tool": "ffmpeg / ffprobe",
+            "success": true,
+            "sampleRate": 22050,
+            "durationSeconds": 1.393197,
+            "audiblePlayback": false
+          }
+        }
+      ],
+      "usageBefore": 4089,
+      "preflight": {
+        "observedAccountUsageAboveOriginalBaseline": 52,
+        "estimatedFlashCreditsPerNewCharacter": 0.5,
+        "estimatedNewCredits": 46.5,
+        "estimatedCombinedKeyUsage": 98.5,
+        "hardCapEnforcedByProvider": 100
+      },
+      "usageAfter": {
+        "status": 200,
+        "character_count": 4089,
+        "observedAccountDelta": 0
+      }
+    }
+  ],
+  "totalCharacters": 284
+}

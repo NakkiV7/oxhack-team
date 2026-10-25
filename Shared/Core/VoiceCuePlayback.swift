@@ -7,13 +7,14 @@ public struct VoiceCue: Sendable, Equatable {
     public let generation: UUID
     public let text: String
     public let kind: Kind
+    public let reason: CoachingReason?
     public let issuedAt: Double
     public let expiresAt: Double?
 
     public init(id: UUID, sessionID: UUID, generation: UUID, text: String, kind: Kind,
-                issuedAt: Double, expiresAt: Double?) {
+                issuedAt: Double, expiresAt: Double?, reason: CoachingReason? = nil) {
         self.id = id; self.sessionID = sessionID; self.generation = generation
-        self.text = text; self.kind = kind; self.issuedAt = issuedAt; self.expiresAt = expiresAt
+        self.text = text; self.kind = kind; self.reason = reason; self.issuedAt = issuedAt; self.expiresAt = expiresAt
     }
 }
 
@@ -57,7 +58,11 @@ public final class VoiceCuePlaybackController {
         self.context = context
         guard now.isFinite else { cancel(); return }
         if active?.expiresAt.map({ now >= $0 }) == true { cancel() }
-        guard enabled, context.phase == .active || context.phase == .rest else {
+        let completion = event?.reason == .workoutCompleted
+        let eligiblePhase = completion
+            ? context.phase == .finished && event?.kind == .coaching(.rest)
+            : context.phase == .active || context.phase == .rest
+        guard enabled, eligiblePhase else {
             if let event { seen.insert(event.id) }
             cancel()
             return
@@ -68,6 +73,7 @@ public final class VoiceCuePlaybackController {
         guard !event.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, event.text.count <= 500,
               event.issuedAt.isFinite, event.issuedAt <= now,
               event.expiresAt.map({ $0.isFinite && now < $0 }) ?? (event.kind == .coaching(.stop)) else { return }
+        if completion, active?.kind != .coaching(.stop) { cancel() }
         guard active.map({ rank(event.kind) >= rank($0.kind) }) ?? true else { return }
         cancel()
         active = event
