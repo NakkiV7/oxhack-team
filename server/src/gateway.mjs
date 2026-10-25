@@ -59,6 +59,15 @@ function geminiContents({ data, schema, path }) {
   }, []);
 }
 
+function geminiOutputSchema(schema) {
+  const project = value => {
+    if (Array.isArray(value)) return value.map(project);
+    if (value === null || typeof value !== 'object') return value;
+    return Object.fromEntries(Object.entries(value).filter(([key]) => key !== 'maxItems').map(([key, item]) => [key, project(item)]));
+  };
+  return project(jsonContract(schema));
+}
+
 async function generate({ env, fetchImpl, data, schema, path, signal }) {
   const result = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(env.GEMINI_MODEL)}:generateContent`, {
     method: 'POST',
@@ -71,7 +80,7 @@ async function generate({ env, fetchImpl, data, schema, path, signal }) {
         ...(path === '/v1/chat' ? [{ text: JSON.stringify({ appCapabilities }) }] : [])
       ] },
       contents: geminiContents({ data, schema, path }),
-      generationConfig: { maxOutputTokens: 2048, ...(schema ? { responseFormat: { text: { mimeType: 'APPLICATION_JSON', schema: jsonContract(schema) } } } : {}) }
+      generationConfig: { maxOutputTokens: 2048, ...(schema ? { responseFormat: { text: { mimeType: 'APPLICATION_JSON', schema: geminiOutputSchema(schema) } } } : {}) }
     })
   });
   if (!result.ok) {

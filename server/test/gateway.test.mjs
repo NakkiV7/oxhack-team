@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import test from 'node:test';
 import { createGateway } from '../src/gateway.mjs';
+import { jsonContract, outputContract, promptCatalog } from '../src/contracts.mjs';
 import { spawn } from 'node:child_process';
 
 async function serve(t, options = {}) {
@@ -138,6 +139,67 @@ test('structured routes send constrained schemas and return Swift-compatible val
     const response = await request(path, post(input));
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), expected);
+  }
+});
+
+test('native empty-history proposals pass the provider grammar boundary without changing other constraints', async t => {
+  const nativeInput = {
+    generationID: 'E6AF6784-BF67-48FB-BB53-426DF69D4A86', history: [], availableSupport: [],
+    facts: [
+      { id: 'context', text: 'No saved sessions or measured physical capacity.' },
+      { id: 'scope-totals', text: 'Zero sessions, sets, reps and recorded hold seconds.' },
+      ...['strength', 'stamina', 'mobility', 'balance'].map(skill => ({ id: `skill-${skill}`, text: 'Zero game points; not a physical capability measurement.' }))
+    ]
+  };
+  const expected = jsonContract(outputContract({ path: '/v1/proposal', data: nativeInput }));
+  delete expected.properties.items.maxItems;
+  delete expected.properties.items.items.properties.factIDs.maxItems;
+  delete expected.properties.rationale.properties.factIDs.maxItems;
+  const output = { ...proposal, generationID: nativeInput.generationID,
+    items: [{ ...proposal.items[0], factIDs: ['context'] }],
+    rationale: { text: 'A suggested starting plan without recorded training history.', factIDs: ['context'] } };
+  let calls = 0, outbound;
+  const request = await serve(t, { env, fetchImpl: async (_url, options) => {
+    calls++;
+    outbound = JSON.parse(options.body);
+    const schema = outbound.generationConfig.responseFormat.text.schema;
+    if (JSON.stringify(schema).includes('"maxItems":')) {
+      return Response.json({ error: { code: 400, status: 'INVALID_ARGUMENT', message: 'Request contains an invalid argument.' } }, { status: 400 });
+    }
+    return providerResponse(output);
+  } });
+
+  const response = await request('/v1/proposal', post(nativeInput));
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), output);
+  assert.equal(calls, 1);
+  assert.deepEqual(outbound.generationConfig.responseFormat.text.schema, expected);
+  assert.equal(outbound.generationConfig.maxOutputTokens, 2048);
+  const context = JSON.parse(outbound.contents.at(-1).parts.at(-1).text);
+  assert.deepEqual(context.facts, nativeInput.facts);
+  assert.equal(context.permittedExercises.length, 15);
+  assert.deepEqual(context.limits, { maxExercises: 12, maxSets: 5, maxReps: 30, maxHoldSeconds: 120, maxRestSeconds: 600, maxTotalSets: 24 });
+});
+
+test('provider-compatible schemas still reject excess exercises and unique known evidence references', async t => {
+  const facts = Array.from({ length: 17 }, (_, index) => ({ id: `fact-${index}`, text: 'Synthetic supplied observation.' }));
+  const data = { ...input, facts };
+  const evidence = facts.map(fact => fact.id);
+  const item = { ...proposal.items[0], sets: 1, factIDs: evidence.slice(0, 1) };
+  const valid = { ...proposal, items: [item], rationale: { text: 'Synthetic suggestion.', factIDs: evidence.slice(0, 1) } };
+  const cases = [
+    { ...valid, items: promptCatalog(data).slice(0, 13).map(exercise => ({ ...item, exerciseID: exercise.id, unit: exercise.unit })) },
+    { ...valid, items: [{ ...item, factIDs: evidence }] },
+    { ...valid, rationale: { ...valid.rationale, factIDs: evidence } }
+  ];
+  for (const output of cases) {
+    let calls = 0;
+    const request = await serve(t, { env, fetchImpl: async () => { calls++; return providerResponse(output); } });
+    const response = await request('/v1/proposal', post(data));
+    assert.equal(response.status, 502);
+    assert.equal((await response.json()).error.code, 'invalid_provider_response');
+    assert.equal(calls, 1);
   }
 });
 
