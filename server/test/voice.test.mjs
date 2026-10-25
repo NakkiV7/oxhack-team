@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { createGateway } from '../src/gateway.mjs';
 
@@ -47,6 +48,32 @@ test('explicit voice synthesis uses only a server-selected voice and echoes unch
   assert.deepEqual(body, { ...input, mimeType: 'audio/mpeg', audioBase64: mp3().toString('base64') });
   assert.equal(/private-|xi-api-key/.test(JSON.stringify(body)), false);
   assert.equal(calls, 1);
+});
+
+test('voice accepts a codec-verified 32 kbps MP3 whose Info frame has a different bitrate', async t => {
+  const bytes = await readFile(new URL('./fixtures/silence-22050-32-info.mp3', import.meta.url));
+  for (const input of [bytes, bytes.subarray(45)]) {
+    const request = await serve(t, { fetchImpl: async () => audio(input) });
+    const response = await request('/v1/voice', post(cue()));
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).audioBase64, input.toString('base64'));
+  }
+});
+
+test('voice still rejects incomplete MP3 frames, reserved headers and a different sample rate', async t => {
+  const bytes = await readFile(new URL('./fixtures/silence-22050-32-info.mp3', import.meta.url));
+  const firstFrame = bytes.subarray(45);
+  const wrongRate = Buffer.from(firstFrame); wrongRate[2] |= 0x04;
+  const reservedBitrate = Buffer.from(firstFrame); reservedBitrate[2] |= 0xf0;
+  const truncatedPadding = Buffer.from(firstFrame.subarray(0, 182)); truncatedPadding[2] |= 0x02;
+  for (const invalid of [firstFrame.subarray(0, 4), firstFrame.subarray(0, 181), truncatedPadding, wrongRate, reservedBitrate, Buffer.from('header garbage')]) {
+    let calls = 0;
+    const request = await serve(t, { fetchImpl: async () => { calls++; return audio(invalid); } });
+    const response = await request('/v1/voice', post(cue()));
+    assert.equal(response.status, 502);
+    assert.equal((await response.json()).error.code, 'invalid_voice_response');
+    assert.equal(calls, 1);
+  }
 });
 
 test('invalid or stop cues and malformed/authless requests cannot spend voice credits', async t => {
@@ -173,4 +200,33 @@ test('demo expiry between authorization and completed body validation also block
   assert.equal(response.status, 503);
   assert.equal((await response.json()).error.code, 'demo_expired');
   assert.equal(calls, 1);
+});
+
+test('optional calm and intense tones use separately configured David voices without changing legacy replies', async t => {
+  const urls = [];
+  const env = { ...configuration, ELEVENLABS_DAVID_INTENSE_VOICE_ID: 'private-david-intense-id' };
+  const request = await serve(t, { env, fetchImpl: async url => { urls.push(url); return audio(); } });
+  const voices = await (await request('/v1/voices', { headers: { authorization: 'Bearer owner-token' } })).json();
+  assert.deepEqual(voices.voices, [{ id: 'david', name: 'David', tones: ['calm', 'intense'] }, { id: 'arnold', name: 'Arnold' }]);
+  const legacy = await (await request('/v1/voice', post(cue(initialTime, { priority: 'pacing', text: 'Keep a steady rhythm.' })))).json();
+  assert.equal(Object.hasOwn(legacy, 'tone'), false);
+  const calm = await request('/v1/voice', post(cue(initialTime, { priority: 'pacing', text: 'Keep a steady rhythm.', tone: 'calm' })));
+  assert.equal(calm.status, 200);
+  assert.equal((await calm.json()).tone, 'calm');
+  const intense = await request('/v1/voice', post(cue(initialTime, { priority: 'pacing', text: 'Keep a steady rhythm.', tone: 'intense' })));
+  assert.equal(intense.status, 200);
+  assert.equal((await intense.json()).tone, 'intense');
+  assert.equal(urls.length, 2, 'tones must not share cached audio when provider voices differ');
+  assert.match(urls[0], /\/private-david-id\?/);
+  assert.match(urls[1], /\/private-david-intense-id\?/);
+});
+
+test('intense is never substituted when missing and cannot shout form, rest or stop cues', async t => {
+  let calls = 0;
+  const request = await serve(t, { fetchImpl: async () => { calls++; return audio(); } });
+  assert.equal((await request('/v1/voice', post(cue(initialTime, { priority: 'pacing', tone: 'intense' })))).status, 503);
+  for (const changes of [{ tone: 'intense', priority: 'form' }, { tone: 'intense', priority: 'rest' }, { tone: 'intense', priority: 'stop' }, { tone: 'intense', priority: 'pacing', voice: 'arnold' }, { tone: 'angry', priority: 'pacing' }]) {
+    assert.equal((await request('/v1/voice', post(cue(initialTime, changes)))).status, 422);
+  }
+  assert.equal(calls, 0);
 });
