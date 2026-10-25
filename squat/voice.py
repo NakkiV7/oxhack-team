@@ -11,10 +11,7 @@ import certifi
 
 CACHE = Path(__file__).with_name("voice_cache")
 DEFAULT_VOICE = "21m00Tcm4TlvDq8ikWAM"      # ElevenLabs "Rachel", a standard voice
-STANDARD_LINES = [str(n) for n in range(1, 31)] + [
-    "Deeper. Hips to knee height", "Chest up", "Knees out", "Even weight on both feet",
-    "Go lower", "Control the way down", "You're slowing down. Drive up",
-]
+STANDARD_LINES = [str(n) for n in range(1, 31)] + ["Go", "Set complete. Nice work"]
 
 
 def load_env():
@@ -42,13 +39,12 @@ def synth(text: str, backend: str, path: Path) -> None:
 class Voice:
     """Callable speaker for Coach: non-blocking playback, disk cache keyed by backend + text."""
 
-    def __init__(self, backend: str = "say", prewarm: bool = True):
+    def __init__(self, backend: str = "say", lines=STANDARD_LINES):
         self.backend = backend
         load_env()
         CACHE.mkdir(exist_ok=True)
-        if prewarm:
-            for line in STANDARD_LINES:
-                self.path(line)
+        for line in lines:                      # synthesise once now, so the live loop never waits on the API
+            self.path(line)
 
     def path(self, text: str) -> Path:
         p = CACHE / f"{self.backend}_{hashlib.sha1(text.encode()).hexdigest()[:12]}.{'wav' if self.backend == 'say' else 'mp3'}"

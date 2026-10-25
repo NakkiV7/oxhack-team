@@ -1,8 +1,9 @@
 """Run the analyzer over every clip in a folder; print reps, dips and a hip-travel trace per clip.
 
-Usage: python eval.py CLIP_DIR [--model full] [--plots OUT_DIR]
+Usage: python eval.py CLIP_DIR [--exercise squat|pushup] [--model full] [--plots OUT_DIR]
 """
 import argparse
+import importlib
 import sys
 import time
 from pathlib import Path
@@ -10,14 +11,13 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from analyzer import SquatAnalyzer
 from pose import MODELS, Pose
 
 BARS = " ▁▂▃▄▅▆▇█"
 
 
-def run(path: Path, model: str):
-    cap, pose, an = cv2.VideoCapture(str(path)), Pose(MODELS[model]), SquatAnalyzer()
+def run(path: Path, model: str, ex):
+    cap, pose, an = cv2.VideoCapture(str(path)), Pose(MODELS[model]), ex.Analyzer()
     fps = cap.get(cv2.CAP_PROP_FPS) or 30
     trace, marks, n, t0 = [], [], 0, time.time()
     while True:
@@ -59,16 +59,18 @@ def plot(trace, marks, path: Path):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("dir")
+    ap.add_argument("--exercise", default="squat", choices=["squat", "pushup"])
     ap.add_argument("--model", default="full", choices=list(MODELS))
     ap.add_argument("--plots", help="write a hip-travel plot per clip here")
     args = ap.parse_args()
+    ex = importlib.import_module(args.exercise)
     clips = sorted(p for p in Path(args.dir).iterdir() if p.suffix.lower() in (".webm", ".mp4", ".mov", ".ogv", ".m4v"))
     for p in clips:
-        an, trace, marks, n, fps = run(p, args.model)
+        an, trace, marks, n, fps = run(p, args.model, ex)
         print(f"{p.name:34s} reps {len(an.reps):2d} dips {an.dips:2d}  {n:5d}f {fps:4.0f}fps  {spark(trace)}")
         for r, m in zip(an.reps, marks):
-            print(f"    #{r.n:<2} @{m:<5d} drop {r.drop:.2f} depth {r.worst['depth']:+.2f} lean {r.worst['lean']:3.0f}"
-                  f"  {r.t_down:.1f}/{r.t_up:.1f}s  {', '.join(r.faults) or 'clean'}")
+            worst = " ".join(f"{k} {v:+.1f}" for k, v in r.worst.items() if k in ("depth", "elbow", "line"))
+            print(f"    #{r.n:<2} @{m:<5d} drop {r.drop:.2f} {worst}  {r.t_down:.1f}/{r.t_up:.1f}s  {', '.join(r.faults) or 'clean'}")
         if args.plots:
             Path(args.plots).mkdir(exist_ok=True)
             plot(trace, marks, Path(args.plots) / f"{p.stem}.png")

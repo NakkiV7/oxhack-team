@@ -1,9 +1,10 @@
-"""Guided squat demo: title -> example set (with voice) -> countdown -> your set -> results.
+"""Guided demo for squats and push-ups: title -> example set (with voice) -> countdown -> your set -> results.
 
-Usage: python app.py [--voice elevenlabs|say|off] [--target 8] [--source 0|clip.mp4] [--headless --out flow.mp4]
+Usage: python app.py [--exercise squat|pushup] [--voice elevenlabs|say|off] [--target 8] [--source 0|clip.mp4] [--headless --out flow.mp4]
 Keys: SPACE continue / start, ENTER skip the example, R go again, Q quit.
 """
 import argparse
+import importlib
 import json
 import os
 import subprocess
@@ -15,15 +16,14 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from analyzer import GREEN, SquatAnalyzer
+from common import GREEN
 from coach import Coach
 from main import draw
 from panel import BG, COLOUR, DIM, FG, W as PANEL_W, panel, text
 from pose import MODELS, Pose
-from voice import Voice, load_env
+from voice import STANDARD_LINES, Voice, load_env
 
 HERE = Path(__file__).parent
-EXAMPLE = HERE / "assets" / "example_side.mp4"
 CW, CH = 1360, 680                      # window canvas
 D, S = cv2.FONT_HERSHEY_DUPLEX, cv2.FONT_HERSHEY_SIMPLEX
 ACCENT = (200, 160, 60)
@@ -59,7 +59,9 @@ def strip(c, left, right=""):
 class App:
     def __init__(self, a):
         self.a = a
-        self.voice = Voice(a.voice) if a.voice != "off" else print
+        self.ex = importlib.import_module(a.exercise)
+        self.example_path = HERE / "assets" / self.ex.EXAMPLE
+        self.voice = Voice(a.voice, STANDARD_LINES + self.ex.LINES) if a.voice != "off" else print
         self.pose = Pose(MODELS[a.model])
         self.cap = None
         self.writer = None
@@ -103,16 +105,16 @@ class App:
     def intro(self):
         c = canvas()
         centred(c, "SPOTTR", 230, 3.2, FG, 4)
-        centred(c, "AI squat coach: form, tempo and when to push", 290, 0.9, DIM, 1, S)
+        centred(c, f"{self.ex.NAME} coach: form, tempo and when to push", 290, 0.9, DIM, 1, S)
         centred(c, "SPACE  watch an example set", 420, 0.9, ACCENT)
         centred(c, "ENTER  skip straight to your set", 470, 0.9, FG)
         centred(c, "Q  quit", 520, 0.7, DIM, 1, S)
         return self.hold(c, 2)
 
     def example(self):
-        cap = cv2.VideoCapture(str(EXAMPLE))
+        cap = cv2.VideoCapture(str(self.example_path))
         fps = cap.get(cv2.CAP_PROP_FPS) or 30
-        audio = EXAMPLE.with_suffix(".m4a")
+        audio = self.example_path.with_suffix(".m4a")
         player = subprocess.Popen(["afplay", str(audio)]) if audio.exists() and not self.a.headless else None
         t0, n = time.time(), 0
         try:
@@ -141,7 +143,7 @@ class App:
                 if not ok:
                     return
                 c = fit(img) if img is not None else canvas()
-                strip(c, "Get ready", "side-on, 2-3 m away, feet in frame")
+                strip(c, "Get ready", self.ex.HINT)
                 centred(c, str(n), 400, 5, ACCENT, 6)
                 self.show(c, 30)
         if callable(self.voice) and self.a.voice != "off":
@@ -149,7 +151,7 @@ class App:
 
     def live(self):
         cap = self.camera()
-        analyzer, coach = SquatAnalyzer(), Coach(speak=self.voice)
+        analyzer, coach = self.ex.Analyzer(), Coach(speak=self.voice)
         f, n, t0 = None, 0, time.time()
         while True:
             ok, img = cap.read()
@@ -160,8 +162,8 @@ class App:
             if lm is not None:
                 f = analyzer.update(lm, t, img.shape[0])
                 coach.handle(f.events, t)
-                draw(img, lm, f, coach.showing(t))
-            img = np.hstack([img, panel(f, img.shape[0]) if f else np.full((img.shape[0], PANEL_W, 3), BG, np.uint8)])
+                draw(img, lm, f, coach.showing(t), self.ex)
+            img = np.hstack([img, panel(f, img.shape[0], self.ex) if f else np.full((img.shape[0], PANEL_W, 3), BG, np.uint8)])
             c = fit(img)
             strip(c, f"Your set  {len(analyzer.reps)} / {self.a.target}", "Q  finish early")
             if self.show(c) == 32 and len(analyzer.reps):
@@ -182,7 +184,7 @@ class App:
         strip(c, "Your results")
         text(c, str(len(reps)), (60, 200), 4, FG, 5, D)
         text(c, "REPS", (60 + 60 * len(str(len(reps))) + 30, 200), 1.0, DIM, 1, S)
-        text(c, f"{clean} clean   {analyzer.dips} shallow dips not counted", (60, 250), 0.75, FG, 1, S)
+        text(c, f"{clean} clean   {analyzer.dips} attempts not counted", (60, 250), 0.75, FG, 1, S)
         if reps:
             down, up = np.mean([r.t_down for r in reps]), np.mean([r.t_up for r in reps])
             text(c, f"tempo  down {down:.1f}s   up {up:.1f}s", (60, 290), 0.75, FG, 1, S)
@@ -227,6 +229,7 @@ class App:
 def main():
     load_env()
     ap = argparse.ArgumentParser()
+    ap.add_argument("--exercise", default="squat", choices=["squat", "pushup"])
     ap.add_argument("--voice", default="elevenlabs" if os.environ.get("ELEVENLABS_API_KEY") else "say", choices=["off", "say", "elevenlabs"])
     ap.add_argument("--target", type=int, default=8, help="reps in your set")
     ap.add_argument("--source", default="0", help="camera index or a video to stand in for the camera")

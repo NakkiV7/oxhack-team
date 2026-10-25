@@ -1,35 +1,25 @@
-"""Squat form tracker.
+"""Form tracker for squats and push-ups.
 
-Usage: python main.py [--source 0|video.mp4] [--model full] [--out annotated.mp4] [--record raw.mp4] [--log reps.json] [--headless]
+Usage: python main.py [--exercise squat|pushup] [--source 0|video.mp4] [--model full] [--out annotated.mp4] [--record raw.mp4] [--log reps.json] [--headless]
 """
 import argparse
+import importlib
 import json
 import time
 
 import cv2
 import numpy as np
 
-from analyzer import SquatAnalyzer
 from coach import Coach
-from voice import Voice
+from voice import STANDARD_LINES, Voice
 from panel import BG, COLOUR, W, panel, text
-from pose import L_ANK, L_HIP, L_KNEE, L_SHO, MODELS, Pose, R_ANK, R_HIP, R_KNEE, R_SHO
+from pose import MODELS, Pose
 
-SEGMENTS = {  # skeleton segment -> landmark pairs, coloured by the analyzer's grade for that segment
-    "torso": [(L_SHO, R_SHO), (L_SHO, L_HIP), (R_SHO, R_HIP), (L_HIP, R_HIP)],
-    "thigh": [(L_HIP, L_KNEE), (R_HIP, R_KNEE)],
-    "shin": [(L_KNEE, L_ANK), (R_KNEE, R_ANK)],
-}
-
-
-def draw(img, lm, f, cue):
+def draw(img, lm, f, cue, ex):
     pt = lambda i: tuple(lm[i][:2].astype(int))
-    for name, pairs in SEGMENTS.items():
-        for a, b in pairs:
-            cv2.line(img, pt(a), pt(b), COLOUR[f.segments[name]], 4)
-    if f.view == "front":
-        cv2.line(img, pt(L_KNEE), pt(R_KNEE), COLOUR[f.segments["knees"]], 2)
-    for i in (L_SHO, R_SHO, L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANK, R_ANK):
+    for a, b, g, thick in ex.segments(f, lm):
+        cv2.line(img, pt(a), pt(b), COLOUR[g], thick)
+    for i in (ex.joints(f) if hasattr(ex, "joints") else ex.JOINTS):
         cv2.circle(img, pt(i), 6, (255, 255, 255) if lm[i][3] >= 0.5 else (0, 0, 255), -1)
     if cue:
         text(img, cue, (20, img.shape[0] - 30), 1.0, (255, 255, 255), 2, cv2.FONT_HERSHEY_DUPLEX)
@@ -37,6 +27,7 @@ def draw(img, lm, f, cue):
 
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--exercise", default="squat", choices=["squat", "pushup"])
     ap.add_argument("--source", default="0", help="camera index or video path")
     ap.add_argument("--model", default="full", choices=list(MODELS))
     ap.add_argument("--out", help="write annotated video here")
@@ -46,14 +37,15 @@ def main():
     ap.add_argument("--headless", action="store_true", help="no window (CI / remote)")
     ap.add_argument("--voice", default="off", choices=["off", "say", "elevenlabs"], help="speak cues aloud")
     args = ap.parse_args()
+    ex = importlib.import_module(args.exercise)
 
     live = args.source.isdigit()
     cap = cv2.VideoCapture(int(args.source) if live else args.source)
     if not cap.isOpened():
         raise SystemExit(f"cannot open {args.source!r}" + (" (grant camera access to your terminal app)" if live else ""))
     fps = cap.get(cv2.CAP_PROP_FPS) or 30
-    pose, analyzer = Pose(MODELS[args.model]), SquatAnalyzer()
-    coach = Coach(speak=Voice(args.voice) if args.voice != "off" else print)
+    pose, analyzer = Pose(MODELS[args.model]), ex.Analyzer()
+    coach = Coach(speak=Voice(args.voice, STANDARD_LINES + ex.LINES) if args.voice != "off" else print)
     writers, f, n, t0 = {}, None, 0, time.time()
 
     def write(key, path, img):
@@ -73,10 +65,10 @@ def main():
             if lm is not None:
                 f = analyzer.update(lm, t, img.shape[0])
                 coach.handle(f.events, t)
-                draw(img, lm, f, coach.showing(t))
+                draw(img, lm, f, coach.showing(t), ex)
             if args.caption:
                 text(img, args.caption, (10, 18), 0.45, (200, 200, 200))
-            img = np.hstack([img, panel(f, img.shape[0]) if f else np.full((img.shape[0], W, 3), BG, np.uint8)])
+            img = np.hstack([img, panel(f, img.shape[0], ex) if f else np.full((img.shape[0], W, 3), BG, np.uint8)])
             write("out", args.out, img)
             if not args.headless:
                 cv2.imshow("squat tracker", img)
@@ -92,7 +84,7 @@ def main():
     reps = analyzer.reps
     print(f"\n{n} frames, {len(reps)} reps, {analyzer.dips} shallow dips not counted")
     for r in reps:
-        print(f"#{r.n:<3} travel {r.drop:.2f}  depth {r.worst['depth']:+.2f}  down {r.t_down:.2f}s  up {r.t_up:.2f}s  {', '.join(r.faults) or 'clean'}")
+        print(f"#{r.n:<3} travel {r.drop:.2f}  down {r.t_down:.2f}s  up {r.t_up:.2f}s  {', '.join(r.faults) or 'clean'}")
     if args.log:
         json.dump({"reps": [vars(r) for r in reps], "cues": coach.history}, open(args.log, "w"), indent=1, default=float)
     cap.release(), pose.close()

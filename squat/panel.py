@@ -1,15 +1,12 @@
-"""Side panel: reps, hip travel, live metric bars, tempo, fault tally and rep log. Pure OpenCV drawing."""
+"""Side panel: reps, primary travel bar, live metric bars, tempo, fault tally and rep log. Pure OpenCV drawing."""
 from collections import Counter
 
 import cv2
 import numpy as np
 
-from analyzer import METRICS
-
 W = 360
 COLOUR = {0: (80, 200, 80), 1: (0, 170, 255), 2: (40, 40, 255), None: (90, 90, 90)}   # BGR green/amber/red/off
 BG, FG, DIM = (24, 24, 24), (235, 235, 235), (140, 140, 140)
-RANGE = {"depth": (-0.8, 0.4), "lean": (0, 90), "knees": (0.4, 1.2), "balance": (0, 25)}   # bar left -> right
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 
 
@@ -25,26 +22,32 @@ def bar(p, y, frac, colour, ticks=()):
         cv2.line(p, (x, y - 10), (x, y + 10), FG, 1)
 
 
-def panel(f, h: int) -> np.ndarray:
+def fmt(k, v):
+    return f"{v:+.2f}" if k in ("depth", "hip") else f"{v:.2f}" if k == "knees" else f"{v:.0f}"
+
+
+def panel(f, h: int, ex) -> np.ndarray:
+    """ex is the exercise module: METRICS, RANGE, PRIMARY."""
     p = np.full((h, W, 3), BG, np.uint8)
     text(p, str(len(f.reps)), (20, 64), 2.2, FG, 3, cv2.FONT_HERSHEY_DUPLEX)
     text(p, "REPS", (105, 64), 0.7, DIM)
-    text(p, f"{f.view} view  |  {f.state}" + (f"  |  {f.dips} shallow" if f.dips else ""), (20, 92), 0.5, DIM)
+    text(p, f"{f.view} view  |  {f.state}" + (f"  |  {f.dips} not counted" if f.dips else ""), (20, 92), 0.5, DIM)
     if f.warn:
-        text(p, f.warn, (20, 116), 0.5, COLOUR[1])
+        text(p, f.warn[:46], (20, 116), 0.5, COLOUR[1])
 
     y = 140
-    text(p, "Travel", (20, y + 5), 0.5, FG)
-    bar(p, y, f.drop / 0.8, (200, 160, 60), ticks=(0.22 / 0.8,))
+    label, scale, ticks = ex.PRIMARY
+    text(p, label, (20, y + 5), 0.5, FG)
+    bar(p, y, f.drop / scale, (200, 160, 60), ticks=[t / scale for t in ticks])
     text(p, f"{f.drop:.2f}", (312, y + 5), 0.45, FG)
     y += 32
-    for k, (label, (good, warn), *_) in METRICS.items():
+    for k, (label, (good, warn), *_) in ex.METRICS.items():
         v, g = f.live[k]
-        lo, hi = RANGE[k]
+        lo, hi = ex.RANGE[k]
         text(p, label, (20, y + 5), 0.5, FG if g is not None else DIM)
         if g is not None:
             bar(p, y, (v - lo) / (hi - lo), COLOUR[g], ticks=[(t - lo) / (hi - lo) for t in (good, warn)])
-            text(p, f"{v:+.2f}" if k in ("depth",) else f"{v:.2f}" if k == "knees" else f"{v:.0f}", (312, y + 5), 0.45, FG)
+            text(p, fmt(k, v), (312, y + 5), 0.45, FG)
         else:
             bar(p, y, 0, COLOUR[None])
             text(p, "n/a", (312, y + 5), 0.45, DIM)

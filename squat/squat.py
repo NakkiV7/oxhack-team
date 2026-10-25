@@ -1,15 +1,15 @@
-"""Squat analysis: landmarks -> rep counting on hip travel, depth / lean / knee / balance grades, coaching events.
+"""Squat: rep counting on hip travel, depth / lean / knee / balance grades, coaching events.
 
 Rep signal is vertical hip travel as a fraction of standing leg length (view independent). The knee angle
 only confirms a descent, so walking toward the camera is not a rep. Shallow dips are recorded, not counted.
 """
-from dataclasses import dataclass, field
-
 import numpy as np
 
+from common import AMBER, GREEN, RED, Frame, Rep, angle, grade
 from pose import L_ANK, L_HIP, L_KNEE, L_SHO, R_ANK, R_HIP, R_KNEE, R_SHO
 
-GREEN, AMBER, RED = 0, 1, 2
+NAME, EXAMPLE, TARGET = "Squat", "example_side.mp4", 8
+HINT = "side-on, 2-3 m away, feet in frame"
 VIS = 0.5                        # landmark visibility needed to trust a joint
 ALPHA = 0.5                      # EMA on measured signals (landmarks jitter frame to frame)
 START, END = 0.15, 0.08          # hip drop (fraction of leg length) that starts / ends a rep
@@ -28,48 +28,8 @@ AGG = {"depth": max, "lean": max, "knees": min, "balance": max}   # how each met
 SMOOTHED = ("hip_y", "knee_y", "thigh", "height", "knee", "knee_max", "lean", "knees", "balance")
 
 
-def angle(a, b, c, dims: int = 2) -> float:
-    v1, v2 = a[:dims] - b[:dims], c[:dims] - b[:dims]
-    cos = np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2) + 1e-6)
-    return float(np.degrees(np.arccos(np.clip(cos, -1, 1))))
 
 
-def grade(name: str, x: float) -> int:
-    good, warn = METRICS[name][1]
-    if good <= warn:                       # lower is better
-        return GREEN if x <= good else AMBER if x <= warn else RED
-    return GREEN if x >= good else AMBER if x >= warn else RED
-
-
-@dataclass
-class Rep:
-    n: int                 # 0 for a dip that was not counted
-    worst: dict            # metric -> worst value in the rep
-    grades: dict           # metric -> grade, only metrics valid for the view
-    drop: float            # max hip travel, fraction of leg length
-    t_down: float
-    t_up: float
-    faults: list
-
-    @property
-    def grade(self) -> int:
-        return max(self.grades.values(), default=GREEN)
-
-
-@dataclass
-class Frame:
-    view: str
-    state: str                      # standing | down | up
-    reps: list                      # counted reps only
-    dips: int
-    drop: float                     # live hip travel
-    live: dict                      # metric -> (value, instant grade or None)
-    grades: dict                    # metric -> sticky grade (this rep so far, or last rep)
-    segments: dict                  # skeleton segment -> grade
-    t_down: float
-    t_up: float
-    warn: str = ""
-    events: list = field(default_factory=list)
 
 
 class SquatAnalyzer:
@@ -169,7 +129,7 @@ class SquatAnalyzer:
                 events += self._finish(t, valid)         # back at the top, or legs straight and nearly there (baseline drift)
 
         if self.state == "up" and self.cur["lean"] <= 65:   # live faults on the way up, unless it's a hinge
-            events += [(3, METRICS[k][4]) for k in ("lean", "knees") if k in valid and grade(k, self.cur[k]) == RED]
+            events += [(3, METRICS[k][4]) for k in ("lean", "knees") if k in valid and grade(METRICS[k][1], self.cur[k]) == RED]
         return self._frame(view, m, drop, warn, valid, events)
 
     def _finish(self, t: float, valid: list) -> list:
@@ -184,7 +144,7 @@ class SquatAnalyzer:
                 return []                                       # a wobble, not an attempt
             self.dips += 1
             return [(2, "Go lower")]
-        grades = {k: grade(k, self.cur[k]) for k in valid}
+        grades = {k: grade(METRICS[k][1], self.cur[k]) for k in valid}
         faults = [METRICS[k][3] for k in valid if grades[k] >= AMBER]
         slow = up > SLOW_ASCENT_S or (len(self.reps) >= 2 and up > 1.6 * np.median([r.t_up for r in self.reps]))
         faults += ["fast descent"] * (down < FAST_DESCENT_S) + ["slow ascent"] * bool(slow)
@@ -203,15 +163,32 @@ class SquatAnalyzer:
 
     def _frame(self, view, m, drop, warn, valid=(), events=()) -> Frame:
         ref = self.cur if self.state != "standing" else (self.reps[-1].worst if self.reps else None)
-        grades = {k: grade(k, ref[k]) if ref and k in valid else GREEN for k in METRICS}
+        grades = {k: grade(METRICS[k][1], ref[k]) if ref and k in valid else GREEN for k in METRICS}
         segments = {"thigh": grades["depth"], "shin": grades["depth"], "knees": grades["knees"],
                     "torso": grades["lean"] if view == "side" else grades["balance"]}
         src = self.s if self.s and "depth" in self.s else m | {"depth": 0.0}
-        live = {k: (src[k], grade(k, src[k]) if k in valid else None) for k in METRICS}
+        live = {k: (src[k], grade(METRICS[k][1], src[k]) if k in valid else None) for k in METRICS}
         if self.state == "up":
             t_down, t_up = self.t_bottom - self.t_start, 0.0
         elif self.state == "down":
             t_down, t_up = 0.0, 0.0
         else:
             t_down, t_up = (self.reps[-1].t_down, self.reps[-1].t_up) if self.reps else (0.0, 0.0)
-        return Frame(view, self.state, self.reps, self.dips, drop, live, grades, segments, t_down, t_up, warn, list(events))
+        return Frame(view, self.state, self.reps, self.dips, drop, live, grades, segments, t_down, t_up, warn, events=list(events))
+
+
+Analyzer = SquatAnalyzer
+PRIMARY = ("Travel", 0.8, (0.22,))                      # live bar: label, full-scale value, tick marks
+RANGE = {"depth": (-0.8, 0.4), "lean": (0, 90), "knees": (0.4, 1.2), "balance": (0, 25)}   # metric bars, left -> right
+LINES = [m[4] for m in METRICS.values()] + ["Go lower", "Control the way down", "You're slowing down. Drive up"]
+JOINTS = (L_SHO, R_SHO, L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANK, R_ANK)
+
+
+def segments(f: Frame, lm) -> list:
+    """Skeleton lines to draw: (landmark a, landmark b, grade, thickness)."""
+    g = f.segments
+    out = [(a, b, g["torso"], 4) for a, b in ((L_SHO, R_SHO), (L_SHO, L_HIP), (R_SHO, R_HIP), (L_HIP, R_HIP))]
+    out += [(L_HIP, L_KNEE, g["thigh"], 4), (R_HIP, R_KNEE, g["thigh"], 4), (L_KNEE, L_ANK, g["shin"], 4), (R_KNEE, R_ANK, g["shin"], 4)]
+    if f.view == "front":
+        out.append((L_KNEE, R_KNEE, g["knees"], 2))
+    return out
