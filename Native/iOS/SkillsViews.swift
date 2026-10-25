@@ -6,6 +6,7 @@ struct SkillsView: View {
     @AppStorage("skills.layout") private var layout = "grid"
     @State private var expanded = false
     @State private var previewUnlock = false
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         let progress = SkillProgress.evaluate(history: store.history)
@@ -17,7 +18,7 @@ struct SkillsView: View {
                         Text("\(progress.nodes.filter(\.isComplete).count) of \(ExerciseCatalog.all.count) challenges earned")
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: dynamicTypeSize.isAccessibilitySize ? 1 : 2), spacing: 10) {
                         ForEach(TrainingAttribute.allCases, id: \.self) { attribute in
                             HStack {
                                 VStack(alignment: .leading, spacing: 6) {
@@ -29,10 +30,16 @@ struct SkillsView: View {
                             }.padding(17).background(Palette.surface, in: RoundedRectangle(cornerRadius: 17))
                         }
                     }
-                    Picker("Skill view", selection: $layout) {
-                        Text("Grid").tag("grid")
-                        Text("Linear").tag("linear")
-                    }.pickerStyle(.segmented).accessibilityIdentifier("skill-layout")
+                    if dynamicTypeSize.isAccessibilitySize {
+                        Text("Showing the linear tree for larger text. Your preferred layout is saved.")
+                            .font(.subheadline).accessibilityIdentifier("skill-accessible-layout-note")
+                    } else {
+                        Picker("Skill view", selection: $layout) {
+                            Text("Grid").tag("grid")
+                            Text("Linear").tag("linear")
+                        }.pickerStyle(.segmented).accessibilityIdentifier("skill-layout")
+                    }
+                    SkillLegend()
                     VStack(alignment: .leading, spacing: 8) {
                         Toggle("TestFlight preview access", isOn: $previewUnlock)
                             .font(.subheadline.weight(.medium)).tint(Palette.green)
@@ -40,7 +47,7 @@ struct SkillsView: View {
                         Text(previewUnlock ? "Preview access · no achievements earned" : "Explore locked paths without changing your earned progress.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
-                    if layout == "grid" {
+                    if layout == "grid" && !dynamicTypeSize.isAccessibilitySize {
                         Button {
                             expanded.toggle()
                         } label: {
@@ -51,14 +58,18 @@ struct SkillsView: View {
                         SkillGraphView(store: store, progress: progress, previewUnlock: previewUnlock)
                             .frame(height: expanded ? 640 : 360)
                         Text("Scroll across for branches and down for later challenges.").font(.caption).foregroundStyle(.secondary)
+                        Text("Green connections mark earned prerequisites. Earn every incoming prerequisite to unlock a challenge.")
+                            .font(.caption).foregroundStyle(.secondary)
                     }
                     else { linearTree(progress: progress) }
                     if let profile, let baseline = profile.baselineAbility {
                         practiceIdeas(progress: progress, profile: profile, baseline: baseline)
                     }
-                    Text("Earn each challenge with 3 goal sets across 2 days. Connected challenges unlock together. You can practise every exercise at any time.")
+                    Text("Earn a challenge with 3 goal sets across 2 days and every prerequisite. Practice before unlocking still counts. You can practise every exercise at any time.")
                         .font(.caption).foregroundStyle(.secondary)
                     Text("Each goal set earns 10 XP, up to 3 sets per exercise each day. Manual and camera sets count; video replays don’t. XP and unlocks are game progress.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Text("Manual sets are self-reported. Camera counts are tracking evidence, not verified form or fitness.")
                         .font(.caption).foregroundStyle(.secondary)
                 }.padding(24)
             }.background(.white).navigationTitle("Skills").navigationBarTitleDisplayMode(.inline)
@@ -71,10 +82,8 @@ struct SkillsView: View {
                 Text(family.title).font(.title3.bold())
                 ForEach(ExerciseCatalog.all.filter { $0.family == family }) { entry in
                     NavigationLink { ExerciseDetailView(store: store, entry: entry) } label: {
-                        SkillRow(entry: entry, node: progress.node(exerciseID: entry.id))
-                        if progress.access(exerciseID: entry.id, previewUnlock: previewUnlock) == .preview {
-                            Text("Preview access").font(.caption).foregroundStyle(Palette.blue)
-                        }
+                        SkillRow(entry: entry, progress: progress,
+                                 access: progress.access(exerciseID: entry.id, previewUnlock: previewUnlock) ?? .locked)
                     }.buttonStyle(.plain).accessibilityIdentifier("skill-\(entry.id)")
                 }
             }
@@ -111,21 +120,70 @@ struct SkillsView: View {
     }
 }
 
+private extension SkillAccess {
+    var title: String {
+        switch self {
+        case .earned: return "Earned"
+        case .available: return "Available"
+        case .preview: return "Preview · not earned"
+        case .locked: return "Locked"
+        }
+    }
+    var symbol: String {
+        switch self {
+        case .earned: return "checkmark.seal.fill"
+        case .available: return "circle"
+        case .preview: return "lock.open"
+        case .locked: return "lock.fill"
+        }
+    }
+    var tint: Color {
+        switch self {
+        case .earned: return Palette.green
+        case .available, .preview: return Palette.blue
+        case .locked: return Palette.ink
+        }
+    }
+    var background: Color {
+        switch self {
+        case .earned: return Palette.green.opacity(0.08)
+        case .available, .preview: return .white
+        case .locked: return Palette.ink.opacity(0.10)
+        }
+    }
+}
+
+private struct SkillLegend: View {
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 16) { states }.fixedSize(horizontal: true, vertical: false)
+            VStack(alignment: .leading, spacing: 8) { states }
+        }.font(.caption.weight(.medium))
+    }
+    private var states: some View {
+        Group {
+            Label("Earned", systemImage: SkillAccess.earned.symbol).foregroundStyle(Palette.green)
+            Label("Available", systemImage: SkillAccess.available.symbol).foregroundStyle(Palette.blue)
+            Label("Locked", systemImage: SkillAccess.locked.symbol).foregroundStyle(Palette.ink)
+        }
+    }
+}
+
 private struct SkillGraphView: View {
     let store: TrainingStore
     let progress: SkillProgress
     let previewUnlock: Bool
-    private let column = 154.0
-    private let row = 174.0
-    private let nodeWidth = 132.0
-    private let nodeHeight = 146.0
+    @ScaledMetric(relativeTo: .caption) private var nodeWidth = 156.0
+    @ScaledMetric(relativeTo: .caption) private var nodeHeight = 190.0
+    private var column: Double { nodeWidth + 22 }
+    private var row: Double { nodeHeight + 28 }
 
     var body: some View {
         ScrollView([.horizontal, .vertical]) {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(spacing: 22) {
                     ForEach(ExerciseFamily.allCases, id: \.self) { family in
-                        Text(family.title.uppercased()).font(.system(size: 10, weight: .bold)).tracking(1)
+                        Text(family.title).font(.caption.weight(.bold))
                             .frame(width: nodeWidth).padding(.vertical, 10)
                             .background(Palette.surface, in: Capsule())
                     }
@@ -136,12 +194,12 @@ private struct SkillGraphView: View {
                         let to = position(edge.to)
                         SkillGraphEdge(start: CGPoint(x: from.x + nodeWidth / 2, y: from.y + nodeHeight),
                                        end: CGPoint(x: to.x + nodeWidth / 2, y: to.y),
-                                       unlocked: progress.access(exerciseID: edge.to, previewUnlock: previewUnlock) != .locked)
+                                       unlocked: progress.isConnectionEarned(from: edge.from, to: edge.to))
                     }
                     ForEach(ExerciseCatalog.all) { entry in
                         let point = position(entry.id)
                         NavigationLink { ExerciseDetailView(store: store, entry: entry) } label: {
-                            SkillGraphNode(entry: entry, node: progress.node(exerciseID: entry.id),
+                            SkillGraphNode(entry: entry, progress: progress,
                                            access: progress.access(exerciseID: entry.id, previewUnlock: previewUnlock) ?? .locked)
                                 .frame(width: nodeWidth, height: nodeHeight)
                         }.buttonStyle(.plain).accessibilityIdentifier("skill-\(entry.id)")
@@ -164,7 +222,6 @@ private struct SkillGraphEdge: View {
     let end: CGPoint
     let unlocked: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var pulse = false
 
     var body: some View {
         Path { path in
@@ -173,73 +230,67 @@ private struct SkillGraphEdge: View {
             path.addCurve(to: end, control1: CGPoint(x: start.x, y: bend), control2: CGPoint(x: end.x, y: bend))
         }.stroke(unlocked ? Palette.green : Palette.muted.opacity(0.6),
                  style: StrokeStyle(lineWidth: unlocked ? 2.5 : 2, lineCap: .round))
-            .opacity(unlocked && !reduceMotion && !pulse ? 0.5 : 1)
-            .animation(unlocked && !reduceMotion ? .easeInOut(duration: 1.5).repeatForever(autoreverses: true) : nil, value: pulse)
-            .onAppear { pulse = unlocked && !reduceMotion }
-            .onChange(of: unlocked) { _, value in pulse = value && !reduceMotion }
-            .onChange(of: reduceMotion) { _, value in pulse = unlocked && !value }
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.35), value: unlocked)
             .accessibilityHidden(true)
     }
 }
 
 private struct SkillGraphNode: View {
     let entry: ExerciseEntry
-    let node: SkillNodeProgress?
+    let progress: SkillProgress
     let access: SkillAccess
-    private var complete: Bool { node?.isComplete == true }
-    private var tint: Color { complete ? Palette.green : (access == .locked ? Palette.ink : Palette.blue) }
-    private var status: String {
-        switch access {
-        case .earned: return "complete"
-        case .available: return "available"
-        case .preview: return "preview access, not earned"
-        case .locked: return "prerequisites pending"
-        }
-    }
+    private var node: SkillNodeProgress? { progress.node(exerciseID: entry.id) }
+    private var pending: String { progress.pendingPrerequisiteIDs(for: entry.id).compactMap { ExerciseCatalog.find($0)?.name }.joined(separator: ", ") }
 
     var body: some View {
-        VStack(spacing: 5) {
-            ExerciseArtwork(entry: entry).frame(height: 60).padding(.top, 8)
-            Text(entry.levelName).font(.system(size: 11, weight: .bold)).lineLimit(1).minimumScaleFactor(0.8)
-            Text(entry.name).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8)
-            if access == .preview { Text("PREVIEW").font(.system(size: 9, weight: .bold)).foregroundStyle(Palette.blue) }
-            Text(complete ? "COMPLETE" : "\(min(3, node?.qualifyingSets ?? 0))/3 sets · \(min(2, node?.trainingDays ?? 0))/2 days")
-                .font(.system(size: 9, weight: .semibold)).foregroundStyle(tint)
-        }.frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(complete ? Palette.green.opacity(0.07) : (access == .locked ? Palette.surface : .white), in: RoundedRectangle(cornerRadius: 20))
-            .overlay { RoundedRectangle(cornerRadius: 20).stroke(tint.opacity(0.55), lineWidth: complete ? 2 : 1.5) }
-            .overlay(alignment: .topTrailing) {
-                Image(systemName: complete ? "checkmark.circle.fill" : (access == .locked ? "lock.fill" : (access == .preview ? "lock.open" : "circle.fill")))
-                    .font(.system(size: 12, weight: .medium)).foregroundStyle(tint).padding(10)
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(entry.levelName), \(entry.name), \(status), \(node?.qualifyingSets ?? 0) goal sets")
+        VStack(spacing: 6) {
+            ExerciseArtwork(entry: entry).frame(height: 58).accessibilityHidden(true)
+            Text(entry.levelName).font(.caption.weight(.bold)).lineLimit(1).minimumScaleFactor(0.85)
+            Text(entry.name).font(.caption).multilineTextAlignment(.center).lineLimit(2)
+            Label(access.title, systemImage: access.symbol).font(.caption2.weight(.semibold)).foregroundStyle(access.tint)
+            Text("\(min(3, node?.qualifyingSets ?? 0))/3 sets · \(min(2, node?.trainingDays ?? 0))/2 days")
+                .font(.caption2).foregroundStyle(.secondary)
+        }.padding(10).frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(access.background, in: RoundedRectangle(cornerRadius: 20))
+            .overlay { RoundedRectangle(cornerRadius: 20).stroke(access.tint.opacity(0.55), lineWidth: access == .earned ? 2 : 1.5) }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(entry.levelName), \(entry.name), \(access.title), \(min(3, node?.qualifyingSets ?? 0))/3 sets, \(min(2, node?.trainingDays ?? 0))/2 days")
+            .accessibilityValue("Manual: \(node?.manualSets ?? 0) sets. Camera: \(node?.cameraSets ?? 0) sets.")
+            .accessibilityHint(pending.isEmpty ? "Open instructions and training options." : "Earn first: \(pending). You can practise now.")
     }
 }
 
 private struct SkillRow: View {
     let entry: ExerciseEntry
-    let node: SkillNodeProgress?
-
-    private var tint: Color {
-        if node?.isComplete == true { return Palette.green }
-        return node?.isAvailable == true ? Palette.blue : Palette.muted
-    }
+    let progress: SkillProgress
+    let access: SkillAccess
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    private var node: SkillNodeProgress? { progress.node(exerciseID: entry.id) }
+    private var pending: String { progress.pendingPrerequisiteIDs(for: entry.id).compactMap { ExerciseCatalog.find($0)?.name }.joined(separator: ", ") }
 
     var body: some View {
-        HStack(spacing: 15) {
-            ExerciseArtwork(entry: entry).frame(width: 68, height: 76)
-            VStack(alignment: .leading, spacing: 5) {
+        HStack(alignment: .top, spacing: 12) {
+            if !dynamicTypeSize.isAccessibilitySize {
+                ExerciseArtwork(entry: entry).frame(width: 48, height: 60).accessibilityHidden(true)
+            }
+            VStack(alignment: .leading, spacing: 7) {
                 Text(entry.levelName).font(.subheadline.weight(.semibold))
                 Text(entry.name).font(.caption).foregroundStyle(.secondary)
                 Text(entry.goalText).font(.caption2).foregroundStyle(.secondary)
-                Text(node?.isComplete == true ? "Complete" : "\(min(3, node?.qualifyingSets ?? 0))/3 sets · \(min(2, node?.trainingDays ?? 0))/2 days")
-                    .font(.caption.weight(.medium)).foregroundStyle(tint)
-            }
+                Label(access.title, systemImage: access.symbol).font(.caption.weight(.semibold)).foregroundStyle(access.tint)
+                Text("\(min(3, node?.qualifyingSets ?? 0))/3 sets · \(min(2, node?.trainingDays ?? 0))/2 days")
+                    .font(.caption).foregroundStyle(.secondary)
+                if !pending.isEmpty {
+                    Text("Earn first: \(pending). Practice is always available.").font(.caption).foregroundStyle(Palette.ink)
+                }
+                Text("Manual: \(node?.manualSets ?? 0) · Camera: \(node?.cameraSets ?? 0) goal sets")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }.fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
-            Image(systemName: node?.isComplete == true ? "checkmark.circle.fill" : "chevron.right").foregroundStyle(tint)
-        }.padding(15).background(node?.isComplete == true ? Palette.green.opacity(0.08) : Palette.surface,
-                                  in: RoundedRectangle(cornerRadius: 20))
+        }.padding(15).frame(maxWidth: .infinity, alignment: .leading)
+            .background(access.background, in: RoundedRectangle(cornerRadius: 20))
+            .overlay { RoundedRectangle(cornerRadius: 20).stroke(access.tint.opacity(0.35), lineWidth: 1) }
+            .accessibilityElement(children: .combine)
     }
 }
 

@@ -1,6 +1,52 @@
 import XCTest
 
 final class SkillsFlowTests: XCTestCase {
+    @MainActor func testLinearTreeExplainsLocksAndPreviewWithoutEarningChallenges() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
+        app.launch()
+        app.tabBars.buttons["Skills"].tap()
+        app.segmentedControls.buttons["Linear"].tap()
+        let wall = app.buttons["skill-wallPushup"]
+        XCTAssertTrue(wall.waitForExistence(timeout: 5))
+        XCTAssertTrue(wall.label.contains("Available"))
+        let incline = app.buttons["skill-inclinePushup"]
+        for _ in 0..<5 where !incline.isHittable { app.swipeUp() }
+        XCTAssertTrue(incline.label.contains("Locked"))
+        XCTAssertTrue(incline.label.contains("Wall push-ups"))
+        XCTAssertTrue(incline.label.contains("0/3 sets"))
+        for _ in 0..<6 where !app.switches["skill-preview-access"].isHittable { app.swipeDown() }
+        app.switches["skill-preview-access"].tap()
+        for _ in 0..<5 where !incline.isHittable { app.swipeUp() }
+        XCTAssertTrue(incline.label.contains("Preview · not earned"))
+        XCTAssertTrue(incline.label.contains("Wall push-ups"))
+        incline.tap()
+        XCTAssertTrue(app.staticTexts["Manual: 0 sets"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Camera: 0 sets"].exists)
+    }
+
+    @MainActor func testAccessibilityTextUsesLinearTreeWithoutChangingSavedLayout() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
+        app.launch()
+        app.tabBars.buttons["Skills"].tap()
+        app.segmentedControls.buttons["Grid"].tap()
+        app.terminate()
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        app.tabBars.buttons["Skills"].tap()
+        XCTAssertTrue(app.staticTexts["skill-accessible-layout-note"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.scrollViews["skill-graph"].exists)
+        XCTAssertTrue(app.buttons["skill-wallPushup"].exists)
+        app.terminate()
+        app.launchArguments = []
+        app.launch()
+        app.tabBars.buttons["Skills"].tap()
+        XCTAssertTrue(app.segmentedControls.buttons["Grid"].isSelected)
+    }
+
     @MainActor func testManualLogKeyboardDismissalPreservesUnsavedQuantityAndSets() {
         continueAfterFailure = false
         let app = XCUIApplication()
