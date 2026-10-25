@@ -22,12 +22,12 @@ function reliabilityPlot(bins) {
   const pts = bins.filter((b) => b.n).map((b) => `<circle cx="${sx(b.meanP, 0, 1)}" cy="${sy(b.observed, 0, 1)}" r="${3 + Math.min(6, b.n)}" fill="#0a84ff" opacity=".7"/><text x="${sx(b.meanP, 0, 1)}" y="${sy(b.observed, 0, 1) - 9}" font-size="8" text-anchor="middle" fill="currentColor">n=${b.n}</text>`).join('');
   return svg(`${axes('predicted probability', 'observed rate', 0, 1, 0, 1)}<line x1="${sx(0, 0, 1)}" y1="${sy(0, 0, 1)}" x2="${sx(1, 0, 1)}" y2="${sy(1, 0, 1)}" stroke="currentColor" stroke-dasharray="3 3" opacity=".5"/>${pts}`, 'Reliability diagram with bin counts');
 }
-function frontierPlot(frontier, heuristic, selected, silent, budget) {
+function frontierPlot(frontier, heuristic, selected, silent, budget, drift = null) {
   if (!frontier?.length) return '<p class="sub">not evaluated</p>';
   const xmax = Math.max(1, ...frontier.map((p) => p.falseAlertsPerSet ?? 0), heuristic?.falseAlertsPerSet ?? 0);
   const line = frontier.filter((p) => p.recall != null).map((p) => `${sx(p.falseAlertsPerSet, 0, xmax)},${sy(p.recall, 0, 1)}`).join(' ');
   const mark = (p, color, label) => (p && p.recall != null ? `<circle cx="${sx(p.falseAlertsPerSet, 0, xmax)}" cy="${sy(p.recall, 0, 1)}" r="4" fill="${color}"/><text x="${sx(p.falseAlertsPerSet, 0, xmax) + 6}" y="${sy(p.recall, 0, 1) + 3}" font-size="8" fill="currentColor">${esc(label)}</text>` : '');
-  return svg(`${axes('false alerts per monitored set', 'event recall', 0, xmax.toFixed(1), 0, 1)}<line x1="${sx(budget, 0, xmax)}" y1="${sy(0, 0, 1)}" x2="${sx(budget, 0, xmax)}" y2="${sy(1, 0, 1)}" stroke="#ff9f0a" stroke-dasharray="3 3"/><polyline points="${line}" fill="none" stroke="#0a84ff" stroke-width="1.5"/>${mark(selected, '#0a84ff', `selected τ=${selected?.tau}`)}${mark(heuristic, '#30d158', 'slow-ascent rule')}${mark(silent, '#8e8e93', 'silent')}`, 'Recall against false alerts per set, with the budget line');
+  return svg(`${axes('false alerts per monitored set', 'event recall', 0, xmax.toFixed(1), 0, 1)}<line x1="${sx(budget, 0, xmax)}" y1="${sy(0, 0, 1)}" x2="${sx(budget, 0, xmax)}" y2="${sy(1, 0, 1)}" stroke="#ff9f0a" stroke-dasharray="3 3"/><polyline points="${line}" fill="none" stroke="#0a84ff" stroke-width="1.5"/>${mark(selected, '#0a84ff', `selected τ=${selected?.tau}`)}${mark(heuristic, '#30d158', 'slow-ascent rule')}${mark(drift, '#bf5af2', `drift rule θ=${drift?.theta}`)}${mark(silent, '#8e8e93', 'silent')}`, 'Recall against false alerts per set, with the budget line');
 }
 function timelinePlot(rows) {
   const fc = rows.filter((r) => r.probability != null);
@@ -59,11 +59,12 @@ export function renderEvidence(results, review) {
   ${testBlock}
   ${d ? section('B. Baselines, development (out of fold)', table(['model', 'n', 'Brier', 'log loss', 'AP', 'recall@budget', 'false alerts/set'], [
     probRow('A constant (train prevalence)', d.probability.constant, d.policies.constant), probRow('B set position', d.probability.position, d.policies.position), probRow('tempo features', d.probability.tempo, d.policies.tempo),
-    probRow('D tempo + pose (deployed)', d.probability.full, d.policies.full), polRow('C existing slow-ascent rule', d.policies.heuristic), polRow('always silent', d.policies.silent)]) +
+    probRow('D tempo + pose', d.probability.full, d.policies.full), polRow('C existing slow-ascent rule', d.policies.heuristic),
+    polRow(d.policies.drift ? `E drift rule (θ=${d.policies.drift.theta})` : 'E drift rule', d.policies.drift), polRow('always silent', d.policies.silent)]) +
     `<p class="sub">${d.groups} development recordings, ${d.probability.full.n} eligible origins, prevalence ${pct(d.prevalence)}. λ=${d.lambdas.full}. Lower Brier and log loss are better; "recall@budget" is event recall at the highest threshold whose false alerts per set stay within ${d.budget}.</p>
      <p class="sub">Paired bootstrap over recordings (${d.bootstrap.resamples} resamples, seed ${d.bootstrap.seed}), mean [2.5%, 97.5%]: Brier full − constant ${ci(d.bootstrap.intervals.brierFullMinusConstant)}; Brier full − position ${ci(d.bootstrap.intervals.brierFullMinusPosition)}; recall full − rule ${ci(d.bootstrap.intervals.recallFullMinusHeuristic)}; false alerts/set full − rule ${ci(d.bootstrap.intervals.falseAlertsFullMinusHeuristic)}. ${esc(d.bootstrap.note)}</p>`) : ''}
   ${d ? section('C. Calibration', `${reliabilityPlot(d.reliability.full)}<p class="sub">${esc(d.reliability.status)}. Circles scale with bin count.</p>`) : ''}
-  ${d ? section('D. Decision frontier', `${frontierPlot(d.frontier.full, d.policies.heuristic, d.policies.full, d.policies.silent, d.budget)}<p class="sub">Each point is a threshold; the orange line is the false-alert budget. ${d.policies.full ? `Selected τ=${d.policies.full.tau}.` : 'No threshold met the budget, so the deployed policy stays silent.'}</p>`) : ''}
+  ${d ? section('D. Decision frontier', `${frontierPlot(d.frontier.full, d.policies.heuristic, d.policies.full, d.policies.silent, d.budget, d.policies.drift)}<p class="sub">Each point is a threshold; the orange line is the false-alert budget. ${d.policies.full ? `Selected τ=${d.policies.full.tau}.` : 'No logistic threshold met the budget.'} ${d.policies.drift ? `The drift rule at θ=${d.policies.drift.theta} recalls ${pct(d.policies.drift.recall)} with ${f(d.policies.drift.falseAlertsPerSet, 2)} false alerts per set${(d.policies.drift.recall ?? 0) > (d.policies.full?.recall ?? 0) ? ' and is the deployed cue policy' : ''}.` : ''}</p>`) : ''}
   ${d ? section('E. Ablations', table(['features', 'Brier', 'log loss', 'AP', 'recall@budget'], [
     ['set position only', f(d.ablations.position.brier), f(d.ablations.position.logLoss), f(d.ablations.position.averagePrecision), pct(d.ablations.position.recallAtBudget)],
     ['tempo', f(d.ablations.tempo.brier), f(d.ablations.tempo.logLoss), f(d.ablations.tempo.averagePrecision), pct(d.ablations.tempo.recallAtBudget)],
