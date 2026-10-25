@@ -1,5 +1,7 @@
 # Separate agent prompts
 
+The sixth lane has a [separate teammate CV integration prompt](CV-AGENT-PROMPT.md).
+
 Created 25 October 2026. Each chat starts on the configured default model; the model below is a recommendation. Read [parallel ownership](PARALLEL-WORK.md) before starting another copy of a task.
 
 ## Spottr Watch data and reports

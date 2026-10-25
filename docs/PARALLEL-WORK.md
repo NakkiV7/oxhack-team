@@ -16,6 +16,7 @@ Only the primary chat controls the shared iPhone/Watch simulators, native compil
 | Onboarding crash diagnosis | Crash evidence, narrow regression/fix if reproduced; coordinate shared native files | Investigate the reported TestFlight 0.1 (5) crash using actual Apple reports and frozen source. No speculative fix or new TestFlight upload. |
 | Landing publication | Existing `web/` landing sources (locate actual folder), landing docs and narrowly scoped static hosting/Caddy changes | Public professional landing page, correct TestFlight link and accurate capabilities. Preserve gateway authentication, allowlist, health and protected routes. No new paid resources. |
 | Skill tree polish | Skill-tree view/components, existing progression tests and skill-specific docs | Professional connected grid and linear view, clear locked nodes, accessible unlock states and honest manual/camera provenance. Reuse raster icons; no generated SVGs or gamified medical claims. |
+| Teammate CV integration | Isolated prototype/CV modules, replay fixtures/tests and CV handoff docs | Selective reviewed ports from the latest teammate branch, valid syntax and bounded, source-labelled rep/form events. Primary retains native camera/MediaPipe integration. |
 
 Open a small PR with behavior, actual validation and limitations; attach it using the app tool. Leave final integration/merging to the primary chat. Do not cherry-pick unrelated teammate work or bulk-merge `nakki-squat-model`. Its current changes require review; the native baseline already tracks push-ups and squats.
 
