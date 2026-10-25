@@ -33,6 +33,29 @@ function authorized(header, token) {
   return Boolean(token) && supplied.length === expected.length && timingSafeEqual(supplied, expected);
 }
 
+function ownerDemo(env, now) {
+  const attempts = env.SPOTTR_DEMO_MAX_ATTEMPTS, expiry = env.SPOTTR_DEMO_EXPIRES_AT;
+  if (attempts === undefined && expiry === undefined) return null;
+  if (env.TIGER_DATABASE_URL) throw new GatewayError(503, 'invalid_demo_configuration', 'Owner demo requires the workout database to be disabled.');
+  const expiresAt = Date.parse(expiry), remainingMs = expiresAt - now();
+  if (typeof attempts !== 'string' || !/^[1-9]\d*$/.test(attempts) || Number(attempts) > 100 ||
+      typeof expiry !== 'string' || !Number.isFinite(expiresAt) || new Date(expiresAt).toISOString() !== expiry ||
+      remainingMs <= 0 || remainingMs > 86_400_000) {
+    throw new GatewayError(503, 'invalid_demo_configuration', 'Owner demo requires 1–100 attempts and a canonical UTC expiry within the next 24 hours.');
+  }
+  let used = 0, active = false;
+  return {
+    expiresAt,
+    reserve() {
+      if (now() >= expiresAt) throw new GatewayError(503, 'demo_expired', 'The owner demo session has expired.');
+      if (active) throw new GatewayError(429, 'demo_busy', 'One owner demo request is already active.');
+      if (used >= Number(attempts)) throw new GatewayError(429, 'demo_budget_exhausted', 'The owner demo request budget is exhausted.');
+      used++; active = true;
+      return () => { active = false; };
+    }
+  };
+}
+
 function health(env) {
   return {
     status: 'ok',
@@ -106,10 +129,11 @@ async function generate({ env, fetchImpl, data, schema, path, signal }) {
   return text;
 }
 
-export function createGateway({ env = process.env, fetchImpl = fetch, pool } = {}) {
+export function createGateway({ env = process.env, fetchImpl = fetch, pool, now = Date.now } = {}) {
+  const demo = ownerDemo(env, now);
   const database = pool ?? (env.TIGER_DATABASE_URL ? new Pool({ connectionString: env.TIGER_DATABASE_URL, max: 3, connectionTimeoutMillis: 5000, idleTimeoutMillis: 10000, statement_timeout: 10000, query_timeout: 12000 }) : null);
   database?.on?.('error', () => {});
-  const server = createServer(async (request, response) => {
+  const server = createServer(demo ? { headersTimeout: 5000, requestTimeout: 10000, connectionsCheckingInterval: 1000, maxHeaderSize: 8192 } : {}, async (request, response) => {
     try {
       if (request.url === '/health' && request.method === 'GET') return send(response, 200, health(env));
       const workoutPath = request.url === '/v1/workouts' || request.url.startsWith('/v1/workouts/');
@@ -146,13 +170,20 @@ export function createGateway({ env = process.env, fetchImpl = fetch, pool } = {
       const schema = request.url === '/v1/chat' ? null : outputContract({ path: request.url, data });
       const timeoutMs = Number(env.GEMINI_TIMEOUT_MS ?? 20000);
       if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 60000) throw new GatewayError(503, 'missing_configuration', 'GEMINI_TIMEOUT_MS must be an integer from 1 to 60000.');
-      const signal = AbortSignal.timeout(timeoutMs);
+      const release = demo?.reserve();
+      const expirySignal = demo ? AbortSignal.timeout(Math.max(1, demo.expiresAt - now())) : null;
+      const timeoutSignal = AbortSignal.timeout(timeoutMs);
+      const signal = expirySignal ? AbortSignal.any([timeoutSignal, expirySignal]) : timeoutSignal;
       let text;
-      try { text = await generate({ env, fetchImpl, data, schema, path: request.url, signal }); }
+      try {
+        text = await generate({ env, fetchImpl, data, schema, path: request.url, signal });
+        if (demo && (expirySignal.aborted || now() >= demo.expiresAt)) throw new GatewayError(503, 'demo_expired', 'The owner demo session has expired.');
+      }
       catch (error) {
+        if (expirySignal?.aborted) throw new GatewayError(503, 'demo_expired', 'The owner demo session has expired.');
         if (signal.aborted) throw new GatewayError(504, 'provider_timeout', 'The coaching provider timed out.');
         throw error;
-      }
+      } finally { release?.(); }
       if (!schema) return send(response, 200, { generationID: data.generationID, text });
       let value;
       try { value = JSON.parse(text); }
@@ -165,6 +196,11 @@ export function createGateway({ env = process.env, fetchImpl = fetch, pool } = {
       return send(response, failure.status, { error: { code: failure.code, message: failure.message } });
     }
   });
+  if (demo) {
+    server.maxConnections = 16;
+    server.maxRequestsPerSocket = 20;
+    server.keepAliveTimeout = 1000;
+  }
   if (!pool && database) server.once('close', () => { database.end().catch(() => {}); });
   return server;
 }
