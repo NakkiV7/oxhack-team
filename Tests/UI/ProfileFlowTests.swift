@@ -17,6 +17,10 @@ final class ProfileFlowTests: XCTestCase {
         app.buttons["guide-wallPushup"].tap()
         XCTAssertTrue(app.staticTexts["Guide graphic"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.buttons["add-lesson-wallPushup"].exists)
+        let requirements = app.buttons["lesson-requirements-wallPushup"]
+        XCTAssertTrue(requirements.exists)
+        requirements.tap()
+        XCTAssertTrue(app.staticTexts["500 MB total for lesson videos"].exists)
         XCTAssertTrue(app.staticTexts["Record the full cycle"].exists)
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.staticTexts["1 of 19 filmed · 0 local videos added"].waitForExistence(timeout: 3))
@@ -51,4 +55,62 @@ final class ProfileFlowTests: XCTestCase {
         for _ in 0..<4 where !app.textFields["Your name (optional)"].exists { app.swipeDown() }
         XCTAssertEqual(app.textFields["Your name (optional)"].value as? String, "Omar")
     }
+
+    @MainActor func testProfileAutosavesEditsAndInvalidGoalsKeepTheLastValidProfile() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
+        app.launch()
+        app.buttons["profile-settings"].tap()
+        let name = app.textFields["Your name (optional)"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap(); name.typeText("Synthetic Guest")
+        app.staticTexts["Saved on this iPhone. No account or sign-in is needed."].tap()
+        app.steppers["weekly-training-target"].buttons["weekly-training-target-Increment"].tap()
+        let mobility = app.buttons["goal-mobility"]
+        for _ in 0..<4 where !mobility.isHittable { app.swipeUp() }
+        mobility.tap()
+        let strength = app.buttons["goal-strength"]
+        for _ in 0..<4 where !strength.isHittable { app.swipeDown() }
+        strength.tap()
+        app.navigationBars.buttons["Done"].tap()
+        app.terminate(); app.launch()
+        app.buttons["profile-settings"].tap()
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        XCTAssertEqual(name.value as? String, "Synthetic Guest")
+        XCTAssertTrue(app.staticTexts["4 training days"].exists)
+        for _ in 0..<4 where !mobility.isHittable { app.swipeUp() }
+        XCTAssertEqual(mobility.value as? String, "Selected")
+        mobility.tap()
+        let validation = app.staticTexts["profile-validation-error"]
+        for _ in 0..<4 where !validation.exists { app.swipeDown() }
+        XCTAssertTrue(validation.waitForExistence(timeout: 3))
+        app.navigationBars.buttons["Done"].tap()
+        app.buttons["profile-settings"].tap()
+        for _ in 0..<4 where !mobility.isHittable { app.swipeUp() }
+        XCTAssertEqual(mobility.value as? String, "Selected")
+    }
+
+    @MainActor func testProfileBackgroundAndDownwardDragDismissKeyboardWithoutBlockingControls() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
+        app.launch()
+        app.buttons["profile-settings"].tap()
+        let name = app.textFields["Your name (optional)"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap(); name.typeText("Synthetic")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
+        app.staticTexts["Saved on this iPhone. No account or sign-in is needed."].tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3))
+        name.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
+        app.swipeDown()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3))
+        app.steppers["weekly-training-target"].buttons["weekly-training-target-Increment"].tap()
+        XCTAssertTrue(app.staticTexts["4 training days"].exists)
+        app.navigationBars.buttons["Done"].tap()
+        XCTAssertTrue(app.buttons["profile-settings"].waitForExistence(timeout: 3))
+    }
+
 }

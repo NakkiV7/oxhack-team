@@ -26,3 +26,18 @@ import Testing
     let invalid = Data(#"{"name":"Omar","weeklyTarget":99,"goals":["strength"]}"#.utf8)
     #expect(throws: Error.self) { try JSONDecoder().decode(LocalProfile.self, from: invalid) }
 }
+
+@Test func profilesSavedBeforeBaselineQuestionsStillDecodeWithoutInventingAbility() throws {
+    let data = Data(#"{"name":"Guest","weeklyTarget":3,"goals":["strength"]}"#.utf8)
+    let profile = try JSONDecoder().decode(LocalProfile.self, from: data)
+    #expect(profile.baselineAbility == nil)
+    #expect(profile.name == "Guest")
+    #expect(profile.goals == [.strength])
+}
+
+@Test func optionalBaselineRoundTripsAsSelfReportAndRejectsUnknownAnswers() throws {
+    let profile = try LocalProfile(goals: [.balance], baselineAbility: .somePractice)
+    #expect(try JSONDecoder().decode(LocalProfile.self, from: JSONEncoder().encode(profile)) == profile)
+    let invalid = Data(#"{"name":"","weeklyTarget":3,"goals":["strength"],"baselineAbility":"verifiedAthlete"}"#.utf8)
+    #expect(throws: Error.self) { try JSONDecoder().decode(LocalProfile.self, from: invalid) }
+}

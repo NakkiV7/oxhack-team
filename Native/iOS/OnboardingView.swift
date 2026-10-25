@@ -8,6 +8,7 @@ struct OnboardingView: View {
     @State private var name: String
     @State private var weeklyTarget: Int
     @State private var goals: Set<TrainingAttribute>
+    @State private var baselineAbility: LocalProfile.BaselineAbility?
     @State private var error: String?
 
     init(profileStore: NativeProfileStore, onComplete: @escaping () -> Void = {}) {
@@ -16,6 +17,7 @@ struct OnboardingView: View {
         _name = State(initialValue: profileStore.profile?.name ?? "")
         _weeklyTarget = State(initialValue: profileStore.profile?.weeklyTarget ?? 3)
         _goals = State(initialValue: profileStore.profile?.goals ?? [.strength])
+        _baselineAbility = State(initialValue: profileStore.profile?.baselineAbility)
     }
 
     var body: some View {
@@ -77,6 +79,17 @@ struct OnboardingView: View {
             }
             ProfileWeeklyTarget(target: $weeklyTarget)
             VStack(alignment: .leading, spacing: 9) {
+                Text("Your starting point (optional)").font(.subheadline.weight(.medium))
+                Picker("Starting point", selection: $baselineAbility) {
+                    Text("Skip for now").tag(nil as LocalProfile.BaselineAbility?)
+                    ForEach(LocalProfile.BaselineAbility.allCases, id: \.self) { ability in
+                        Text(ability.title).tag(Optional(ability))
+                    }
+                }.pickerStyle(.menu).accessibilityIdentifier("onboarding-baseline")
+                Text("Your self-report helps suggest practice ideas. It doesn’t verify ability, log sets or award achievements.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            VStack(alignment: .leading, spacing: 9) {
                 Label("Start simply", systemImage: "checkmark.circle").font(.headline)
                 Text("Your first session can be a few controlled reps. Take breaks and tell your coach how the work feels.")
                     .font(.subheadline).foregroundStyle(.secondary)
@@ -87,7 +100,7 @@ struct OnboardingView: View {
     private func advance() {
         guard step == 2 else { step += 1; return }
         do {
-            try profileStore.save(LocalProfile(name: name, weeklyTarget: weeklyTarget, goals: goals))
+            try profileStore.save(LocalProfile(name: name, weeklyTarget: weeklyTarget, goals: goals, baselineAbility: baselineAbility))
             onComplete()
             dismiss()
         } catch { self.error = error.localizedDescription }
@@ -110,8 +123,9 @@ struct ProfileGoalPicker: View {
                         }
                         Spacer()
                         Image(systemName: goals.contains(goal) ? "checkmark.circle.fill" : "circle").font(.title3)
+                            .foregroundStyle(goals.contains(goal) ? Palette.blue : Palette.muted)
                     }.padding(17).foregroundStyle(Palette.ink)
-                        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 17))
+                        .background(goals.contains(goal) ? Palette.blue.opacity(0.07) : Palette.surface, in: RoundedRectangle(cornerRadius: 17))
                 }.buttonStyle(.plain).accessibilityLabel(goal.title)
                     .accessibilityValue(goals.contains(goal) ? "Selected" : "Not selected")
                     .accessibilityIdentifier("goal-\(goal.rawValue)")

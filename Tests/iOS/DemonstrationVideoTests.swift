@@ -116,4 +116,41 @@ final class DemonstrationVideoTests: XCTestCase {
             XCTAssertEqual(try Data(contentsOf: outside), sourceBytes)
         }
     }
+
+    func testLessonImportFeedbackConfirmsCommitAndRejectsReplacementWithoutLosingTheExistingClip() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let source = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "blank", withExtension: "mp4"))
+        let library = DemonstrationVideoLibrary(directory: folder.appendingPathComponent("lessons"))
+        let feedback = LessonImportFeedback()
+        await feedback.add(source, exerciseID: "squat", library: library)
+        let saved = try XCTUnwrap(library.url(for: "squat"))
+        XCTAssertNotNil(feedback.message)
+        XCTAssertNil(feedback.error)
+        let original = try Data(contentsOf: saved)
+        let invalid = folder.appendingPathComponent("invalid.mp4")
+        try Data("not a playable video".utf8).write(to: invalid)
+
+        await feedback.add(invalid, exerciseID: "squat", library: library)
+
+        XCTAssertNil(feedback.message)
+        XCTAssertNotNil(feedback.error)
+        XCTAssertEqual(library.url(for: "squat"), saved)
+        XCTAssertEqual(try Data(contentsOf: saved), original)
+        XCTAssertEqual(library.importedCount, 1)
+        XCTAssertFalse(library.isImporting)
+        let files = try FileManager.default.contentsOfDirectory(atPath: folder.appendingPathComponent("lessons").path)
+        XCTAssertEqual(files.count, 2)
+    }
+
+    func testLessonPickerCancellationIsQuietButAnActualPickerFailureHasFeedback() {
+        let feedback = LessonImportFeedback()
+        feedback.selectionFailed(CocoaError(.fileReadNoPermission))
+        XCTAssertNotNil(feedback.error)
+        XCTAssertNil(feedback.message)
+        feedback.selectionFailed(CocoaError(.userCancelled))
+        XCTAssertNil(feedback.error)
+        XCTAssertNil(feedback.message)
+    }
+
 }

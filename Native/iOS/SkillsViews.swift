@@ -2,7 +2,10 @@ import SwiftUI
 
 struct SkillsView: View {
     @Bindable var store: TrainingStore
+    var profile: LocalProfile? = nil
     @AppStorage("skills.layout") private var layout = "grid"
+    @State private var expanded = false
+    @State private var previewUnlock = false
 
     var body: some View {
         let progress = SkillProgress.evaluate(history: store.history)
@@ -30,8 +33,29 @@ struct SkillsView: View {
                         Text("Grid").tag("grid")
                         Text("Linear").tag("linear")
                     }.pickerStyle(.segmented).accessibilityIdentifier("skill-layout")
-                    if layout == "grid" { SkillGraphView(store: store, progress: progress) }
+                    VStack(alignment: .leading, spacing: 8) {
+                        Toggle("TestFlight preview access", isOn: $previewUnlock)
+                            .font(.subheadline.weight(.medium)).tint(Palette.green)
+                            .accessibilityIdentifier("skill-preview-access")
+                        Text(previewUnlock ? "Preview access · no achievements earned" : "Explore locked paths without changing your earned progress.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    if layout == "grid" {
+                        Button {
+                            expanded.toggle()
+                        } label: {
+                            Label(expanded ? "Collapse skill tree" : "Expand skill tree",
+                                  systemImage: expanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                                .font(.subheadline.weight(.semibold))
+                        }.foregroundStyle(Palette.blue).accessibilityIdentifier("skill-grid-expand")
+                        SkillGraphView(store: store, progress: progress, previewUnlock: previewUnlock)
+                            .frame(height: expanded ? 640 : 360)
+                        Text("Scroll across for branches and down for later challenges.").font(.caption).foregroundStyle(.secondary)
+                    }
                     else { linearTree(progress: progress) }
+                    if let profile, let baseline = profile.baselineAbility {
+                        practiceIdeas(progress: progress, profile: profile, baseline: baseline)
+                    }
                     Text("Earn each challenge with 3 goal sets across 2 days. Connected challenges unlock together. You can practise every exercise at any time.")
                         .font(.caption).foregroundStyle(.secondary)
                     Text("Each goal set earns 10 XP, up to 3 sets per exercise each day. Manual and camera sets count; video replays don’t. XP and unlocks are game progress.")
@@ -48,7 +72,30 @@ struct SkillsView: View {
                 ForEach(ExerciseCatalog.all.filter { $0.family == family }) { entry in
                     NavigationLink { ExerciseDetailView(store: store, entry: entry) } label: {
                         SkillRow(entry: entry, node: progress.node(exerciseID: entry.id))
+                        if progress.access(exerciseID: entry.id, previewUnlock: previewUnlock) == .preview {
+                            Text("Preview access").font(.caption).foregroundStyle(Palette.blue)
+                        }
                     }.buttonStyle(.plain).accessibilityIdentifier("skill-\(entry.id)")
+                }
+            }
+        }
+    }
+
+    private func practiceIdeas(progress: SkillProgress, profile: LocalProfile, baseline: LocalProfile.BaselineAbility) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Practice ideas · \(baseline.title)").font(.headline)
+            Text("Based on your self-reported starting point and goals. Choose a comfortable variation; these ideas don’t award XP or complete challenges.")
+                .font(.caption).foregroundStyle(.secondary)
+            ForEach(progress.suggestedChallengeIDs(profile: profile), id: \.self) { id in
+                if let entry = ExerciseCatalog.find(id) {
+                    NavigationLink { ExerciseDetailView(store: store, entry: entry) } label: {
+                        HStack(spacing: 12) {
+                            ExerciseArtwork(entry: entry).frame(width: 42, height: 48)
+                            Text(entry.name).font(.subheadline.weight(.medium))
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.caption)
+                        }.padding(12).background(Palette.surface, in: RoundedRectangle(cornerRadius: 14))
+                    }.buttonStyle(.plain).accessibilityIdentifier("suggested-\(id)")
                 }
             }
         }
@@ -67,13 +114,14 @@ struct SkillsView: View {
 private struct SkillGraphView: View {
     let store: TrainingStore
     let progress: SkillProgress
+    let previewUnlock: Bool
     private let column = 154.0
     private let row = 174.0
     private let nodeWidth = 132.0
     private let nodeHeight = 146.0
 
     var body: some View {
-        ScrollView(.horizontal) {
+        ScrollView([.horizontal, .vertical]) {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(spacing: 22) {
                     ForEach(ExerciseFamily.allCases, id: \.self) { family in
@@ -86,20 +134,15 @@ private struct SkillGraphView: View {
                     ForEach(SkillGraph.edges, id: \.self) { edge in
                         let from = position(edge.from)
                         let to = position(edge.to)
-                        Path { path in
-                            let start = CGPoint(x: from.x + nodeWidth / 2, y: from.y + nodeHeight)
-                            let end = CGPoint(x: to.x + nodeWidth / 2, y: to.y)
-                            path.move(to: start)
-                            let bend = (start.y + end.y) / 2
-                            path.addCurve(to: end, control1: CGPoint(x: start.x, y: bend), control2: CGPoint(x: end.x, y: bend))
-                        }.stroke(progress.node(exerciseID: edge.from)?.isComplete == true ? Palette.green.opacity(0.7) : Color.black.opacity(0.12),
-                                 style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                            .accessibilityHidden(true)
+                        SkillGraphEdge(start: CGPoint(x: from.x + nodeWidth / 2, y: from.y + nodeHeight),
+                                       end: CGPoint(x: to.x + nodeWidth / 2, y: to.y),
+                                       unlocked: progress.access(exerciseID: edge.to, previewUnlock: previewUnlock) != .locked)
                     }
                     ForEach(ExerciseCatalog.all) { entry in
                         let point = position(entry.id)
                         NavigationLink { ExerciseDetailView(store: store, entry: entry) } label: {
-                            SkillGraphNode(entry: entry, node: progress.node(exerciseID: entry.id))
+                            SkillGraphNode(entry: entry, node: progress.node(exerciseID: entry.id),
+                                           access: progress.access(exerciseID: entry.id, previewUnlock: previewUnlock) ?? .locked)
                                 .frame(width: nodeWidth, height: nodeHeight)
                         }.buttonStyle(.plain).accessibilityIdentifier("skill-\(entry.id)")
                             .offset(x: point.x, y: point.y)
@@ -116,29 +159,61 @@ private struct SkillGraphView: View {
     }
 }
 
+private struct SkillGraphEdge: View {
+    let start: CGPoint
+    let end: CGPoint
+    let unlocked: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var pulse = false
+
+    var body: some View {
+        Path { path in
+            path.move(to: start)
+            let bend = (start.y + end.y) / 2
+            path.addCurve(to: end, control1: CGPoint(x: start.x, y: bend), control2: CGPoint(x: end.x, y: bend))
+        }.stroke(unlocked ? Palette.green : Palette.muted.opacity(0.6),
+                 style: StrokeStyle(lineWidth: unlocked ? 2.5 : 2, lineCap: .round))
+            .opacity(unlocked && !reduceMotion && !pulse ? 0.5 : 1)
+            .animation(unlocked && !reduceMotion ? .easeInOut(duration: 1.5).repeatForever(autoreverses: true) : nil, value: pulse)
+            .onAppear { pulse = unlocked && !reduceMotion }
+            .onChange(of: unlocked) { _, value in pulse = value && !reduceMotion }
+            .onChange(of: reduceMotion) { _, value in pulse = unlocked && !value }
+            .accessibilityHidden(true)
+    }
+}
+
 private struct SkillGraphNode: View {
     let entry: ExerciseEntry
     let node: SkillNodeProgress?
+    let access: SkillAccess
     private var complete: Bool { node?.isComplete == true }
-    private var available: Bool { node?.isAvailable == true }
-    private var tint: Color { complete ? Palette.green : (available ? Palette.ink : .secondary) }
+    private var tint: Color { complete ? Palette.green : (access == .locked ? Palette.ink : Palette.blue) }
+    private var status: String {
+        switch access {
+        case .earned: return "complete"
+        case .available: return "available"
+        case .preview: return "preview access, not earned"
+        case .locked: return "prerequisites pending"
+        }
+    }
 
     var body: some View {
         VStack(spacing: 5) {
             ExerciseArtwork(entry: entry).frame(height: 60).padding(.top, 8)
             Text(entry.levelName).font(.system(size: 11, weight: .bold)).lineLimit(1).minimumScaleFactor(0.8)
             Text(entry.name).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8)
+            if access == .preview { Text("PREVIEW").font(.system(size: 9, weight: .bold)).foregroundStyle(Palette.blue) }
             Text(complete ? "COMPLETE" : "\(min(3, node?.qualifyingSets ?? 0))/3 sets · \(min(2, node?.trainingDays ?? 0))/2 days")
                 .font(.system(size: 9, weight: .semibold)).foregroundStyle(tint)
         }.frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(complete ? Palette.green.opacity(0.07) : .white, in: RoundedRectangle(cornerRadius: 20))
-            .overlay { RoundedRectangle(cornerRadius: 20).stroke(tint.opacity(available || complete ? 0.45 : 0.18), lineWidth: complete ? 2 : 1) }
+            .background(complete ? Palette.green.opacity(0.07) : (access == .locked ? Palette.surface : .white), in: RoundedRectangle(cornerRadius: 20))
+            .overlay { RoundedRectangle(cornerRadius: 20).stroke(tint.opacity(0.55), lineWidth: complete ? 2 : 1.5) }
             .overlay(alignment: .topTrailing) {
-                Image(systemName: complete ? "checkmark.circle.fill" : (available ? "circle.fill" : "lock.fill"))
+                Image(systemName: complete ? "checkmark.circle.fill" : (access == .locked ? "lock.fill" : (access == .preview ? "lock.open" : "circle.fill")))
                     .font(.system(size: 12, weight: .medium)).foregroundStyle(tint).padding(10)
             }
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(entry.levelName), \(entry.name), \(complete ? "complete" : (available ? "available" : "prerequisites pending")), \(node?.qualifyingSets ?? 0) goal sets")
+            .accessibilityLabel("\(entry.levelName), \(entry.name), \(status), \(node?.qualifyingSets ?? 0) goal sets")
     }
 }
 
@@ -148,7 +223,7 @@ private struct SkillRow: View {
 
     private var tint: Color {
         if node?.isComplete == true { return Palette.green }
-        return node?.isAvailable == true ? Palette.amber : Palette.ink
+        return node?.isAvailable == true ? Palette.blue : Palette.muted
     }
 
     var body: some View {
@@ -250,7 +325,8 @@ private struct ExerciseDetailView: View {
                     Text("3 sets of \(entry.goal) \(entry.unit == .reps ? "reps" : "seconds") across at least 2 training days.")
                         .font(.subheadline)
                     Text("\(min(3, node?.qualifyingSets ?? 0))/3 goal sets · \(min(2, node?.trainingDays ?? 0))/2 days")
-                        .font(.subheadline.weight(.semibold)).foregroundStyle(node?.isComplete == true ? Palette.green : Palette.amber)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(node?.isComplete == true ? Palette.green : (node?.isAvailable == true ? Palette.blue : Palette.muted))
                     Text("Manual: \(node?.manualSets ?? 0) sets").font(.caption).foregroundStyle(.secondary)
                     Text("Camera: \(node?.cameraSets ?? 0) sets").font(.caption).foregroundStyle(.secondary)
                     if node?.isComplete == true { Label("Challenge complete", systemImage: "checkmark.circle.fill").font(.subheadline).foregroundStyle(Palette.green) }
@@ -259,8 +335,9 @@ private struct ExerciseDetailView: View {
                         Text("Builds on").font(.caption.weight(.semibold)).padding(.top, 6)
                         ForEach(parents, id: \.self) { id in
                             if let parent = ExerciseCatalog.find(id) {
-                                Label(parent.name, systemImage: SkillProgress.evaluate(history: store.history).node(exerciseID: id)?.isComplete == true ? "checkmark.circle.fill" : "circle")
-                                    .font(.caption).foregroundStyle(.secondary)
+                                let parentComplete = SkillProgress.evaluate(history: store.history).node(exerciseID: id)?.isComplete == true
+                                Label(parent.name, systemImage: parentComplete ? "checkmark.circle.fill" : "circle")
+                                    .font(.caption).foregroundStyle(parentComplete ? Palette.green : Palette.muted)
                             }
                         }
                     }
@@ -282,17 +359,17 @@ private struct ExerciseDetailView: View {
                 } label: {
                     Label("Start workout", systemImage: "play")
                         .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity).padding(19)
-                        .foregroundStyle(.white).background(Palette.ink, in: RoundedRectangle(cornerRadius: 15))
+                        .foregroundStyle(.white).background(Palette.blue, in: RoundedRectangle(cornerRadius: 15))
                 }.buttonStyle(.plain).accessibilityIdentifier("catalogue-workout-setup")
                 PrimaryButton(title: "Log manually", symbol: "plus") { manualPresented = true }
                 if entry.unit == .seconds {
                     Button { timerPresented = true } label: {
                         Label("Start hold timer", systemImage: "timer").font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity).padding(17)
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(.plain).foregroundStyle(Palette.blue)
                 }
                 Text(entry.tracking == nil ? "Manual self-report\(entry.unit == .seconds ? " or a hold timer" : ""). Camera tracking hasn’t been validated for this variation." : "Start workout, then choose Manual, iPhone camera or Pi side camera. Manual entries are labelled separately.")
                     .font(.caption).foregroundStyle(.secondary)
-                Label("Stop if you feel pain or discomfort.", systemImage: "hand.raised").font(.caption)
+                Label("Stop if you feel pain or discomfort.", systemImage: "hand.raised").font(.caption).foregroundStyle(Palette.red)
             }.padding(24)
         }.background(.white).navigationTitle(entry.levelName).navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $manualPresented) { ManualWorkoutView(store: store, entry: entry, initialCount: entry.goal, initialSets: 3) }

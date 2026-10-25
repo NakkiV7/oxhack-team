@@ -97,3 +97,33 @@ private func skillCalendar() -> Calendar {
     #expect(clock.elapsed(at: 80) == 15)
     #expect(clock.isRunning == false)
 }
+
+@Test func previewAccessNeverCreatesEarnedSetsDaysOrAttributePoints() throws {
+    let progress = SkillProgress.evaluate(history: [])
+    #expect(progress.access(exerciseID: "pushup", previewUnlock: false) == .locked)
+    #expect(progress.access(exerciseID: "pushup", previewUnlock: true) == .preview)
+    #expect(progress.access(exerciseID: "wallPushup", previewUnlock: true) == .available)
+    #expect(progress.nodes.allSatisfy { !$0.isComplete && $0.qualifyingSets == 0 && $0.trainingDays == 0 })
+    #expect(TrainingAttribute.allCases.allSatisfy { progress.points(for: $0) == 0 })
+    #expect(progress.access(exerciseID: "missing", previewUnlock: true) == nil)
+    let date = Date(timeIntervalSince1970: 1_790_000_000)
+    let first = try LoggedWorkout.make(exerciseID: "wallPushup", count: 8, sets: 2, date: date)
+    let second = try LoggedWorkout.make(exerciseID: "wallPushup", count: 8, sets: 1, date: date.addingTimeInterval(86400))
+    let earned = SkillProgress.evaluate(history: [first, second])
+    #expect(earned.access(exerciseID: "wallPushup", previewUnlock: true) == .earned)
+    #expect(earned.access(exerciseID: "inclinePushup", previewUnlock: false) == .available)
+}
+
+@Test func baselineAnswersSuggestPracticeWithoutCreatingCompletionEvidence() throws {
+    let progress = SkillProgress.evaluate(history: [])
+    let starting = try LocalProfile(goals: [.strength], baselineAbility: .startingOut)
+    let familiar = try LocalProfile(goals: [.strength], baselineAbility: .somePractice)
+    let regular = try LocalProfile(goals: [.strength], baselineAbility: .regularPractice)
+    #expect(progress.suggestedChallengeIDs(profile: starting) == ["wallPushup", "gluteBridge"])
+    #expect(progress.suggestedChallengeIDs(profile: familiar) == ["inclinePushup", "squat"])
+    #expect(progress.suggestedChallengeIDs(profile: regular) == ["kneePushup", "squat"])
+    #expect(progress.suggestedChallengeIDs(profile: try LocalProfile()) == [])
+    #expect(progress.nodes.allSatisfy { !$0.isComplete && $0.qualifyingSets == 0 && $0.trainingDays == 0 })
+    #expect(progress.points(for: .strength) == 0)
+    #expect(progress.access(exerciseID: "inclinePushup", previewUnlock: false) == .locked)
+}
