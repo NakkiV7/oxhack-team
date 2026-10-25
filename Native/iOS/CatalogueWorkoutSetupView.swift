@@ -46,7 +46,7 @@ struct CatalogueWorkoutSetupView: View {
                 if let error { Text(error).font(.caption).foregroundStyle(Palette.red) }
             }
         }
-        .scrollContentBackground(.hidden).background(.white).tint(Palette.ink)
+        .scrollContentBackground(.hidden).background(.white).tint(Palette.blue)
         .scrollDismissesKeyboard(.interactively)
         .navigationTitle("Set up workout").navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
