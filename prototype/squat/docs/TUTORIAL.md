@@ -64,7 +64,11 @@ Opens a guide with two example sets run through this app's overlay and voice, th
 
 Below the counter, the **Tempo forecast** card watches the lowering phase of each rep against a programme target (default: 0.6 to 1.5 s). After three counted reps it forecasts, at every rep, whether one of the next two reps will leave the range. By default it runs in **shadow mode**: forecasts are stored, nothing is spoken. Tick **cue me** to let a forecast above the threshold speak a cue (with the current model no forecast reaches it). Open **Why this?** for the evidence behind the latest forecast. After **Stop**, the summary shows **What we anticipated** from the stored records, and the **Evidence** button opens the evaluation: baselines, calibration, the decision frontier, the dataset card. For a replay demo tick **pause at forecast** before uploading a raw clip: it plays once and pauses at each forecast before the next reps are revealed. Details: [HRT.md](HRT.md).
 
-## 9. From a phone
+## 9. The coaching journey
+
+Open http://localhost:3002/coach. Fill in the profile and generate a programme (Gemini chooses and explains the steps inside the catalogue; placement follows your stated ability). On the programme, **Assess with camera** on Squats opens the squat page with a *Coach · retry · verify* card: three counted reps, one spoken cue, **Start retry**, three more reps, the measured comparison and any milestone earned. Practice-only steps say "AI assessment coming soon" and take logged practice instead. Reports lists every recorded set with its facts and timeline; Weekly review compares calendar weeks and proposes goals you accept or edit; Research takes a search question or a PDF. Details: [COACH.md](COACH.md).
+
+## 10. From a phone
 
 The terminal prints the Mac's address and a control code. A phone client on the same Wi-Fi can read the live state and frames from `/events` and send pause, resume and stop to `/control` with the code. The push-up prototype ships an iPhone app for its state shape; the squat state carries the same fields plus the squat gauges, so a squat screen is a small change to that app.
 

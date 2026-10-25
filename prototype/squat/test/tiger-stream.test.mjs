@@ -65,7 +65,7 @@ test('createPool keeps TLS verification on and strips ssl overrides from the URL
 
 test('migration files split into statements that start with SQL', async () => {
   const files = (await readdir(DB_DIR)).filter((f) => f.endsWith('.sql')).sort();
-  assert.deepEqual(files, ['001_cv_stream.sql', '002_cv_rollups.sql', '003_hrt.sql']);
+  assert.deepEqual(files, ['001_cv_stream.sql', '002_cv_rollups.sql', '003_hrt.sql', '004_coaching.sql']);
   for (const f of files) {
     const chunks = splitChunks(await readFile(new URL(f, DB_DIR), 'utf8'));
     assert.ok(chunks.length >= 1, f);
