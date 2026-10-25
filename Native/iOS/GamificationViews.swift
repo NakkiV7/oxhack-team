@@ -14,22 +14,17 @@ struct StreakCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(trainedToday ? "streak-complete" : "streak-incomplete")
-                    .resizable().scaledToFit().frame(width: 38, height: 42).accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("\(protectedStreak) \(protectedStreak == 1 ? "day" : "days")")
-                        .font(.title3.weight(.semibold)).monospacedDigit()
-                    Text("Protected streak").font(.caption).foregroundStyle(.secondary)
-                }.accessibilityElement(children: .combine)
-                Spacer(minLength: 8)
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text("\(trainingDaysThisWeek) / \(weeklyTarget) days").font(.subheadline.weight(.semibold)).monospacedDigit()
-                    Text("This week · your target").font(.caption).foregroundStyle(.secondary)
-                }.accessibilityElement(children: .combine)
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 20) {
+                    streakStatus
+                    Spacer(minLength: 8)
+                    weeklyProgress
+                }.fixedSize(horizontal: true, vertical: false)
+                VStack(alignment: .leading, spacing: 16) {
+                    streakStatus
+                    weeklyProgress
+                }
             }
-            Text(trainedToday ? "Training logged today" : "No training logged today")
-                .font(.caption.weight(.medium)).foregroundStyle(.secondary)
             HStack(alignment: .top, spacing: 18) {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 7) {
@@ -51,6 +46,43 @@ struct StreakCard: View {
                 .accessibilityIdentifier("manage-training-rewards")
         }.padding(18).background(Palette.surface, in: RoundedRectangle(cornerRadius: 18))
             .accessibilityIdentifier("training-rewards-card")
+    }
+
+    private var streakStatus: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(trainedToday || protectedStreak > 0 ? "streak-complete" : "streak-incomplete")
+                .resizable().scaledToFit().frame(width: 38, height: 42)
+                .hueRotation(.degrees(!trainedToday && protectedStreak > 0 ? -115 : 0))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("\(protectedStreak) \(protectedStreak == 1 ? "day" : "days")")
+                    .font(.title3.weight(.semibold)).monospacedDigit()
+                Text("Protected streak").font(.caption).foregroundStyle(.secondary)
+                Text(trainedToday ? "Training logged today" : protectedStreak > 0 ? "Active · train when you’re ready" : "No training logged today")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(trainedToday ? Palette.green : protectedStreak > 0 ? Palette.amber : Palette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }.fixedSize(horizontal: false, vertical: true)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(protectedStreak) \(protectedStreak == 1 ? "day" : "days") protected streak")
+            .accessibilityValue(trainedToday ? "Training logged today." : protectedStreak > 0 ? "Active streak. No training logged today." : "No active streak. No training logged today.")
+            .accessibilityAddTraits(.isStaticText)
+            .accessibilityIdentifier("today-streak-status")
+    }
+
+    private var weeklyProgress: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("Weekly target", systemImage: "calendar")
+                .font(.caption.weight(.medium)).foregroundStyle(.secondary)
+            Text("\(trainingDaysThisWeek) / \(weeklyTarget) days")
+                .font(.subheadline.weight(.semibold)).monospacedDigit()
+        }.fixedSize(horizontal: true, vertical: true)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Weekly target")
+            .accessibilityValue("\(trainingDaysThisWeek) of \(weeklyTarget) training days this week")
+            .accessibilityAddTraits(.isStaticText)
+            .accessibilityIdentifier("today-weekly-target")
     }
 }
 
