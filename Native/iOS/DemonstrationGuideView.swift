@@ -2,6 +2,29 @@ import SwiftUI
 import UniformTypeIdentifiers
 import AVFoundation
 
+@MainActor @Observable
+final class LessonImportFeedback {
+    private(set) var message: String?
+    private(set) var error: String?
+    func clear() { message = nil; error = nil }
+    func selectionFailed(_ failure: Error) {
+        clear()
+        guard (failure as? CocoaError)?.code != .userCancelled else { return }
+        error = "That video could not be opened. Choose a local MOV, MP4 or M4V file and try again."
+    }
+    func add(_ url: URL, exerciseID: String, library: DemonstrationVideoLibrary) async {
+        guard !library.isImporting else { return }
+        clear()
+        let replacing = library.url(for: exerciseID) != nil
+        do {
+            try await library.importMovie(from: url, exerciseID: exerciseID)
+            message = replacing ? "Recording replaced on this iPhone." : "Recording added on this iPhone."
+        } catch is CancellationError {} catch {
+            self.error = "Video wasn’t added. \(error.localizedDescription)"
+        }
+    }
+}
+
 struct DemonstrationGuideView: View {
     @State private var library = DemonstrationVideoLibrary()
     @State private var error: String?
@@ -23,7 +46,7 @@ struct DemonstrationGuideView: View {
                             catch { self.error = error.localizedDescription }
                         } label: {
                             Image(systemName: library.recordedIDs.contains(guide.id) ? "checkmark.square.fill" : "square")
-                                .font(.title3).foregroundStyle(Palette.ink)
+                                .font(.title3).foregroundStyle(library.recordedIDs.contains(guide.id) ? Palette.green : Palette.muted)
                         }.buttonStyle(.plain)
                             .accessibilityLabel("Mark \(guide.name) as \(library.recordedIDs.contains(guide.id) ? "not filmed" : "filmed")")
                             .accessibilityIdentifier("filmed-\(guide.id)")
@@ -77,7 +100,7 @@ private struct DemonstrationGuideDetail: View {
                         do { try library.markRecorded(guide.id, recorded: value) }
                         catch { self.error = error.localizedDescription }
                     }
-                )).tint(Palette.ink)
+                )).tint(Palette.blue)
                 if let error { Text(error).font(.caption).foregroundStyle(Palette.red) }
             }.padding(24)
         }.background(.white).navigationTitle(guide.name).navigationBarTitleDisplayMode(.inline)
@@ -104,6 +127,7 @@ private struct DemonstrationComparisonContent: View {
     @State private var removing = false
     @State private var error: String?
     @State private var task: Task<Void, Never>?
+    @State private var feedback = LessonImportFeedback()
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
@@ -135,20 +159,40 @@ private struct DemonstrationComparisonContent: View {
                     }
                 }
             }
-            Text("MOV, MP4 or M4V · up to 2 minutes and 100 MB · private on this iPhone")
-                .font(.caption2).foregroundStyle(.secondary)
-            if let error = error ?? library.loadError { Text(error).font(.caption).foregroundStyle(Palette.red) }
+            DisclosureGroup("Video requirements") {
+                VStack(alignment: .leading, spacing: 7) {
+                    Text("Formats: MOV, MP4 or M4V")
+                    Text("Up to 2 minutes per video")
+                    Text("Up to 100 MB per video")
+                    Text("500 MB total for lesson videos")
+                    Text("Private on this iPhone. Nothing is uploaded.")
+                }.frame(maxWidth: .infinity, alignment: .leading).padding(.top, 7)
+            }.font(.caption).foregroundStyle(.secondary)
+                .accessibilityIdentifier("lesson-requirements-\(guide.id)")
+            if let message = feedback.message {
+                Label(message, systemImage: "checkmark.circle").font(.caption).foregroundStyle(Palette.green)
+                    .accessibilityIdentifier("lesson-import-status-\(guide.id)")
+            }
+            if let error = error ?? feedback.error ?? library.loadError {
+                Text(error).font(.caption).foregroundStyle(Palette.red)
+                    .accessibilityIdentifier("lesson-import-error-\(guide.id)")
+            }
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.movie]) { result in
-            guard case .success(let url) = result else { return }
-            if library.url(for: guide.id) != nil { replacing = url }
-            else { add(url) }
+            error = nil
+            switch result {
+            case .success(let url):
+                if library.url(for: guide.id) != nil { replacing = url }
+                else { add(url) }
+            case .failure(let failure): feedback.selectionFailed(failure)
+            }
         }
         .confirmationDialog("Replace this lesson video?", isPresented: Binding(get: { replacing != nil }, set: { if !$0 { replacing = nil } })) {
             Button("Replace private lesson copy") { if let url = replacing { add(url) }; replacing = nil }
         } message: { Text("The current private copy for \(guide.name) will be replaced by the video you selected.") }
         .alert("Remove this lesson video?", isPresented: $removing) {
             Button("Remove private copy", role: .destructive) {
+                feedback.clear(); error = nil
                 do { try library.removeMovie(for: guide.id) }
                 catch { self.error = error.localizedDescription }
             }
@@ -158,11 +202,7 @@ private struct DemonstrationComparisonContent: View {
     }
     private func add(_ url: URL) {
         error = nil
-        task = Task {
-            do { try await library.importMovie(from: url, exerciseID: guide.id) }
-            catch is CancellationError {}
-            catch { self.error = error.localizedDescription }
-        }
+        task = Task { await feedback.add(url, exerciseID: guide.id, library: library) }
     }
 }
 

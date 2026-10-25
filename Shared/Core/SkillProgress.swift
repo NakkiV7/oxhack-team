@@ -53,12 +53,32 @@ public struct SkillNodeProgress: Sendable {
     public let isComplete: Bool
 }
 
+public enum SkillAccess: Sendable {
+    case earned, available, preview, locked
+}
+
 public struct SkillProgress: Sendable {
     public let nodes: [SkillNodeProgress]
     private let attributePoints: [TrainingAttribute: Int]
 
     public func points(for attribute: TrainingAttribute) -> Int { attributePoints[attribute, default: 0] }
     public func node(exerciseID: String) -> SkillNodeProgress? { nodes.first { $0.exerciseID == exerciseID } }
+
+    public func access(exerciseID: String, previewUnlock: Bool = false) -> SkillAccess? {
+        guard let node = node(exerciseID: exerciseID) else { return nil }
+        if node.isComplete { return .earned }
+        if node.isAvailable { return .available }
+        return previewUnlock ? .preview : .locked
+    }
+
+    public func suggestedChallengeIDs(profile: LocalProfile) -> [String] {
+        guard let baseline = profile.baselineAbility else { return [] }
+        return ExerciseFamily.allCases.compactMap { family in
+            ExerciseCatalog.all.filter {
+                $0.family == family && profile.goals.contains($0.attribute) && $0.level <= baseline.suggestedLevel
+            }.max { $0.level < $1.level }?.id
+        }
+    }
 
     private struct Evidence {
         let id: UUID
