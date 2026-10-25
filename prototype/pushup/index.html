@@ -401,9 +401,10 @@ showTheme();
 
 // Spoken coach: ElevenLabs through the local server (/say, cached on disk). One line at a time, never cut off;
 // a more urgent cue waits its turn, repeats are rate-limited. The chosen voice also sets the Gemini coach's persona.
-const MOTIVATION = ['Nobody is coming to do this for you. Keep moving.', "That's it. Earn every rep.", 'Pain is just information. Keep going.', 'Stay with it. The last reps are the ones that count.', 'Good. Strong. Again.', 'You are not tired, you are warming up. Push.', "Finish it. Don't leave reps on the table.", 'Clean rep. Make the next one better.'];
+const MOTIVATION = [{ text: 'Nobody is coming to do this for you. Keep moving.', tone: 'push' }, { text: "That's it. Earn every rep.", tone: 'push' }, { text: 'Pain is just information. Keep going.', tone: 'push' }, { text: 'Stay with it. The last reps are the ones that count.', tone: 'push' }, { text: 'Good. Strong. Again.', tone: 'calm' }, { text: 'You are not tired, you are warming up. Push.', tone: 'push' }, { text: "Finish it. Don't leave reps on the table.", tone: 'push' }, { text: 'Clean rep. Make the next one better.', tone: 'calm' }];  // tone: calm = praise, push = shouting voice
 const CLOSING = ['Set done. That is how you build it.', 'Done. Come back and beat it next time.', 'Good work. Rest, then go again.'];
-const PREWARM = [...Array.from({ length: 30 }, (_, i) => String(i + 1)), ...['Not low enough: bend your elbows more', 'Hips sagging: squeeze your core and glutes', 'Hips too high: lower them into a straight line', 'Keep your body in one straight line', "Let's go. Get into the top position."], ...MOTIVATION, ...CLOSING];
+const CUES = ['Not low enough: bend your elbows more', 'Hips sagging: squeeze your core and glutes', 'Hips too high: lower them into a straight line', 'Keep your body in one straight line', "Let's go. Get into the top position."];
+const PREWARM = [...Array.from({ length: 30 }, (_, i) => ({ text: String(i + 1), tone: 'calm' })), ...CUES.map((text) => ({ text, tone: 'push' })), ...MOTIVATION, ...CLOSING.map((text) => ({ text, tone: 'calm' }))];
 const voiceSel = $('voiceSel');
 let voices = [], voiceId = (() => { try { return localStorage.getItem('voice'); } catch { return null; } })();
 const voiceName = () => voices.find((v) => v.id === voiceId)?.name ?? '';
@@ -418,17 +419,18 @@ async function loadVoices() {
   prewarm();
 }
 voiceSel.onchange = () => { voiceId = voiceSel.value; try { localStorage.setItem('voice', voiceId); } catch {} prewarm(); publish(null, true); };
-const sayUrl = (text) => `/say?text=${encodeURIComponent(text)}&voice=${encodeURIComponent(voiceId)}`;
+const toneId = (tone) => { const v = voices.find((x) => x.id === voiceId); return tone === 'push' && v?.loud ? v.loud : voiceId; };
+const sayUrl = (text, tone = 'calm') => `/say?text=${encodeURIComponent(text)}&voice=${encodeURIComponent(toneId(tone))}`;
 const speech = { queue: [], current: null, said: new Map() };
 window.coachVoice = speech; // debugging aid
-function say(text, prio = 2) {
+function say(text, prio = 2, tone = 'calm') {
   if (voiceId === 'off' || !voices.length || !text) return;
   text = String(text).slice(0, 240);
   const now = performance.now();
   if (!/^\d+$/.test(text) && now - (speech.said.get(text) ?? -1e9) < 8000) return;   // same cue too recently
   if (speech.queue.some((q) => q.text === text)) return;
   speech.said.set(text, now);
-  speech.queue.push({ text, prio, t: now });
+  speech.queue.push({ text, prio, tone, t: now });
   pump();
 }
 function pump() {
@@ -438,7 +440,7 @@ function pump() {
   if (!speech.queue.length) return;
   const next = speech.queue.reduce((a, b) => (b.prio > a.prio || (b.prio === a.prio && b.t < a.t) ? b : a));
   speech.queue.splice(speech.queue.indexOf(next), 1);
-  const a = new Audio(sayUrl(next.text));
+  const a = new Audio(sayUrl(next.text, next.tone));
   speech.current = a;
   const done = () => { speech.current = null; pump(); };
   a.onended = done; a.onerror = done;
@@ -447,14 +449,14 @@ function pump() {
 async function prewarm() {   // synthesise the fixed lines once per voice, in the background, so playback is instant
   if (voiceId === 'off' || !voices.length) return;
   const id = voiceId;
-  for (const text of PREWARM) { if (voiceId !== id) return; try { await fetch(sayUrl(text)); } catch { return; } }
+  for (const { text, tone } of PREWARM) { if (voiceId !== id) return; try { await fetch(sayUrl(text, tone)); } catch { return; } }
 }
 let motivationN = 0;
 function voiceRep(rep) {
-  if (!rep.counted) { say(rep.issue, 2); return; }
+  if (!rep.counted) { say(rep.issue, 2, 'push'); return; }
   say(String(rep.n), 3);
-  if (rep.issue) say(rep.issue, 3);
-  else if (rep.n % 3 === 0) say(MOTIVATION[motivationN++ % MOTIVATION.length], 1);
+  if (rep.issue) say(rep.issue, 3, 'push');
+  else if (rep.n % 3 === 0) { const m = MOTIVATION[motivationN++ % MOTIVATION.length]; say(m.text, 1, m.tone); }
 }
 loadVoices();
 
@@ -643,7 +645,7 @@ $('startCam').onclick = async () => {
     const began = await begin(generation);
     if (generation !== inputGeneration) return;
     cameraStarting = false;
-    if (began) { $('status').textContent = 'Running. Get into position.'; say("Let's go. Get into the top position.", 2); }
+    if (began) { $('status').textContent = 'Running. Get into position.'; say("Let's go. Get into the top position.", 2, 'push'); }
   } catch (e) {
     if (generation !== inputGeneration) return;
     stopAll(); $('status').textContent = 'Camera error: ' + e.message + ' (grant camera access to your browser).';

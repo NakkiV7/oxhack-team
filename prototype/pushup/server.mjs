@@ -90,7 +90,11 @@ let voiceList = null;        // [{ id, name }] from the account: custom voices f
 async function listVoices() {
   if (voiceList) return voiceList;
   if (process.env.ELEVENLABS_VOICES) {   // "Name:voiceId,Name:voiceId" for keys without the voices_read permission
-    voiceList = process.env.ELEVENLABS_VOICES.split(',').map((e) => e.trim()).filter(Boolean).map((e) => { const i = e.lastIndexOf(':'); return { name: e.slice(0, i).trim(), id: e.slice(i + 1).trim() }; });
+    // "Name:voiceId" or "Name:calmId+loudId": a second id is used for form cues and push lines (shouting), the first for counts and praise.
+    voiceList = process.env.ELEVENLABS_VOICES.split(',').map((e) => e.trim()).filter(Boolean).map((e) => {
+      const i = e.lastIndexOf(':'), [id, loud] = e.slice(i + 1).split('+').map((x) => x.trim());
+      return { name: e.slice(0, i).trim(), id, ...(loud ? { loud } : {}) };
+    });
     return voiceList;
   }
   const r = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': ELEVEN_KEY }, signal: AbortSignal.timeout(10000) }).catch(() => null);
@@ -364,7 +368,7 @@ const server = http.createServer(async (req, res) => {
       try {
         const wanted = q.get('voice');
         const voices = await listVoices().catch(() => [{ id: ELEVEN_VOICE, name: 'Coach' }]);
-        const voice = voices.some((v) => v.id === wanted) || /^[A-Za-z0-9]{10,}$/.test(wanted ?? '') ? wanted : voices[0]?.id ?? ELEVEN_VOICE;
+        const voice = voices.some((v) => v.id === wanted || v.loud === wanted) || /^[A-Za-z0-9]{10,}$/.test(wanted ?? '') ? wanted : voices[0]?.id ?? ELEVEN_VOICE;
         const buf = await sayFile(text, voice);
         res.writeHead(200, { 'Content-Type': 'audio/mpeg', 'Content-Length': buf.length, 'Cache-Control': 'max-age=86400' });
         return res.end(buf);
