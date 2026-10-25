@@ -184,6 +184,12 @@ public enum TrainingPathRules {
             }
         }
         if hasCycle(nodes) { errors.append("prerequisite links form a cycle") }
+        // The path is about its goal movement, and it ends at the highest level of that family's main chain.
+        let chain = nodes.filter { !$0.optional && $0.entry?.family == survey.goal.family }
+        if !ids.contains(survey.goal.exerciseID) { errors.append("the goal movement \(survey.goal.exerciseID) is missing") }
+        if let last = chain.max(by: { ($0.entry?.level ?? 0) < ($1.entry?.level ?? 0) }), path.goalNode != last.id {
+            errors.append("goal node must be the last step of the main chain (\(last.id))")
+        }
         if let start = path.node(path.start) {
             if start.prerequisites.contains(where: { path.node($0)?.notRequired != true }) { errors.append("start node has unmet prerequisites inside the path") }
             if path.node(path.goalNode) == nil { errors.append("goal node missing") }

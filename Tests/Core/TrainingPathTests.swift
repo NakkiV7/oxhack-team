@@ -56,7 +56,7 @@ private let profiles: [(name: String, survey: PathSurvey)] = [
     #expect(PathGoal.squat.avoidable == ["gluteBridge", "reverseLunge", "splitSquat", "assistedSquat", "singleLegBalance", "hipFlexorStretch"])
 }
 
-@Test(arguments: ["unknown", "link", "cycle", "optionalGate", "equipment", "avoided", "target", "start", "route", "size"])
+@Test(arguments: ["unknown", "link", "cycle", "optionalGate", "equipment", "avoided", "target", "start", "route", "size", "earlyGoal", "noGoalMovement"])
 func validationRejectsEachRuleAGeneratedPathCouldBreak(rule: String) {
     let survey = PathSurvey(goal: .squat, abilityKey: "new", equipment: ["Stable support"], sessionsPerWeek: 3)
     var path = TrainingPathRules.fallback(survey: survey)
@@ -73,6 +73,8 @@ func validationRejectsEachRuleAGeneratedPathCouldBreak(rule: String) {
     case "target": edit("squat") { $0.practiceTarget = PracticeTarget(sets: 3, target: 40, perWeek: 3) }
     case "start": path.start = "reverseLunge"; path.route = TrainingPathRules.defaultRoute(path)
     case "route": path.route = ["gluteBridge", "reverseLunge", "assistedSquat"]
+    case "earlyGoal": path.goalNode = "squat"; path.route = ["gluteBridge", "squat"]   // a real Gemini plan stopped here with steps after it
+    case "noGoalMovement": checked.goal = .pushup
     default: path.nodes = Array(path.nodes.prefix(3))
     }
     #expect(!TrainingPathRules.validate(path, survey: checked).isEmpty)
