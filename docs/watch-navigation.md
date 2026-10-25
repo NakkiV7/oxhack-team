@@ -1,6 +1,6 @@
-# Watch navigation candidate — acceptance pending
+# Watch navigation — simulator checks and remaining gates
 
-Issue [#110](https://github.com/NakkiV7/oxhack-team/issues/110) remains open. The compact Metrics change is a candidate for the observed pager/scroll presentation problem; it has not yet passed a new build or rendered acceptance.
+The compact Metrics change passed repeated simulator paging and large-text checks on 25 October 2026. The final normal-text build passed at 04:44 UTC without warnings; its skipped-state round trip also remained readable at a later capture. The finished page fitted after explicit iPhone Finish at 04:46 UTC. Issue [#110](https://github.com/NakkiV7/oxhack-team/issues/110) retains separate physical Crown and device checks. See the [dated acceptance receipt](evidence/watch-compact-navigation-2026-10-25.md).
 
 ## Observed failure before this change
 
@@ -8,20 +8,24 @@ Actual simulator CUA checks reproduced readable Metrics → Controls, followed b
 
 Removing the outer timeline did not prevent the failure. A separate Metrics-only ScrollView experiment produced an immediate off-viewport blank, then settled to readable content without another UI action. Restoring the original pager in the **04:24 UTC** build reproduced the partial blank, which remained at a later capture around **04:25 UTC** after independent documentation work. These observations identify a navigation acceptance gap; they do not prove a permanent empty-content bug, a framework defect, a timeline cause or physical-device behavior. The earlier horizontal-page and bounce experiments were reverted, and all temporary overlays were removed. See the [dated UI evidence](evidence/watch-recording-skip-ui-2026-10-25.md).
 
-## Candidate behavior
+## Behavior
 
-Metrics is now a compact fixed page, with no inner ScrollView. Exercise/set, quantity/target, fresh-or-missing BPM, a small explicit recording action and a short instruction share the page. Missing manual quantities and HR retain their dashes; a red HR value requires an actual fresh reading. The recording action still uses the existing guarded recorder and does not start automatically.
+Metrics is now a compact fixed page, with no inner ScrollView. Exercise/set, quantity/target, fresh-or-missing BPM, a small explicit recording action and a short instruction share the page. Missing manual quantities and HR retain their dashes; a red HR value requires an actual fresh reading. The recording action still uses the existing guarded recorder and does not start automatically. Tapping compact Record opens Controls, where recording status/errors appear at the top.
 
-Controls retains its ScrollView, command/confirmation behavior, full recording status/errors, retry action and complete instruction. Its Session details section repeats exercise, quantity/unit, BPM availability and set in scalable text for fuller reading and accessibility. Primary numeric typography is bounded for the fixed dashboard; this is not a global Dynamic Type cap. Long or critical status/discomfort text remains untruncated on Controls. No telemetry fields, HealthKit permissions, thresholds, persistence or provider calls are added.
+Controls retains its ScrollView, command/confirmation behavior, full recording status/errors, retry action and complete instruction. Its Session details section repeats exercise, quantity/unit, BPM availability and set in scalable text for fuller reading and accessibility. Primary numeric typography is bounded for the fixed dashboard; this is not a global Dynamic Type cap. Long or critical status/discomfort text remains untruncated on Controls. Skipped/discomfort states hide the idle recording instruction as well as the guarded recording action. No telemetry fields, HealthKit permissions, thresholds, persistence or provider calls are added.
 
 The original TimelineView, freshness validation, vertical paging style, page tags and session/generation command guards remain. This does not include the previous style experiments or diagnostic code.
 
-## Required GREEN checks
+## Observed simulator checks
 
-- Compile the candidate, then repeatedly navigate Metrics → Controls → Metrics using the reproduced gestures. Check both the immediate display and a later fresh capture after useful independent work, with no intervening Watch gesture.
-- Verify normal 159-point viewport fit and the largest accessibility text sizes: quantity, missing BPM, recording action and set/instruction remain discoverable; full Controls details and errors scroll readably.
-- Verify the explicit recording action and truthful busy/unavailable state, without inventing sensor values. Confirm skip/discomfort blocks Next set and recording as before.
-- Confirm End session → Cancel preserves the session; only explicit confirmation sends Finish. Check finished-page fit.
-- Keep physical Crown, Ultra screen fit, Health authorization, actual sensors and recording/save as separate device gates. A build or one successful swipe does not close #110.
+- The 04:29 build passed two complete Ready Metrics → Controls → Metrics round trips using the reproduced up/down gestures, with both pages visible.
+- Temporary largest-text SwiftUI environment overrides in the 04:39/04:40 builds kept Metrics within the 159-point viewport. Full Controls details and instructions were readable through three scrolls. Explicit Record displayed the complete unavailable-Health status, with no fabricated HR. The override was removed before the 04:42 normal build.
+- At 04:43, skipped Metrics had no Record; Controls had no Start/Next/Record. End session → Cancel retained the same check-in.
+- After the final 04:44 build, skipped Metrics → Controls → Metrics remained visible, including a later fresh capture after independent work. Controls showed the skipped status and End session, without the misleading idle recording note.
+- After explicit Finish on iPhone at 04:46, the normal-text Watch page fitted the green completion mark, **Session complete** and **Your review is on iPhone.** The retained 1/3 header denotes the session position, not three completed sets.
 
-Only source changes were prepared for this candidate. No new build, UI interaction, recording or provider request was performed by its author.
+These are root's actual build/CUA observations; this document's author did not independently operate the simulator. The [receipt](evidence/watch-compact-navigation-2026-10-25.md) retains unchanged captures and hashes.
+
+## Remaining gates
+
+Physical Crown behavior, Ultra screen fit, Health authorization, actual sensor freshness and workout recording/save require device acceptance. Simulator navigation does not establish these results or independently close #110.

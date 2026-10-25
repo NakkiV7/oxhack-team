@@ -100,6 +100,10 @@ struct WatchTrainingView: View {
         ScrollView {
             VStack(spacing: 11) {
                 Text("Controls").font(.headline)
+                if snapshot.configured?.stoppedForDiscomfort != true, snapshot.configured?.currentWasSkipped != true {
+                    Text(store.status ?? store.recordingState.message).font(.caption2).foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                }
                 if [.active, .paused, .rest].contains(snapshot.phase) {
                     VStack(spacing: 10) {
                         if snapshot.configured?.stoppedForDiscomfort == true {
@@ -123,8 +127,6 @@ struct WatchTrainingView: View {
                     if !store.reachable { Text("Open iPhone to reconnect.").font(.caption2).foregroundStyle(.secondary) }
                 }
                 recordingControl(snapshot)
-                Text(store.status ?? store.recordingState.message).font(.caption2).foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                 if store.recording, store.heart?.heartRate(at: now) == nil {
                     Text("No recent heart-rate reading. Check Watch fit and Health access.")
                         .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
@@ -159,7 +161,10 @@ struct WatchTrainingView: View {
                         .accessibilityLabel(store.recordingState.message)
                 }
             } else if [.active, .rest].contains(snapshot.phase) {
-                Button(compact ? "Record" : "Start Watch workout", systemImage: "heart") { store.record() }
+                Button(compact ? "Record" : "Start Watch workout", systemImage: "heart") {
+                    store.record()
+                    if compact { page = .controls }
+                }
                     .buttonStyle(.bordered).controlSize(.small).font(compact ? .system(size: 11) : .caption2)
                     .accessibilityLabel("Start Watch workout")
                     .accessibilityIdentifier(compact ? "watch-start-workout" : "watch-start-workout-controls")
