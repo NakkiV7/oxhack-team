@@ -17,12 +17,14 @@ const TYPES = {
   '.js': 'text/javascript',
   '.wasm': 'application/wasm',
   '.task': 'application/octet-stream',
+  '.mp4': 'video/mp4',
 };
 
 // URL prefix -> directory. Everything is served locally so only the first model download needs network.
 const MOUNTS = {
   '/vendor/': new URL('./node_modules/@mediapipe/tasks-vision/', import.meta.url),
   '/models/': new URL('./models/', import.meta.url),
+  '/assets/': new URL('./assets/', import.meta.url),   // tutorial videos
 };
 
 // Phone remote control (pause / resume / stop). The phone must send this code, which lives only on the Mac (.control-token,

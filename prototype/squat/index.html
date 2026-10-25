@@ -5,59 +5,81 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Squat Coach</title>
 <style>
-  :root { --bg:#0f1115; --card:#181b22; --fg:#e8eaed; --mut:#8b93a1; --ok:#3ddc84; --warn:#ffb74d; --bad:#ff6b6b; --acc:#6ea8fe; }
-  @media (prefers-color-scheme: light) { :root { --bg:#f5f6f8; --card:#fff; --fg:#1a1d23; --mut:#667085; --acc:#1d6fe0; } }
+  :root { color-scheme: light dark; --bg:#f5f5f7; --card:#ffffff; --fg:#1d1d1f; --mut:#6e6e73; --line:#e8e8ed; --fill:#f2f2f7; --acc:#0071e3; --ok:#34c759; --warn:#ff9500; --bad:#ff3b30; --shadow:0 1px 2px rgba(0,0,0,.04), 0 10px 30px rgba(0,0,0,.06); }
+  @media (prefers-color-scheme: dark) { :root { --bg:#000; --card:#1c1c1e; --fg:#f5f5f7; --mut:#98989d; --line:#2c2c2e; --fill:#2c2c2e; --acc:#0a84ff; --ok:#30d158; --warn:#ff9f0a; --bad:#ff453a; --shadow:0 1px 2px rgba(0,0,0,.5); } }
   * { box-sizing:border-box; }
   html, body { height:100%; }
-  body { margin:0; padding:12px; background:var(--bg); color:var(--fg); font:14px/1.4 system-ui,sans-serif; overflow:hidden; }
+  body { margin:0; padding:16px; background:var(--bg); color:var(--fg); font:15px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif; -webkit-font-smoothing:antialiased; overflow:hidden; }
   /* One screen, no page scroll: video column on the left, panels on the right; long lists scroll inside their card. */
-  .wrap { height:100%; max-width:1400px; margin:0 auto; display:grid; gap:12px; grid-template-columns:minmax(0,1.7fr) minmax(300px,1fr); }
+  .wrap { height:100%; max-width:1440px; margin:0 auto; display:grid; gap:16px; grid-template-columns:minmax(0,1.7fr) minmax(320px,1fr); }
   @media (max-width:800px) { body { overflow:auto; } .wrap { height:auto; grid-template-columns:1fr; } .stage { min-height:50vh; } .side { min-height:70vh; } }
-  .main, .side { display:flex; flex-direction:column; gap:10px; min-height:0; min-width:0; }
-  .card { background:var(--card); border-radius:12px; padding:12px; min-height:0; }
-  h1 { font-size:17px; margin:0; } h2 { font-size:11px; margin:0 0 6px; color:var(--mut); text-transform:uppercase; letter-spacing:.06em; }
-  .head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
-  .stage { position:relative; background:#000; border-radius:12px; overflow:hidden; flex:1; min-height:0; }
-  video, canvas { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
-  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  button, select, .btn { font:inherit; padding:7px 12px; border-radius:8px; border:1px solid var(--mut); background:var(--card); color:var(--fg); cursor:pointer; }
-  button:disabled { opacity:.4; cursor:default; }
-  button.primary { background:var(--acc); border-color:var(--acc); color:#06142e; font-weight:600; }
+  .main, .side { display:flex; flex-direction:column; gap:14px; min-height:0; min-width:0; }
+  .card { background:var(--card); border-radius:20px; padding:18px 20px; min-height:0; box-shadow:var(--shadow); }
+  .grow { flex:1; display:flex; flex-direction:column; }
+  h1 { font-size:22px; font-weight:600; letter-spacing:-.02em; margin:0; }
+  h2 { font-size:11px; font-weight:600; margin:0 0 8px; color:var(--mut); text-transform:uppercase; letter-spacing:.06em; }
+  .head { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; padding:2px 4px 0; }
+  .stage { position:relative; background:#000; border-radius:20px; overflow:hidden; flex:1; min-height:0; box-shadow:var(--shadow); }
+  .stage video, .stage canvas { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  button, select, .btn { font:inherit; font-size:14px; font-weight:500; line-height:1.2; padding:9px 18px; border-radius:980px; border:1px solid var(--line); background:var(--card); color:var(--fg); cursor:pointer; box-shadow:0 1px 1px rgba(0,0,0,.03); transition:background .15s, transform .05s; -webkit-appearance:none; appearance:none; }
+  select { padding-right:36px; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%236e6e73' stroke-width='1.6' stroke-linecap='round'/></svg>"); background-repeat:no-repeat; background-position:right 15px center; }
+  button:hover:not(:disabled), .btn:hover { background:var(--fill); }
+  button:active:not(:disabled) { transform:scale(.97); }
+  button:disabled { opacity:.35; cursor:default; }
+  button.primary { background:var(--acc); border-color:var(--acc); color:#fff; }
+  button.primary:hover:not(:disabled) { background:color-mix(in srgb, var(--acc) 86%, #000); }
   #file { display:none; }
-  .top { display:flex; align-items:center; gap:14px; }
+  .top { display:flex; align-items:center; gap:20px; }
   .stats { min-width:0; flex:1; }
-  .count { font-size:56px; font-weight:700; line-height:1; } .sub { color:var(--mut); }
-  .feedback { font-size:15px; font-weight:600; min-height:2.8em; margin-top:8px; overflow-wrap:anywhere; } .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
-  .bar { height:6px; background:var(--bg); border-radius:4px; overflow:hidden; margin:3px 0 2px; } .bar > i { display:block; height:100%; background:var(--acc); width:0; transition:width .1s; }
+  .count { font-size:72px; font-weight:600; line-height:1; letter-spacing:-.04em; font-variant-numeric:tabular-nums; }
+  .sub { color:var(--mut); font-size:14px; }
+  .feedback { font-size:17px; font-weight:600; min-height:2.6em; margin-top:12px; overflow-wrap:anywhere; letter-spacing:-.01em; } .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+  .bar { height:8px; background:var(--fill); border-radius:999px; overflow:hidden; margin:5px 0 4px; } .bar > i { display:block; height:100%; background:var(--acc); width:0; border-radius:999px; transition:width .12s; }
   .bar > i.g0 { background:var(--ok); } .bar > i.g1 { background:var(--warn); } .bar > i.g2 { background:var(--bad); }
-  .gauges { display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:12px; }
-  ul { list-style:none; margin:0; padding:0; overflow:auto; flex:1; min-height:0; } li { padding:4px 0; border-bottom:1px solid var(--bg); font-size:13px; }
-  .tip { font-size:12px; color:var(--mut); }
-  .panel { position:absolute; inset:0; z-index:2; display:flex; align-items:center; justify-content:center; padding:16px; overflow:auto; background:rgba(15,17,21,.86); color:#e8eaed; backdrop-filter:blur(4px); }
+  .gauges { display:grid; grid-template-columns:1fr 1fr; gap:14px 18px; font-size:12px; }
+  ul { list-style:none; margin:0; padding:0; overflow:auto; flex:1; min-height:0; } li { padding:7px 0; border-bottom:1px solid var(--line); font-size:13.5px; } li:last-child { border-bottom:0; }
+  .tip { font-size:12.5px; color:var(--mut); }
+  .panel { position:absolute; inset:0; z-index:2; display:flex; align-items:center; justify-content:center; padding:16px; overflow:auto; background:rgba(0,0,0,.45); color:#fff; backdrop-filter:blur(18px) saturate(1.4); }
   .panel[hidden] { display:none; }
-  .panel .box { width:100%; max-width:440px; text-align:center; }
-  .panel h3 { margin:0 0 12px; font-size:20px; }
-  .tiles { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
-  .tile { background:rgba(255,255,255,.08); border-radius:10px; padding:8px 4px; min-width:0; }
-  .tile b { display:block; font-size:22px; line-height:1.2; } .tile span { font-size:11px; color:#aab1bd; text-transform:uppercase; letter-spacing:.05em; }
-  .panel .note { font-size:13px; color:#c4c9d2; margin-bottom:12px; overflow-wrap:anywhere; }
+  .panel .box { width:100%; max-width:460px; text-align:center; background:rgba(28,28,30,.82); border-radius:24px; padding:26px 24px; }
+  .panel h3 { margin:0 0 14px; font-size:22px; font-weight:600; letter-spacing:-.02em; }
+  .tiles { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
+  .tile { background:rgba(255,255,255,.1); border-radius:14px; padding:12px 6px; min-width:0; }
+  .tile b { display:block; font-size:24px; font-weight:600; letter-spacing:-.02em; line-height:1.2; } .tile span { font-size:11px; color:#a1a1a6; text-transform:uppercase; letter-spacing:.05em; }
+  .panel .note { font-size:13.5px; color:#d2d2d7; margin-bottom:14px; overflow-wrap:anywhere; }
   .panel .row { justify-content:center; margin-top:0; }
-  li .slow { color:color-mix(in srgb, var(--warn) 75%, var(--fg)); } li .fast { color:color-mix(in srgb, var(--ok) 75%, var(--fg)); }
-  a, a:visited { color:var(--acc); } a:hover { text-decoration:underline; }
-  .split { flex:1; display:flex; flex-direction:column; gap:10px; min-height:0; }
+  .panel button { background:rgba(255,255,255,.12); border-color:transparent; color:#fff; } .panel button.primary { background:var(--acc); }
+  li .slow { color:var(--warn); } li .fast { color:var(--ok); }
+  a, a:visited { color:var(--acc); text-decoration:none; } a:hover { text-decoration:underline; }
+  .split { flex:1; display:flex; flex-direction:column; gap:14px; min-height:0; }
   .split > .card { flex:1; display:flex; flex-direction:column; }
   .split > .coach { flex:1.6; }
-  dialog#refs { width:min(820px, calc(100vw - 32px)); max-height:calc(100vh - 48px); padding:0; border:1px solid var(--mut); border-radius:12px; background:var(--card); color:var(--fg); }
-  dialog#refs::backdrop { background:rgba(0,0,0,.55); }
-  .refs-head { position:sticky; top:0; display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:var(--card); border-bottom:1px solid var(--bg); }
-  .refs-body { padding:4px 16px 16px; overflow:auto; max-height:calc(100vh - 110px); }
-  .refs-body h3 { font-size:15px; margin:18px 0 6px; }
-  .refs-body p, .refs-body li { font-size:13px; line-height:1.5; }
-  .refs-body ul { list-style:disc; padding-left:18px; overflow:visible; } .refs-body ol { padding-left:22px; }
-  .refs-body li { border:0; padding:2px 0; }
-  .tbl { width:100%; overflow-x:auto; } .tbl table { border-collapse:collapse; width:100%; font-size:12px; }
-  .tbl th, .tbl td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--bg); vertical-align:top; }
+  input[type=text], input:not([type]) { -webkit-appearance:none; appearance:none; }
+  #askQ { border-radius:980px !important; padding:9px 16px !important; border:1px solid var(--line) !important; background:var(--fill) !important; }
+  dialog { padding:0; border:0; border-radius:22px; background:var(--card); color:var(--fg); box-shadow:0 30px 80px rgba(0,0,0,.35); }
+  dialog::backdrop { background:rgba(0,0,0,.35); backdrop-filter:blur(10px); }
+  dialog#refs, dialog#tutorial { width:min(860px, calc(100vw - 32px)); max-height:calc(100vh - 48px); }
+  dialog#profile { width:min(560px, calc(100vw - 32px)); }
+  .refs-head { position:sticky; top:0; z-index:1; display:flex; justify-content:space-between; align-items:center; padding:16px 22px; background:var(--card); border-bottom:1px solid var(--line); }
+  .refs-body { padding:6px 22px 22px; overflow:auto; max-height:calc(100vh - 120px); }
+  .refs-body h3 { font-size:16px; font-weight:600; margin:20px 0 8px; letter-spacing:-.01em; }
+  .refs-body p, .refs-body li { font-size:14px; line-height:1.55; }
+  .refs-body ul { list-style:disc; padding-left:20px; overflow:visible; } .refs-body ol { padding-left:24px; }
+  .refs-body li { border:0; padding:3px 0; }
+  .tbl { width:100%; overflow-x:auto; } .tbl table { border-collapse:collapse; width:100%; font-size:13px; }
+  .tbl th, .tbl td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
   .tbl th { color:var(--mut); font-weight:600; }
+  .tag { display:inline-block; font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; background:color-mix(in srgb, var(--warn) 25%, var(--card)); }
+  .stages li { list-style:none; padding:3px 0; color:var(--mut); } .stages li.done { color:var(--fg); } .stages li.done::before { content:'✓ '; color:var(--ok); } .stages li.now::before { content:'… '; }
+  #profile .refs-body p, #profile .refs-body li { margin:6px 0; }
+  /* tutorial dialog */
+  .tut-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:8px; } @media (max-width:720px) { .tut-grid { grid-template-columns:1fr; } }
+  .tut-video { width:100%; aspect-ratio:25/12; border-radius:16px; background:#000; display:block; margin:0 0 8px; }
+  .refs-body ol.steps { counter-reset:step; list-style:none; padding-left:0; }
+  .refs-body ol.steps li { position:relative; padding:5px 0 5px 38px; }
+  .refs-body ol.steps li::before { counter-increment:step; content:counter(step); position:absolute; left:0; top:5px; width:26px; height:26px; border-radius:50%; background:var(--acc); color:#fff; font-size:12px; font-weight:600; display:flex; align-items:center; justify-content:center; }
+  .credit { font-size:12px; color:var(--mut); margin:0 0 6px; }
 </style>
 </head>
 <body>
@@ -80,6 +102,7 @@
       <button id="pause" disabled>Pause</button>
       <button id="stop">Stop</button>
       <button id="reset">Reset reps</button>
+      <button id="tutorialBtn" title="How to do the exercise, with example videos">Tutorial</button>
       <button id="refsBtn" title="How reps are judged, squat types and sources">References</button>
     </div>
     <div class="tip" id="status">Loading pose model…</div>
@@ -119,6 +142,44 @@
     </div>
   </div>
 </div>
+<dialog id="tutorial" aria-labelledby="tutTitle">
+  <div class="refs-head"><h1 id="tutTitle">How to squat</h1><button id="tutClose" aria-label="Close">Close</button></div>
+  <div class="refs-body">
+    <div class="tut-grid">
+      <div>
+        <h3>Side view</h3>
+        <video class="tut-video" controls preload="metadata" playsinline src="/assets/squat_side.mp4"></video>
+        <p class="credit">Six clean reps, then the coach notices the ascent slowing. Footage: Cavemantraining, CC BY-SA 4.0; the overlay and voice are this app.</p>
+      </div>
+      <div>
+        <h3>Facing the camera</h3>
+        <video class="tut-video" controls preload="metadata" playsinline src="/assets/squat_front.mp4"></video>
+        <p class="credit">Half squats, so the thighs go red and the coach asks for more depth. Footage: Gareth Myles (GM-FITNESS), CC BY.</p>
+      </div>
+    </div>
+    <h3>Set up</h3>
+    <ol class="steps">
+      <li>Camera 2–3 m away, side-on or facing you, feet in frame. Side-on shows depth and lean; facing the camera shows knee tracking and balance.</li>
+      <li>Feet about shoulder-width apart, toes turned out a little, weight spread across the whole foot.</li>
+      <li>Stand tall for a second so the app learns your standing height.</li>
+    </ol>
+    <h3>The rep</h3>
+    <ol class="steps">
+      <li>Brace your core and sit back and down, as if onto a chair behind you. Knees track over the toes.</li>
+      <li>Keep your chest up. A forward lean is normal; folding over is not.</li>
+      <li>Go down until the hip crease is level with the knee. That is the 0 line on the depth gauge.</li>
+      <li>Drive up through the whole foot to a full stand. The rep counts when you are back at the top.</li>
+    </ol>
+    <h3>What the coach watches</h3>
+    <ul>
+      <li><b>Shallow:</b> the hips never reached knee level, so the rep is listed but not counted.</li>
+      <li><b>Forward lean:</b> torso more than 40° from vertical at the bottom.</li>
+      <li><b>Knees in:</b> knees narrower than the ankles on the way up.</li>
+      <li><b>Uneven:</b> weight shifted to one side.</li>
+      <li><b>Tempo:</b> a rushed descent, or reps slowing down as you tire.</li>
+    </ul>
+  </div>
+</dialog>
 <dialog id="refs" aria-labelledby="refsTitle">
   <div class="refs-head"><h1 id="refsTitle">How it works and references</h1><button id="refsClose" aria-label="Close">Close</button></div>
   <div class="refs-body">
@@ -188,6 +249,14 @@ function fillVarTable() {
 }
 $('refsBtn').onclick = () => { fillVarTable(); $('refs').showModal(); };
 $('refsClose').onclick = () => $('refs').close();
+
+// Tutorial dialog: videos pause when it closes.
+const tut = $('tutorial');
+$('tutorialBtn').onclick = () => tut.showModal();
+$('tutClose').onclick = () => tut.close();
+tut.addEventListener('close', () => { for (const v of tut.querySelectorAll('video')) v.pause(); });
+tut.addEventListener('click', (e) => { if (e.target === tut) tut.close(); });
+
 $('refs').addEventListener('click', (e) => { if (e.target === $('refs')) $('refs').close(); });
 
 let lm0Logged = false;

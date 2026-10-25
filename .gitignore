@@ -27,3 +27,4 @@ server/node_modules/
 squat/models/*.task
 squat/voice_cache/
 squat/sessions/
+!prototype/*/assets/*.mp4

@@ -6,6 +6,7 @@ Optional extras, shared with the push-up prototype:
 
 - **AI coach (Gemini)**: a short pep talk or tip every few reps, plus a Q&A box that answers only from official health pages (WHO, CDC, NHS, NIH) with citations.
 - **Workout timer and summary**: total time (frozen while paused), time per rep with the average and a slowing-down warning, a confirm step before **Stop**, and a summary over the video when you end the workout.
+- **Tutorial**: a how-to guide on the page with two example sets (side view and facing the camera) run through this app's own coaching overlay and voice. Footage: Cavemantraining (CC BY-SA 4.0) and Gareth Myles / GM-FITNESS (CC BY), in `assets/`.
 - **Phone remote control**: pause, resume and stop from a phone client using the control code shown on the Mac page. Live state and frames are streamed on `/events`.
 
 Not a medical or form-certified tool: a 2D view cannot judge back rounding or bar path.
@@ -33,6 +34,7 @@ server.mjs        local server: static files, state/frames to phones (SSE), coac
 ask.mjs           guarded Q&A (official-source grounding, injection and leak filters), shared with push-up
 test/             node:test unit tests + one real landmark fixture (CC BY-SA clip)
 scripts/          fetch-model.sh
+assets/           tutorial videos (Creative Commons footage with this app's overlay and voice)
 .env.example      optional GEMINI_API_KEY
 ```
 
