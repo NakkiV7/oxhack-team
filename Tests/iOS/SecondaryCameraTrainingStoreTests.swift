@@ -1,4 +1,5 @@
 import XCTest
+import AVFoundation
 @testable import Spottr
 
 @MainActor
@@ -39,6 +40,49 @@ final class SecondaryCameraTrainingStoreTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(10))
         }
         XCTFail("Camera state did not arrive")
+    }
+
+    func testSideCameraOwnsFormWhileFrontPreviewFailureRemainsIndependentAndStopsOnPause() async throws {
+        let camera = TrainingFrontCamera()
+        let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { $0(true) }, cameraDriver: camera,
+            makePoseProcessor: { XCTFail("Side-camera preview must not create a second pose detector"); throw CocoaError(.featureUnsupported) })
+        let worker = SecondaryCameraVisionWorker(infer: { _, time in
+            (PoseFrame(time: time, width: 640, height: 480, points: []), UIImage())
+        })
+        let transport = try client()
+        let store = TrainingStore(historyURL: historyURL(), secondaryVision: worker, secondaryCameraClient: { transport }, vision: vision)
+        defer { store.finish() }
+        store.start(); store.secondaryCamera()
+        try await waitUntil { store.image != nil && camera.starts == 1 }
+        if case .camera = store.frontPreviewState {} else { XCTFail("Front preview must be independently visible") }
+        let generation = store.session.generation
+        vision.onPreviewState?(.denied, generation)
+        await Task.yield()
+        if case .denied = store.frontPreviewState {} else { XCTFail("Front camera permission failure must be visible") }
+        XCTAssertEqual(store.session.phase, .active, "A front preview failure must not stop valid side-camera form tracking")
+        XCTAssertNotNil(store.image)
+        store.pause()
+        XCTAssertEqual(transport.status, .stopped)
+        vision.onPreviewState?(.camera, generation)
+        await Task.yield()
+        if case .idle = store.frontPreviewState {} else { XCTFail("Paused or stale front-camera callbacks must not restore a preview") }
+        store.resume()
+        try await waitUntil { store.image != nil && camera.starts == 2 }
+        store.setAppActive(false)
+        XCTAssertEqual(store.session.phase, .paused, "Backgrounding must stop both camera streams until explicit resume")
+        XCTAssertEqual(transport.status, .stopped)
+        if case .idle = store.frontPreviewState {} else { XCTFail("Front preview must stop in the background") }
+        store.resume()
+        XCTAssertEqual(store.session.phase, .paused, "Resume must not reopen cameras while the phone is inactive")
+        store.companion.onCommand?(.init(sessionID: store.session.id, generation: store.session.generation, action: .resume))
+        await Task.yield()
+        XCTAssertEqual(store.session.phase, .paused, "Watch Resume must also respect phone camera foreground ownership")
+        XCTAssertEqual(transport.status, .stopped)
+        XCTAssertEqual(camera.starts, 2)
+        store.setAppActive(true)
+        XCTAssertEqual(store.session.phase, .paused, "Returning to the app must not restart capture automatically")
+        store.resume()
+        try await waitUntil { store.image != nil && camera.starts == 3 }
     }
 
     func testSideCameraRequiresExplicitCaptureAndPauseClearsPreviewBeforeResumingAsCameraHistory() async throws {
@@ -244,4 +288,15 @@ final class SecondaryCameraTrainingStoreTests: XCTestCase {
         XCTAssertEqual(store.history.first?.sets, ended)
     }
 
+}
+
+private final class TrainingFrontCamera: VisionCameraDriving, @unchecked Sendable {
+    let capture = AVCaptureSession()
+    private let lock = NSLock()
+    private var count = 0
+    var starts: Int { lock.lock(); defer { lock.unlock() }; return count }
+    func start(worker: VisionWorker, queue: DispatchQueue, captureID: UUID) throws {
+        lock.lock(); count += 1; lock.unlock()
+    }
+    func stop() {}
 }

@@ -16,3 +16,10 @@ Model card: https://storage.googleapis.com/mediapipe-assets/Model%20Card%20Blaze
 Integration-test photograph (not displayed in the app): official MediaPipe test asset https://storage.googleapis.com/mediapipe-assets/pose.jpg . Blank video is a generated white 480×640, 10 fps test fixture.
 
 Exercise and strength artwork: existing AI-generated Spottr artwork approved by Omar; prompts and provenance in `design/assets/PROMPTS.md`. Native PNG files are format conversions of those assets. App icons reuse the approved strength graphic on the required opaque background. No SVG artwork was authored.
+
+
+# Presage SmartSpectra
+
+Optional front-camera physiology adapter: [SmartSpectra Swift 3.4.0](https://github.com/Presage-Security/SmartSpectra-Swift/releases/tag/v3.4.0). The proprietary vendor binary is fetched by `scripts/fetch-presage.sh`; it is not committed. Archive SHA256: `eb99a609fc8069de020e0cf4328fb4a81a48b0aff7499348c6aa23e6fcb09947`. The outer XCFramework signature verifies as Presage Security Inc., team `54D6QF28QA`. Preserve its model/graph resources and vendor privacy manifest. The dynamic iPhone framework requires Embed & Sign; it is not linked into the Watch app. The application’s signing does not grant ownership of the vendor’s binary or its models.
+
+An account key and explicit start/disclosure are required for a measurement. The SDK’s automatic Insights feature can transmit derived numeric readings to Presage and its LLM service; disabling diagnostic telemetry does not disable this feature. See [the integration and acceptance notes](../../docs/presage-integration.md). Binary compilation is separate from physiological/device validation and vendor data-use acceptance.

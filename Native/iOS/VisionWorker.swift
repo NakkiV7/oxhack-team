@@ -16,13 +16,28 @@ enum VisionState {
     }
 }
 
-final class VisionWorker: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
-    let capture = AVCaptureSession()
+protocol VisionCameraDriving: AnyObject {
+    var capture: AVCaptureSession { get }
+    func start(worker: VisionWorker, queue: DispatchQueue, captureID: UUID) throws
+    func stop()
+}
+
+final class VisionWorker: NSObject, @unchecked Sendable {
+    var capture: AVCaptureSession { cameraDriver.capture }
     var onFrame: ((PoseFrame, UIImage, UUID) -> Void)?
     var onState: ((VisionState, UUID) -> Void)?
+    var onPreviewState: ((VisionState, UUID) -> Void)?
+    /// At most one retained sample. Receiver must call done after processing or dropping it.
+    var onSample: ((CMSampleBuffer, UUID, @escaping () -> Void) -> Void)?
     private let queue = DispatchQueue(label: "spottr.vision", qos: .userInitiated)
     private let context = CIContext(options: [.cacheIntermediates: false])
-    private var detector: PoseDetector?
+    private let cameraDriver: any VisionCameraDriving
+    private let makePoseProcessor: () throws -> (UIImage, Double) throws -> PoseFrame
+    private var processPose: ((UIImage, Double) throws -> PoseFrame)?
+    private enum CameraMode: Equatable { case pose, preview }
+    private var cameraMode: CameraMode = .pose
+    private var sampleInFlight: UUID?
+    private var captureID: UUID?
     private var token: UUID?
     private var lastFrame = -Double.infinity
     private var generator: AVAssetImageGenerator?
@@ -43,60 +58,62 @@ final class VisionWorker: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate
     }
 
     init(cameraAvailable: @escaping () -> Bool = { AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front) != nil },
-         requestAccess: @escaping (@escaping (Bool) -> Void) -> Void = { AVCaptureDevice.requestAccess(for: .video, completionHandler: $0) }) {
+         requestAccess: @escaping (@escaping (Bool) -> Void) -> Void = { AVCaptureDevice.requestAccess(for: .video, completionHandler: $0) },
+         cameraDriver: (any VisionCameraDriving)? = nil,
+         makePoseProcessor: @escaping () throws -> (UIImage, Double) throws -> PoseFrame = {
+             let detector = try PoseDetector()
+             return { image, time in try detector.detect(image, at: time) }
+         }) {
         self.cameraAvailable = cameraAvailable
         self.requestAccess = requestAccess
+        self.cameraDriver = cameraDriver ?? FrontCameraDriver()
+        self.makePoseProcessor = makePoseProcessor
         super.init()
     }
 
-    func camera(token: UUID) {
+    func camera(token: UUID) { openCamera(token: token, mode: .pose) }
+    func frontPreview(token: UUID) { openCamera(token: token, mode: .preview) }
+
+    private func openCamera(token: UUID, mode: CameraMode) {
         setIntent(token)
-        guard cameraAvailable() else { onState?(.unavailable, token); return }
+        guard cameraAvailable() else { report(.unavailable, token: token, mode: mode); return }
         requestAccess { [weak self] granted in
             guard let self else { return }
             self.queue.async {
                 guard self.hasIntent(token) else { return }
-                self.closeVideo(); self.token = token
-                guard granted else { self.onState?(.denied, token); return }
-                self.startCamera(token: token)
+                self.closeVideo(); self.token = token; self.cameraMode = mode
+                guard granted else { self.report(.denied, token: token, mode: mode); return }
+                self.startCamera(token: token, mode: mode)
             }
         }
     }
 
-    private func startCamera(token: UUID) {
-        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front) else {
-            onState?(.unavailable, token); return
-        }
+    private func startCamera(token: UUID, mode: CameraMode) {
         do {
-            detector = try PoseDetector(); lastFrame = -.infinity
-            if capture.inputs.isEmpty {
-                let input = try AVCaptureDeviceInput(device: device)
-                let output = AVCaptureVideoDataOutput()
-                output.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
-                output.alwaysDiscardsLateVideoFrames = true
-                output.setSampleBufferDelegate(self, queue: queue)
-                capture.beginConfiguration(); capture.sessionPreset = .vga640x480
-                guard capture.canAddInput(input), capture.canAddOutput(output) else {
-                    capture.commitConfiguration(); onState?(.unavailable, token); return
-                }
-                capture.addInput(input); capture.addOutput(output)
-                if let connection = output.connection(with: .video) {
-                    if connection.isVideoRotationAngleSupported(90) { connection.videoRotationAngle = 90 }
-                    connection.automaticallyAdjustsVideoMirroring = false
-                    if connection.isVideoMirroringSupported { connection.isVideoMirrored = false }
-                }
-                capture.commitConfiguration()
-            }
+            processPose = mode == .pose ? try makePoseProcessor() : nil
+            lastFrame = -.infinity
             guard hasIntent(token) else { return }
-            capture.startRunning(); onState?(.camera, token)
-        } catch { onState?(.failed("Couldn’t start pose tracking. Try again."), token) }
+            let captureID = UUID()
+            self.captureID = captureID
+            try cameraDriver.start(worker: self, queue: queue, captureID: captureID)
+            report(.camera, token: token, mode: mode)
+        } catch {
+            captureID = nil
+            report(.failed(mode == .pose ? "Couldn’t start pose tracking. Try again." : "Couldn’t start the front camera. Try again."), token: token, mode: mode)
+        }
+    }
+
+    private func report(_ state: VisionState, token: UUID, mode: CameraMode) {
+        guard hasIntent(token) else { return }
+        if mode == .preview { onPreviewState?(state, token) }
+        else { onState?(state, token) }
     }
 
     func video(url: URL, token: UUID) {
         setIntent(token)
         queue.async {
             guard self.hasIntent(token) else { return }
-            self.capture.stopRunning(); self.closeVideo(); self.token = token
+            self.captureID = nil; self.cameraDriver.stop(); self.closeVideo(); self.token = token
             self.videoURL = url; self.scoped = url.startAccessingSecurityScopedResource()
             let asset = AVURLAsset(url: url)
             Task {
@@ -130,7 +147,7 @@ final class VisionWorker: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate
 
     private func beginVideo(token: UUID) {
         do {
-            detector = try PoseDetector(); onState?(.video, token); stepVideo(token: token)
+            processPose = try makePoseProcessor(); onState?(.video, token); stepVideo(token: token)
         } catch { onState?(.failed("Couldn’t load pose tracking."), token) }
     }
 
@@ -153,7 +170,7 @@ final class VisionWorker: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate
         }
     }
 
-    func pause() { setIntent(nil); queue.async { self.token = nil; self.capture.stopRunning() } }
+    func pause() { setIntent(nil); queue.async { self.token = nil; self.captureID = nil; self.cameraDriver.stop() } }
     func resume(token: UUID, source: InputSource) {
         setIntent(token)
         queue.async {
@@ -164,20 +181,33 @@ final class VisionWorker: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate
                 if let url = self.videoURL { self.video(url: url, token: token); return }
                 self.onState?(.failed("Choose a video to continue this set."), token); return
             }
-            self.startCamera(token: token)
+            self.startCamera(token: token, mode: self.cameraMode)
         }
     }
     func stop() {
         setIntent(nil)
-        queue.async { self.token = nil; self.capture.stopRunning(); self.closeVideo(); self.detector = nil }
+        queue.async { self.token = nil; self.captureID = nil; self.cameraDriver.stop(); self.closeVideo(); self.processPose = nil; self.cameraMode = .pose }
     }
     private func closeVideo() {
         generator?.cancelAllCGImageGeneration(); generator = nil
         if scoped { videoURL?.stopAccessingSecurityScopedResource() }
         videoURL = nil; scoped = false
     }
-    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        guard let token, hasIntent(token), let buffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+    /// Entry used by the per-start capture delegate on its serial queue.
+    func receiveCameraSample(_ sampleBuffer: CMSampleBuffer, captureID: UUID) {
+        guard self.captureID == captureID, let token, hasIntent(token),
+              let buffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        if let onSample, sampleInFlight == nil {
+            let sampleID = UUID()
+            sampleInFlight = sampleID
+            onSample(sampleBuffer, token) { [weak self] in
+                self?.queue.async { [weak self] in
+                    guard let self, sampleInFlight == sampleID else { return }
+                    sampleInFlight = nil
+                }
+            }
+        }
+        guard cameraMode == .pose, hasIntent(token) else { return }
         let time = CMSampleBufferGetPresentationTimeStamp(sampleBuffer).seconds
         guard time - lastFrame >= 0.1 else { return }
         lastFrame = time
@@ -187,8 +217,52 @@ final class VisionWorker: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate
         catch { onState?(.failed("Pose tracking stopped. Try the camera again."), token) }
     }
     private func process(_ image: UIImage, at time: Double, token: UUID) throws {
-        guard let detector else { return }
-        let frame = try detector.detect(image, at: time)
+        guard let processPose, hasIntent(token) else { return }
+        let frame = try processPose(image, time)
+        guard hasIntent(token) else { return }
         onFrame?(frame, image, token)
+    }
+}
+
+private final class FrontCameraDriver: VisionCameraDriving {
+    let capture = AVCaptureSession()
+    private var output: AVCaptureVideoDataOutput?
+    private var receiver: FrontCameraFrameDelegate?
+    func start(worker: VisionWorker, queue: DispatchQueue, captureID: UUID) throws {
+        if capture.inputs.isEmpty {
+            guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front) else {
+                throw CameraError.unavailable
+            }
+            let input = try AVCaptureDeviceInput(device: device)
+            let output = AVCaptureVideoDataOutput()
+            output.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
+            output.alwaysDiscardsLateVideoFrames = true
+            capture.beginConfiguration(); capture.sessionPreset = .vga640x480
+            defer { capture.commitConfiguration() }
+            guard capture.canAddInput(input), capture.canAddOutput(output) else { throw CameraError.unavailable }
+            capture.addInput(input); capture.addOutput(output)
+            self.output = output
+            if let connection = output.connection(with: .video) {
+                if connection.isVideoRotationAngleSupported(90) { connection.videoRotationAngle = 90 }
+                connection.automaticallyAdjustsVideoMirroring = false
+                if connection.isVideoMirroringSupported { connection.isVideoMirrored = false }
+            }
+        }
+        let receiver = FrontCameraFrameDelegate(worker: worker, captureID: captureID)
+        self.receiver = receiver
+        output?.setSampleBufferDelegate(receiver, queue: queue)
+        capture.startRunning()
+    }
+    func stop() { capture.stopRunning() }
+    private enum CameraError: Error { case unavailable }
+}
+
+
+private final class FrontCameraFrameDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
+    private weak var worker: VisionWorker?
+    private let captureID: UUID
+    init(worker: VisionWorker, captureID: UUID) { self.worker = worker; self.captureID = captureID }
+    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        worker?.receiveCameraSample(sampleBuffer, captureID: captureID)
     }
 }

@@ -132,13 +132,15 @@ final class CoachFlowTests: XCTestCase {
         app.tabBars.buttons["Coach"].tap()
         let coachContext = app.staticTexts["coach-goal-context"]
         XCTAssertTrue(coachContext.waitForExistence(timeout: 5))
-        XCTAssertEqual(coachContext.label, "Mobility · 4 days/week")
+        XCTAssertEqual(coachContext.label, "Training goals")
+        XCTAssertEqual(coachContext.value as? String, "Mobility. Weekly target: 4 days per week.")
         XCTAssertFalse(app.staticTexts["Thinking…"].exists)
         app.tabBars.buttons["Progress"].tap()
         let reportContext = app.staticTexts["coach-summary-goal-context"]
         for _ in 0..<5 where !reportContext.exists { app.swipeUp() }
         XCTAssertTrue(reportContext.waitForExistence(timeout: 3))
-        XCTAssertEqual(reportContext.label, "Mobility · 4 days/week")
+        XCTAssertEqual(reportContext.label, "Training goals")
+        XCTAssertEqual(reportContext.value as? String, "Mobility. Weekly target: 4 days per week.")
         XCTAssertFalse(app.staticTexts["Thinking…"].exists)
     }
 

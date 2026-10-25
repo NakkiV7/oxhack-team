@@ -2,13 +2,16 @@ import SwiftUI
 
 @main
 struct SpottrApp: App {
-    @State private var store = TrainingStore()
-    @State private var profileStore = NativeProfileStore()
+    @State private var workspace = PreviewWorkspace()
+    private var store: TrainingStore { workspace.store }
     @Environment(\.scenePhase) private var scenePhase
     var body: some Scene {
         WindowGroup {
-            SpottrRoot(store: store, profileStore: profileStore).preferredColorScheme(.light).tint(Palette.blue)
-                .task {
+            SpottrRoot(store: store, profileStore: workspace.profileStore, workspace: workspace)
+                .id(workspace.isPreview).preferredColorScheme(.light).tint(Palette.blue)
+                .task(id: ObjectIdentifier(store)) {
+                    let store = workspace.store
+                    store.setAppActive(scenePhase == .active)
                     defer { store.cancelCoaching() }
                     var publishSnapshot = true
                     while !Task.isCancelled {

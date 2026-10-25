@@ -15,7 +15,8 @@ final class ProfileDraftPersistence {
         reset()
         do {
             let profile = try LocalProfile(name: name, weeklyTarget: weeklyTarget, goals: goals,
-                                           baselineAbility: store.profile?.baselineAbility)
+                                           baselineAbility: store.profile?.baselineAbility,
+                                           bodyMeasurements: store.profile?.bodyMeasurements)
             guard store.loadError == nil else {
                 validationError = "Automatic saving is paused. Use Save profile to explicitly replace the unreadable profile."
                 return
@@ -35,7 +36,8 @@ final class ProfileDraftPersistence {
         reset()
         do {
             pending = try LocalProfile(name: name, weeklyTarget: weeklyTarget, goals: goals,
-                                       baselineAbility: store.profile?.baselineAbility)
+                                       baselineAbility: store.profile?.baselineAbility,
+                                       bodyMeasurements: store.profile?.bodyMeasurements)
             return persistPending()
         } catch { validationError = error.localizedDescription; return false }
     }
@@ -70,12 +72,14 @@ struct ProfileSettingsView: View {
     let resetHistory: () throws -> Void
     let rewards: NativeRewardsStore?
     let historyAvailable: Bool
+    let workspace: PreviewWorkspace?
     @Environment(\.dismiss) private var dismiss
     @State private var name: String
     @State private var weeklyTarget: Int
     @State private var goals: Set<TrainingAttribute>
     @State private var introduction: Introduction?
     @State private var rewardsPresented = false
+    @State private var measurementsPresented = false
     @State private var deletion: Deletion?
     @State private var exportURL: URL?
     @State private var message: String?
@@ -85,13 +89,14 @@ struct ProfileSettingsView: View {
 
     init(profileStore: NativeProfileStore, history: [SessionRecord],
          exportData: @escaping () throws -> URL, resetHistory: @escaping () throws -> Void,
-         rewards: NativeRewardsStore? = nil, historyAvailable: Bool = true) {
+         rewards: NativeRewardsStore? = nil, historyAvailable: Bool = true, workspace: PreviewWorkspace? = nil) {
         self.profileStore = profileStore
         self.history = history
         self.exportData = exportData
         self.resetHistory = resetHistory
         self.rewards = rewards
         self.historyAvailable = historyAvailable
+        self.workspace = workspace
         _persistence = State(initialValue: ProfileDraftPersistence(store: profileStore))
         _name = State(initialValue: profileStore.profile?.name ?? "")
         _weeklyTarget = State(initialValue: profileStore.profile?.weeklyTarget ?? 3)
@@ -126,10 +131,38 @@ struct ProfileSettingsView: View {
                     Text("Valid changes save automatically. You can also save now or retry a failed save.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
+                if let workspace {
+                    Section("TestFlight preview") {
+                        Toggle(isOn: Binding(get: { workspace.isPreview }, set: { enabled in
+                            editingName = false
+                            guard flushPendingSave() else { return }
+                            do { try workspace.setPreview(enabled) }
+                            catch { self.error = workspace.error ?? error.localizedDescription }
+                        })) {
+                            Label("TestFlight preview", systemImage: "sparkles")
+                        }.accessibilityIdentifier("testflight-preview-toggle")
+                        Text("Explore a prepared training week and sample insights. Your personal profile and workouts stay separate.")
+                            .font(.caption).foregroundStyle(.secondary)
+                        if let issue = workspace.error { Text(issue).font(.caption).foregroundStyle(Palette.red) }
+                    }
+                }
                 Section("Exercise lessons") {
                     NavigationLink { DemonstrationGuideView() } label: {
                         Label("Film your exercises", systemImage: "video")
                     }
+                }
+                Section("Optional measurements") {
+                    Button {
+                        editingName = false
+                        if flushPendingSave() { measurementsPresented = true }
+                    } label: {
+                        Label("Height, weight & BMI", systemImage: "scalemass")
+                    }.accessibilityIdentifier("profile-measurements").disabled(profileStore.loadError != nil)
+                    if profileStore.loadError != nil {
+                        Text("Save or reset the unreadable profile before changing measurements.").font(.caption).foregroundStyle(Palette.red)
+                    }
+                    Text("Private on this iPhone. Measurements don’t change challenges, XP or Coach requests.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Your training") {
                     if historyAvailable {
@@ -197,6 +230,10 @@ struct ProfileSettingsView: View {
             }
             .sheet(isPresented: $rewardsPresented) {
                 if let rewards { TrainingRewardsSettingsView(store: rewards) }
+            }
+            .sheet(isPresented: $measurementsPresented, onDismiss: reloadDraft) {
+                MeasurementsSettingsView(measurements: profileStore.profile?.bodyMeasurements,
+                                         persist: profileStore.saveMeasurements)
             }
             .alert(deletion == .profile ? "Reset local profile?" : "Delete local training history?",
                    isPresented: Binding(get: { deletion != nil }, set: { if !$0 { deletion = nil } })) {

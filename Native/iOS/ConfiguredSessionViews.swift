@@ -25,9 +25,7 @@ struct ConfiguredSessionView: View {
                 Image(systemName: "list.bullet.clipboard").frame(width: 44, height: 44)
             }.padding(.horizontal, 14).padding(.top, 8)
             if let run = store.configured, run.source == .camera, [.active, .paused, .rest].contains(run.phase) {
-                Toggle("Voice feedback", isOn: Binding(get: { store.voiceFeedbackEnabled }, set: { store.setVoiceFeedback($0) }))
-                    .font(.caption).accessibilityIdentifier("configured-voice-toggle")
-                    .padding(.horizontal, 24).padding(.vertical, 6)
+                WorkoutVoiceControls(store: store, identifier: "configured-voice-toggle")
             }
             if let run = store.configured {
                 switch run.phase {
@@ -135,7 +133,7 @@ private struct ConfiguredLiveSetView: View {
             }
             Button("Cancel", role: .cancel) { pendingInput = nil }
         } message: { Text("This set’s unsaved reps and active time will be discarded. Ended sets stay saved. Start the new input when you’re ready.") }
-        .sheet(isPresented: $pairingPresented) { SecondaryCameraSettingsView() }
+        .sheet(isPresented: $pairingPresented) { SecondaryCameraSettingsView(preview: store.previewMode) }
     }
     @ViewBuilder private func inputControl(_ run: ConfigurableSession) -> some View {
         if run.trackingExercise != nil {
@@ -157,6 +155,10 @@ private struct ConfiguredLiveSetView: View {
         }
     }
     private func preview(_ run: ConfigurableSession) -> some View {
+        Group {
+            if store.usingSecondaryCamera, let exercise = run.trackingExercise {
+                DualCameraPreview(store: store, exercise: exercise)
+            } else {
         ZStack {
             Palette.surface
             if run.source == .camera, run.hasStarted, run.phase == .active,
@@ -174,7 +176,10 @@ private struct ConfiguredLiveSetView: View {
             }
         }.frame(maxWidth: .infinity).frame(height: 250).clipShape(RoundedRectangle(cornerRadius: 23))
             .accessibilityLabel(run.current.entry.name)
+            }
+        }
     }
+
     private func status(_ run: ConfigurableSession) -> String {
         if !run.hasStarted {
             return run.source == .camera ? "Get your full body in view, then Start to open the selected camera. Preparation time is left out." : "Get into position, then start. Preparation time is left out."

@@ -3,12 +3,14 @@ import SwiftUI
 struct SpottrRoot: View {
     @Bindable var store: TrainingStore
     let profileStore: NativeProfileStore
+    let workspace: PreviewWorkspace?
     @State private var introductionPresented: Bool
     @State private var settingsPresented = false
 
-    init(store: TrainingStore, profileStore: NativeProfileStore) {
+    init(store: TrainingStore, profileStore: NativeProfileStore, workspace: PreviewWorkspace? = nil) {
         self.store = store
         self.profileStore = profileStore
+        self.workspace = workspace
         _introductionPresented = State(initialValue: profileStore.shouldShowIntroduction())
     }
 
@@ -20,9 +22,15 @@ struct SpottrRoot: View {
                 TabView {
                     TodayView(store: store, profileStore: profileStore) { settingsPresented = true }
                         .tabItem { Label("Today", systemImage: "house") }
-                    WeeklyProgressView(store: store, profile: profileStore.profile).tabItem { Label("Progress", systemImage: "chart.bar.xaxis") }
-                    SkillsView(store: store, profile: profileStore.profile).tabItem { Label("Skills", systemImage: "point.3.connected.trianglepath.dotted") }
-                    CoachView(store: store, profile: profileStore.profile).tabItem { Label("Coach", systemImage: "bubble") }
+                    Group {
+                        if workspace?.isPreview == true { DemoProgressView(store: store, profile: profileStore.profile) }
+                        else { WeeklyProgressView(store: store, profile: profileStore.profile) }
+                    }.tabItem { Label("Progress", systemImage: "chart.bar.xaxis") }
+                    SkillsView(store: store, profile: profileStore.profile, previewMode: workspace?.isPreview == true).tabItem { Label("Skills", systemImage: "point.3.connected.trianglepath.dotted") }
+                    Group {
+                        if workspace?.isPreview == true { DemoCoachView(store: store, profile: profileStore.profile) }
+                        else { CoachView(store: store, profile: profileStore.profile) }
+                    }.tabItem { Label("Coach", systemImage: "bubble") }
                 }
             }
         }
@@ -32,7 +40,7 @@ struct SpottrRoot: View {
         }) {
             ProfileSettingsView(profileStore: profileStore, history: store.history,
                                 exportData: store.exportHistory, resetHistory: store.clearHistory, rewards: store.rewards,
-                                historyAvailable: store.historyAvailable)
+                                historyAvailable: store.historyAvailable, workspace: workspace)
         }
         .foregroundStyle(Palette.ink)
     }

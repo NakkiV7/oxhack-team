@@ -376,8 +376,20 @@ private struct ReportMotionSignal: View {
     }
 }
 
+private func reportElapsedAxis(dates: [Date]) -> some AxisContent {
+    let ticks = dates.first == dates.last ? Array(dates.prefix(1)) : [dates.first, dates.last].compactMap { $0 }
+    return AxisMarks(values: ticks) { value in
+        AxisValueLabel(anchor: ticks.count == 1 ? .top : (value.index == 0 ? .topLeading : .topTrailing)) {
+            if let date = value.as(Date.self), let first = dates.first {
+                Text(clockText(date.timeIntervalSince(first))).monospacedDigit()
+            }
+        }
+    }
+}
+
 private struct ReportEnergyChart: View {
     let samples: [ActiveEnergy]
+    @ScaledMetric(relativeTo: .caption2) private var chartHeight = 130.0
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
             Chart {
@@ -387,13 +399,11 @@ private struct ReportEnergyChart: View {
                         .foregroundStyle(Palette.amber).symbolSize(24)
                 }
             }
-            .chartXAxis {
-                AxisMarks(values: .automatic(desiredCount: 3)) { _ in
-                    AxisValueLabel(format: .dateTime.hour().minute().second())
-                }
-            }
+            .chartXAxis { reportElapsedAxis(dates: samples.map(\.asOf)) }
+            .chartYAxis { AxisMarks(values: .automatic(desiredCount: 3)) }
             .chartLegend(.hidden)
-            .chartYAxisLabel("kcal").frame(height: 130)
+            .chartYAxisLabel("kcal").frame(height: chartHeight)
+            Text("Time from first observation (min:sec)").font(.caption2).foregroundStyle(.secondary)
             Text("Cumulative observations for this recording. Points are not added together; no new point means no new energy observation.")
                 .font(.caption2).foregroundStyle(.secondary)
         }.accessibilityIdentifier("watch-energy-timeline")
@@ -401,6 +411,7 @@ private struct ReportEnergyChart: View {
 }
 
 private struct ReportSignalChart: View {
+    @ScaledMetric(relativeTo: .caption2) private var chartHeight = 155.0
     let signal: ReportSignal
     let unit: String
     var color: Color = Palette.blue
@@ -412,14 +423,12 @@ private struct ReportSignalChart: View {
                 PointMark(x: .value("Time", sample.date), y: .value(unit, sample.value))
                     .foregroundStyle(color).symbolSize(16)
             }
-            .chartXAxis {
-                AxisMarks(values: .automatic(desiredCount: 3)) { _ in
-                    AxisValueLabel(format: .dateTime.hour().minute().second())
-                }
-            }
+            .chartXAxis { reportElapsedAxis(dates: signal.samples.map(\.date)) }
+            .chartYAxis { AxisMarks(values: .automatic(desiredCount: 3)) }
             .chartYAxisLabel(unit)
             .chartLegend(.hidden)
-            .frame(height: 155)
+            .frame(height: chartHeight)
+            Text("Time from first reading (min:sec)").font(.caption2).foregroundStyle(.secondary)
             if let span = signal.sampleSpan {
                 Text("\(signal.samples.count) \(signal.samples.count == 1 ? "reading" : "readings") · \(clockText(span)) first-to-last span · \(signal.gapCount) \(signal.gapCount == 1 ? "gap" : "gaps") over 12 sec")
                     .font(.caption2).foregroundStyle(.secondary)
