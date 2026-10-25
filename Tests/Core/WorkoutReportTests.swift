@@ -2,6 +2,75 @@ import Foundation
 import Testing
 @testable import SpottrCore
 
+private func highlightRecord(reps: Int, source: InputSource = .camera, exercise: Exercise = .squat,
+                             reason: StopReason = .voluntary, date: Double = 100) -> SessionRecord {
+    .init(id: UUID(), date: Date(timeIntervalSince1970: date), sets: [
+        .init(id: UUID(), exercise: exercise, number: 1, reps: reps, target: exercise.target,
+              activeSeconds: 10, source: source, reason: reason)
+    ])
+}
+
+@Test func highlightComparesSingleSetsOnlyWithinEarlierSameExerciseAndSource() {
+    let current = highlightRecord(reps: 7)
+    let prior = highlightRecord(reps: 5, date: 50)
+    let manual = highlightRecord(reps: 100, source: .manual, date: 40)
+    let other = highlightRecord(reps: 100, exercise: .pushup, date: 30)
+    let future = highlightRecord(reps: 100, date: 150)
+    let highlight = WorkoutReport(record: current).highlight(history: [future, manual, prior, other, prior, current])
+    #expect(highlight == .repBest(exerciseID: "squat", source: .camera, reps: 7, previousBest: 5))
+    #expect(WorkoutReport(record: prior).highlight(history: [current]) == .firstActivity)
+    #expect(WorkoutReport(record: highlightRecord(reps: 5)).highlight(history: [prior]) == .recorded)
+}
+
+@Test func firstActivityRequiresKnownHistoryAndActualNonReplayWork() throws {
+    let current = highlightRecord(reps: 3)
+    let empty = highlightRecord(reps: 0, date: 20)
+    let video = highlightRecord(reps: 20, source: .video, date: 30)
+    #expect(WorkoutReport(record: current).highlight(history: nil) == .recorded)
+    #expect(WorkoutReport(record: current).highlight(history: [empty, video, current]) == .firstActivity)
+    #expect(WorkoutReport(record: video).highlight(history: []) == .replay)
+    #expect(WorkoutReport(record: empty).highlight(history: []) == .noActivity)
+    let hold = try LoggedWorkout.make(exerciseID: "plank", count: 20, sets: 1, date: Date(timeIntervalSince1970: 50))
+    #expect(WorkoutReport(record: hold).highlight(history: []) == .firstActivity)
+    #expect(WorkoutReport(record: current).highlight(history: [hold]) == .recorded)
+    let future = highlightRecord(reps: 3, date: Date().addingTimeInterval(3600).timeIntervalSince1970)
+    #expect(WorkoutReport(record: future).highlight(history: []) == .recorded)
+}
+
+@Test func recordedBestUsesTheLargestCurrentSetRatherThanTotalsOrTheFirstCandidate() {
+    let first = highlightRecord(reps: 7)
+    let larger = highlightRecord(reps: 9)
+    let record = SessionRecord(id: first.id, date: first.date, sets: first.sets + larger.sets + larger.sets)
+    let prior = highlightRecord(reps: 5, date: 50)
+    #expect(WorkoutReport(record: record).highlight(history: [prior]) == .repBest(exerciseID: "squat", source: .camera, reps: 9, previousBest: 5))
+}
+
+@Test(arguments: [StopReason.discomfort, .failure, .form])
+func difficultOrPainfulSessionsNeverReceiveAMilestone(reason: StopReason) {
+    let current = highlightRecord(reps: 20, reason: reason)
+    let prior = highlightRecord(reps: 5, date: 20)
+    let expected: SessionHighlight = reason == .discomfort ? .discomfort : .difficult
+    #expect(WorkoutReport(record: current).highlight(history: [prior]) == expected)
+    #expect(WorkoutReport(record: highlightRecord(reps: 0, reason: reason)).highlight(history: []) == expected)
+}
+
+@Test func signalCoverageDescribesUniqueTimestampSpanAndGapsWithoutInventingCompleteness() {
+    let id = UUID(), start = Date(timeIntervalSince1970: 100)
+    let telemetry = [0.0, 0, 12, 25].map { offset in
+        WatchTelemetry(sessionID: id, sentAt: start.addingTimeInterval(offset),
+                       heartRate: .init(value: 120, date: start.addingTimeInterval(offset)),
+                       accelerationG: nil, rotationRadiansPerSecond: nil)
+    }
+    let signal = WorkoutReport(record: .init(id: id, date: start, sets: [], telemetry: telemetry)).heartRate
+    #expect(signal.samples.count == 3)
+    #expect(signal.sampleSpan == 25)
+    #expect(signal.gapCount == 1)
+    let single = WorkoutReport(record: .init(id: id, date: start, sets: [], telemetry: Array(telemetry.prefix(1)))).heartRate
+    #expect(single.sampleSpan == 0 && single.gapCount == 0)
+    let missing = WorkoutReport(record: .init(id: id, date: start, sets: [])).heartRate
+    #expect(missing.sampleSpan == nil && missing.gapCount == 0)
+}
+
 @Test func reportProjectsOnlyObservedRestAndTotalsItWithoutDuplicatingSets() {
     let first = SetRecord(id: UUID(), exercise: .squat, number: 1, reps: 4, target: 12,
                           activeSeconds: 20, source: .camera, reason: .voluntary)

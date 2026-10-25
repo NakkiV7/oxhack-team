@@ -24,7 +24,7 @@ struct WeeklyProgressView: View {
                         Text("Sets by day").font(.caption.weight(.semibold))
                         Chart(week.days) { day in
                             BarMark(x: .value("Day", day.date, unit: .day), y: .value("Sets", day.setCount), width: .ratio(0.5))
-                                .foregroundStyle(Palette.ink).cornerRadius(4)
+                                .foregroundStyle(Palette.blue).cornerRadius(4)
                         }
                         .chartXAxis {
                             AxisMarks(values: .stride(by: .day)) { _ in
@@ -48,7 +48,7 @@ struct WeeklyProgressView: View {
                         Text("Session reports").font(.headline)
                         ForEach(store.history) { record in
                             NavigationLink {
-                                SessionReportView(record: record, profile: profile)
+                                SessionReportView(record: record, profile: profile, history: store.history)
                             } label: {
                                 ReportSessionCard(report: WorkoutReport(record: record))
                             }
@@ -65,14 +65,14 @@ struct WeeklyProgressView: View {
                                     Text(category.category.rawValue).font(.subheadline.weight(.medium))
                                     Spacer()
                                     VStack(alignment: .trailing, spacing: 4) {
-                                        Text("\(category.setCount) \(category.setCount == 1 ? "set" : "sets") · \(category.reps) reps")
+                                        Text("\(category.setCount) \(category.setCount == 1 ? "set" : "sets") · \(category.reps) \(category.reps == 1 ? "rep" : "reps")")
                                         if category.holdSeconds > 0 { Text("\(Int(category.holdSeconds)) sec holds") }
                                     }.font(.caption).foregroundStyle(.secondary)
                                 }
                             }
                         }.padding(20).background(Palette.surface, in: RoundedRectangle(cornerRadius: 22))
                     } else if !store.history.isEmpty {
-                        Text("No sessions recorded this week.").font(.subheadline).foregroundStyle(.secondary)
+                        Text("No completed sets recorded this week.").font(.subheadline).foregroundStyle(.secondary)
                     }
                 }.padding(24)
             }
@@ -91,7 +91,7 @@ private struct ReportSessionCard: View {
                 Spacer()
                 Image(systemName: "arrow.up.right").font(.caption)
             }
-            Text("\(report.setCount) \(report.setCount == 1 ? "set" : "sets") · \(report.reps) reps").font(.title3.weight(.semibold))
+            Text("\(report.setCount) \(report.setCount == 1 ? "set" : "sets") · \(report.reps) \(report.reps == 1 ? "rep" : "reps")").font(.title3.weight(.semibold))
             HStack {
                 Text(report.date.formatted(date: .abbreviated, time: .shortened))
                 Spacer()
@@ -110,67 +110,95 @@ private struct ReportSessionCard: View {
 struct SessionReportView: View {
     let record: SessionRecord
     let profile: LocalProfile?
-    init(record: SessionRecord, profile: LocalProfile? = nil) { self.record = record; self.profile = profile }
+    let history: [SessionRecord]?
+    init(record: SessionRecord, profile: LocalProfile? = nil, history: [SessionRecord]? = nil) {
+        self.record = record; self.profile = profile; self.history = history
+    }
     var body: some View {
         let report = WorkoutReport(record: record)
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: 7) {
-                    Text(report.category.rawValue).font(.system(size: 30, weight: .bold)).tracking(-0.8)
+                    Text(report.sets.isEmpty && !record.skippedSets.isEmpty ? "Session check-in" : report.category.rawValue).font(.system(size: 30, weight: .bold)).tracking(-0.8)
                     Text(record.date.formatted(date: .long, time: .shortened)).font(.caption).foregroundStyle(.secondary)
                 }
-                HStack {
-                    Metric(value: "\(report.setCount)", title: "Sets", symbol: "square.3.layers.3d")
-                    Metric(value: "\(report.reps)", title: "Reps", symbol: "repeat")
-                    Metric(value: clockText(report.activeSeconds), title: "Recorded time", symbol: "clock")
+                HStack(alignment: .top, spacing: 16) {
+                    ReportTotal(value: "\(report.reps)", title: "Reps")
+                    if report.holdSeconds > 0 {
+                        ReportTotal(value: "\(Int(report.holdSeconds))", title: "Hold seconds")
+                    }
+                    ReportTotal(value: "\(report.setCount)", title: "Sets")
                 }
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Your sets").font(.headline)
-                    ForEach(Array(report.sets.enumerated()), id: \.element.id) { index, set in
-                        VStack(alignment: .leading, spacing: 9) {
-                            HStack(alignment: .top, spacing: 12) {
-                                if let entry = ExerciseCatalog.find(set.exerciseID) {
-                                    Image(entry.art).resizable().scaledToFit().frame(width: 45, height: 48).accessibilityHidden(true)
+                Label("\(clockText(report.activeSeconds)) recorded time", systemImage: "clock").font(.subheadline).foregroundStyle(.secondary)
+                ReportHighlightCard(highlight: report.highlight(history: history))
+                if !report.sets.isEmpty {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Your sets").font(.headline)
+                        ForEach(Array(report.sets.enumerated()), id: \.element.id) { index, set in
+                            VStack(alignment: .leading, spacing: 9) {
+                                HStack(alignment: .top, spacing: 12) {
+                                    if let entry = ExerciseCatalog.find(set.exerciseID) {
+                                        Image(entry.art).resizable().scaledToFit().frame(width: 52, height: 60).accessibilityHidden(true)
+                                    }
+                                    VStack(alignment: .leading, spacing: 5) {
+                                        Text(set.exerciseName).font(.headline)
+                                        Text("Set \(index + 1)").font(.caption).foregroundStyle(.secondary)
+                                        ReportSourceBadge(source: set.source, origin: set.quantityOrigin)
+                                    }
+                                    Spacer(minLength: 0)
+                                    Text(set.quantityText).font(.title2.weight(.semibold)).monospacedDigit()
+                                        .fixedSize(horizontal: false, vertical: true)
                                 }
-                                VStack(alignment: .leading, spacing: 5) {
-                                    Text("\(index + 1). \(set.exerciseName)").font(.subheadline.weight(.semibold))
-                                    Text(set.quantityText).font(.subheadline).monospacedDigit()
+                                Text(set.reason.title).font(.caption)
+                                    .foregroundStyle(set.reason == .discomfort ? Palette.red : ([StopReason.form, .failure].contains(set.reason) ? Palette.amber : Palette.muted))
+                                if let reserve = set.reserve {
+                                    Text("\(reserve == 3 ? "3+" : "\(reserve)") reps in reserve").font(.caption).foregroundStyle(.secondary)
                                 }
-                                Spacer(minLength: 0)
-                                ReportSourceBadge(source: set.source, origin: set.quantityOrigin)
+                                if set.averageRepSeconds != nil || set.restSecondsBefore != nil {
+                                    DisclosureGroup("Tempo & rest") {
+                                        if let average = set.averageRepSeconds {
+                                            Text("\(average, format: .number.precision(.fractionLength(1))) sec per recorded rep")
+                                        }
+                                        if let rest = set.restSecondsBefore {
+                                            Text("\(rest, format: .number.precision(.fractionLength(0...1))) sec rest before this set")
+                                        }
+                                    }.font(.caption).foregroundStyle(.secondary)
+                                }
                             }
-                            if let average = set.averageRepSeconds {
-                                Text("Tempo · \(average, format: .number.precision(.fractionLength(1))) sec per rep")
+                            if index < report.setCount - 1 { Divider() }
+                        }
+                    }.padding(20).background(Palette.surface, in: RoundedRectangle(cornerRadius: 22))
+                }
+                if !record.skippedSets.isEmpty {
+                    VStack(alignment: .leading, spacing: 14) {
+                        Text("Skipped sets").font(.headline)
+                        Text("Planned steps you chose to skip. These are not completed sets and do not add reps, active time or XP.")
+                            .font(.caption).foregroundStyle(.secondary)
+                        ForEach(record.skippedSets) { skipped in
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(ExerciseCatalog.find(skipped.exerciseID)?.name ?? skipped.exerciseID).font(.subheadline.weight(.semibold))
+                                Text("Planned set \(skipped.number) · target \(skipped.target) \(skipped.unit == .reps ? (skipped.target == 1 ? "rep" : "reps") : "sec")")
                                     .font(.caption).foregroundStyle(.secondary)
-                            }
-                            if let rest = set.restSecondsBefore {
-                                Text("Rest before · \(rest, format: .number.precision(.fractionLength(0...1))) sec")
+                                ReportSourceBadge(source: skipped.source)
+                                Text("Skipped by choice. Missing entries or observations do not prove no physical exercise occurred.")
                                     .font(.caption).foregroundStyle(.secondary)
-                            }
-                            Text(set.reason.title).font(.caption).foregroundStyle(.secondary)
-                            if let reserve = set.reserve {
-                                Text("\(reserve == 3 ? "3+" : "\(reserve)") reps in reserve").font(.caption).foregroundStyle(.secondary)
                             }
                         }
-                        if index < report.setCount - 1 { Divider() }
-                    }
-                    Text("Recorded time includes tracked sets, live manual set timers and logged hold durations. Bulk manual rep entries have no recorded duration.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }.padding(20).background(Palette.surface, in: RoundedRectangle(cornerRadius: 22))
-                CoachSummaryCard(record: record, profile: profile)
-                CloudSyncCard(record: record)
+                        Text("Skip details stay in local history and exports.").font(.caption).foregroundStyle(.secondary)
+                    }.padding(20).background(Palette.surface, in: RoundedRectangle(cornerRadius: 22))
+                        .accessibilityIdentifier("session-skipped-sets")
+                }
+
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Watch heart rate").font(.headline)
                     if let average = report.heartRate.average {
                         HStack {
-                            Metric(value: "\(Int(average.rounded())) bpm", title: "Average heart rate", symbol: "heart")
+                            Metric(value: "\(Int(average.rounded())) bpm", title: "Average heart rate", symbol: "heart", symbolColor: Palette.red)
                             if let maximum = report.heartRate.maximum {
-                                Metric(value: "\(Int(maximum.rounded())) bpm", title: "Highest reading", symbol: "arrow.up")
+                                Metric(value: "\(Int(maximum.rounded())) bpm", title: "Highest reading", symbol: "arrow.up", symbolColor: Palette.red)
                             }
                         }
-                        ReportSignalChart(signal: report.heartRate, unit: "bpm")
-                        Text("\(report.heartRate.samples.count) distinct Watch readings. The average weights each recorded reading once.")
-                            .font(.caption).foregroundStyle(.secondary)
+                        ReportSignalChart(signal: report.heartRate, unit: "bpm", color: Palette.red)
                     } else {
                         Text("No Watch heart-rate readings recorded.").font(.subheadline).foregroundStyle(.secondary)
                     }
@@ -194,14 +222,92 @@ struct SessionReportView: View {
                     }
                     if report.acceleration.samples.isEmpty && report.rotation.samples.isEmpty {
                         Text("No Watch motion samples recorded.").font(.subheadline).foregroundStyle(.secondary)
-                    } else {
-                        Text("Watch wrist magnitudes describe recorded movement; they do not establish exercise form.")
-                            .font(.caption).foregroundStyle(.secondary)
                     }
+                }
+                CoachSummaryCard(record: record, profile: profile)
+                DisclosureGroup("How this is recorded") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Camera counts are observations; manual reps are self-reported. Video results describe replayed footage.")
+                        Text("Recorded time includes tracked sets, live manual set timers and logged hold durations. Bulk manual rep entries have no recorded duration.")
+                        Text("Watch averages weight each distinct reading once. Wrist movement does not establish exercise form. Missing periods stay unknown; timestamps do not establish exact set boundaries.")
+                        Text("Count highlights compare earlier saved sets of the same exercise and source; they do not establish strength or fitness changes.")
+                    }.font(.caption).foregroundStyle(.secondary).padding(.top, 8)
+                }.font(.subheadline)
+                if record.setCount == 0, !record.skippedSets.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("Saved locally", systemImage: "iphone").font(.subheadline.weight(.semibold))
+                        Text("Skipped steps stay on this iPhone and in your history export. There are no completed sets to upload.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }.accessibilityIdentifier("skip-only-local-note")
+                } else {
+                    DisclosureGroup("Cloud sync") {
+                        CloudSyncCard(record: record).padding(.top, 8)
+                        if !record.skippedSets.isEmpty {
+                            Text("Cloud sync includes completed sets only. Skip details remain in local history and exports.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }.font(.subheadline)
                 }
             }.padding(24)
         }.background(.white)
             .navigationTitle("Session report").navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct ReportTotal: View {
+    let value: String
+    let title: String
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(value).font(.system(size: 44, weight: .semibold, design: .rounded)).monospacedDigit()
+                .lineLimit(1).minimumScaleFactor(0.6)
+            Text(title).font(.caption).foregroundStyle(.secondary)
+        }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct ReportHighlightCard: View {
+    let highlight: SessionHighlight
+    private var title: String {
+        switch highlight {
+        case .firstActivity: return "A starting point."
+        case .repBest: return "Your highest recorded set."
+        case .discomfort: return "Discomfort was recorded."
+        case .difficult: return "Review how it felt."
+        case .noActivity: return "No reps or holds recorded."
+        case .replay: return "Video review."
+        case .recorded: return "Your session, recorded."
+        }
+    }
+    private var detail: String {
+        switch highlight {
+        case .firstActivity: return "Your first non-video activity in the history saved on this iPhone."
+        case .repBest(let exerciseID, let source, let reps, let previous):
+            let name = ExerciseCatalog.find(exerciseID)?.name ?? "Exercise"
+            let label = source == .manual ? "Manual self-report" : "Camera"
+            return "\(name) · \(reps) reps · \(label). Earlier saved best for this exercise and source: \(previous) \(previous == 1 ? "rep" : "reps")."
+        case .discomfort: return "Give yourself time to recover. Your recorded work is below."
+        case .difficult: return "You recorded difficulty with form or completing a set. Your sets and feedback are below."
+        case .noActivity: return "Recorded time and any available sensor readings are shown below."
+        case .replay: return "These results describe recorded footage."
+        case .recorded: return "Review your work and how each set felt."
+        }
+    }
+    private var color: Color {
+        switch highlight {
+        case .firstActivity, .repBest: return Palette.green
+        case .discomfort: return Palette.red
+        case .difficult: return Palette.amber
+        default: return Palette.ink
+        }
+    }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(title).font(.headline).foregroundStyle(color)
+            Text(detail).font(.subheadline).foregroundStyle(.secondary)
+        }.frame(maxWidth: .infinity, alignment: .leading).padding(19)
+            .background(Palette.surface, in: RoundedRectangle(cornerRadius: 18))
+            .accessibilityIdentifier("session-highlight")
     }
 }
 
@@ -221,21 +327,24 @@ private struct ReportSourceBadge: View {
     }
     var body: some View {
         Text(title).font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(source == .camera ? Palette.blue : Palette.muted)
             .padding(.horizontal, 8).padding(.vertical, 5)
-            .background(.white, in: Capsule()).overlay(Capsule().stroke(Palette.ink.opacity(0.12)))
+            .background(source == .camera ? Palette.blue.opacity(0.07) : .white, in: Capsule())
+            .overlay(Capsule().stroke((source == .camera ? Palette.blue : Palette.muted).opacity(0.2)))
     }
 }
 
 private struct ReportSignalChart: View {
     let signal: ReportSignal
     let unit: String
+    var color: Color = Palette.blue
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
             Chart(signal.samples) { sample in
                 LineMark(x: .value("Time", sample.date), y: .value(unit, sample.value), series: .value("Segment", sample.segment))
-                    .foregroundStyle(Palette.ink).lineStyle(StrokeStyle(lineWidth: 1.5))
+                    .foregroundStyle(color).lineStyle(StrokeStyle(lineWidth: 1.5))
                 PointMark(x: .value("Time", sample.date), y: .value(unit, sample.value))
-                    .foregroundStyle(Palette.ink).symbolSize(16)
+                    .foregroundStyle(color).symbolSize(16)
             }
             .chartXAxis {
                 AxisMarks(values: .automatic(desiredCount: 3)) { _ in
@@ -245,7 +354,11 @@ private struct ReportSignalChart: View {
             .chartYAxisLabel(unit)
             .chartLegend(.hidden)
             .frame(height: 155)
-            Text("Measured timestamps · gaps over 12 seconds stay blank.")
+            if let span = signal.sampleSpan {
+                Text("\(signal.samples.count) \(signal.samples.count == 1 ? "reading" : "readings") · \(clockText(span)) first-to-last span · \(signal.gapCount) \(signal.gapCount == 1 ? "gap" : "gaps") over 12 sec")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+            Text("Gaps stay blank. Time between the first and last reading is not continuous coverage.")
                 .font(.caption2).foregroundStyle(.secondary)
         }
     }
