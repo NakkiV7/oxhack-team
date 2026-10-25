@@ -31,7 +31,8 @@ struct SpottrRoot: View {
             if profileStore.profile == nil { introductionPresented = profileStore.shouldShowIntroduction() }
         }) {
             ProfileSettingsView(profileStore: profileStore, history: store.history,
-                                exportData: store.exportHistory, resetHistory: store.clearHistory)
+                                exportData: store.exportHistory, resetHistory: store.clearHistory, rewards: store.rewards,
+                                historyAvailable: store.historyAvailable)
         }
         .foregroundStyle(Palette.ink)
     }
@@ -42,6 +43,7 @@ struct TodayView: View {
     let profileStore: NativeProfileStore
     let showSettings: () -> Void
     @State private var libraryPresented = false
+    @State private var rewardsPresented = false
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 25) {
@@ -100,6 +102,7 @@ struct TodayView: View {
                 if let error = store.error { Text(error).font(.caption).foregroundStyle(Palette.red) }
             }.padding(24)
         }.background(.white).sheet(isPresented: $libraryPresented) { ExerciseLibraryView(store: store) }
+            .sheet(isPresented: $rewardsPresented) { TrainingRewardsSettingsView(store: store.rewards) }
     }
 
     private var greeting: String {
@@ -109,24 +112,40 @@ struct TodayView: View {
 
     private var trainingRhythm: some View {
         TimelineView(.periodic(from: .now, by: 60)) { timeline in
-            let summary = StreakSummary(history: store.history, now: timeline.date)
-            VStack(alignment: .leading, spacing: 13) {
-                HStack(spacing: 24) {
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("\(summary.currentStreak) \(summary.currentStreak == 1 ? "day" : "days")").font(.title3.weight(.semibold))
-                        Text("Current streak").font(.caption).foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 5) {
-                        Text("\(summary.daysThisWeek) / \(profileStore.profile?.weeklyTarget ?? 3) days").font(.title3.weight(.semibold))
-                        Text("This week · your target").font(.caption).foregroundStyle(.secondary)
-                    }
+            let summary = StreakSummary(history: store.history, now: timeline.date, calendar: store.rewards.ledger.calendar)
+            VStack(alignment: .leading, spacing: 0) {
+                if let issue = store.rewards.loadError ?? (store.historyAvailable ? nil : "Your saved sessions couldn’t be read. Training rewards haven’t been changed.") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Training rewards unavailable").font(.headline)
+                        Text(issue).font(.caption).foregroundStyle(.secondary)
+                        if store.historyAvailable {
+                            Text("\(summary.daysThisWeek) / \(profileStore.profile?.weeklyTarget ?? 3) training days this week")
+                                .font(.caption)
+                        }
+                    }.padding(18)
+                } else {
+                    let rewards = store.rewards.summary(history: store.history, at: timeline.date)
+                    let progress = SkillProgress.evaluate(history: store.history, calendar: store.rewards.ledger.calendar)
+                    let baseXP = TrainingAttribute.allCases.reduce(0) { $0 + progress.points(for: $1) }
+                    let totalXP = store.rewards.totalXP(history: store.history)
+                    StreakCard(protectedStreak: rewards.protectedStreak, actualTrainingDays: rewards.actualTrainingDays,
+                               trainedToday: rewards.trainedToday, remainingFreezes: rewards.remainingFreezes,
+                               trainingDaysThisWeek: summary.daysThisWeek, weeklyTarget: profileStore.profile?.weeklyTarget ?? 3,
+                               baseXP: baseXP, bonusXP: max(0, totalXP - baseXP), totalXP: totalXP,
+                               onManage: { rewardsPresented = true })
                 }
                 if let profile = profileStore.profile {
-                    Text(TrainingAttribute.allCases.filter { profile.goals.contains($0) }.map(\.title).joined(separator: " · "))
-                        .font(.caption.weight(.medium)).foregroundStyle(.secondary)
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), alignment: .leading)], alignment: .leading, spacing: 9) {
+                        ForEach(TrainingAttribute.allCases.filter { profile.goals.contains($0) }, id: \.self) { goal in
+                            HStack(spacing: 7) {
+                                Image(goal.rawValue).resizable().scaledToFit().frame(width: 24, height: 24).accessibilityHidden(true)
+                                Text(goal.title).font(.caption.weight(.medium)).foregroundStyle(.secondary)
+                            }.accessibilityElement(children: .combine)
+                        }
+                    }.padding(.horizontal, 18).padding(.bottom, 18)
                 }
-            }.padding(18).background(Palette.surface, in: RoundedRectangle(cornerRadius: 18))
+            }.background(Palette.surface, in: RoundedRectangle(cornerRadius: 18))
+                .task(id: store.rewards.ledger.calendar.startOfDay(for: timeline.date)) { store.refreshRewards(at: timeline.date) }
         }
     }
 }

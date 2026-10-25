@@ -20,6 +20,7 @@ struct SpottrApp: App {
                 }
                 .onChange(of: scenePhase, initial: true) { _, phase in
                     store.setAppActive(phase == .active)
+                    if phase == .active { store.refreshRewards() }
                     if store.sessionPhase == .active,
                        phase == .background || (phase == .inactive && store.configured != nil) { store.pause() }
                 }
