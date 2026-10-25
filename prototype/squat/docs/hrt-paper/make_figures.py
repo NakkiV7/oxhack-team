@@ -81,6 +81,6 @@ if demo.exists():
     if rows and rows[0].get("threshold") is not None:
         a2.axhline(rows[0]["threshold"], color=ORANGE, ls="--", lw=0.8, label=f"cue threshold {rows[0]['threshold']}")
     a2.set(xlabel="counted rep", ylabel="forecast p", ylim=(0, 1)); a2.legend(fontsize=7, loc="upper left")
-    a2.set_xticks(xs)
+    if len(xs) <= 12: a2.set_xticks(xs)
     fig.tight_layout(); fig.savefig(HERE / f"fig_timeline-{KEY}.pdf"); plt.close(fig)
 print("figures written:", sorted(p.name for p in HERE.glob("fig_*.pdf")))

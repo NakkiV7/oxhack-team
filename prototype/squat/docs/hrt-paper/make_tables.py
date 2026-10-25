@@ -49,13 +49,15 @@ if dev:
         "BootN": dev["bootstrap"]["resamples"], "CalibrationStatus": dev["reliability"]["status"],
         "MAERidge": f(R["regression"]["mae"]["ridgeTempo"], 2), "MAELast": f(R["regression"]["mae"]["lastValue"], 2), "MAEMedian": f(R["regression"]["mae"]["rollingMedian"], 2),
     })
+if dev:
+    bs = dev["bootstrap"]["intervals"]
+    macros.update({"CIRecallDriftHeur": ci(bs.get("recallDriftMinusHeuristic")), "CIFADriftHeur": ci(bs.get("falseAlertsDriftMinusHeuristic")),
+                   "DeployedPolicy": "the drift rule" if (R.get("modelRun") and json.loads((HERE / f"../../hrt/model-{KEY}.json").read_text()).get("policy", {}).get("kind") == "drift") else "the logistic threshold (silent at the budget)"})
 if dev and dev["policies"].get("drift"):
-    dr = dev["policies"]["drift"]; bs = dev["bootstrap"]["intervals"]
-    deployed = json.loads((HERE / f"../../hrt/model-{KEY}.json").read_text()).get("policy", {}).get("kind") if R.get("modelRun") else None
+    dr = dev["policies"]["drift"]; macros["DriftRuleFound"] = "yes"
     macros.update({"DriftTheta": f(dr["theta"], 2), "RecallDrift": pct(dr["recall"]), "FADrift": f(dr["falseAlertsPerSet"], 2), "AlertsDrift": dr["alerts"],
                    "LeadDrift": f(dr["medianLeadSecs"], 1) if dr["medianLeadSecs"] is not None else "--", "LeadDriftReps": dr["medianLeadReps"] if dr["medianLeadReps"] is not None else "--",
-                   "CIRecallDriftHeur": ci(bs.get("recallDriftMinusHeuristic")), "CIFADriftHeur": ci(bs.get("falseAlertsDriftMinusHeuristic")),
-                   "DeployedPolicy": "the drift rule" if deployed == "drift" else "the logistic threshold"})
+                   })
 if dev and dev["ablations"].get("history"):
     h = dev["ablations"]["history"]
     macros.update({"BrierHist": f(h["brier"]), "LogLossHist": f(h["logLoss"]), "RecallHist": pct(h["recallAtBudget"])})
