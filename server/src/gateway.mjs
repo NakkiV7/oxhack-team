@@ -8,6 +8,7 @@ import { GatewayError } from './errors.mjs';
 import { Pool } from 'pg';
 import { createTigerStore } from './tiger.mjs';
 import { workoutRequest, workoutIDContract } from './tiger-contracts.mjs';
+import { configuredVoices, createVoiceService, voiceRequest } from './voice.mjs';
 
 async function readInput(request, schema = coachRequest, maxBytes = 65_536) {
   const chunks = [];
@@ -68,7 +69,8 @@ function health(env) {
       tiger: { configured: Boolean(env.TIGER_DATABASE_URL && workoutIDContract.safeParse(env.SPOTTR_INSTALLATION_ID).success), adapterImplemented: true },
       snowflake: { configured: Boolean(env.SNOWFLAKE_ACCOUNT && env.SNOWFLAKE_TOKEN), adapterImplemented: true },
       presage: { configured: Boolean(env.PRESAGE_API_KEY), adapterImplemented: false },
-      vultr: { configured: Boolean(env.VULTR_API_KEY), adapterImplemented: false }
+      vultr: { configured: Boolean(env.VULTR_API_KEY), adapterImplemented: false },
+      elevenlabs: { configured: configuredVoices(env).length > 0, adapterImplemented: true }
     }
   };
 }
@@ -136,17 +138,33 @@ async function generate({ env, fetchImpl, data, schema, path, signal, requestedA
 
 export function createGateway({ env = process.env, fetchImpl = fetch, pool, now = Date.now } = {}) {
   const demo = ownerDemo(env, now);
+  const voice = createVoiceService({ env, fetchImpl, now });
   const database = pool ?? (env.TIGER_DATABASE_URL ? new Pool({ connectionString: env.TIGER_DATABASE_URL, max: 3, connectionTimeoutMillis: 5000, idleTimeoutMillis: 10000, statement_timeout: 10000, query_timeout: 12000 }) : null);
   database?.on?.('error', () => {});
   const server = createServer(demo ? { headersTimeout: 5000, requestTimeout: 10000, connectionsCheckingInterval: 1000, maxHeaderSize: 8192 } : {}, async (request, response) => {
     try {
       if (request.url === '/health' && request.method === 'GET') return send(response, 200, health(env));
       const workoutPath = request.url === '/v1/workouts' || request.url.startsWith('/v1/workouts/');
-      if (!workoutPath && !['/v1/chat', '/v1/summary', '/v1/proposal', '/v1/week-proposal'].includes(request.url)) throw new GatewayError(404, 'not_found', 'Endpoint not found.');
-      const requiredMethod = workoutPath && request.url !== '/v1/workouts' ? 'GET' : 'POST';
+      const voicePath = request.url === '/v1/voice' || request.url === '/v1/voices';
+      if (!workoutPath && !voicePath && !['/v1/chat', '/v1/summary', '/v1/proposal', '/v1/week-proposal'].includes(request.url)) throw new GatewayError(404, 'not_found', 'Endpoint not found.');
+      const requiredMethod = request.url === '/v1/voices' || workoutPath && request.url !== '/v1/workouts' ? 'GET' : 'POST';
       if (request.method !== requiredMethod) throw new GatewayError(405, 'method_not_allowed', `Use ${requiredMethod} for this endpoint.`);
       if (!env.SPOTTR_GATEWAY_TOKEN) throw new GatewayError(503, 'missing_configuration', 'SPOTTR_GATEWAY_TOKEN must be configured on the server.');
       if (!authorized(request.headers.authorization, env.SPOTTR_GATEWAY_TOKEN)) throw new GatewayError(401, 'unauthorized', 'A valid gateway bearer token is required.');
+      if (voicePath) {
+        if (demo && now() >= demo.expiresAt) throw new GatewayError(503, 'demo_expired', 'The owner demo session has expired.');
+        if (requiredMethod === 'GET') return send(response, 200, { voices: configuredVoices(env), availability: 'configured_not_verified' });
+        if (!request.headers['content-type']?.toLowerCase().startsWith('application/json')) throw new GatewayError(415, 'unsupported_media_type', 'Use application/json.');
+        const data = await readInput(request, voiceRequest, 8192);
+        const disconnected = new AbortController();
+        const cancel = () => { if (!response.writableEnded) disconnected.abort(); };
+        response.once('close', cancel);
+        try {
+          const audio = await voice.synthesize(data, { reserve: demo ? () => demo.reserve() : undefined, demoExpiresAt: demo?.expiresAt, signal: disconnected.signal });
+          if (!response.destroyed) return send(response, 200, { ...data, mimeType: 'audio/mpeg', audioBase64: audio.toString('base64') });
+          return;
+        } finally { response.removeListener('close', cancel); }
+      }
       if (workoutPath) {
         if (!database || !env.TIGER_DATABASE_URL || !workoutIDContract.safeParse(env.SPOTTR_INSTALLATION_ID).success) throw new GatewayError(503, 'missing_configuration', 'TIGER_DATABASE_URL and SPOTTR_INSTALLATION_ID must be configured on the server.');
         const store = createTigerStore({ pool: database, installationID: env.SPOTTR_INSTALLATION_ID });
@@ -204,6 +222,7 @@ export function createGateway({ env = process.env, fetchImpl = fetch, pool, now 
       if (!parsed.success) throw new GatewayError(502, 'invalid_provider_response', 'The coaching response failed validation.');
       return send(response, 200, parsed.data);
     } catch (error) {
+      if (response.destroyed) return;
       const failure = error instanceof GatewayError ? error : new GatewayError(502, 'provider_unavailable', 'The coaching provider is unavailable.');
       return send(response, failure.status, { error: { code: failure.code, message: failure.message } });
     }
