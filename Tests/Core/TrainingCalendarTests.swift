@@ -51,3 +51,16 @@ private func camera(_ day: Int, reps: Int, durations: [Double]? = nil, source: I
     #expect(week.averageRepSeconds.now == 2 && week.averageRepSeconds.before == 2)
     #expect(week.thisWeek.start == calendar().startOfDay(for: on(0)))
 }
+
+@Test func sampleHistoryFillsPastDaysButNeverTodayOrARealTrainingDay() throws {
+    let now = on(6, hour: 12)                                           // Sunday 25 October 2026
+    let real = camera(3, reps: 10)
+    let sample = TrainingCalendar.sampleHistory(now: now, excluding: [real], calendar: calendar())
+    let days = TrainingCalendar.days(history: sample, calendar: calendar())
+    let today = calendar().startOfDay(for: now)
+    #expect(days[today] == nil && days[calendar().startOfDay(for: real.date)] == nil)
+    #expect((20...35).contains(days.count))                             // about five days a week over six weeks
+    #expect(days.values.contains { $0.kind == .camera } && days.values.contains { $0.kind == .manual })
+    #expect(TrainingCalendar.streaks(trainingDays: Set(days.keys), today: now, calendar: calendar()).current == 2)   // Thursday's real day sits outside the sample
+    #expect(TrainingCalendar.sampleHistory(now: now, excluding: [real], calendar: calendar()) == sample)   // the same on every render
+}

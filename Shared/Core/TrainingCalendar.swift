@@ -84,6 +84,46 @@ public enum TrainingCalendar {
         return (current, max(current, longest))
     }
 
+    /// Sample training for presentations: about five days a week over the last six weeks, ending yesterday, with camera
+    /// sessions of squats and push-ups and logged accessory work. The same day always gets the same sample, today never gets
+    /// one, and a day with real training keeps only its own sessions.
+    public static func sampleHistory(now: Date, excluding history: [SessionRecord] = [], calendar: Calendar = .current) -> [SessionRecord] {
+        let today = calendar.startOfDay(for: now)
+        let real = Set(history.map { calendar.startOfDay(for: $0.date) })
+        // A fixed scramble of the day number into 0..<100, so the pattern looks irregular but never changes between renders.
+        func roll(_ day: Int, _ salt: Int) -> Int { Int(UInt64(truncatingIfNeeded: day &* 31 &+ salt) &* 2_654_435_761 % 100) }
+        func id(_ day: Int, _ index: Int) -> UUID { UUID(uuidString: String(format: "5A3B1E00-0000-4000-8000-%012ld", day * 100 + index))! }
+        return (1...41).compactMap { offset -> SessionRecord? in
+            guard let day = calendar.date(byAdding: .day, value: -offset, to: today), !real.contains(day) else { return nil }
+            let n = calendar.ordinality(of: .day, in: .era, for: day) ?? offset
+            guard offset <= 5 || roll(n, 1) < 62 else { return nil }   // the last five days are a streak
+            let start = calendar.date(bySettingHour: roll(n, 2) < 50 ? 7 : 18, minute: roll(n, 3) < 50 ? 15 : 40, second: 0, of: day) ?? day
+            let growth = (41 - offset) / 10   // a little stronger each week
+            if roll(n, 4) < 68 {
+                let exercises: [Exercise] = roll(n, 5) < 40 ? [.squat, .pushup] : [roll(n, 6) < 55 ? .squat : .pushup]
+                var sets: [SetRecord] = []
+                for exercise in exercises {
+                    for number in 1...3 {
+                        let reps = min(exercise.target + 3, exercise.target - 4 + growth + roll(n, 10 + sets.count) % 3)
+                        let durations = (0..<reps).map { 2.1 + Double(roll(n, 40 + $0 + sets.count * 20) % 60) / 100 }
+                        sets.append(SetRecord(id: id(n, sets.count), exercise: exercise, number: number, reps: reps, target: exercise.target,
+                                              activeSeconds: durations.reduce(0, +), source: .camera, reserve: 2,
+                                              reason: reps >= exercise.target ? .target : .voluntary, repDurations: durations,
+                                              restSecondsBefore: number == 1 ? nil : 75))
+                    }
+                }
+                return SessionRecord(id: id(n, 99), date: start, sets: sets)
+            }
+            let options = ["gluteBridge", "wallPushup", "kneePushup"]
+            guard let entry = ExerciseCatalog.find(options[roll(n, 7) % options.count]) else { return nil }
+            let logs = (1...3).map { number in
+                LoggedSet(id: id(n, 10 + number), exerciseID: entry.id, reps: entry.goal - 2 + growth, seconds: 0, source: .manual,
+                          reason: .voluntary, number: number, target: entry.goal)
+            }
+            return SessionRecord(id: id(n, 99), date: start, sets: [], loggedSets: logs)
+        }
+    }
+
     /// This calendar week against the week before.
     public static func weekComparison(history: [SessionRecord], now: Date, calendar: Calendar = .current) -> WeekComparison {
         let week = calendar.dateInterval(of: .weekOfYear, for: now) ?? DateInterval(start: calendar.startOfDay(for: now), duration: 7 * 86_400)

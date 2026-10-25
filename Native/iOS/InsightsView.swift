@@ -44,10 +44,13 @@ private struct CalendarSection: View {
     let profile: LocalProfile?
     @State private var month = Date.now
     @State private var selected: Date? = Calendar.current.startOfDay(for: .now)
+    /// Sample days keep the calendar full for presentations; real training always shows as itself.
+    @AppStorage("insights.sampleCalendar") private var sampleDays = true
     private let calendar = Calendar.current
 
     var body: some View {
-        let days = TrainingCalendar.days(history: store.history, calendar: calendar)
+        let history = sampleDays ? store.history + TrainingCalendar.sampleHistory(now: .now, excluding: store.history, calendar: calendar) : store.history
+        let days = TrainingCalendar.days(history: history, calendar: calendar)
         let streaks = TrainingCalendar.streaks(trainingDays: Set(days.keys), today: .now, calendar: calendar)
         let monthDays = days.values.filter { calendar.isDate($0.date, equalTo: month, toGranularity: .month) }
         VStack(alignment: .leading, spacing: 18) {
@@ -78,7 +81,7 @@ private struct CalendarSection: View {
                 }.font(.caption).foregroundStyle(.secondary)
             }.padding(18).background(Palette.surface, in: RoundedRectangle(cornerRadius: 25))
 
-            if let selected { DayDetail(date: selected, records: store.history.filter { calendar.isDate($0.date, inSameDayAs: selected) }, profile: profile, history: store.history) }
+            if let selected { DayDetail(date: selected, records: history.filter { calendar.isDate($0.date, inSameDayAs: selected) }, profile: profile, history: history) }
 
             HStack(spacing: 10) {
                 Tile(value: "\(streaks.current)", unit: streaks.current == 1 ? "day" : "days", title: "Current streak")
