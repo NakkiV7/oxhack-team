@@ -5,7 +5,7 @@ import XCTest
 @MainActor
 final class DemoVoicePlaybackTests: XCTestCase {
     func testBundledBankExistsAndDecodesWithoutPlayingAudio() throws {
-        for name in ["positive-1", "positive-2", "slower-1", "slower-2", "recovery"] {
+        for name in ["positive-1", "positive-2", "positive-3", "positive-4", "slower-1", "slower-2", "slower-3", "recovery", "recovery-2"] {
             let url = try XCTUnwrap(Bundle.main.url(forResource: name, withExtension: "mp3", subdirectory: "DemoVoice/arnold"))
             let player = try AVAudioPlayer(contentsOf: url)
             XCTAssertEqual(player.format.sampleRate, 22_050)
@@ -54,6 +54,21 @@ final class DemoVoicePlaybackTests: XCTestCase {
         playback.speak(stop)
         XCTAssertEqual(local.spoken, [stop])
         XCTAssertEqual(audio.stops, 1)
+    }
+
+    func testEveryCategoryRotatesIndependentlyThroughAllVariants() {
+        let local = DemoSilentVoice(), audio = DemoSilentAudio()
+        var names: [String] = []
+        let playback = DemoVoicePlayback(local: local, makeAudio: { names.append($0); return audio },
+            recoveryReason: { $0.kind == .coaching(.rest) && $0.reason == nil ? .endedSet : nil }, uptime: { 2 })
+        for _ in 0..<5 {
+            playback.speak(cue())
+            playback.speak(cue(reason: .slowerRep))
+            playback.speak(cue(reason: nil, kind: .coaching(.rest)))
+        }
+        XCTAssertEqual(names, ["positive-1", "slower-1", "recovery", "positive-2", "slower-2", "recovery-2",
+            "positive-3", "slower-3", "recovery", "positive-4", "slower-1", "recovery-2",
+            "positive-1", "slower-2", "recovery"])
     }
 
     func testCachedPlaybackAlternatesAndStopInterruptsWithImmediateLocalSpeech() {
@@ -129,6 +144,52 @@ final class DemoVoicePlaybackTests: XCTestCase {
         XCTAssertTrue(local.spoken.isEmpty)
         controller.cancel()
         XCTAssertEqual(output.stops, 1)
+    }
+
+    func testWorkoutSimulationGatesFreshAudioAndCancelsAcrossLifecycleChanges() {
+        let local = DemoSilentVoice(), audio = DemoSilentAudio()
+        var names: [String] = []
+        let playback = DemoVoicePlayback(local: local, makeAudio: { names.append($0); return audio }, uptime: { 2 })
+        let controller = VoiceCuePlaybackController(playback: playback)
+        let session = UUID(), generation = UUID()
+        let context = VoiceCueContext(sessionID: session, generation: generation, phase: .active)
+        func event(_ reason: CoachingReason = .steadyRhythm, priority: CoachingPriority = .pacing,
+                   expiry: Double? = 6) -> VoiceCue {
+            .init(id: UUID(), sessionID: session, generation: generation, text: "Current workout event",
+                  kind: .coaching(priority), issuedAt: 0, expiresAt: expiry, reason: reason)
+        }
+        let muted = event()
+        controller.update(context: context, event: muted, enabled: false, now: 2)
+        controller.update(context: context, event: muted, enabled: true, now: 2)
+        XCTAssertTrue(names.isEmpty)
+        let first = event()
+        controller.update(context: context, event: first, enabled: true, now: 2)
+        controller.update(context: context, event: first, enabled: true, now: 2)
+        controller.update(context: context, event: event(.restReminder, priority: .rest), enabled: true, now: 2)
+        controller.update(context: context, event: event(expiry: 2), enabled: true, now: 2)
+        XCTAssertEqual(names, ["positive-1"])
+        XCTAssertTrue(local.spoken.isEmpty)
+        let staleCompletion = audio.onFinish
+        let stop = event(.discomfort, priority: .stop, expiry: nil)
+        controller.update(context: context, event: stop, enabled: true, now: 2)
+        XCTAssertEqual(audio.stops, 1)
+        XCTAssertEqual(local.spoken, [stop])
+        staleCompletion?()
+        controller.update(context: context, event: event(), enabled: true, now: 2)
+        XCTAssertEqual(names, ["positive-1"], "A stale audio callback cannot clear the active stop")
+        controller.cancel()
+        controller.update(context: context, event: event(.slowerRep), enabled: true, now: 2)
+        XCTAssertEqual(names.last, "slower-1")
+        controller.update(context: .init(sessionID: session, generation: generation, phase: .paused), event: nil, enabled: true, now: 2)
+        XCTAssertEqual(audio.stops, 2)
+        controller.update(context: context, event: event(), enabled: true, now: 2)
+        controller.update(context: context, event: nil, enabled: false, now: 2)
+        XCTAssertEqual(audio.stops, 3)
+        controller.update(context: context, event: event(), enabled: true, now: 2)
+        controller.update(context: .init(sessionID: session, generation: UUID(), phase: .active), event: first, enabled: true, now: 2)
+        XCTAssertEqual(audio.stops, 4)
+        XCTAssertEqual(audio.plays, 4)
+        XCTAssertEqual(names, ["positive-1", "slower-1", "positive-2", "positive-3"])
     }
 
     private func cue(reason: CoachingReason? = .steadyRhythm, kind: VoiceCue.Kind = .coaching(.pacing), expiry: Double? = 6, issued: Double = 0) -> VoiceCue {

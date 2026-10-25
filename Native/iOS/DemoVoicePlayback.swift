@@ -13,7 +13,7 @@ final class DemoVoicePlayback: VoicePlayback {
     private var output: VoiceAudioOutput?
     private var active: (id: UUID, token: UUID)?
     private var localCueID: UUID?
-    private var variant = 0
+    private var variants: [String: Int] = [:]
 
     static func isAvailable(preview: Bool, coach: VoiceCoachPreference) -> Bool {
         preview && coach == .arnold
@@ -21,13 +21,19 @@ final class DemoVoicePlayback: VoicePlayback {
 
     static func clipName(reason: CoachingReason?, priority: CoachingPriority, variant: Int,
                          recovery: DemoVoiceRecoveryReason? = nil) -> String? {
-        if priority == .rest, reason == nil, recovery != nil { return "recovery" }
-        guard priority == .pacing else { return nil }
-        let suffix = variant.isMultiple(of: 2) ? "1" : "2"
+        let names = clipNames(reason: reason, priority: priority, recovery: recovery)
+        guard !names.isEmpty else { return nil }
+        return names[max(0, variant) % names.count]
+    }
+
+    private static func clipNames(reason: CoachingReason?, priority: CoachingPriority,
+                                  recovery: DemoVoiceRecoveryReason?) -> [String] {
+        if priority == .rest, reason == nil, recovery != nil { return ["recovery", "recovery-2"] }
+        guard priority == .pacing else { return [] }
         switch reason {
-        case .steadyRhythm: return "positive-\(suffix)"
-        case .slowerRep: return "slower-\(suffix)"
-        default: return nil
+        case .steadyRhythm: return ["positive-1", "positive-2", "positive-3", "positive-4"]
+        case .slowerRep: return ["slower-1", "slower-2", "slower-3"]
+        default: return []
         }
     }
 
@@ -58,13 +64,20 @@ final class DemoVoicePlayback: VoicePlayback {
               let deadline = cue.expiresAt, deadline.isFinite, deadline > now,
               !cue.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               cue.text.count <= 500 else { complete(token: token); return }
-        guard case .coaching(let priority) = cue.kind,
-              let name = Self.clipName(reason: cue.reason, priority: priority, variant: variant, recovery: recoveryReason(cue)) else {
+        guard case .coaching(let priority) = cue.kind else {
             localCueID = cue.id
             local.speak(cue)
             return
         }
-        variant = variant == 0 ? 1 : 0
+        let names = Self.clipNames(reason: cue.reason, priority: priority, recovery: recoveryReason(cue))
+        guard let group = names.first else {
+            localCueID = cue.id
+            local.speak(cue)
+            return
+        }
+        let index = variants[group, default: 0] % names.count
+        let name = names[index]
+        variants[group] = (index + 1) % names.count
         do {
             let player = try makeAudio(name)
             guard uptime().isFinite, uptime() < deadline else { complete(token: token); return }
@@ -98,7 +111,7 @@ private final class DemoBundledAudioOutput: NSObject, VoiceAudioOutput, AVAudioP
     private let player: AVAudioPlayer
 
     init(name: String, bundle: Bundle = .main) throws {
-        guard ["positive-1", "positive-2", "slower-1", "slower-2", "recovery"].contains(name),
+        guard ["positive-1", "positive-2", "positive-3", "positive-4", "slower-1", "slower-2", "slower-3", "recovery", "recovery-2"].contains(name),
               let url = bundle.url(forResource: name, withExtension: "mp3", subdirectory: "DemoVoice/arnold") else {
             throw CocoaError(.fileNoSuchFile)
         }

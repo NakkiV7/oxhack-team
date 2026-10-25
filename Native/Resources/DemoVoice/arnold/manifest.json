@@ -117,6 +117,90 @@
         "durationSeconds": 1.671837,
         "audiblePlayback": false
       }
+    },
+    {
+      "name": "positive-3",
+      "text": "Stay smooth.",
+      "characters": 12,
+      "attempts": 1,
+      "requestedAt": "2026-10-25T08:55:55.808Z",
+      "status": 200,
+      "mimeType": "audio/mpeg",
+      "requestID": "4gextX67LZ0MoAhZ2XO3",
+      "characterCost": "3",
+      "bytes": 4197,
+      "sha256": "88d4c5b8f406d42eaf7e3adc9eafeebc1018e1ef48d6d00d4bf97cbafd64f304",
+      "accepted": true,
+      "decode": {
+        "tool": "ffmpeg / ffprobe",
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 0.928798,
+        "audiblePlayback": false
+      }
+    },
+    {
+      "name": "positive-4",
+      "text": "Well done.",
+      "characters": 10,
+      "attempts": 1,
+      "requestedAt": "2026-10-25T08:55:56.267Z",
+      "status": 200,
+      "mimeType": "audio/mpeg",
+      "requestID": "cfvq5Kwtiv7VgTlQ2bl1",
+      "characterCost": "2",
+      "bytes": 3779,
+      "sha256": "08a84d85454d30644432db073f4fbdd6e31b1d744db642e5576bfdd89c90f5f0",
+      "accepted": true,
+      "decode": {
+        "tool": "ffmpeg / ffprobe",
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 0.835918,
+        "audiblePlayback": false
+      }
+    },
+    {
+      "name": "slower-3",
+      "text": "Pause if needed.",
+      "characters": 16,
+      "attempts": 1,
+      "requestedAt": "2026-10-25T08:55:56.419Z",
+      "status": 200,
+      "mimeType": "audio/mpeg",
+      "requestID": "EmJfmy63XQhNDPI5OHFg",
+      "characterCost": "4",
+      "bytes": 5346,
+      "sha256": "96e12e12cf6200322dbc19225a5f5cc00a9b9e9ba365cb2224320191a2950ba0",
+      "accepted": true,
+      "decode": {
+        "tool": "ffmpeg / ffprobe",
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 1.207438,
+        "audiblePlayback": false
+      }
+    },
+    {
+      "name": "recovery-2",
+      "text": "Rest well.",
+      "characters": 10,
+      "attempts": 1,
+      "requestedAt": "2026-10-25T08:55:56.571Z",
+      "status": 200,
+      "mimeType": "audio/mpeg",
+      "requestID": "23cPq3LUNmAtU8rMFtAH",
+      "characterCost": "2",
+      "bytes": 3988,
+      "sha256": "df043db7e24c536e51abab5d520fefc9596379388fc36b2c87155e4c44069db5",
+      "accepted": true,
+      "decode": {
+        "tool": "ffmpeg / ffprobe",
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 0.882358,
+        "audiblePlayback": false
+      }
     }
   ],
   "usageBefore": 4046,
@@ -126,5 +210,121 @@
     "observedAccountDelta": 0
   },
   "nativePlaybackAcceptance": "pending parent native fake-output tests and physical-device audible acceptance",
-  "billingNote": "Response character-cost headers are retained verbatim. Immediate account-wide usage delta is not proof of final billing; no per-request price claim."
+  "billingNote": "Response character-cost headers are retained verbatim. Immediate account-wide usage delta is not proof of final billing; no per-request price claim.",
+  "expansions": [
+    {
+      "authorization": "User requested additional variation after the original five-clip bank",
+      "generatedAt": "2026-10-25T08:55:55.800Z",
+      "provider": "ElevenLabs",
+      "alias": "Arnold",
+      "voiceCategory": "generated",
+      "identityClaim": false,
+      "purpose": "TestFlight preview only",
+      "model": "eleven_flash_v2_5",
+      "format": "mp3_22050_32",
+      "plannedCharacters": 48,
+      "estimatedFlashCredits": 24,
+      "keyCapCredits": 100,
+      "keyCapChanged": false,
+      "retries": 0,
+      "clips": [
+        {
+          "name": "positive-3",
+          "text": "Stay smooth.",
+          "characters": 12,
+          "attempts": 1,
+          "requestedAt": "2026-10-25T08:55:55.808Z",
+          "status": 200,
+          "mimeType": "audio/mpeg",
+          "requestID": "4gextX67LZ0MoAhZ2XO3",
+          "characterCost": "3",
+          "bytes": 4197,
+          "sha256": "88d4c5b8f406d42eaf7e3adc9eafeebc1018e1ef48d6d00d4bf97cbafd64f304",
+          "accepted": true,
+          "decode": {
+            "tool": "ffmpeg / ffprobe",
+            "success": true,
+            "sampleRate": 22050,
+            "durationSeconds": 0.928798,
+            "audiblePlayback": false
+          }
+        },
+        {
+          "name": "positive-4",
+          "text": "Well done.",
+          "characters": 10,
+          "attempts": 1,
+          "requestedAt": "2026-10-25T08:55:56.267Z",
+          "status": 200,
+          "mimeType": "audio/mpeg",
+          "requestID": "cfvq5Kwtiv7VgTlQ2bl1",
+          "characterCost": "2",
+          "bytes": 3779,
+          "sha256": "08a84d85454d30644432db073f4fbdd6e31b1d744db642e5576bfdd89c90f5f0",
+          "accepted": true,
+          "decode": {
+            "tool": "ffmpeg / ffprobe",
+            "success": true,
+            "sampleRate": 22050,
+            "durationSeconds": 0.835918,
+            "audiblePlayback": false
+          }
+        },
+        {
+          "name": "slower-3",
+          "text": "Pause if needed.",
+          "characters": 16,
+          "attempts": 1,
+          "requestedAt": "2026-10-25T08:55:56.419Z",
+          "status": 200,
+          "mimeType": "audio/mpeg",
+          "requestID": "EmJfmy63XQhNDPI5OHFg",
+          "characterCost": "4",
+          "bytes": 5346,
+          "sha256": "96e12e12cf6200322dbc19225a5f5cc00a9b9e9ba365cb2224320191a2950ba0",
+          "accepted": true,
+          "decode": {
+            "tool": "ffmpeg / ffprobe",
+            "success": true,
+            "sampleRate": 22050,
+            "durationSeconds": 1.207438,
+            "audiblePlayback": false
+          }
+        },
+        {
+          "name": "recovery-2",
+          "text": "Rest well.",
+          "characters": 10,
+          "attempts": 1,
+          "requestedAt": "2026-10-25T08:55:56.571Z",
+          "status": 200,
+          "mimeType": "audio/mpeg",
+          "requestID": "23cPq3LUNmAtU8rMFtAH",
+          "characterCost": "2",
+          "bytes": 3988,
+          "sha256": "df043db7e24c536e51abab5d520fefc9596379388fc36b2c87155e4c44069db5",
+          "accepted": true,
+          "decode": {
+            "tool": "ffmpeg / ffprobe",
+            "success": true,
+            "sampleRate": 22050,
+            "durationSeconds": 0.882358,
+            "audiblePlayback": false
+          }
+        }
+      ],
+      "usageBefore": 4078,
+      "preflight": {
+        "observedAccountUsageAboveOriginalBaseline": 41,
+        "conservativeCreditsPerNewCharacter": 1,
+        "conservativeNewCreditUpperBound": 48
+      },
+      "usageAfter": {
+        "status": 200,
+        "character_count": 4078,
+        "observedAccountDelta": 0
+      }
+    }
+  ],
+  "totalCharacters": 191
 }
