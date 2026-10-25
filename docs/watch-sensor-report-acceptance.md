@@ -67,18 +67,16 @@ requests by the existing contract checks.
   disconnected live-send suppression, stale retained context, missing HR,
   stale measurement in a fresh envelope, report gaps and cumulative energy.
 
-No iPhone/Watch app builds, simulators or physical devices used in this lane. The report UI
-changes have **not** yet had native compilation or rendered inspection. Primary owns
-that queue. No changes to project membership are needed because existing source
-files contain the components. Prepared selector:
-
-`SpottrUITests/ReportFlowTests/testSavedSessionOpensReportWithActualExerciseAndSignalAbsence`
-
-Primary should compile iPhone + Watch targets, execute that selector, and inspect a
-populated report with one/multiple recordings at large Dynamic Type. Stable report
-identifiers: `watch-energy-timeline`, `watch-active-energy-reading`,
-`watch-acceleration-report`, `watch-rotation-report`. Populated source charts still
-need coordinated native/human acceptance; core/SDK doubles cannot establish it.
+The original #130 lane used no iPhone/Watch app builds, simulators or physical
+devices. The follow-up coordinated native run now passed both app builds and all
+four report UI selectors, with default/largest-text screenshot inspection. That
+inspection found axis collisions/truncation; the scoped fix and exact evidence
+are recorded in [watch-native-report-checks.md](watch-native-report-checks.md).
+No project membership changes were required because existing source files contain
+the components/tests. Stable identifiers remain `watch-energy-timeline`,
+`watch-active-energy-reading`, `watch-acceleration-report`, `watch-rotation-report`.
+The isolated native run does not establish primary's combined integration/release
+acceptance or physical Watch behavior.
 
 ## Omar's physical Watch checklist (all pending)
 
