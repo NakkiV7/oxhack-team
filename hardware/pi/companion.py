@@ -4,9 +4,11 @@ from datetime import datetime, timezone
 import argparse
 import json
 import hmac
+import ipaddress
 import os
 import re
 import signal
+import socket
 import ssl
 import subprocess
 import threading
@@ -66,7 +68,13 @@ class FFmpegCapture:
 
     def read_frames(self, pipe, callback):
         buffer = b""
-        while chunk := pipe.read(65536):
+        while True:
+            try:
+                chunk = pipe.read(65536)
+            except (OSError, ValueError):
+                return  # stop() can close the pipe while this reader is waiting.
+            if not chunk:
+                return
             buffer += chunk
             if len(buffer) > 4 * 1024 * 1024:
                 buffer = buffer[-1:]
@@ -194,11 +202,28 @@ class Camera:
 
 
 def make_server(*, host="127.0.0.1", port=8765, token="", capture=None,
-                clock=None, start_timeout=2.0, tls_cert=None, tls_key=None):
+                clock=None, start_timeout=2.0, tls_cert=None, tls_key=None, allowed_network=None):
     if host not in ("127.0.0.1", "localhost") and not token:
         raise ValueError("external binding requires SPOTTR_PI_TOKEN")
     if bool(tls_cert) != bool(tls_key):
         raise ValueError("TLS requires both certificate and key")
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        address = None
+    ipv6 = isinstance(address, ipaddress.IPv6Address)
+    peer_network = None
+    if ipv6 or allowed_network is not None:
+        try:
+            peer_network = ipaddress.ip_network(allowed_network)
+        except (TypeError, ValueError):
+            pass
+        if (not ipv6 or address.is_unspecified or address.is_multicast or address.ipv4_mapped
+                or not isinstance(peer_network, ipaddress.IPv6Network)
+                or peer_network.prefixlen < 64 or address not in peer_network):
+            raise ValueError("IPv6 requires an exact bind and matching /64 or narrower peer network")
+        if not tls_cert:
+            raise ValueError("IPv6 requires TLS")
     context = None
     if tls_cert:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -314,12 +339,33 @@ def make_server(*, host="127.0.0.1", port=8765, token="", capture=None,
             self.json_response(404, {"error": "not_found"})
 
     class Server(ThreadingHTTPServer):
+        address_family = socket.AF_INET6 if ipv6 else socket.AF_INET
+
+        def server_bind(self):
+            if ipv6:
+                self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
+            super().server_bind()
+
+        def get_request(self):
+            connection, peer = super().get_request()
+            if peer_network:
+                if ipaddress.ip_address(peer[0]) not in peer_network:
+                    connection.close()
+                    raise OSError("Peer outside permitted network")
+                try:
+                    connection.settimeout(3)
+                    connection = context.wrap_socket(connection, server_side=True)
+                except Exception:
+                    connection.close()
+                    raise
+            return connection, peer
+
         def server_close(self):
             camera.stop()
             super().server_close()
 
     server = Server((host, port), Handler)
-    if context:
+    if context and not peer_network:
         server.socket = context.wrap_socket(server.socket, server_side=True)
     return server
 
@@ -336,11 +382,12 @@ def main():
     parser.add_argument("--output-fps", type=int)
     parser.add_argument("--tls-cert")
     parser.add_argument("--tls-key")
+    parser.add_argument("--allowed-network", help="Required IPv6 on-link /64 or narrower client network")
     args = parser.parse_args()
     try:
         server = make_server(host=args.host, port=args.port,
                              token=os.environ.get("SPOTTR_PI_TOKEN", ""),
-                             tls_cert=args.tls_cert, tls_key=args.tls_key,
+                             tls_cert=args.tls_cert, tls_key=args.tls_key, allowed_network=args.allowed_network,
                              capture=FFmpegCapture(device=args.device, input_format=args.input_format,
                                                    input_size=args.input_size, input_fps=args.input_fps,
                                                    output_size=args.output_size, output_fps=args.output_fps))
