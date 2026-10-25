@@ -187,7 +187,9 @@ private struct CoachGoalContext: View {
 }
 
 struct CoachSettingsView: View {
+    private enum Field: Hashable { case url, token }
     @Environment(\.dismiss) private var dismiss
+    @FocusState private var focusedField: Field?
     @State private var url = CoachSettings.gatewayURL
     @State private var token = CoachSettings.token() ?? ""
     @State private var error: String?
@@ -196,19 +198,28 @@ struct CoachSettingsView: View {
             Form {
                 Section("Connection") {
                     TextField("Gateway URL", text: $url).textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
+                        .focused($focusedField, equals: .url)
                     SecureField("Gateway access token", text: $token).textInputAutocapitalization(.never).autocorrectionDisabled()
+                        .focused($focusedField, equals: .token)
                     Text("Use the access token for your Spottr gateway. Your Gemini provider key stays on the server. The access token is stored in this iPhone’s Keychain.").font(.caption)
+                        .contentShape(Rectangle()).onTapGesture { focusedField = nil }
                 }
                 Section {
                     Button("Save connection") {
+                        focusedField = nil
                         do { try CoachSettings.save(url: url, token: token); dismiss() }
                         catch { self.error = "Use an HTTPS gateway URL and its access token. Localhost HTTP is supported for development." }
                     }
                     if let error { Text(error).font(.caption).foregroundStyle(Palette.red) }
                 }
-            }.navigationTitle("Coach settings").navigationBarTitleDisplayMode(.inline)
+            }.scrollDismissesKeyboard(.immediately).accessibilityIdentifier("coach-settings-form")
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    if focusedField != nil { KeyboardDismissBar(identifier: "coach-settings-keyboard-done") { focusedField = nil } }
+                }
+                .navigationTitle("Coach settings").navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) { Button("Cancel") { dismiss() } } }
+                    ToolbarItem(placement: .topBarTrailing) { Button("Cancel") { focusedField = nil; dismiss() } }
+                }
         }
     }
 }

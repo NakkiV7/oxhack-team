@@ -40,6 +40,20 @@ struct PrimaryButton: View {
     }
 }
 
+struct KeyboardDismissBar: View {
+    let identifier: String
+    let dismiss: () -> Void
+    var body: some View {
+        HStack {
+            Spacer()
+            Button(action: dismiss) {
+                Label("Done", systemImage: "keyboard.chevron.compact.down").padding(.vertical, 12)
+            }.font(.subheadline.weight(.semibold)).accessibilityIdentifier(identifier)
+                .accessibilityHint("Dismisses the keyboard without saving.")
+        }.padding(.horizontal, 20).background(.regularMaterial)
+    }
+}
+
 struct Metric: View {
     let value: String
     let title: String
