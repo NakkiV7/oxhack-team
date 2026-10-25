@@ -1,7 +1,7 @@
 import Foundation
 
 public enum CoachingPriority: String, Sendable, Equatable { case stop, form, pacing, rest }
-public enum CoachingReason: String, Sendable, Equatable { case discomfort, tracking, alignment, slowerRep, targetReached, restReminder, steadyRhythm }
+public enum CoachingReason: String, Sendable, Equatable { case discomfort, tracking, alignment, slowerRep, targetReached, restReminder, steadyRhythm, workoutCompleted }
 
 public struct CoachingInput: Sendable, Equatable {
     public let sessionID: UUID
