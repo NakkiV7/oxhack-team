@@ -54,19 +54,34 @@ final class ReportFlowTests: XCTestCase {
         reveal(app.staticTexts["Watch heart rate"], in: app)
         XCTAssertTrue(app.staticTexts["Apple Watch · HealthKit"].firstMatch.exists)
         XCTAssertTrue(app.staticTexts["121 bpm"].exists, "The corrected highest sample is used, not the old value or the foreign session")
+        reveal(app.staticTexts["Time from first reading (min:sec)"].firstMatch, in: app)
         attachReport(app, name: "Synthetic HR · \(largeText ? "accessibility" : "default")")
         reveal(app.staticTexts["Watch active energy"], in: app)
         let recordings = app.descendants(matching: .any).matching(identifier: "watch-active-energy-reading")
         XCTAssertEqual(recordings.count, 2, "Separate recording estimates must not become an added total")
         XCTAssertTrue(recordings.element(boundBy: 0).label.contains("Recording 1"))
         XCTAssertTrue(recordings.element(boundBy: 1).label.contains("Recording 2"))
+        XCTAssertTrue(recordings.element(boundBy: 0).label.contains("Time from first observation (min:sec)"))
+        app.swipeUp()
         attachReport(app, name: "Synthetic energy recordings · \(largeText ? "accessibility" : "default")")
+        if largeText {
+            app.swipeUp()
+            attachReport(app, name: "Synthetic energy axes · accessibility")
+        }
         reveal(app.staticTexts["Wrist acceleration magnitude"], in: app)
         XCTAssertTrue(app.staticTexts["Apple Watch · Core Motion"].firstMatch.exists)
+        reveal(app.staticTexts["Average 0.22 g · highest 0.50 g"], in: app)
+        app.swipeUp()
         attachReport(app, name: "Synthetic acceleration · \(largeText ? "accessibility" : "default")")
         reveal(app.staticTexts["Wrist rotation magnitude"], in: app)
         XCTAssertFalse(app.staticTexts["No Watch rotation readings recorded."].exists)
+        reveal(app.staticTexts["Average 0.53 rad/s · highest 1.25 rad/s"], in: app)
+        app.swipeUp()
         attachReport(app, name: "Synthetic rotation · \(largeText ? "accessibility" : "default")")
+        if largeText {
+            app.swipeUp()
+            attachReport(app, name: "Synthetic rotation endpoints · accessibility")
+        }
     }
 
     @MainActor func testPartialWatchReportLeavesStaleHeartAndRotationUnavailable() {
