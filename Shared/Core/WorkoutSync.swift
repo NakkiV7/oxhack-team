@@ -7,9 +7,10 @@ public struct WorkoutSyncReceipt: Decodable, Equatable, Sendable {
 }
 
 public enum WorkoutSyncError: Error, Equatable, LocalizedError {
-    case configuration, rejected(Int), invalidReceipt
+    case configuration, rejected(Int), invalidReceipt, noCompletedSets
     public var errorDescription: String? {
         switch self {
+        case .noCompletedSets: return "Skipped steps stay in your local history. There are no completed sets to upload."
         case .configuration: return "Set an HTTPS gateway URL and access token in Coach settings. Localhost HTTP is supported for development."
         case .invalidReceipt: return "The gateway didn’t confirm this workout. Retry to check its saved state."
         case .rejected(401): return "Gateway access was refused. Check your access token in Coach settings."
@@ -30,12 +31,21 @@ public struct WorkoutSyncClient: Sendable {
     }
 
     public func upload(record: SessionRecord, installationID: UUID) async throws -> WorkoutSyncReceipt {
+        guard record.skippedSets.isEmpty || record.setCount > 0 else { throw WorkoutSyncError.noCompletedSets }
         let local = ["localhost", "127.0.0.1", "::1"].contains(baseURL.host ?? "")
         guard baseURL.host != nil, (baseURL.scheme == "https" || (local && baseURL.scheme == "http")),
               baseURL.user == nil, baseURL.password == nil, baseURL.query == nil, baseURL.fragment == nil,
               !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw WorkoutSyncError.configuration }
         try Task.checkCancellation()
-        struct Upload: Encodable { let installationID: String; let record: SessionRecord }
+        struct SyncRecord: Encodable {
+            let id: UUID
+            let date: Date
+            let sets: [SetRecord]
+            let telemetry: [WatchTelemetry]
+            let loggedSets: [LoggedSet]
+        }
+        struct Upload: Encodable { let installationID: String; let record: SyncRecord }
+        let projected = SyncRecord(id: record.id, date: record.date, sets: record.sets, telemetry: record.telemetry, loggedSets: record.loggedSets)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         encoder.dateEncodingStrategy = .custom { date, output in
@@ -48,7 +58,7 @@ public struct WorkoutSyncClient: Sendable {
         request.httpMethod = "POST"; request.timeoutInterval = 45
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try encoder.encode(Upload(installationID: installationID.uuidString.lowercased(), record: record))
+        request.httpBody = try encoder.encode(Upload(installationID: installationID.uuidString.lowercased(), record: projected))
         let (data, response) = try await transport(request)
         try Task.checkCancellation()
         guard let response = response as? HTTPURLResponse else { throw WorkoutSyncError.invalidReceipt }

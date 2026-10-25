@@ -401,3 +401,125 @@ func configuredWatchRejectsUnsupportedCameraSourceClaims(exerciseID: String) thr
     let decoded = try JSONDecoder().decode(CompanionSnapshot.self, from: JSONSerialization.data(withJSONObject: json))
     #expect(!decoded.isFresh(at: now))
 }
+
+@Test func configuredZeroCameraObservationsCannotBeSavedAsACompletedSet() throws {
+    var run = try ConfigurableSession(plan: customPlan("""
+    {"exerciseID":"squat","sets":2,"target":8,"unit":"reps","restSeconds":30}
+    """), availableSupport: [])
+    run.start(at: 0); run.resetSet(source: .camera, at: 0); run.beginSet(at: 1)
+    #expect(run.actualReps == 0)
+    #expect(!run.canEndSet(at: 5))
+    let ended = run.endSet(at: 5)
+    #expect(!ended)
+    #expect(run.completed.isEmpty)
+    #expect(run.record.setCount == 0)
+    #expect(run.phase == .active)
+}
+
+@Test func explicitSkipPersistsIntentWithoutCompletedWorkOrInferredZeroExercise() throws {
+    var run = try ConfigurableSession(plan: customPlan(), availableSupport: ["Wall"])
+    run.start(at: 0); run.beginSet(at: 1)
+    let before = run.generation
+    let mutationCheck1 = run.skipSet(at: 5)
+    #expect(mutationCheck1)
+    #expect(run.generation != before)
+    #expect(run.currentWasSkipped)
+    #expect(run.phase == .rest)
+    #expect(run.completed.isEmpty)
+    #expect(run.record.setCount == 0 && run.record.reps == 0 && run.record.activeSeconds == 0)
+    #expect(run.skippedSets.count == 1)
+    #expect(run.skippedSets.first?.exerciseID == "wallPushup")
+    #expect(run.skippedSets.first?.number == 1)
+    #expect(run.skippedSets.first?.target == 8)
+    #expect(run.skippedSets.first?.unit == .reps)
+    #expect(run.skippedSets.first?.source == .manual)
+    #expect(run.skippedSets.first?.reason == .userChoice)
+    let mutationCheck2 = run.skipSet(at: 6)
+    #expect(!mutationCheck2)
+    #expect(!run.canReduceRemainingRepTargets)
+    run.finish(at: 7)
+    let reopened = try JSONDecoder().decode(SessionRecord.self, from: JSONEncoder().encode(run.record))
+    #expect(reopened == run.record)
+    #expect(reopened.skippedSets.count == 1)
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: folder) }
+    let history = HistoryStore(url: folder.appendingPathComponent("history.json"))
+    try history.save(reopened)
+    let destination = folder.appendingPathComponent("export.json")
+    try history.export(to: destination)
+    let exported = try JSONDecoder().decode([SessionRecord].self, from: Data(contentsOf: destination))
+    #expect(exported.first?.skippedSets == reopened.skippedSets)
+    #expect(exported.first?.setCount == 0)
+    #expect(WorkoutReport(record: reopened).setCount == 0)
+    #expect(SkillProgress.evaluate(history: [reopened]).points(for: .strength) == 0)
+    let legacy = Data("{\"id\":\"00000000-0000-0000-0000-000000000001\",\"date\":0,\"sets\":[]}".utf8)
+    #expect(try JSONDecoder().decode(SessionRecord.self, from: legacy).skippedSets.isEmpty)
+}
+
+@Test func skipCannotDiscardEnteredWorkAndPreservesTheActualRestBetweenCompletedSets() throws {
+    var run = try ConfigurableSession(plan: customPlan("""
+    {"exerciseID":"squat","sets":3,"target":8,"unit":"reps","restSeconds":30}
+    """), availableSupport: [])
+    run.start(at: 0); run.beginSet(at: 1); run.setReps(2)
+    let mutationCheck3 = run.skipSet(at: 5)
+    #expect(!mutationCheck3)
+    let mutationCheck4 = run.endSet(at: 5)
+    #expect(mutationCheck4)
+    run.nextSet(at: 10)
+    let mutationCheck5 = run.skipSet(at: 15)
+    #expect(mutationCheck5)
+    run.nextSet(at: 20); run.beginSet(at: 30); run.setReps(1); run.endSet(at: 35)
+    #expect(run.completed.map(\.number) == [1, 3])
+    #expect(run.completed.last?.restSecondsBefore == 25)
+    #expect(run.skippedSets.map(\.number) == [2])
+    #expect(run.record.setCount == 2)
+}
+
+@Test func oneRecordedRepOnlyChangesRemainingSameExerciseTargetsAfterExplicitApproval() throws {
+    let plan = try customPlan()
+    let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+    let original = try encoder.encode(plan)
+    var run = try ConfigurableSession(plan: plan, availableSupport: ["Wall"])
+    run.start(at: 0); run.beginSet(at: 1); run.setReps(1); run.endSet(at: 5)
+    #expect(run.canReduceRemainingRepTargets)
+    #expect(run.steps.map(\.target) == [8, 8, 20])
+    let ids = run.steps.map(\.id), generation = run.generation
+    let mutationCheck6 = run.reduceRemainingRepTargetsToOne()
+    #expect(mutationCheck6)
+    #expect(run.steps.map(\.target) == [8, 1, 20])
+    #expect(run.steps.map(\.id) == ids)
+    #expect(run.generation != generation)
+    #expect(!run.canReduceRemainingRepTargets)
+    let mutationCheck7 = run.reduceRemainingRepTargetsToOne()
+    #expect(!mutationCheck7)
+    #expect(run.phase == .rest && run.index == 0 && run.completed.count == 1)
+    #expect(run.completed.first?.reps == 1 && run.completed.first?.target == 8)
+    #expect(try encoder.encode(plan) == original)
+    run.nextSet(at: 10)
+    #expect(!run.hasStarted && run.actualReps == nil)
+    #expect(run.steps.count == 3)
+}
+
+@Test func discomfortNeverOffersOrAppliesOneRepContinuation() throws {
+    var run = try ConfigurableSession(plan: customPlan(), availableSupport: ["Wall"])
+    run.start(at: 0); run.beginSet(at: 1); run.setReps(1); run.endSet(at: 5, reason: .discomfort)
+    #expect(!run.canReduceRemainingRepTargets)
+    let mutationCheck8 = run.reduceRemainingRepTargetsToOne()
+    #expect(!mutationCheck8)
+    let mutationCheck9 = run.skipSet(at: 7)
+    #expect(!mutationCheck9)
+    #expect(run.steps.map(\.target) == [8, 8, 20])
+}
+
+@Test func restAfterAStartedSkippedAttemptBeginsAtTheExplicitSkipRatherThanInventingContinuousRest() throws {
+    var run = try ConfigurableSession(plan: customPlan("""
+    {"exerciseID":"squat","sets":3,"target":8,"unit":"reps","restSeconds":30}
+    """), availableSupport: [])
+    run.start(at: 0); run.beginSet(at: 1); run.setReps(2); run.endSet(at: 5)
+    run.nextSet(at: 8); run.beginSet(at: 10)
+    let skipped = run.skipSet(at: 15)
+    #expect(skipped)
+    run.nextSet(at: 20); run.beginSet(at: 30); run.setReps(1); run.endSet(at: 35)
+    #expect(run.completed.last?.restSecondsBefore == 15)
+    #expect(run.record.activeSeconds == 9)
+}

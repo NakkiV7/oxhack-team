@@ -63,4 +63,33 @@ final class WorkoutSyncTests: XCTestCase {
         catch { XCTAssertTrue(error is CancellationError) }
     }
 
+    func testLocalSkipMetadataRoundTripsButMixedUploadKeepsTheOldWireShape() async throws {
+        let skip = SkippedSet(id: UUID(), exerciseID: "squat", number: 2, target: 8, unit: .reps, source: .manual, reason: .userChoice)
+        let ended = LoggedSet(id: UUID(), exerciseID: "squat", reps: 1, seconds: 0, source: .manual, reason: .voluntary,
+                              number: 1, target: 8, quantityOrigin: .selfReport)
+        let record = SessionRecord(id: UUID(), date: Date(timeIntervalSince1970: 100), sets: [], loggedSets: [ended], skippedSets: [skip])
+        let reopened = try JSONDecoder().decode(SessionRecord.self, from: JSONEncoder().encode(record))
+        XCTAssertEqual(reopened.skippedSets, [skip])
+        let client = WorkoutSyncClient(baseURL: URL(string: "https://coach.example")!, token: "access") { request in
+            let body = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any])
+            let uploaded = try XCTUnwrap(body["record"] as? [String: Any])
+            XCTAssertEqual(Set(uploaded.keys), ["id", "date", "sets", "telemetry", "loggedSets"])
+            XCTAssertNil(uploaded["skippedSets"])
+            XCTAssertEqual((uploaded["loggedSets"] as? [[String: Any]])?.count, 1)
+            XCTAssertEqual((uploaded["loggedSets"] as? [[String: Any]])?.first?["reps"] as? Int, 1)
+            let response: [String: Any] = ["workoutID": record.id.uuidString, "replayed": false, "sha256": String(repeating: "a", count: 64)]
+            return (try JSONSerialization.data(withJSONObject: response), HTTPURLResponse(url: request.url!, statusCode: 201, httpVersion: nil, headerFields: nil)!)
+        }
+        _ = try await client.upload(record: reopened, installationID: UUID())
+    }
+    func testSkipOnlyHistoryIsLocalAndNeverUploadsAnEmptyWorkout() async {
+        let skip = SkippedSet(id: UUID(), exerciseID: "squat", number: 1, target: 8, unit: .reps, source: .camera, reason: .userChoice)
+        let record = SessionRecord(id: UUID(), date: Date(), sets: [], skippedSets: [skip])
+        let client = WorkoutSyncClient(baseURL: URL(string: "https://coach.example")!, token: "access") { _ in
+            XCTFail("A skip is not a completed workout upload"); throw URLError(.badServerResponse)
+        }
+        do { _ = try await client.upload(record: record, installationID: UUID()); XCTFail("Skip-only upload accepted") }
+        catch { XCTAssertEqual(error as? WorkoutSyncError, .noCompletedSets) }
+    }
+
 }

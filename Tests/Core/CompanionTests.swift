@@ -97,3 +97,34 @@ import Testing
     #expect(decoded.reps == 2)
     #expect(decoded.cue == .lower)
 }
+
+@Test func skippedConfiguredStepRequiresPhoneCheckInWithoutChangingLegacySnapshotDecoding() throws {
+    let plan = try CoachSavedPlan.catalogue(exerciseID: "squat", sets: 2, target: 8, restSeconds: 30)
+    var run = try ConfigurableSession(plan: plan, availableSupport: [])
+    run.start(at: 0); run.beginSet(at: 1)
+    let skipped = run.skipSet(at: 2)
+    #expect(skipped)
+    let now = Date()
+    let snapshot = CompanionSnapshot(session: run, at: 3, sentAt: now)
+    #expect(snapshot.configured?.currentWasSkipped == true)
+    #expect(snapshot.isFresh(at: now))
+    let encoded = try JSONEncoder().encode(snapshot)
+    let reopened = try JSONDecoder().decode(CompanionSnapshot.self, from: encoded)
+    #expect(reopened.configured?.currentWasSkipped == true)
+    var state = CompanionState(); state.receive(reopened, now: now)
+    #expect(state.command(.nextSet, now: now) == nil)
+    #expect(state.command(.finish, now: now) != nil)
+    var object = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+    var configured = try #require(object["configured"] as? [String: Any])
+    configured.removeValue(forKey: "currentWasSkipped"); object["configured"] = configured
+    let legacy = try JSONDecoder().decode(CompanionSnapshot.self, from: JSONSerialization.data(withJSONObject: object))
+    #expect(legacy.configured?.currentWasSkipped == nil)
+    #expect(legacy.isFresh(at: now))
+    var oldState = CompanionState(); oldState.receive(legacy, now: now)
+    #expect(oldState.command(.nextSet, now: now) != nil)
+    object["phase"] = "active"; configured["currentWasSkipped"] = true; object["configured"] = configured
+    let invalid = try JSONDecoder().decode(CompanionSnapshot.self, from: JSONSerialization.data(withJSONObject: object))
+    #expect(!invalid.isFresh(at: now))
+    run.nextSet(at: 5)
+    #expect(CompanionSnapshot(session: run, at: 5).configured?.currentWasSkipped == false)
+}
