@@ -37,6 +37,20 @@ Assessment is exercise-generic. A catalogue exercise is assessable when it has a
 ## Integration points for the next PRs
 
 - **Project file.** The new files are in `SpottrCore`, so `swift test` covers them. The app target lists files explicitly, so they need `ruby scripts/generate-project.rb` before app code uses them. That is the primary chat's step.
-- **Gemini.** A generated path must pass `TrainingPathRules.validate`, use a start from `placement(...).allowedStarts`, and fall back to `TrainingPathRules.fallback` after one repair attempt. `PathHistory.save` validates again.
+- **Gemini.** A generated path must pass `TrainingPathRules.validate` and use a start from `placement(...).allowedStarts`; otherwise the app uses `TrainingPathRules.fallback`. A repair request is person-initiated, never an automatic paid retry. `PathHistory.save` validates again.
 - **Camera.** The squat or push-up session feeds `LoopRep(counter:)` into `CoachAttemptLoop` after each counted rep, calls `pause`, `resume` or `cameraChanged` on interruptions, and saves `record`.
 - **Storage.** `PathHistory`, `PathSurvey` and `CoachAttemptRecord` are `Codable`; where they live on the device is for the primary chat to decide.
+
+## Port plan
+
+The browser prototype is the reference design, not something to merge. Each step is a small PR from the previous one.
+
+1. **Core logic** (this PR): path, placement, validation, progress, level, attributes, coaching loop, rep phases.
+2. **Gateway routes** (#151): path proposal, attempt cue and explanation, with validated Swift parsing.
+3. **Skills tab**: the survey, the preview with "what changes", the skill map and the step sheet, in the app's light theme with the existing exercise artwork. Replaces the current grid and keeps the list view and preview access.
+4. **Session counter and form feedback**: the squat and push-up session gets a counter inspired by the web squat coach (big rep count, good-form count, time, seconds per rep, tempo) and a form panel built on the app's own camera landmarks: depth, lean, knees and balance for squats, body line and depth for push-ups. Metrics are defined per exercise, so a newly trained tracker adds its own. No Tiger card.
+5. **Camera assessment in the session**: the coach, retry and verify card for squats and push-ups, opened from "Assess with camera" on the map.
+6. **Insights tab**: session reports, the weekly review with quests, and research in one tab.
+
+Left out of the app on purpose: the Tiger Data card (a developer view; workouts already sync to Tiger through the gateway), the tempo forecast (its evaluation found no reliable signal, so it would stay silent), and Gemini comments during a set (the Coach tab already answers questions).
+
