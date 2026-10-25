@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "reviewedAt": "2026-10-25",
+  "sources": [
+    {
+      "id": "nhs-adults-19-64",
+      "title": "NHS: physical activity guidelines for adults aged 19 to 64",
+      "url": "https://www.nhs.uk/live-well/exercise/physical-activity-guidelines-for-adults-aged-19-to-64/",
+      "summary": "General adult guidance includes at least 150 minutes of moderate activity or 75 minutes of vigorous activity per week and strengthening activity on at least two days. Build activity gradually and adapt it to your abilities. These population guidelines do not determine individual readiness.",
+      "audience": "Adults aged 19 to 64; general activity education."
+    },
+    {
+      "id": "nhs-strength",
+      "title": "NHS: improving strength and flexibility",
+      "url": "https://www.nhs.uk/live-well/exercise/how-to-improve-strength-flexibility/",
+      "summary": "Build strength and flexibility gradually. Adapt exercises to your current ability; general repetition examples are not a compulsory target for every person.",
+      "audience": "General strength and flexibility education; not personalised clinical advice."
+    },
+    {
+      "id": "nhs-chest-pain",
+      "title": "NHS: chest pain",
+      "url": "https://www.nhs.uk/symptoms/chest-pain/",
+      "summary": "Sudden chest pain that does not go away, or chest pain with sweating, nausea, light-headedness or breathlessness, needs emergency help: call 999 in the UK. Do not use workout coaching to diagnose symptoms. Recurring or resolved but worrying chest pain also needs medical advice.",
+      "audience": "UK symptom escalation information; not diagnosis or permission to resume exercise."
+    },
+    {
+      "id": "nice-ng246",
+      "title": "NICE NG246: assessing overweight, obesity and central adiposity",
+      "url": "https://www.nice.org.uk/guidance/ng246/chapter/Identifying-and-assessing-overweight-obesity-and-central-adiposity",
+      "summary": "BMI uses weight divided by height squared. Its interpretation has limitations, including muscle mass and older age. NICE uses lower BMI risk thresholds for certain ethnic backgrounds. BMI does not measure fitness or establish exercise readiness.",
+      "audience": "Optional adult body-size context only; do not prescribe exercise or diagnose from BMI."
+    },
+    {
+      "id": "uk-cmo-activity",
+      "title": "UK Chief Medical Officers: physical activity guidelines",
+      "url": "https://www.gov.uk/government/publications/physical-activity-guidelines-uk-chief-medical-officers-report/uk-chief-medical-officers-physical-activity-guidelines",
+      "summary": "UK guidance supports regular physical activity, strengthening activity and reducing extended sedentary time. Apply guidance appropriate to the person’s age and ability; it does not establish recovery from a particular workout.",
+      "audience": "General UK activity education; age-specific guidance applies."
+    }
+  ]
+}

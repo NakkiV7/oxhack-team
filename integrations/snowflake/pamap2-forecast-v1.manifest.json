@@ -1,0 +1,20 @@
+{
+  "version": "spottr-pamap-forecast-v1",
+  "dataset": "PAMAP2",
+  "license": "CC BY 4.0",
+  "source_url": "https://archive.ics.uci.edu/dataset/231/pamap2+physical+activity+monitoring",
+  "files": {
+    "protocol.json": "a5b26bbce4488110539bd37a0db189eaad7c93383291fd576a10ad9ce9d2974f",
+    "protocol.sha256": "ced84ef0c1e353285bb981f5608645595411b999fb5245747a4eeffa227bb02b",
+    "provenance.json": "aec9d56fc4a08c180696ba4f3d0f34c71e159d59c148749352728ac631313623",
+    "license-attribution.json": "36dc46dab1f7da42c8a4e96f969a03d5f249c2811a747ae7833286a5667ec286",
+    "results/report.json": "f7c12bfaf022c90ebb6cbc86b84c87695051d737de435a707b50cdac685f4576",
+    "results/models.json": "d942c791da1d69a09b8f6c55fd4b952436dce72d9a4d97af56e64a91679d1155",
+    "results/selection.json": "9cf9235e317ca6357d6ca38704dcdd882e079f26b60653005e933d11bfe34a62",
+    "results/coverage-summary.json": "f722e59a38ce89fd879bbb873ac769fdb6ebcb7cf22ebf153e749874b4188873",
+    "results/inventory.json": "0d90c7cd4b59c82bde5d953e2444e50f0796fa1805566ac7c59837d0f3c32d23",
+    "results/test-predictions.csv": "e1c0f82dbfc42af39cef5909ad9df4fa9c1874645dc09e3a2bd542b6f2d98a7b",
+    "results/run-source/forecast.py": "a70a70f631afc4f582ab83cccff17929131f6f60971d17a82ad94acd8e955318",
+    "results/run-source/benchmark.py": "9cf7b7bcf99ec19dea1805f69d69de7479a3f987902936cdd61fd6df06592cba"
+  }
+}

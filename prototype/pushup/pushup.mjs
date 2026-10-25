@@ -53,16 +53,36 @@ export function measure(lm, side, variation, aspect = 1) {
   return { elbow, line, hipDrop, minVis };
 }
 
-export function postureIssue(m, variation) {
+export function postureIssue(m, variation, minLine) {
   const cfg = VARIATIONS[variation];
-  if (m.line >= cfg.minLine) return null;
+  if (m.line >= (minLine ?? cfg.minLine)) return null;
   if (!cfg.gravityLine) return 'Keep your body in one straight line';
   return m.hipDrop > 0 ? 'Hips sagging: squeeze your core and glutes' : 'Hips too high: lower them into a straight line';
 }
 
+// Personal rule from a trained profile (`baselines` = this user's good reps). It only tightens how a rep is judged
+// (good form + cues); whether a rep counts still follows the default depth line. It is never looser than the default,
+// and only exists for standard push-ups, the movement the history was recorded for.
+export const PERSONAL = { k: 3, minElbowSpread: 3, minLineSpread: 2, minGoodReps: 30 };
+const round1 = (x) => Math.round(x * 10) / 10;
+export function personalRule(profile, variation = 'standard') {
+  const b = profile?.baselines;
+  if (variation !== 'standard' || !b || !(b.goodReps >= PERSONAL.minGoodReps)) return null;
+  if (![b.elbow?.typical, b.elbow?.spread, b.body_line?.typical, b.body_line?.spread].every(Number.isFinite)) return null;
+  const cfg = VARIATIONS.standard;
+  const warnElbow = Math.min(cfg.down, round1(b.elbow.typical + PERSONAL.k * Math.max(b.elbow.spread, PERSONAL.minElbowSpread)));
+  const minLine = Math.max(cfg.minLine, Math.min(178, round1(b.body_line.typical - PERSONAL.k * Math.max(b.body_line.spread, PERSONAL.minLineSpread))));
+  return { warnElbow, minLine, goodReps: b.goodReps };
+}
+
 export class RepCounter {
   constructor(variation = 'wall') {
+    this.personal = null; // personalRule() output, or null for the default rule
     this.setVariation(variation);
+  }
+
+  setPersonal(rule) {
+    this.personal = rule;
   }
 
   setVariation(variation) {
@@ -123,15 +143,26 @@ export class RepCounter {
   #finish(cfg, t) {
     const reachedDepth = this.minElbow <= cfg.down;
     const straight = this.minLine >= cfg.minLine;
-    const issue = !reachedDepth
+    const worst = { line: this.minLine, hipDrop: this.worstDrop };
+    // The default judgement is always kept (baseGood / baseIssue): it is what gets saved for training, so a
+    // personal rule never trains on its own labels.
+    const baseIssue = !reachedDepth
       ? 'Not low enough: bend your elbows more'
       : straight
         ? null
-        : postureIssue({ line: this.minLine, hipDrop: this.worstDrop }, this.variation);
+        : postureIssue(worst, this.variation);
+    let issue = baseIssue;
+    const p = this.personal;
+    if (p && reachedDepth) {
+      if (this.minLine < p.minLine) issue = postureIssue(worst, this.variation, p.minLine);
+      else if (this.minElbow > p.warnElbow) issue = `Shallower than your usual: ${Math.round(this.minElbow)}° (your limit ${p.warnElbow}°)`;
+    }
     const rep = {
       n: this.reps.filter((r) => r.counted).length + (reachedDepth ? 1 : 0),
       counted: reachedDepth,
-      good: reachedDepth && straight,
+      good: reachedDepth && !issue,
+      baseGood: reachedDepth && straight,
+      baseIssue,
       minElbow: Math.round(this.minElbow),
       minLine: Math.round(this.minLine),
       secs: t != null && this.startT != null && t >= this.startT ? Math.round((t - this.startT) * 10) / 10 : null, // lowering start -> back up

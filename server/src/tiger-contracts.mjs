@@ -19,11 +19,14 @@ const loggedSet = z.strictObject({
   activeSeconds: quantity(86400).nullable().optional(),
   restSecondsBefore: z.number().finite().nonnegative().nullable().optional(),
   reserve: quantity(3).int().nullable().optional(),
-  quantityOrigin: z.enum(['selfReport', 'activeTimer']).nullable().optional()
+  quantityOrigin: z.enum(['selfReport', 'activeTimer']).nullable().optional(),
+  repDurations: z.array(z.number().finite().min(0.6).max(15)).max(200).nullable().optional()
 }).refine(set => {
   const exercise = catalog.find(exercise => exercise.id === set.exerciseID);
   if (!exercise || (exercise.unit === 'reps' ? set.seconds !== 0 : set.reps !== 0)) return false;
   if (set.quantityOrigin != null && set.source !== 'manual') return false;
+  if (set.repDurations != null && (set.source !== 'camera' || !['squat', 'pushup'].includes(set.exerciseID)
+    || set.repDurations.length !== set.reps)) return false;
   if (set.target != null && set.target > (exercise.unit === 'reps' ? 200 : 600)) return false;
   if (exercise.unit === 'seconds' && set.reserve != null) return false;
   if (set.quantityOrigin === 'activeTimer') return exercise.unit === 'seconds' && set.activeSeconds != null && set.activeSeconds === set.seconds;
@@ -45,4 +48,6 @@ export const sessionRecord = z.strictObject({
 export const workoutRequest = z.strictObject({ installationID: z.uuid(), record: sessionRecord });
 export const workoutIDContract = z.uuid();
 export const telemetryQuery = z.strictObject({ workoutID: z.uuid(), from: date, to: date })
+  .refine(query => Date.parse(query.to) > Date.parse(query.from) && Date.parse(query.to) - Date.parse(query.from) <= 86_400_000);
+export const rollupQuery = z.strictObject({ workoutID: z.uuid(), from: date, to: date, bucketSeconds: z.union([z.literal(5), z.literal(60)]) })
   .refine(query => Date.parse(query.to) > Date.parse(query.from) && Date.parse(query.to) - Date.parse(query.from) <= 86_400_000);

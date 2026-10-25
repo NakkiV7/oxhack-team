@@ -1,0 +1,119 @@
+import XCTest
+@testable import SpottrCore
+
+final class CoachWeekPlanTests: XCTestCase {
+    private let context = CoachValidationContext(generationID: "week-1", suppliedFactIDs: ["context"], availableSupport: [])
+    private var request: CoachWeekRequest { get throws { try CoachWeekRequest(startDate: "2026-10-25", timeZone: "Europe/London", availableDays: [0, 2, 4], targetDays: 3) } }
+    private var guidance: CoachGuidanceRegistry { get throws { try CoachGuidanceRegistry(data: Data(#"{"version":1,"sources":[{"id":"nhs-strength","title":"Strength","url":"https://www.nhs.uk/live-well/exercise/how-to-improve-strength-flexibility/","summary":"Build up gradually.","audience":"General guidance, not personal readiness."}]}"#.utf8)) } }
+    private func fixture() -> [String: Any] {
+        let grounded: [String: Any] = ["text": "A suggestion, not measured readiness.", "factIDs": ["context"]]
+        let workout: [String: Any] = ["generationID": "week-1", "items": [["exerciseID": "squat", "sets": 2, "target": 8, "unit": "reps", "restSeconds": 60, "factIDs": ["context"]]], "rationale": grounded]
+        return ["generationID": "week-1", "status": "proposed", "weekStart": "2026-10-25", "timeZone": "Europe/London", "days": (25...31).map { day in ["date": "2026-10-\(day)", "kind": day == 25 ? "workout" : "rest", "workout": day == 25 ? workout : NSNull()] as [String: Any] }, "rationale": grounded, "guidanceIDs": ["nhs-strength"]]
+    }
+    private func parse(_ value: [String: Any]) throws -> CoachWeekProposal {
+        try CoachWeekContracts.parse(JSONSerialization.data(withJSONObject: value), request: request, context: context, guidance: guidance)
+    }
+    func testSevenLocalDatesAcrossClockChangeAndExplicitSelectionBeforeApproval() throws {
+        let proposal = try parse(fixture())
+        XCTAssertEqual(try request.dates(), (25...31).map { "2026-10-\($0)" })
+        XCTAssertEqual(proposal.days.count, 7)
+        XCTAssertThrowsError(try CoachSavedWeek(proposal: proposal, selectedDates: [], movedDates: [:], context: context, request: request, guidance: guidance))
+        let approved = try CoachSavedWeek(proposal: proposal, selectedDates: ["2026-10-25"], movedDates: ["2026-10-25": "2026-10-27"], context: context, request: request, guidance: guidance)
+        XCTAssertEqual(approved.days.map(\.date), ["2026-10-27"])
+        XCTAssertEqual(approved.days.first?.plan.items.first?.target, 8)
+        XCTAssertEqual(approved.days.first?.plan.items.first?.sets, 2)
+        let reopened = try CoachSavedWeek.decode(JSONEncoder().encode(approved))
+        XCTAssertEqual(reopened.days.map(\.date), approved.days.map(\.date))
+        XCTAssertEqual(reopened.version, 1)
+    }
+    func testInvalidWeekAndUnsupportedOrUngroundedWorkoutAreRejected() throws {
+        for mutate in [
+            { (p: inout [String: Any]) in p["guidanceIDs"] = ["invented"] },
+            { p in p["timeZone"] = "UTC" },
+            { p in p["extra"] = true },
+            { p in p["generationID"] = "stale" },
+            { p in var days = p["days"] as! [[String: Any]]; days[1]["date"] = "2026-10-25"; p["days"] = days },
+            { p in var days = p["days"] as! [[String: Any]]; var plan = days[0]["workout"] as! [String: Any]; var items = plan["items"] as! [[String: Any]]; items[0]["target"] = 31; plan["items"] = items; days[0]["workout"] = plan; p["days"] = days },
+            { p in var days = p["days"] as! [[String: Any]]; var plan = days[0]["workout"] as! [String: Any]; var items = plan["items"] as! [[String: Any]]; items[0]["factIDs"] = ["invented"]; plan["items"] = items; days[0]["workout"] = plan; p["days"] = days }
+        ] {
+            var value = fixture(); mutate(&value); XCTAssertThrowsError(try parse(value))
+        }
+        XCTAssertThrowsError(try CoachWeekRequest(startDate: "2026-02-30", timeZone: "Europe/London", availableDays: [0], targetDays: 1))
+        XCTAssertThrowsError(try CoachWeekRequest(startDate: "2026-10-25", timeZone: "Made/Up", availableDays: [0], targetDays: 1))
+        XCTAssertThrowsError(try CoachWeekRequest(startDate: "2026-10-25", timeZone: "UTC", availableDays: [0, 0], targetDays: 1))
+    }
+    func testWeekCannotInventSourceURLsOrOmitUrgentGuidance() throws {
+        var value = fixture()
+        value["rationale"] = ["text": "See HTTPS://invented.example for NHS advice.", "factIDs": ["context"]]
+        XCTAssertThrowsError(try parse(value))
+        XCTAssertThrowsError(try parse(["generationID": "week-1", "status": "declined", "reason": "urgent", "guidanceIDs": ["nhs-strength"]]))
+    }
+    func testTypedDeclineCannotCarryAWorkoutOrUnknownGuidance() throws {
+        let declined: [String: Any] = ["generationID": "week-1", "status": "declined", "reason": "medical", "guidanceIDs": ["nhs-strength"]]
+        XCTAssertEqual(try parse(declined).reason, .medical)
+        var missingReason = declined; missingReason["reason"] = NSNull()
+        XCTAssertThrowsError(try parse(missingReason))
+        var invalid = declined; invalid["days"] = []
+        XCTAssertThrowsError(try parse(invalid))
+    }
+
+    func testSavedRestEvidenceExcludesMovedWorkoutsAndDoesNotInventRestForUnselectedWorkouts() throws {
+        var value = fixture()
+        var days = value["days"] as! [[String: Any]]
+        days[2]["kind"] = "workout"; days[2]["workout"] = days[0]["workout"]
+        value["days"] = days
+        let saved = try CoachSavedWeek(proposal: parse(value), selectedDates: ["2026-10-25"], movedDates: ["2026-10-25": "2026-10-29"], context: context, request: request, guidance: guidance)
+        XCTAssertEqual(saved.restDates, ["2026-10-26", "2026-10-28", "2026-10-30", "2026-10-31"])
+        XCTAssertEqual(try CoachSavedWeek.decode(JSONEncoder().encode(saved)).restDates, saved.restDates)
+        XCTAssertFalse(saved.restDates?.contains("2026-10-25") ?? true)
+        XCTAssertFalse(saved.restDates?.contains("2026-10-27") ?? true)
+    }
+
+    func testLegacySavedWeekHasNoExplicitRestEvidence() throws {
+        let saved = try CoachSavedWeek(proposal: parse(fixture()), selectedDates: ["2026-10-25"], movedDates: [:], context: context, request: request, guidance: guidance)
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(saved)) as? [String: Any])
+        json.removeValue(forKey: "restDates")
+        let legacy = try CoachSavedWeek.decode(JSONSerialization.data(withJSONObject: json))
+        XCTAssertNil(legacy.restDates)
+        XCTAssertTrue(legacy.plannedRestDays(calendar: londonCalendar, at: instant("2026-11-01T12:00:00Z")).isEmpty)
+        XCTAssertEqual(legacy.version, 1)
+    }
+
+    func testSavedRestDatesMustBeSortedUniqueInsideWeekAndOutsideWorkouts() throws {
+        let saved = try CoachSavedWeek(proposal: parse(fixture()), selectedDates: ["2026-10-25"], movedDates: [:], context: context, request: request, guidance: guidance)
+        let original = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(saved)) as? [String: Any])
+        for dates in [["2026-10-26", "2026-10-26"], ["2026-10-27", "2026-10-26"], ["2026-11-01"], ["2026-10-25"], ["2026-10-32"], ["2026-10-6"]] {
+            var json = original; json["restDates"] = dates
+            XCTAssertThrowsError(try CoachSavedWeek.decode(JSONSerialization.data(withJSONObject: json)), "\(dates)")
+        }
+    }
+
+    func testRestProtectionOnlyIncludesElapsedDaysOnOrAfterLocalApprovalDay() throws {
+        let approvedAt = instant("2026-10-27T12:00:00Z")
+        let saved = try CoachSavedWeek(proposal: parse(fixture()), selectedDates: ["2026-10-25"], movedDates: [:], context: context, request: request, guidance: guidance, approvedAt: approvedAt)
+        XCTAssertEqual(saved.plannedRestDays(calendar: londonCalendar, at: instant("2026-10-30T12:00:00Z")),
+                       [27, 28, 29].map { instant("2026-10-\($0)T00:00:00Z") })
+        XCTAssertTrue(saved.plannedRestDays(calendar: londonCalendar, at: approvedAt.addingTimeInterval(-1)).isEmpty)
+        var otherZone = londonCalendar; otherZone.timeZone = TimeZone(secondsFromGMT: 0)!
+        XCTAssertTrue(saved.plannedRestDays(calendar: otherZone, at: instant("2026-10-30T12:00:00Z")).isEmpty)
+    }
+
+    func testRestDateUsesExactPinnedCalendarMidnightAcrossAutumnClockChange() throws {
+        var value = fixture()
+        var days = value["days"] as! [[String: Any]]
+        days[2]["kind"] = "workout"; days[2]["workout"] = days[0]["workout"]
+        days[0]["kind"] = "rest"; days[0]["workout"] = NSNull()
+        value["days"] = days
+        let saved = try CoachSavedWeek(proposal: parse(value), selectedDates: ["2026-10-27"], movedDates: [:], context: context, request: request, guidance: guidance, approvedAt: instant("2026-10-24T12:00:00Z"))
+        let result = saved.plannedRestDays(calendar: londonCalendar, at: instant("2026-10-26T12:00:00Z"))
+        XCTAssertEqual(result, [instant("2026-10-24T23:00:00Z")])
+        XCTAssertEqual(londonCalendar.dateInterval(of: .day, for: try XCTUnwrap(result.first))?.duration, 25 * 3_600)
+    }
+
+    private var londonCalendar: Calendar {
+        var value = Calendar(identifier: .gregorian)
+        value.timeZone = TimeZone(identifier: "Europe/London")!
+        return value
+    }
+    private func instant(_ value: String) -> Date { ISO8601DateFormatter().date(from: value)! }
+}

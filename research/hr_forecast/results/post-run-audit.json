@@ -1,0 +1,18 @@
+{
+  "audited_at_utc": "2026-10-24T20:46:48.035139+00:00",
+  "numerical_refit": false,
+  "changes_after_recorded_run": "Added streaming archive SHA256 check before ingestion; no feature/model/selection/evaluation change. Corrected figure title and added coverage reconciliation.",
+  "recorded_run_sources": {
+    "forecast.py": "a70a70f631afc4f582ab83cccff17929131f6f60971d17a82ad94acd8e955318",
+    "benchmark.py": "9cf7b7bcf99ec19dea1805f69d69de7479a3f987902936cdd61fd6df06592cba"
+  },
+  "current_source_sha256": {
+    "forecast.py": "a70a70f631afc4f582ab83cccff17929131f6f60971d17a82ad94acd8e955318",
+    "benchmark.py": "539338dcbfa5a0226cd7b61a71aa8414b5120005e71cf92443dbe2578e920e31"
+  },
+  "archive_integrity_guard_passed": true,
+  "test_count": 13,
+  "tests": "contract-green.txt",
+  "recorded_run_sources_match_report": true,
+  "selection_sha256_unchanged": true
+}

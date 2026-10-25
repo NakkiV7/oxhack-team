@@ -1,0 +1,10 @@
+{
+  "dataset": "PAMAP2 Physical Activity Monitoring",
+  "source_url": "https://archive.ics.uci.edu/dataset/231/pamap2+physical+activity+monitoring",
+  "verified_utc_date": "2026-10-24",
+  "official_license_quote": "This dataset is licensed under a Creative Commons Attribution 4.0 International (CC BY 4.0) license.",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "attribution": "Reiss, A. (2012). PAMAP2 Physical Activity Monitoring [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5NW2H.",
+  "changes": "Derived causal time bins/features, trained ridge coefficients, evaluation tables, and figures. No raw sensor data redistributed in research/.",
+  "source_notices": "Original readme retained inside ignored source ZIP and .local/research/PAMAP2/readme.pdf."
+}

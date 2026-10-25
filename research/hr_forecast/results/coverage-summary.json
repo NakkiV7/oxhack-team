@@ -1,0 +1,58 @@
+[
+  {
+    "subject": 108,
+    "horizon": 10,
+    "planned_origins": 816,
+    "hr_input_eligible": 805,
+    "wrist_input_eligible": 801,
+    "target_observed": 814,
+    "hr_scored": 803,
+    "wrist_scored": 799,
+    "delivered_forecasts": 805,
+    "scored_forecasts": 803,
+    "input_coverage": 0.9865196078431373,
+    "scored_coverage": 0.9840686274509803
+  },
+  {
+    "subject": 108,
+    "horizon": 30,
+    "planned_origins": 816,
+    "hr_input_eligible": 805,
+    "wrist_input_eligible": 801,
+    "target_observed": 810,
+    "hr_scored": 799,
+    "wrist_scored": 795,
+    "delivered_forecasts": 805,
+    "scored_forecasts": 799,
+    "input_coverage": 0.9865196078431373,
+    "scored_coverage": 0.9791666666666666
+  },
+  {
+    "subject": 109,
+    "horizon": 10,
+    "planned_origins": 17,
+    "hr_input_eligible": 6,
+    "wrist_input_eligible": 6,
+    "target_observed": 15,
+    "hr_scored": 4,
+    "wrist_scored": 4,
+    "delivered_forecasts": 6,
+    "scored_forecasts": 4,
+    "input_coverage": 0.35294117647058826,
+    "scored_coverage": 0.23529411764705882
+  },
+  {
+    "subject": 109,
+    "horizon": 30,
+    "planned_origins": 17,
+    "hr_input_eligible": 6,
+    "wrist_input_eligible": 6,
+    "target_observed": 11,
+    "hr_scored": 0,
+    "wrist_scored": 0,
+    "delivered_forecasts": 6,
+    "scored_forecasts": 0,
+    "input_coverage": 0.35294117647058826,
+    "scored_coverage": 0.0
+  }
+]

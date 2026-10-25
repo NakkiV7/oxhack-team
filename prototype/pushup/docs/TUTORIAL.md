@@ -12,7 +12,7 @@ Three parts. Do part 1, then add 2 and 3 only if you want them.
 
 ```bash
 cd prototype/pushup
-npm install
+npm ci
 npm run setup
 npm run ui
 ```
@@ -26,8 +26,10 @@ Open <http://localhost:3001> (allow camera access for your browser in macOS Priv
 3. Click **Start camera**. Get into the start position (arms extended) until the message says you are in position.
 4. Do reps. A rep counts only if your elbow bends below the variation's depth threshold and comes back up. The page shows reps, good-form count, live advice, elbow angle, body-line (straightness) and a per-rep history.
 5. **No camera?** Click **Upload video** to analyse a recorded side-view clip. It loops and keeps counting until you press **Pause** (then **Resume**) or **Stop**. If the browser says it cannot play the file, convert it to .mp4 (H.264); some iPhone .mov files do not play in Chrome.
-6. **Timer and pace:** the ⏱ clock is your total workout time and stops while paused. The history shows how long each rep took, tinted yellow if it was more than 15% slower than your average so far and green if more than 15% faster (needs 2 earlier reps). **s/rep** is the average; after 6 reps it shows **▲ slowing** (last 3 reps more than 15% slower, a sign of tiring), **▼ faster** or **steady**.
-7. **Stop** asks "End this workout?" first. After you end it, a **Workout summary** (total time, reps, good form, average / fastest / slowest rep, most common issue) appears over the video. **Start again**, Esc, or starting the camera / uploading a video hides it and begins a fresh workout. **Reset reps** clears the count, history and timer.
+6. **Timer and pace:** the ⏱ clock is your total workout time and stops while paused. The history shows how long each rep took, tinted yellow if it was more than 15% slower than your average so far and green if more than 15% faster (needs 2 earlier reps). **s/rep** is the average; after 6 reps it shows **▲ slowing** (last 3 reps more than 15% slower), **▼ faster** or **steady**.
+7. **Stop** asks "End this workout?" first. After you end it, a **Workout summary** (total time, reps, good form, average / fastest / slowest rep, most common issue) appears over the video. **Start again** or Esc hides it; starting the camera or uploading a video begins a fresh workout. Changing variation also starts fresh. **Reset reps** clears the count, history and timer.
+
+With Tiger configured, a finished **standard camera** workout offers **Upload workout**. Nothing uploads automatically. Approval first saves an owner-bound snapshot in this browser, then sends rep metrics without video. After a failure or page reload, choose **Retry pending uploads** explicitly; another configured owner cannot upload your pending copies. Video replays stay local. Conflicting copies require explicit review/discard.
 
 What the messages mean:
 
@@ -42,7 +44,7 @@ Run the tests any time: `npm test` (rep counting, cues, and the Q&A safety filte
 
 ## 2. iPhone display (optional)
 
-The Mac stays the camera. The iPhone shows the count, the live video with the body-line drawing, gauges and the history, and speaks reps. The Mac and the iPhone (or Simulator) must be on the **same network**; only the one-time install needs a cable.
+The Mac stays the camera. The iPhone shows the count, the live video with the body-line drawing, gauges and the history, and speaks reps. A thin line under the advice banner says which rule is judging (default, or your personal rule with its limits). After an explicitly approved upload, a cloud status row shows whether it is saving, saved or pending; retries require an explicit action on the Mac. The Mac and the iPhone (or Simulator) must be on the **same network**; only the one-time install needs a cable.
 
 Start the server first (`npm run ui`). It prints lines like `iPhone: enter 192.168.1.23 in the pushup-ios app`. Use the address on your Wi-Fi (ignore `169.254.x.x`).
 
@@ -98,6 +100,18 @@ If the model is busy you may see `gemini: ... 503` in the server log; it falls b
 
 Without a key everything else works; the coach panel says it is off.
 
+## Try the personal profile (optional)
+
+```bash
+npm run train
+```
+
+Reads the mock past workouts in `data/history.csv`, prints your usual elbow angle, body line and rep time, and the if/then rules a small decision tree learned, then saves them to `data/profile.json`. Mock profiles are labelled **demo data**.
+
+In the web page, **My profile** checks there is enough valid history, trains on your configured source, and shows the result. To use its baseline limits live, explicitly choose **My personal rule** before starting a standard push-up workout. The choice stays fixed for that workout and only tightens the form limits; counting keeps the default thresholds. The fitted decision tree remains explanatory and does not judge live reps.
+
+For training validation, owner/source context, all required Tiger migrations and verified TLS setup, follow [README-pushup.md](../README-pushup.md#personal-profile-mock-history). Loading the bundled CSV creates mock history, not real workouts.
+
 ## Stopping and cleaning up
 
-Press Ctrl+C in the terminal running `npm run ui`. Nothing is stored on disk except the downloaded model.
+Press Ctrl+C in the terminal running `npm run ui`. The downloaded model, any trained profile and browser upload outbox remain; stopping the server does not delete them or any uploaded database history.

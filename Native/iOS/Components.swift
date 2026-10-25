@@ -4,9 +4,27 @@ import AVFoundation
 enum Palette {
     static let ink = Color(red: 0.078, green: 0.078, blue: 0.078)
     static let surface = Color(red: 0.961, green: 0.961, blue: 0.957)
+    static let blue = Color(red: 36 / 255, green: 95 / 255, blue: 199 / 255)
+    static let muted = Color(red: 98 / 255, green: 103 / 255, blue: 110 / 255)
     static let green = Color(red: 0.149, green: 0.455, blue: 0.353)
-    static let amber = Color(red: 0.58, green: 0.416, blue: 0.094)
+    static let amber = Color(red: 138 / 255, green: 97 / 255, blue: 22 / 255)
     static let red = Color(red: 0.675, green: 0.208, blue: 0.208)
+
+    static func coaching(_ decision: CoachingDecision?, cue: Cue) -> Color {
+        if let decision {
+            switch decision.reason {
+            case .discomfort: return red
+            case .tracking, .alignment, .slowerRep: return amber
+            case .targetReached: return green
+            case .restReminder: return ink
+            }
+        }
+        switch cue {
+        case .tracking, .alignment: return amber
+        case .controlled: return green
+        default: return ink
+        }
+    }
 }
 
 struct PrimaryButton: View {
@@ -17,8 +35,29 @@ struct PrimaryButton: View {
         Button(action: action) {
             HStack { Text(title); Spacer(); Image(systemName: symbol) }
                 .font(.system(size: 16, weight: .semibold)).padding(19)
-                .foregroundStyle(.white).background(Palette.ink, in: RoundedRectangle(cornerRadius: 15))
+                .foregroundStyle(.white).background(Palette.blue, in: RoundedRectangle(cornerRadius: 15))
         }.buttonStyle(.plain).accessibilityLabel(title)
+    }
+}
+
+struct KeyboardDismissBar: View {
+    let identifier: String
+    let dismiss: () -> Void
+    var body: some View {
+        HStack {
+            Capsule().fill(.secondary.opacity(0.4)).frame(width: 32, height: 4)
+                .accessibilityHidden(true)
+            Spacer()
+            Button(action: dismiss) {
+                Label("Done", systemImage: "keyboard.chevron.compact.down").padding(.vertical, 12)
+            }.font(.subheadline.weight(.semibold)).accessibilityIdentifier(identifier)
+                .accessibilityHint("Dismisses the keyboard without saving.")
+        }.padding(.horizontal, 20).background(.regularMaterial)
+            .contentShape(Rectangle())
+            .gesture(DragGesture(minimumDistance: 12).onEnded { value in
+                if value.translation.height > 12, value.translation.height > abs(value.translation.width) { dismiss() }
+            })
+            .accessibilityElement(children: .contain).accessibilityIdentifier("keyboard-dismiss-bar")
     }
 }
 
@@ -26,9 +65,12 @@ struct Metric: View {
     let value: String
     let title: String
     let symbol: String
+    var symbolColor: Color = Palette.ink
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label(value, systemImage: symbol).font(.system(size: 24, weight: .semibold, design: .rounded)).monospacedDigit()
+            Label { Text(value) } icon: {
+                Image(systemName: symbol).foregroundStyle(symbolColor)
+            }.font(.system(size: 24, weight: .semibold, design: .rounded)).monospacedDigit()
             Text(title).font(.caption).foregroundStyle(.secondary)
         }.frame(maxWidth: .infinity, alignment: .leading)
     }

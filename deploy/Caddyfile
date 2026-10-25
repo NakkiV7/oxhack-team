@@ -1,0 +1,40 @@
+{
+    email {$ACME_EMAIL}
+    grace_period 70s
+    servers {
+        max_header_size 16KB
+        timeouts {
+            read_header 10s
+            read_body 15s
+            write 70s
+            idle 30s
+        }
+    }
+}
+
+{$SPOTTR_HOSTNAME} {
+    # No access log: avoid recording client IPs, workout IDs or auth headers.
+    @landing path / /assets/*
+    handle @landing {
+        root * /srv/landing
+        file_server
+    }
+    handle {
+        @outside not remote_ip {$SPOTTR_ALLOWED_CIDRS}
+        respond @outside "Demo access restricted" 403
+        request_body {
+            max_size 2097152
+        }
+        reverse_proxy gateway:8787 {
+            # Drop excess concurrent requests; never replay a paid POST automatically.
+            unhealthy_request_count 4
+            lb_retries 0
+            transport http {
+                dial_timeout 3s
+                response_header_timeout 65s
+                read_timeout 70s
+                write_timeout 15s
+            }
+        }
+    }
+}

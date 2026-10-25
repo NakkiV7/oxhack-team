@@ -23,6 +23,15 @@ function database({ tls = true, timescaleVersion = '2.18.0', postgresVersion = 1
       return { rows: [] };
     }
     if (sql.includes('FROM spottr_gateway.workout')) return { rows: snapshots.has(key) ? [snapshots.get(key)] : [] };
+    if (sql.includes('date_bin')) {
+      if (values[2] === '2000-01-01T00:00:02.500Z') return { rows: [] };
+      const partial = values[2] === '2000-01-01T00:00:01Z';
+      return { rows: [
+        { bucket: new Date('2000-01-01T00:00:00Z'), kind: 'accelerationMagnitude', unit: 'g', source: 'apple_watch', observedSamples: partial ? 1 : 2, mean: 0, min: 0, max: 0, firstMeasuredAt: new Date('2000-01-01T00:00:01Z'), lastMeasuredAt: new Date(partial ? '2000-01-01T00:00:01Z' : '2000-01-01T00:00:02Z') },
+        ...partial ? [] : [{ bucket: new Date('2000-01-01T00:00:00Z'), kind: 'heartRate', unit: 'bpm', source: 'apple_watch', observedSamples: 1, mean: 1, min: 1, max: 1, firstMeasuredAt: new Date('2000-01-01T00:00:00Z'), lastMeasuredAt: new Date('2000-01-01T00:00:00Z') }],
+        { bucket: new Date('2000-01-01T00:00:00Z'), kind: 'rotationMagnitude', unit: 'rad/s', source: 'apple_watch', observedSamples: 1, mean: 0, min: 0, max: 0, firstMeasuredAt: new Date('2000-01-01T00:00:01Z'), lastMeasuredAt: new Date('2000-01-01T00:00:01Z') }
+      ] };
+    }
     if (sql.includes('FROM spottr_gateway.scalar_sample')) return { rows: samples.filter(sample => sample.installationID === values[0] && sample.workoutID === values[1] && Date.parse(sample.measured_at) >= Date.parse(values[2]) && Date.parse(sample.measured_at) < Date.parse(values[3])).map(sample => ({ measuredAt: new Date(sample.measured_at), sentAt: new Date(sample.sent_at), kind: sample.kind, value: sample.value, unit: sample.unit, source: sample.source })) };
     if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(sql)) return { rows: [] };
     throw Error('Unexpected smoke SQL');
@@ -34,7 +43,7 @@ test('Tiger smoke exercises immutable fixtures, scoped readback and observed hal
   const db = database();
   const first = await runTigerSmoke({ pool: db.pool });
   assert.deepEqual(first.fixtureIDs, TIGER_SMOKE_IDS);
-  assert.deepEqual(first.counts, { environmentChecks: 4, created: 1, replays: 1, conflicts: 1, readbacks: 1, scalarRows: 4, windowRows: 2, gapRows: 0 });
+  assert.deepEqual(first.counts, { environmentChecks: 4, created: 1, replays: 1, conflicts: 1, readbacks: 1, scalarRows: 4, windowRows: 2, gapRows: 0, rollupRows5s: 3, rollupRows60s: 3, rollupWindowRows: 2, rollupGapRows: 0 });
   assert.ok(Object.values(first.timingsMs).every(value => typeof value === 'number' && value >= 0));
   assert.equal(db.samples.every(sample => sample.installationID === TIGER_SMOKE_IDS.installationID), true);
   assert.equal(db.samples.every(sample => sample.measured_at.startsWith('2000-01-01')), true);
@@ -68,7 +77,7 @@ test('smoke command requires explicit opt-in and configuration before constructi
 
 test('smoke command keeps fixture scope separate from the app and sanitizes driver failures', async () => {
   const db = database();
-  const result = await tigerSmokeCommand({ args: ['--allow-live-synthetic'], env: { TIGER_DATABASE_URL: 'postgresql://private-password@secret-host/db', SPOTTR_INSTALLATION_ID: 'f17e0000-0000-4000-8000-000000000999' }, createPool: config => {
+  const result = await tigerSmokeCommand({ args: ['--allow-live-synthetic'], env: { TIGER_DATABASE_URL: 'postgresql://private-password@secret-host/db?sslmode=verify-full', SPOTTR_INSTALLATION_ID: 'f17e0000-0000-4000-8000-000000000999' }, createPool: config => {
     assert.equal(config.ssl, undefined);
     return db.pool;
   } });
@@ -76,8 +85,23 @@ test('smoke command keeps fixture scope separate from the app and sanitizes driv
   assert.equal(result.fixtureIDs.installationID, TIGER_SMOKE_IDS.installationID);
   assert.equal(db.ended(), 1);
   assert.equal(/private-password|secret-host|postgresql/.test(JSON.stringify(result)), false);
-  const failure = await tigerSmokeCommand({ args: ['--allow-live-synthetic'], env: { TIGER_DATABASE_URL: 'private-connection' }, createPool: () => ({ on() {}, query: async () => { throw Error('private-password secret-host SELECT hidden'); }, end: async () => {} }) });
+  const failure = await tigerSmokeCommand({ args: ['--allow-live-synthetic'], env: { TIGER_DATABASE_URL: 'postgresql://private-password@secret-host/db?sslmode=verify-full' }, createPool: () => ({ on() {}, query: async () => { throw Error('private-password secret-host SELECT hidden'); }, end: async () => {} }) });
   assert.deepEqual(failure, { exitCode: 1, error: { code: 'database_smoke_failed' } });
+});
+
+test('live smoke refuses insecure TLS configuration before database authentication', async () => {
+  let pools = 0;
+  const createPool = () => { pools++; return database().pool; };
+  for (const suffix of ['', '?sslmode=disable', '?sslmode=no-verify', '?sslmode=require', '?sslmode=verify-ca', '?sslmode=verify-full&sslmode=disable', '?sslmode=verify-full&ssl=0']) {
+    const result = await tigerSmokeCommand({ args: ['--allow-live-synthetic'], env: { TIGER_DATABASE_URL: `postgresql://private-password@secret-host/db${suffix}` }, createPool });
+    assert.deepEqual(result, { exitCode: 1, error: { code: 'strict_tls_required' } });
+  }
+  for (const env of [
+    { TIGER_DATABASE_URL: 'not-a-connection' },
+    { TIGER_DATABASE_URL: 'https://secret-host/db?sslmode=verify-full' },
+    { TIGER_DATABASE_URL: 'postgresql://private-password@secret-host/db?sslmode=verify-full', NODE_TLS_REJECT_UNAUTHORIZED: '0' }
+  ]) assert.deepEqual(await tigerSmokeCommand({ args: ['--allow-live-synthetic'], env, createPool }), { exitCode: 1, error: { code: 'strict_tls_required' } });
+  assert.equal(pools, 0);
 });
 
 test('executable smoke refuses implicit live access and prints only its sanitized error code', () => {

@@ -24,6 +24,12 @@ struct SessionView: View {
                 Spacer()
                 Image(systemName: store.session.phase == .rest ? "wind" : "figure.strengthtraining.traditional").frame(width: 40, height: 40)
             }.padding(.horizontal, 14).padding(.top, 8)
+            if store.session.phase == .active || store.session.phase == .paused || store.session.phase == .rest {
+                Toggle("Voice feedback", isOn: Binding(get: { store.voiceFeedbackEnabled }, set: { store.setVoiceFeedback($0) }))
+                    .font(.caption)
+                    .accessibilityIdentifier("voice-feedback-toggle")
+                    .padding(.horizontal, 24).padding(.vertical, 6)
+            }
             switch store.session.phase {
             case .active, .paused: LiveSetView(store: store)
             case .rest: RecoveryView(store: store)
@@ -47,12 +53,17 @@ struct LiveSetView: View {
     @State private var importing = false
     @State private var pendingImport: URL?
     @State private var replaceCamera = false
+    @State private var replaceSecondaryCamera = false
+    @State private var pairingPresented = false
+    @State private var pendingManualFallback: UUID?
+    @State private var manualQuantity = ""
+    @FocusState private var enteringReps: Bool
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 23) {
                 TimelineView(.periodic(from: .now, by: 1)) { _ in
                     HStack(alignment: .firstTextBaseline) {
-                        Text(String(format: "%02d", store.session.counter.reps)).font(.system(size: 70, weight: .semibold, design: .rounded)).tracking(-3).monospacedDigit()
+                        Text(store.session.actualReps.map { String(format: "%02d", $0) } ?? "—").font(.system(size: 70, weight: .semibold, design: .rounded)).tracking(-3).monospacedDigit()
                             .accessibilityIdentifier("rep-count")
                         Text("/ \(store.session.exercise.target)").foregroundStyle(.secondary)
                         Spacer()
@@ -64,7 +75,7 @@ struct LiveSetView: View {
                 }
                 ZStack(alignment: .topLeading) {
                     Palette.surface
-                    if case .camera = store.visionState, store.session.phase == .active {
+                    if case .camera = store.visionState, store.session.phase == .active, !store.usingSecondaryCamera {
                         CameraPreview(session: store.vision.capture)
                     } else if let image = store.image {
                         Image(uiImage: image).resizable().scaledToFit()
@@ -72,7 +83,7 @@ struct LiveSetView: View {
                         Image("\(store.session.exercise.rawValue)-\(guide)").resizable().scaledToFit().padding(27)
                     }
                     if let frame = store.frame { PoseOverlay(frame: frame, exercise: store.session.exercise) }
-                    Text(store.session.phase == .paused ? "Paused" : (store.hasInput ? store.visionState.message : "Movement guide"))
+                    Text(store.session.phase == .paused ? "Paused" : (store.source == .manual ? "Manual self-report" : (store.hasInput ? inputStatus : "Movement guide")))
                         .font(.caption.weight(.medium)).padding(8).background(.white.opacity(0.9), in: Capsule()).padding(12)
                 }.frame(height: 295).clipShape(RoundedRectangle(cornerRadius: 23))
                 if !store.hasInput {
@@ -82,18 +93,54 @@ struct LiveSetView: View {
                 }
                 HStack(spacing: 14) {
                     Button("Use camera", systemImage: "camera") {
-                        if store.hasInput { replaceCamera = true; return }
+                        if store.hasInput || store.source == .manual { replaceCamera = true; return }
                         store.camera()
                     }
                     Spacer()
                     Button("Import video", systemImage: "film") { importing = true }
                 }.font(.subheadline.weight(.medium)).buttonStyle(.plain)
-                if !store.hasInput { Text(store.visionState.message).font(.caption).foregroundStyle(.secondary) }
+                Menu {
+                    Button("Start side camera", systemImage: "video") {
+                        if store.hasInput || store.source == .manual || store.session.counter.reps > 0 { replaceSecondaryCamera = true; return }
+                        store.secondaryCamera()
+                    }
+                    Button("Pair side camera", systemImage: "link") {
+                        store.pause()
+                        pairingPresented = true
+                    }
+                } label: {
+                    Label("Side camera", systemImage: "network").font(.subheadline.weight(.medium))
+                }.accessibilityIdentifier("secondary-camera-menu")
+                if case .failed(let message) = store.visionState {
+                    Text(message).font(.caption).foregroundStyle(Palette.red)
+                        .accessibilityIdentifier("camera-tracking-error")
+                } else if !store.hasInput && store.source != .manual {
+                    Text(store.visionState.message).font(.caption).foregroundStyle(.secondary)
+                }
+                if store.source == .manual {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Actual completed reps").font(.subheadline.weight(.semibold))
+                        TextField("Enter reps", text: $manualQuantity)
+                            .keyboardType(.numberPad).focused($enteringReps)
+                            .padding(16).background(Palette.surface, in: RoundedRectangle(cornerRadius: 12))
+                            .accessibilityIdentifier("legacy-manual-reps")
+                            .onChange(of: manualQuantity) { _, value in store.setManualReps(Int(value)) }
+                        if enteringReps { Button("Done entering reps") { enteringReps = false }.font(.caption) }
+                        Text("Enter 1–200 reps you actually completed. Camera counts and targets are not filled in for you.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                } else {
+                    Button("Use manual reps", systemImage: "hand.tap") {
+                        store.pause()
+                        pendingManualFallback = store.session.generation
+                    }.font(.subheadline.weight(.medium))
+                        .accessibilityIdentifier("legacy-manual-fallback")
+                }
                 HStack(alignment: .top, spacing: 13) {
                     Image(systemName: store.session.phase == .paused ? "pause" : "arrow.down")
                         .padding(12).background(Palette.surface, in: RoundedRectangle(cornerRadius: 12))
                     VStack(alignment: .leading, spacing: 7) {
-                        Text(store.coachingEvent?.decision.text ?? store.session.cue.text)
+                        Text(store.source == .manual ? "Enter the reps you actually complete." : (store.coachingEvent?.decision.text ?? store.session.cue.text))
                             .font(.system(size: 19, weight: .semibold)).fixedSize(horizontal: false, vertical: true)
                             .accessibilityIdentifier("coaching-cue")
                         Text(store.session.phase == .paused ? "Your set is on hold." : "\(store.session.exercise.guide)").font(.caption).foregroundStyle(.secondary)
@@ -117,12 +164,27 @@ struct LiveSetView: View {
                         .font(.subheadline.weight(.medium)).frame(maxWidth: .infinity).padding(19)
                         .overlay(RoundedRectangle(cornerRadius: 15).stroke(.black.opacity(0.12)))
                 }.buttonStyle(.plain)
-                PrimaryButton(title: "End set", symbol: "checkmark", action: store.endSet)
+                PrimaryButton(title: "End set", symbol: "checkmark") { enteringReps = false; store.endSet() }
+                    .disabled(store.source == .manual && (validManualQuantity == nil || validManualQuantity != store.session.manualReps))
             }.padding(.horizontal, 24).padding(.vertical, 12).background(.white)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .onChange(of: store.source) { _, source in
+            manualQuantity = source == .manual ? store.session.manualReps.map(String.init) ?? "" : ""
+            enteringReps = false
+        }
+        .alert("Restart this set with manual reps?", isPresented: Binding(get: { pendingManualFallback != nil }, set: { if !$0 { pendingManualFallback = nil } })) {
+            Button("Reset and use manual reps", role: .destructive) {
+                if pendingManualFallback == store.session.generation { store.switchToManualReps() }
+                pendingManualFallback = nil
+            }
+            Button("Cancel", role: .cancel) { pendingManualFallback = nil }
+        } message: {
+            Text("This set’s unfinished camera count and active time will be discarded. Ended sets stay saved. A fresh manual set starts when you confirm; enter only reps you actually complete.")
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.movie]) { result in
             guard case .success(let url) = result else { return }
-            if store.hasInput || store.session.counter.reps > 0 { pendingImport = url; return }
+            if store.hasInput || store.source == .manual || store.session.counter.reps > 0 { pendingImport = url; return }
             store.video(url)
         }
         .confirmationDialog("Start a fresh set with this video?", isPresented: Binding(get: { pendingImport != nil }, set: { if !$0 { pendingImport = nil } })) {
@@ -131,6 +193,22 @@ struct LiveSetView: View {
         .confirmationDialog("Start a fresh camera set?", isPresented: $replaceCamera) {
             Button("Start fresh set") { store.camera() }
         } message: { Text("The current set’s count will reset.") }
+        .confirmationDialog("Start a fresh side camera set?", isPresented: $replaceSecondaryCamera) {
+            Button("Start fresh set") { store.secondaryCamera() }
+        } message: { Text("The current set’s count will reset.") }
+        .sheet(isPresented: $pairingPresented) { SecondaryCameraSettingsView() }
+    }
+    private var validManualQuantity: Int? {
+        Int(manualQuantity).flatMap { (1...200).contains($0) ? $0 : nil }
+    }
+    private var inputStatus: String {
+        guard store.usingSecondaryCamera else { return store.visionState.message }
+        switch store.secondaryVision.state {
+        case .starting: return "Connecting to side camera…"
+        case .tracking: return "Side camera"
+        case .idle: return store.visionState.message
+        case .failed(let message): return message
+        }
     }
 }
 
@@ -208,6 +286,9 @@ struct FinishedView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("\(set.exercise.title) · Set \(set.number)").font(.headline)
                             Text(set.reason.title).font(.caption).foregroundStyle(.secondary)
+                            if set.source == .manual {
+                                Label("Manual self-report", systemImage: "hand.tap").font(.caption).foregroundStyle(.secondary)
+                            }
                         }
                         Spacer(); Text("\(set.reps) reps").font(.subheadline)
                     }

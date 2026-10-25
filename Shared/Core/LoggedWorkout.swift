@@ -14,6 +14,7 @@ public struct LoggedSet: Codable, Identifiable, Equatable, Sendable {
     public var restSecondsBefore: Double? = nil
     public var reserve: Int? = nil
     public var quantityOrigin: QuantityOrigin? = nil
+    public var repDurations: [Double]? = nil
 }
 public enum LoggedWorkout {
     public enum Invalid: Error { case quantity }

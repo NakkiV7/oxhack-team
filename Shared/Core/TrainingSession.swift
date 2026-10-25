@@ -29,16 +29,28 @@ public struct SetRecord: Codable, Identifiable, Equatable, Sendable {
     public var restSecondsBefore: Double? = nil
 }
 
+public struct SkippedSet: Codable, Identifiable, Equatable, Sendable {
+    public enum Reason: String, Codable, Sendable { case userChoice }
+    public let id: UUID
+    public let exerciseID: String
+    public let number: Int
+    public let target: Int
+    public let unit: ExerciseEntry.Unit
+    public let source: InputSource
+    public let reason: Reason
+}
+
 public struct SessionRecord: Codable, Identifiable, Equatable, Sendable {
     public let id: UUID
     public let date: Date
     public let sets: [SetRecord]
     public let telemetry: [WatchTelemetry]
     public let loggedSets: [LoggedSet]
-    public init(id: UUID, date: Date, sets: [SetRecord], telemetry: [WatchTelemetry] = [], loggedSets: [LoggedSet] = []) {
-        self.id = id; self.date = date; self.sets = sets; self.telemetry = telemetry; self.loggedSets = loggedSets
+    public let skippedSets: [SkippedSet]
+    public init(id: UUID, date: Date, sets: [SetRecord], telemetry: [WatchTelemetry] = [], loggedSets: [LoggedSet] = [], skippedSets: [SkippedSet] = []) {
+        self.id = id; self.date = date; self.sets = sets; self.telemetry = telemetry; self.loggedSets = loggedSets; self.skippedSets = skippedSets
     }
-    private enum CodingKeys: String, CodingKey { case id, date, sets, telemetry, loggedSets }
+    private enum CodingKeys: String, CodingKey { case id, date, sets, telemetry, loggedSets, skippedSets }
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         id = try values.decode(UUID.self, forKey: .id)
@@ -46,6 +58,7 @@ public struct SessionRecord: Codable, Identifiable, Equatable, Sendable {
         sets = try values.decode([SetRecord].self, forKey: .sets)
         telemetry = try values.decodeIfPresent([WatchTelemetry].self, forKey: .telemetry) ?? []
         loggedSets = try values.decodeIfPresent([LoggedSet].self, forKey: .loggedSets) ?? []
+        skippedSets = try values.decodeIfPresent([SkippedSet].self, forKey: .skippedSets) ?? []
     }
     public var setCount: Int { sets.count + loggedSets.count }
     public var reps: Int { sets.reduce(0) { $0 + $1.reps } + loggedSets.reduce(0) { $0 + $1.reps } }
@@ -60,12 +73,14 @@ public struct TrainingSession: Sendable {
     public private(set) var sets: [SetRecord] = []
     public private(set) var telemetry: [WatchTelemetry] = []
     public private(set) var counter = RepCounter(exercise: .squat)
+    public private(set) var manualReps: Int?
+    public var actualReps: Int? { source == .manual ? manualReps : counter.reps }
     public var exercise: Exercise { counter.exercise }
     public var setNumber: Int { sets.count % 3 + 1 }
     public var cue: Cue = .ready
     private var activeStarted: Double?
     private var accumulated = 0.0
-    private var source: InputSource = .camera
+    public private(set) var source: InputSource = .camera
     private var repDurations: [Double] = []
     private var currentRestBefore: Double?
     private var restStartedAt: Double?
@@ -81,6 +96,7 @@ public struct TrainingSession: Sendable {
         guard age >= -2, age <= 12, sample.sentAt > (telemetry.last?.sentAt ?? .distantPast) else { return }
         let readings = [sample.heartRate, sample.accelerationG, sample.rotationRadiansPerSecond].compactMap { $0 }
         guard readings.allSatisfy({ $0.value.isFinite && $0.value >= 0 && $0.date.timeIntervalSince1970.isFinite }) else { return }
+        guard sample.activeEnergy.map({ $0.isValid(at: sample.sentAt) && $0.isValid(at: now) && $0.asOf >= date.addingTimeInterval(-2) }) ?? true else { return }
         telemetry = Array((telemetry + [sample]).suffix(7200))
     }
     public mutating func feedback(reserve: Int?, reason: StopReason) {
@@ -95,7 +111,7 @@ public struct TrainingSession: Sendable {
         restStartedAt = nil
         counter = RepCounter(exercise: sets.count < 3 ? firstExercise : (firstExercise == .squat ? .pushup : .squat))
         accumulated = 0; activeStarted = time; phase = .active; generation = UUID(); cue = .ready
-        source = .camera; repDurations = []
+        source = .camera; repDurations = []; manualReps = nil
     }
     public mutating func finish(at time: Double) {
         if phase == .active || phase == .paused { endSet(at: time) }
@@ -103,7 +119,7 @@ public struct TrainingSession: Sendable {
     }
     public mutating func restartSet(source: InputSource, at time: Double) {
         guard phase == .active || phase == .paused else { return }
-        self.source = source; counter = RepCounter(exercise: exercise); repDurations = []
+        self.source = source; counter = RepCounter(exercise: exercise); repDurations = []; manualReps = nil
         accumulated = 0; activeStarted = time; phase = .active; generation = UUID(); cue = .ready
     }
     public func elapsed(at time: Double) -> Double { accumulated + max(0, time - (activeStarted ?? time)) }
@@ -111,8 +127,12 @@ public struct TrainingSession: Sendable {
         guard phase == .idle else { return }
         phase = .active; activeStarted = time
     }
+    public mutating func setManualReps(_ value: Int?) {
+        guard source == .manual, phase == .active || phase == .paused else { return }
+        manualReps = value.flatMap { (1...200).contains($0) ? $0 : nil }
+    }
     public mutating func consume(_ sample: MovementSample, generation: UUID) {
-        guard phase == .active, generation == self.generation else { return }
+        guard source != .manual, phase == .active, generation == self.generation else { return }
         let previousReps = counter.reps
         let movementCue = counter.consume(sample)
         if counter.reps > previousReps, let duration = counter.lastRepDuration { repDurations.append(duration) }
@@ -128,10 +148,10 @@ public struct TrainingSession: Sendable {
         phase = .active; activeStarted = time; generation = UUID(); cue = .ready
     }
     public mutating func endSet(at time: Double, reason: StopReason = .voluntary) {
-        guard time.isFinite, phase == .active || phase == .paused else { return }
-        sets.append(.init(id: UUID(), exercise: exercise, number: setNumber, reps: counter.reps,
+        guard time.isFinite, phase == .active || phase == .paused, let reps = actualReps else { return }
+        sets.append(.init(id: UUID(), exercise: exercise, number: setNumber, reps: reps,
                           target: exercise.target, activeSeconds: elapsed(at: time), source: source, reason: reason,
-                          repDurations: repDurations, restSecondsBefore: currentRestBefore))
+                          repDurations: source == .manual ? nil : repDurations, restSecondsBefore: currentRestBefore))
         restStartedAt = time
         phase = .rest; activeStarted = nil; accumulated = 0; generation = UUID(); cue = .ready
     }

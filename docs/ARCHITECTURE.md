@@ -1,49 +1,51 @@
 # How Spottr works
 
-Spottr is a native iPhone and Watch app with a small optional Node gateway. Local workouts, form cues, history, skill progress and deterministic reports work without provider credentials. The phone owns workout state and feedback priority.
+Implementation/acceptance checkpoint: **25 October 2026, 01:32:51.286 UTC**. Spottr is a native iPhone/Watch app with an optional Node gateway. Local workouts, profile/goals, lessons, skill progression and deterministic reports require no provider credentials. The phone owns workout state and feedback priority. The [evidence ledger](integration-readiness.md) and [morning handoff](morning-handoff.md) distinguish software checks, live requests and physical acceptance.
 
-## Runtime boundaries
+## Runtime ownership
 
 | Component | Owns | Boundary |
-|---|---|---|
-| iPhone, `Native/iOS` | Camera/video frames, MediaPipe pose, workout controls, cue presentation, local history and reports | Raw camera frames stay local in the current phone path. User explicitly requests cloud chat, summaries or sync |
-| Shared core, `Shared/Core` | Rep/session state, source/freshness validation, catalogue, game rules, computed reports, provider contracts | Foundation-only Swift compiled by SwiftPM and both app targets |
-| Watch, `Native/Watch` | Workout heart rate and motion magnitudes, controls and current session display | Timestamped session/generation-scoped WatchConnectivity messages; stale/missing values remain unknown |
-| Gateway, `server` | Bearer authentication, input/output bounds, Gemini REST, Tiger transactions, bounded Snowflake check | Provider keys remain on the server. The current token is a single-owner hackathon boundary, not a user account system |
-| Pi, `hardware/pi` | Explicit camera capture, fresh preview frames and expiring capture lease | Camera transport is separate from pose inference; actual hardware evidence is recorded separately |
+| --- | --- | --- |
+| iPhone — `Native/iOS` | Camera/imported-video inference, configured input selection, profile, private lesson videos, local history/reports and speech | Raw frames and private lesson imports stay local. Cloud requests and workout upload are explicit. |
+| Shared core — `Shared/Core` | Legacy/configured sessions, rep counter and geometry, source/freshness rules, catalogue, game progression, reports and contracts | Foundation-only Swift used by the app targets and offline tests. |
+| Watch — `Native/Watch` | User-started HealthKit workout, HR/motion observations, current display and permitted commands | Session/generation-scoped messages retain observed timestamps. Missing/stale readings remain unknown. |
+| Gateway — `server` | Bearer authentication, bounded Gemini requests, Tiger snapshot/scalar ingestion and fixed Snowflake workflows | Server-held provider keys. Installation-scoped, single-owner prototype; no cloud user account or multi-user identity system. |
+| Pi — `hardware/pi` | Explicit authenticated HTTPS capture, fresh JPEG delivery and expiring capture leases | Phone validates certificate pin/freshness and runs pose inference. No Pi inference claim. |
 
-Flow: camera pose + Watch observations → local workout/session state → deterministic cue policy → text event → optional audio consumer. Completed records → local reports and skill progress. Explicit requests → grounded derived facts to Gemini, or an immutable session snapshot to Tiger.
+## From a plan to an actual record
 
-## Feedback that arrives at the right time
+`TrainingStore` coordinates the existing fixed camera/video workout and `ConfigurableSession`. An approved plan preserves catalogue exercise order, set counts, targets, units and rest targets. Confirmed removal clears only the saved plan; Cancel preserves it, and completed history/profile/connection data remain intact. Each configured set begins in Manual. Only exact base `pushup`/`squat` IDs offer phone or Pi camera input; other exercises retain manual reps or active hold timers. Selecting input never starts capture. Explicit Start begins the set; explicit End records its actual quantity and begins rest. Reaching a target or advancing the queue never starts or ends work automatically.
 
-- Evaluate once per second and at completed-rep/form boundaries, entirely locally.
-- Use observed camera timing history per exercise. After five eligible samples, compare a completed rep with the previous mean plus sample standard deviation (with a 0.25 s noise margin).
-- Form/tracking and discomfort take priority. Routine cues have cooldown/expiry. Pause, source change and session generation changes invalidate stale work.
-- Discomfort stops encouragement and continuation for the current workout. Planned targets never establish remaining physical capacity.
-- Watch heart rate can provide fresh context; it alone does not initiate a coaching command or establish readiness.
-- Record actual monotonic rest between completed sets. Missing legacy timings stay unknown.
-- Voice playback consumes the event identity/priority/expiry; it must cancel obsolete requests and never overlap routine speech.
+Camera observations reuse `PoseGeometry` and `RepCounter`. Configured sessions own actual count, source, timings, cue and generation. Pause, failure, input changes and set transitions invalidate late callbacks and partial movement. Changing input after Start requires confirmation, resets only unfinished work and returns to preparation. Manual fallback is explicit. Discomfort prevents further sets; Finish saves only ended sets.
 
-Details and test cases: [coaching policy](coaching-policy.md).
+Mixed camera/manual/hold records stay ordered in `loggedSets`, with actual active/rest intervals and optional observed camera-cycle `repDurations`. Reports validate timing/source rather than infer durations from manual counts or total time. Legacy records without metadata still decode. Watch shows the same actual count/unit/source and brief form cue; it cannot invent a manual count or choose the camera. [Configured behavior and tests](custom-workouts.md).
 
-## AI jobs
+Watch recording separately guards the owning session, builder, motion stream and callback generation. Paused/old/pre-resume samples are rejected. Failed collection discards the unsaved builder, stops motion and clears capture state so recording can be retried; late failures or saves cannot replace a newer recording. Simulator/source-double tests and compact-layout screenshots establish those exercised paths, not physical HealthKit/Core Motion capture. [Watch lifecycle](watch-telemetry.md).
 
-Gemini receives allowlisted derived facts, recent conversation and catalogue IDs. It explains session/week reports and proposes a structured workout. Schema and semantic checks reject unknown IDs, invalid quantities, stale generations and absent evidence. The user selects and approves exercises before a saved plan changes. Fact-ID membership does not prove the generated sentence is correct; evaluation also checks entailment.
+The 19-exercise catalogue supplies units, support and prerequisites. Grid/linear skill views share deterministic game rules; XP is not physical capacity. Lessons show illustrations beside a selected private movie with its bytes/aspect ratio preserved. Nineteen icons, six phase illustrations and recording guides are complete; real clips and any later cropping remain separate work.
 
-Routine tests use deterministic fake network responses and synthetic histories. Bounded live checks are separate and record model, request/result and latency where available. Fixture success is never described as real physiology or a completed provider call.
+## Local feedback and optional AI
 
-## Storage and analytics
+The local policy evaluates fresh form and observed pacing once per second and at movement boundaries. Eligible camera timing history supplies the prior mean/sample SD; manual/replay/discomfort/form-stop and invalid durations do not seed personal rhythm. Form/tracking/discomfort outrank routine cues, which have cooldowns and expiry. Actual rest is recorded; Watch HR alone establishes neither readiness nor a coaching command.
 
-The phone stores completed session records locally. Tiger stores immutable snapshots by installation/workout UUID and SHA-256 plus a measured-time scalar hypertable. Identical retries return the same receipt; changed content conflicts instead of overwriting. Timestamp duplication does not manufacture observations. Wider continuous aggregates and compression are a planned analytics layer until executed and measured.
+Opt-in Apple speech consumes cue identity, generation, priority and expiry. It starts off for each workout and cancels on mute, app inactivity and session transitions. No provider runs in the frame/cue loop. Fake-playback tests are distinct from audible phone/audio-route acceptance. ElevenLabs remains a separate unimplemented adapter. [Coaching](coaching-policy.md), [voice](voice-feedback.md).
 
-Snowflake has a separate batch-evaluation role: versioned public-data/model features and retrospective comparisons exported from the operational store. Its current connection-check command runs one fixed statement; that is not yet the full analytics pipeline. Vultr is the intended gateway host. Presage is an optional explicitly started camera measurement, with quality and source kept distinct from Watch. See the [readiness ledger](integration-readiness.md).
+Explicit Gemini chat, proposal and session/week summary requests send derived training facts, recorded Watch summaries and supplied goals/weekly target; the optional name and raw frames/sensor streams are excluded. Goal changes invalidate late output. Chat also receives server-owned canonical catalogue/camera capabilities, so app knowledge does not depend on workout history. Schema/semantic validation bounds IDs, quantities, evidence and generation; the user selects and approves exercises before replacing a plan. Fact membership alone does not establish entailment.
 
-## Extending Spottr
+All four native request types have real Gemini responses from synthetic inputs. Two signed-simulator chat checks reached Google; the second accepted the corrected server-owned camera/manual capability context. The provider-only `maxItems` projection enabled native proposal/session/week acceptance while full local output validation remained unchanged. A later real proposal was explicitly approved for Squats alone and executed as three synthetic manual sets of 3/2/1 reps. The saved record preserved order, self-report provenance, actual active time and observed rest rather than substituting targets. Its one-attempt loopback gateway rejected a later chat with `demo_budget_exhausted` before another provider request. The [optional owner-demo guard](../integrations/gateway/OWNER-DEMO.md) has wider offline coverage; no public HTTPS relay was exercised. Physical HTTPS networking, real exercise and real-user guidance quality remain open. [Approved-plan receipt](evidence/native-gemini-plan-execution-2026-10-25.md), [structured-response receipt](evidence/gemini-structured-compatibility-2026-10-25.md), [chat receipt](evidence/native-gemini-chat-2026-10-24.md). The earlier [fake-provider checks](evidence/native-synthetic-coach-2026-10-24.md) remain separate software-flow evidence.
 
-- Add exercises in `ExerciseCatalog`, then define units, permitted support, game prerequisites and artwork. Do not enable camera tracking for a new variation without implementing its adapter and failure behavior.
-- Add a sensor with native units, source, observation timestamp and freshness/coverage rules. Missing values stay optional; never substitute simulator physiology in normal use.
-- Add a cue reason in the local policy with a behavior test, priority/cooldown/expiry and an audio-consumer test. Provider calls do not belong in the frame loop.
-- Add a provider behind the existing gateway. Validate request/response contracts, bound time/size, sanitize failures, retain local functionality and use fake adapters for routine tests.
-- Keep teammate CV, voice and landing work on separate feature branches. Small PRs include reproducible checks and remaining acceptance gaps. Regenerate the Xcode project only at integration to avoid generated-file conflicts.
+## Persistence, research and deployment
 
-Start with [README](../README.md), [contribution guide](../CONTRIBUTING.md), [owners](TEAM.md), [open work](ISSUES.md) and [accounts/keys](SETUP.md). No CI/CD is required.
+The phone stores local profile/history. Explicit Tiger sync uses immutable installation/workout UUID snapshots and content hashes, plus observed scalars at their measurement times. Identical retries return the same receipt; changed content conflicts. The adapter is offline-tested. The authenticated provider console separately accepted the gateway schema and its empty tables/hypertable; [receipt](evidence/tiger-console-2026-10-24.md). The Node connection still fails strict TLS against the private-CA endpoint, so gateway persistence and native sync remain unverified. [Tiger diagnosis](tiger-live-readiness.md).
+
+The public PAMAP2 experiment has frozen participant-held-out 10/30-second HR forecasts, sparse coverage and a retained losing adaptation. It does not validate Watch transfer, capacity/readiness or reps-to-failure. Snowflake now implements pinned public-artifact import, immutable run/payload lineage and fixed SQL reconciliation against local metrics. Dry-run/fake-network checks passed; actual warehouse execution remains pending. [Research](public-data-benchmark.md), [analytics](snowflake-analytics.md).
+
+Pinned gateway packaging passed an actual local Linux/ARM64 build, restricted nonroot/read-only runtime, health/auth/HTTP checks, Compose and Caddy parsing with zero provider calls. No hosted Vultr VM, public HTTPS or AMD64 build is accepted. [Deployment receipt](vultr-deployment.md).
+
+Presage remains a bounded opt-in proposal pending SDK derived-vitals LLM-egress and credit decisions; no capture is integrated. The original Codex control review retained an action-contract disagreement. A later explicit v2 rubric matched author expectations on six calibration pairs (12 verdicts); human adjudication and ten unjudged held-out pairs remain pending. Neither review establishes Delta usage, generated-output quality or runtime validation. Delta installation/agreement and an actual review remain pending. [Presage](presage-integration.md), [Codex calibration](../evaluations/codex/2026-10-25-cue-calibration/), [Delta](delta-workflow.md).
+
+## Distribution and extension
+
+Latest native build **0.1 (4)** from `7f4b5ba` passed archive/export, Apple validation/upload and processing. At **01:32:51.286 UTC**, its internal/external beta states were `IN_BETA_TESTING`, encryption `false` and submission `APPROVED`. Internal membership is **4, 3, 2, 1**; external OxHack contains **4, 3, 1**, with build 2 internal only. The same 25-person invitation remains enabled. Its Apple page was checked at the earlier build 3 checkpoint; no new page acceptance, installation or physical behavior was verified for build 4. Build 4 adds confirmed saved-workout removal and accurate final-set guidance, plus corrected source attribution. Gemini runs on the separate gateway; the Python contributor demo is outside this binary. The SDK privacy/origin-signature audit remains open despite Apple processing. [Build 4 receipt](evidence/testflight-build-4-2026-10-25.md), [installation](testflight.md), [release evidence](release-readiness.md), [SDK follow-up #52](https://github.com/NakkiV7/oxhack-team/issues/52).
+
+Extend existing owners rather than add parallel engines: exercise adapters need observed failure behavior; sensors need units/timestamps/freshness; cues need priority/cancellation; providers need bounded validated contracts and offline fakes. Keep teammate scopes separate, coordinate shared counter/generator changes and reuse existing simulators. [Contributing](../CONTRIBUTING.md), [ownership](TEAM.md), [remaining gates](ROADMAP.md), [keys/setup](SETUP.md). No CI/CD is planned.

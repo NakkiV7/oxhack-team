@@ -1,0 +1,15 @@
+# Build from the repository root with -f server/Dockerfile.
+# Only runtime source, locked dependencies and the canonical catalogue enter context.
+**
+!server/
+!server/package.json
+!server/package-lock.json
+!server/src/
+!server/src/**
+!server/migrations/
+!server/migrations/**
+!Shared/
+!Shared/Core/
+!Shared/Core/ExerciseCatalog.swift
+!Shared/Core/Resources/
+!Shared/Core/Resources/coach-guidance.json

@@ -1,0 +1,39 @@
+{
+  "provenance": "Authored synthetic adapter outputs; no video, inference, provider, sensor or clinical evidence.",
+  "events": [
+    {
+      "version": 1, "id": "20000000-0000-4000-8000-000000000001",
+      "scope": { "ownerId": "local-demo-owner", "sessionId": "10000000-0000-4000-8000-000000000001", "generation": "10000000-0000-4000-8000-000000000002" },
+      "exercise": "squat", "source": "fixture", "atMs": 1000, "expiresAtMs": 4000,
+      "feedback": "good", "text": "Rep recorded.",
+      "rep": { "number": 1, "counted": true, "good": true, "durationSeconds": 2.4 }
+    },
+    {
+      "version": 1, "id": "20000000-0000-4000-8000-000000000002",
+      "scope": { "ownerId": "local-demo-owner", "sessionId": "10000000-0000-4000-8000-000000000001", "generation": "10000000-0000-4000-8000-000000000002" },
+      "exercise": "pushUp", "source": "fixture", "atMs": 2000, "expiresAtMs": 5000,
+      "feedback": "form-warning", "text": "Check your setup and use a comfortable range.",
+      "rep": { "number": 2, "counted": true, "good": false, "durationSeconds": null }
+    },
+    {
+      "version": 1, "id": "20000000-0000-4000-8000-000000000003",
+      "scope": { "ownerId": "local-demo-owner", "sessionId": "10000000-0000-4000-8000-000000000001", "generation": "10000000-0000-4000-8000-000000000002" },
+      "exercise": "squat", "source": "fixture", "atMs": 3000, "expiresAtMs": 6000,
+      "feedback": "slow", "text": "Your last rep was slower. Pause if you need to.",
+      "rep": { "number": 2, "counted": true, "good": true, "durationSeconds": 4.5 }
+    },
+    {
+      "version": 1, "id": "20000000-0000-4000-8000-000000000004",
+      "scope": { "ownerId": "local-demo-owner", "sessionId": "10000000-0000-4000-8000-000000000001", "generation": "10000000-0000-4000-8000-000000000002" },
+      "exercise": "pushUp", "source": "fixture", "atMs": 4000, "expiresAtMs": 7000,
+      "feedback": "form-warning", "text": "Check your setup and use a comfortable range.",
+      "rep": { "number": null, "counted": false, "good": false, "durationSeconds": null }
+    },
+    {
+      "version": 1, "id": "20000000-0000-4000-8000-000000000005",
+      "scope": { "ownerId": "local-demo-owner", "sessionId": "10000000-0000-4000-8000-000000000001", "generation": "10000000-0000-4000-8000-000000000002" },
+      "exercise": "pushUp", "source": "fixture", "atMs": 5000, "expiresAtMs": null,
+      "feedback": "stop", "text": "Stop and rest if you feel discomfort.", "rep": null
+    }
+  ]
+}

@@ -25,8 +25,11 @@ sources(project, unit, Dir['Tests/iOS/*.swift'])
 sources(project, ui, Dir['Tests/UI/*.swift'])
 resource(project, app, 'Native/Resources/pose_landmarker_lite.task')
 resource(project, app, 'Native/Resources/MediaPipe-LICENSE.txt')
+resource(project, app, 'Native/iOS/PrivacyInfo.xcprivacy')
+resource(project, app, 'Shared/Core/Resources/coach-guidance.json')
 resource(project, app, 'Native/Resources/Assets.xcassets') if File.directory?('Native/Resources/Assets.xcassets')
 resource(project, watch, 'Native/Watch/Assets.xcassets')
+resource(project, watch, 'Native/Watch/PrivacyInfo.xcprivacy')
 resource(project, unit, 'Tests/iOS/Resources/pose.jpg')
 resource(project, unit, 'Tests/iOS/Resources/blank.mp4')
 
@@ -34,6 +37,8 @@ resource(project, unit, 'Tests/iOS/Resources/blank.mp4')
   target.build_configurations.each do |config|
     config.build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = 'com.omarchoudhry.' + target.name.downcase
     config.build_settings['GENERATE_INFOPLIST_FILE'] = 'YES'
+    config.build_settings['MARKETING_VERSION'] = '0.1'
+    config.build_settings['CURRENT_PROJECT_VERSION'] = '1'
     config.build_settings['CODE_SIGN_STYLE'] = 'Automatic'
     config.build_settings['SWIFT_EMIT_LOC_STRINGS'] = 'NO'
     config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'YES'

@@ -188,4 +188,99 @@ final class CoachingFlowTests: XCTestCase {
         XCTAssertEqual(store.coachingEvent?.decision.reason, .restReminder)
         XCTAssertEqual(store.coachingEvent?.decision.elapsed ?? 0, 45.1, accuracy: 0.1)
     }
+
+    func testConfiguredManualRepsOnlySpeakReportedDiscomfortAndKeepNextSetBlocked() throws {
+        let (store, playback) = try configuredDiscomfortStore(exerciseID: "wallPushup", unit: "reps")
+        store.beginConfiguredSet()
+        store.setConfiguredReps(2)
+        store.coachingTick()
+        XCTAssertNil(store.coachingEvent)
+        XCTAssertTrue(playback.spoken.isEmpty)
+        store.endSet()
+        store.coachingTick(at: store.now + 60)
+        XCTAssertNil(store.coachingEvent)
+
+        store.feedback(reserve: nil, reason: .discomfort)
+
+        let event = try XCTUnwrap(store.coachingEvent)
+        XCTAssertEqual(event.decision.priority, .stop)
+        XCTAssertEqual(event.decision.reason, .discomfort)
+        XCTAssertEqual(event.decision.facts, ["Pain or discomfort reported."])
+        XCTAssertNil(event.expiresAt)
+        XCTAssertEqual(playback.spoken.map(\.text), [event.decision.text])
+        store.feedback(reserve: nil, reason: .voluntary)
+        store.coachingTick(at: store.now + 120)
+        store.next()
+        XCTAssertEqual(store.coachingEvent?.id, event.id)
+        XCTAssertEqual(store.configured?.phase, .rest)
+        XCTAssertEqual(store.configured?.completed.first?.reason, .discomfort)
+        XCTAssertEqual(playback.spoken.count, 1)
+    }
+
+    func testConfiguredHoldDiscomfortSpeaksWithoutCameraOrInventedCompletedWork() throws {
+        let (store, playback) = try configuredDiscomfortStore(exerciseID: "plank", unit: "seconds")
+        store.beginConfiguredSet()
+        store.coachingTick()
+        XCTAssertNil(store.coachingEvent)
+        XCTAssertTrue(playback.spoken.isEmpty)
+
+        store.stopConfiguredForDiscomfort()
+
+        let event = try XCTUnwrap(store.coachingEvent)
+        XCTAssertEqual(event.decision.reason, .discomfort)
+        XCTAssertNil(event.expiresAt)
+        XCTAssertEqual(playback.spoken.first?.kind, .coaching(.stop))
+        XCTAssertEqual(playback.spoken.first?.sessionID, store.configured?.id)
+        XCTAssertEqual(playback.spoken.first?.generation, store.configured?.generation)
+        XCTAssertTrue(store.configured?.completed.isEmpty == true)
+        store.coachingTick(at: store.now + 120)
+        store.next()
+        XCTAssertEqual(store.configured?.phase, .rest)
+        XCTAssertEqual(store.coachingEvent?.id, event.id)
+        XCTAssertEqual(playback.spoken.count, 1)
+    }
+
+    func testRepeatedConfiguredDiscomfortCannotInterruptItselfOrReplayAfterBackground() throws {
+        let (store, playback) = try configuredDiscomfortStore(exerciseID: "plank", unit: "seconds")
+        store.stopConfiguredForDiscomfort()
+        let event = try XCTUnwrap(store.coachingEvent)
+
+        store.stopConfiguredForDiscomfort()
+        store.coachingTick(at: store.now + 1)
+
+        XCTAssertEqual(store.coachingEvent?.id, event.id)
+        XCTAssertEqual(playback.spoken.count, 1)
+        XCTAssertEqual(playback.stops, 0)
+        store.setAppActive(false)
+        XCTAssertEqual(playback.stops, 1)
+        store.coachingTick(at: store.now + 2)
+        store.setAppActive(true)
+        store.coachingTick(at: store.now + 3)
+        XCTAssertNil(store.coachingEvent)
+        XCTAssertEqual(playback.spoken.count, 1)
+        XCTAssertTrue(store.configured?.stoppedForDiscomfort == true)
+    }
+
+    private func configuredDiscomfortStore(exerciseID: String, unit: String) throws -> (TrainingStore, DiscomfortRecordingVoice) {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        addTeardownBlock { try? FileManager.default.removeItem(at: folder) }
+        let playback = DiscomfortRecordingVoice()
+        let store = TrainingStore(historyURL: folder.appendingPathComponent("history.json"), voicePlayback: playback)
+        let plan = try JSONDecoder().decode(CoachSavedPlan.self, from: Data("""
+        {"items":[{"exerciseID":"\(exerciseID)","sets":2,"target":8,"unit":"\(unit)","restSeconds":30}],
+        "approvedAt":0,"rationale":"Offline discomfort regression"}
+        """.utf8))
+        store.startPlan(plan, availableSupport: ["Wall"])
+        store.setVoiceFeedback(true)
+        return (store, playback)
+    }
+}
+
+@MainActor
+private final class DiscomfortRecordingVoice: VoicePlayback {
+    var onFinish: ((UUID) -> Void)?
+    var spoken: [VoiceCue] = []
+    var stops = 0
+    func speak(_ cue: VoiceCue) { spoken.append(cue) }
+    func stop() { stops += 1 }
 }

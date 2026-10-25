@@ -1,6 +1,6 @@
 # Local Spottr integration gateway
 
-Runnable Node gateway in `server/`, with Gemini REST coaching, a Tiger PostgreSQL/TimescaleDB session adapter and an explicit Snowflake SQL API connection-check command. Tests use mocked provider responses and a mocked PostgreSQL boundary; no paid provider request or database migration has been executed by the gateway implementation task. Configuration presence is separate from a verified connection. No deployment or CI/CD is included.
+Runnable Node gateway in `server/`, with Gemini REST coaching, a Tiger PostgreSQL/TimescaleDB session adapter and an explicit Snowflake SQL API connection-check command. Tests use mocked provider responses and a mocked PostgreSQL boundary. Current live/provider-console acceptance is recorded separately in the [integration ledger](../../docs/integration-readiness.md). Configuration presence is separate from a verified connection. No deployment or CI/CD is included.
 
 From the repository root, copy `.env.example` to `.env`, fill values privately, then:
 
@@ -14,6 +14,8 @@ npm start
 Use Node 22.9 or newer for `--env-file-if-exists` (current Node is suitable). Default origin is `http://127.0.0.1:8787`. `HOST` and `PORT` override binding. The server reads root `.env` through the start command; real environment values take precedence. Keep the filled `.env` out of Git. Configure the native app with the gateway URL and owner bearer token through its local developer settings; the Gemini and database keys stay on the server.
 
 `GET /health` needs no authentication and performs no provider or database calls. It returns only readiness booleans (`configured`, `adapterImplemented`), plus `authenticationConfigured`; it never proves a connection. All `/v1/` routes require `Authorization: Bearer <SPOTTR_GATEWAY_TOKEN>`. This is a single-owner local gateway: `SPOTTR_INSTALLATION_ID` binds that owner token to one installation, and caller IDs cannot change the scope. For remote use, add TLS and a deliberate installation authentication/rate-limit design before exposing it publicly. Presage and Vultr currently have configuration placeholders only; this server is not evidence of using those services.
+
+For a temporary synthetic phone demo, the optional [bounded owner mode](OWNER-DEMO.md) adds a shared attempt allowance, one active request, an absolute expiry and HTTP read limits. It disables Tiger and leaves default local behavior unchanged. It has offline acceptance only; no relay or physical HTTPS path has been started.
 
 ## Gemini
 
@@ -40,19 +42,25 @@ Set `GEMINI_API_KEY` and explicitly choose an account-enabled `GEMINI_MODEL`. `G
 
 The gateway uses Google `generateContent` with a server key in the `x-goog-api-key` header. Structured requests use `generationConfig.responseFormat.text` with `mimeType: APPLICATION_JSON` and a request-specific JSON Schema. The gateway additionally validates matching generation, current fact references, unique evidence references, unknown fields, text length and all proposal bounds. It derives permitted exercise IDs, units and support from the current `Shared/Core/ExerciseCatalog.swift`; retain that file at the same relative location when packaging. A catalogue format change that cannot be read fails startup.
 
+The provider schema omits `maxItems` to avoid the observed Gemini grammar-branching rejection; the full local output contract still enforces exercise, insight and evidence-list limits after generation. Other schema keywords, token/byte caps and the no-retry behavior stay in place. A controlled comparison and three signed-simulator proposal/report actions passed with synthetic inputs; [compatibility and native evidence](../../docs/evidence/gemini-structured-compatibility-2026-10-25.md).
+
+Each accepted coaching request also receives gateway-owned `requestedAtUTC`, derived from the server clock at dispatch. Together with recorded session dates, it gives Gemini calendar context for spacing suggested workouts. Client-supplied timestamps remain invalid. Conversation and current instructions are preferences or self-reports; dates alone do not establish physiological recovery. Fixed-clock offline tests exercise all three routes, including spoof rejection. This is UTC context, without a user-local timezone or new live-provider acceptance.
+
+Chat also receives server-owned app capabilities derived from that same catalogue, including its explicit tracking field: base push-ups and squats support camera tracking; other rep exercises use manual self-report and seconds exercises use the active timer. The context explains explicit custom-set Start/End controls and optional local voice, off until enabled. This metadata answers product questions without becoming personal evidence or adding fact IDs. Client-supplied capability fields remain invalid; personal grounding and structured response validation are unchanged. Offline request tests verify the context, not the wording or quality of an actual Gemini answer.
+
 Defaults match `CoachContracts.swift`: at most 12 distinct exercises, 5 sets per exercise, 30 repetitions or 120 hold seconds per set, 600 rest seconds and 24 total sets. Summary insights are capped at three. Grounded text cites 1–16 supplied fact IDs and has at most 500 characters. These checks establish the wire contract and evidence membership, not factual entailment or clinical suitability. The app independently validates output and requires explicit proposal selection before changing its local plan.
 
 Provider refusals, safety blocks, truncated responses and malformed results fail. Raw provider bodies, keys and request payloads are not logged. Health does not check model availability. A real account-enabled request, factual review, latency/token/cost measurement and app acceptance remain live validation work.
 
 ## Tiger
 
-Set `TIGER_DATABASE_URL` using the provider's TLS connection string and set `SPOTTR_INSTALLATION_ID` to the persistent installation UUID displayed in the app's explicit Sync card. Use the provider's trusted certificate configuration; the gateway does not disable certificate verification. It creates no database resources on startup. Apply the migration explicitly once with:
+Set `TIGER_DATABASE_URL` using the provider's TLS connection string and set `SPOTTR_INSTALLATION_ID` to the persistent installation UUID displayed in the app's explicit Sync card. Use the provider's trusted certificate configuration; the gateway does not disable certificate verification. It creates no database resources on startup. For a fresh database, apply the reviewed migration explicitly once with:
 
 ```sh
 npm run migrate
 ```
 
-`server/migrations/001_workouts.sql` requires TimescaleDB with `create_hypertable`/`by_range` support (target ≥2.18). It creates the separate `spottr_gateway` schema, immutable session snapshots, and a scalar sample hypertable partitioned on `measured_at`, with that timestamp included in the primary key. It does not apply or depend on the earlier review-only `integrations/tiger/001_schema.sql` proposal. No retention, rollup policy or destructive cleanup is enabled. The migration has not been executed against a real database by this task.
+`server/migrations/001_workouts.sql` requires TimescaleDB with `create_hypertable`/`by_range` support (target ≥2.18). It creates the separate `spottr_gateway` schema, immutable session snapshots, and a scalar sample hypertable partitioned on `measured_at`, with that timestamp included in the primary key. It does not apply or depend on the earlier review-only `integrations/tiger/001_schema.sql` proposal. No retention, rollup policy or destructive cleanup is enabled. On the existing development service, this exact migration was accepted through the authenticated provider console on 24 October, with read-only checks of its empty schema. Do not blindly rerun it there; inspect the existing objects. [Console receipt](../../docs/evidence/tiger-console-2026-10-24.md). This does not resolve the Node client’s certificate-chain failure.
 
 | Endpoint | Input / scope | Response |
 |---|---|---|
@@ -62,9 +70,11 @@ npm run migrate
 
 Workout bodies are capped at 2 MiB, 120 total unique sets and 7200 telemetry envelopes. The gateway validates catalogue/unit relationships, tracked exercise IDs, source/reason enums, finite bounded measurements, ISO8601 dates and telemetry session ownership. Snapshot hashing sorts object keys recursively while preserving array order; property ordering does not affect replay. Snapshot and all observed samples commit in one transaction on one PostgreSQL connection. Failure rolls back, and all SQL values are parameterized. Native sensor measurement timestamps remain separate from Watch envelope time and database receipt time.
 
+Configured `loggedSets` may include optional `repDurations` for observed base `squat`/`pushup` camera sets. A non-null array requires `source:"camera"`, rep units (`seconds:0`), no non-null `quantityOrigin`, exactly one finite duration in the inclusive range 0.6–15 seconds per observed rep, and at most 200 entries. Zero observed reps use an empty array. Manual/video/variant/hold timing claims and partial or excess duration counts are rejected; omitted/null legacy fields remain accepted. Snapshot readback preserves set order and timing metadata without adding inferred per-rep scalar sensor rows.
+
 Only observed scalar values are inserted: `heartRate` in bpm (1–300), `accelerationMagnitude` in g, and `rotationMagnitude` in rad/s (both 0–1000). Watch scalar magnitudes are not raw three-axis vectors. Missing readings produce no scalar row and remain missing in the preserved snapshot; no interpolation or recovery inference is performed. Queries return at most the full session limit of 21600 scalar rows. Readback is currently developer tooling; this gateway does not merge remote records back into the native library.
 
-PostgreSQL pool connection timeout is five seconds; each statement is limited to ten seconds. The adapter does not retry a failed transaction. An uncertain network result can be explicitly retried using the identical snapshot; the receipt hash prevents overwriting a committed different snapshot. Actual migration, ingest/replay/conflict, readback and measured latency on Tiger remain to be verified live.
+PostgreSQL pool connection timeout is five seconds; each statement is limited to ten seconds. The adapter does not retry a failed transaction. An uncertain network result can be explicitly retried using the identical snapshot; the receipt hash prevents overwriting a committed different snapshot. Console schema acceptance is separate; actual Node ingest/replay/conflict, readback and measured ingestion latency on Tiger remain to be verified live.
 
 ### Opt-in Tiger smoke test
 

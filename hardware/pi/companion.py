@@ -4,9 +4,12 @@ from datetime import datetime, timezone
 import argparse
 import json
 import hmac
+import ipaddress
 import os
 import re
 import signal
+import socket
+import ssl
 import subprocess
 import threading
 import time
@@ -14,18 +17,49 @@ import uuid
 
 
 class FFmpegCapture:
-    def __init__(self, *, device="/dev/video0", process_factory=subprocess.Popen):
+    def __init__(self, *, device="/dev/video0", process_factory=subprocess.Popen,
+                 input_format=None, input_size="640x480", input_fps=10,
+                 output_size=None, output_fps=None):
         if not re.fullmatch(r"/dev/video[0-9]+", device):
             raise ValueError("device must be /dev/video followed by a number")
+        for size in (input_size, output_size):
+            if size is None:
+                continue
+            if not isinstance(size, str) or not re.fullmatch(r"[0-9]{2,4}x[0-9]{2,4}", size):
+                raise ValueError("capture sizes must be WIDTHxHEIGHT")
+            width, height = map(int, size.split("x"))
+            if not (16 <= width <= 3840 and 16 <= height <= 2160):
+                raise ValueError("capture size must be between 16x16 and 3840x2160")
+        for rate in (input_fps, output_fps):
+            if rate is not None and (type(rate) is not int or not 1 <= rate <= 60):
+                raise ValueError("capture frame rates must be integers from 1 to 60")
+        if input_format not in (None, "mjpeg", "h264", "nv12", "yuyv422"):
+            raise ValueError("unsupported camera input format")
         self.device = device
         self.process_factory = process_factory
         self.process = None
+        self.input_format = input_format
+        self.input_size = input_size
+        self.input_fps = input_fps
+        self.output_size = output_size
+        self.output_fps = output_fps
 
     def start(self, callback):
         argv = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-nostdin",
-                "-f", "v4l2", "-framerate", "10", "-video_size", "640x480",
-                "-i", self.device, "-an", "-c:v", "mjpeg", "-q:v", "5",
-                "-f", "image2pipe", "pipe:1"]
+                "-f", "v4l2", "-framerate", str(self.input_fps),
+                "-video_size", self.input_size, "-threads", "1"]
+        if self.input_format:
+            argv.extend(["-input_format", self.input_format])
+        argv.extend(["-i", self.device, "-an"])
+        filters = []
+        if self.output_fps:
+            filters.append(f"fps={self.output_fps}")
+        if self.output_size:
+            filters.append("scale=" + self.output_size.replace("x", ":"))
+        if filters:
+            argv.extend(["-vf", ",".join(filters)])
+        argv.extend(["-threads", "1", "-c:v", "mjpeg", "-q:v", "5",
+                     "-f", "image2pipe", "pipe:1"])
         self.process = self.process_factory(argv, stdin=subprocess.DEVNULL,
                                             stdout=subprocess.PIPE,
                                             stderr=subprocess.DEVNULL, bufsize=0)
@@ -34,7 +68,13 @@ class FFmpegCapture:
 
     def read_frames(self, pipe, callback):
         buffer = b""
-        while chunk := pipe.read(65536):
+        while True:
+            try:
+                chunk = pipe.read(65536)
+            except (OSError, ValueError):
+                return  # stop() can close the pipe while this reader is waiting.
+            if not chunk:
+                return
             buffer += chunk
             if len(buffer) > 4 * 1024 * 1024:
                 buffer = buffer[-1:]
@@ -162,9 +202,32 @@ class Camera:
 
 
 def make_server(*, host="127.0.0.1", port=8765, token="", capture=None,
-                clock=None, start_timeout=2.0):
+                clock=None, start_timeout=2.0, tls_cert=None, tls_key=None, allowed_network=None):
     if host not in ("127.0.0.1", "localhost") and not token:
         raise ValueError("external binding requires SPOTTR_PI_TOKEN")
+    if bool(tls_cert) != bool(tls_key):
+        raise ValueError("TLS requires both certificate and key")
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        address = None
+    ipv6 = isinstance(address, ipaddress.IPv6Address)
+    peer_network = None
+    if ipv6 or allowed_network is not None:
+        try:
+            peer_network = ipaddress.ip_network(allowed_network)
+        except (TypeError, ValueError):
+            pass
+        if (not ipv6 or address.is_unspecified or address.is_multicast or address.ipv4_mapped
+                or not isinstance(peer_network, ipaddress.IPv6Network)
+                or peer_network.prefixlen < 64 or address not in peer_network):
+            raise ValueError("IPv6 requires an exact bind and matching /64 or narrower peer network")
+        if not tls_cert:
+            raise ValueError("IPv6 requires TLS")
+    context = None
+    if tls_cert:
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(tls_cert, tls_key)
     camera = Camera(capture=capture or FFmpegCapture(), clock=clock or time.monotonic,
                     start_timeout=start_timeout)
 
@@ -276,11 +339,35 @@ def make_server(*, host="127.0.0.1", port=8765, token="", capture=None,
             self.json_response(404, {"error": "not_found"})
 
     class Server(ThreadingHTTPServer):
+        address_family = socket.AF_INET6 if ipv6 else socket.AF_INET
+
+        def server_bind(self):
+            if ipv6:
+                self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
+            super().server_bind()
+
+        def get_request(self):
+            connection, peer = super().get_request()
+            if peer_network:
+                if ipaddress.ip_address(peer[0]) not in peer_network:
+                    connection.close()
+                    raise OSError("Peer outside permitted network")
+                try:
+                    connection.settimeout(3)
+                    connection = context.wrap_socket(connection, server_side=True)
+                except Exception:
+                    connection.close()
+                    raise
+            return connection, peer
+
         def server_close(self):
             camera.stop()
             super().server_close()
 
-    return Server((host, port), Handler)
+    server = Server((host, port), Handler)
+    if context and not peer_network:
+        server.socket = context.wrap_socket(server.socket, server_side=True)
+    return server
 
 
 def main():
@@ -288,11 +375,22 @@ def main():
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--device", default="/dev/video0")
+    parser.add_argument("--input-format", choices=("mjpeg", "h264", "nv12", "yuyv422"))
+    parser.add_argument("--input-size", default="640x480")
+    parser.add_argument("--input-fps", type=int, default=10)
+    parser.add_argument("--output-size")
+    parser.add_argument("--output-fps", type=int)
+    parser.add_argument("--tls-cert")
+    parser.add_argument("--tls-key")
+    parser.add_argument("--allowed-network", help="Required IPv6 on-link /64 or narrower client network")
     args = parser.parse_args()
     try:
         server = make_server(host=args.host, port=args.port,
                              token=os.environ.get("SPOTTR_PI_TOKEN", ""),
-                             capture=FFmpegCapture(device=args.device))
+                             tls_cert=args.tls_cert, tls_key=args.tls_key, allowed_network=args.allowed_network,
+                             capture=FFmpegCapture(device=args.device, input_format=args.input_format,
+                                                   input_size=args.input_size, input_fps=args.input_fps,
+                                                   output_size=args.output_size, output_fps=args.output_fps))
     except ValueError as error:
         parser.error(str(error))
 

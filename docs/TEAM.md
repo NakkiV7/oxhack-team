@@ -1,10 +1,10 @@
 # Team handoff
 
-Canonical repository: [NakkiV7/oxhack-team](https://github.com/NakkiV7/oxhack-team). Branch publication and PR state should be checked on GitHub; the local baseline is not a claim that every change has merged into `main`.
+Canonical repository: [NakkiV7/oxhack-team](https://github.com/NakkiV7/oxhack-team). Use [the issue work map](ISSUES.md) for current merged PRs and active branches. Inspect the actual branch/diff before editing; parallel lanes may have staged or uncommitted work. The [current ledger](integration-readiness.md) records the exercised paths and remaining gates.
 
 | Owner | Scope | First useful contribution |
 |---|---|---|
-| [@MishaGitnik](https://github.com/MishaGitnik) | ElevenLabs voice + landing page | Build a small cached cue set with the requested David Goggins voice direction; confirm an available authorised voice/voice ID before promising that exact voice. Demonstrate audible phone playback and stop priority. Ship a landing page that describes verified behavior. |
+| [@MishaGitnik](https://github.com/MishaGitnik) | ElevenLabs voice + landing page | Use the merged local playback boundary for a later authorized remote voice adapter. Confirm voice availability/rights before promising an exact identity. Review the existing local landing page/assets and accurate availability labels before publication. |
 | [@azhar-rafiq](https://github.com/azhar-rafiq) | Push-up CV | Refine the existing MediaPipe geometry/state-machine baseline using labelled clips, calibration and failure cases. |
 | [@NakkiV7](https://github.com/NakkiV7) | Squat CV | Refine the existing squat baseline, depth/view calibration and full-cycle tests; document accuracy and abstention on labelled clips. |
 | [@omariosc](https://github.com/omariosc) | Native integration, Gemini, gateway, Watch, data/research/hardware tracks, documentation and final merge | Keep contracts and local demo stable, integrate feature PRs, regenerate the project, and record actual device/provider evidence. |
@@ -15,7 +15,9 @@ See [all assigned issues](ISSUES.md) for acceptance criteria and suggested branc
 
 `Native/iOS/PoseDetector.swift` and `VisionWorker.swift` supply the common MediaPipe pipeline. `Shared/Core/PoseGeometry.swift` and `RepCounter.swift` contain shared geometry and counters; coordinate before either CV owner edits them. Add exercise-specific fixtures/tests in a focused PR. Avoid rebuilding the pipeline or broad formatting changes while the other CV branch is active.
 
-Voice work should own a small cue/audio boundary and its tests; coordinate changes to `TrainingStore`, `SessionViews` and gateway contracts with Omar. Landing-page work should stay in its own directory and avoid native source or the generated Xcode project. Choose its minimal tooling in the feature issue; there is no existing web app implied by the native baseline.
+Local Apple voice is merged: `VoiceCuePlaybackController`, `LocalVoicePlayback` and `CoachingVoiceBridge` already own event priority, expiry, opt-in and cancellation. ElevenLabs work should adapt this boundary rather than create a second competing audio owner. See the [voice handoff](voice-feedback.md); coordinate `TrainingStore`, `SessionViews` and any gateway contract changes with Omar. Fake playback tests do not establish audible acceptance.
+
+Landing work belongs in `landing/`; a local page and assets exist. Coordinate its [design handoff](landing-design-handoff.md), source packaging and factual claims without editing native source or the generated Xcode project. Public page/App Store availability is not implied by a local page or an App Store Connect record.
 
 Omar integrates shared contracts and `scripts/generate-project.rb`, then regenerates `Spottr.xcodeproj`. Teammates generate locally to run new files but omit incidental signing/project changes from their PRs. Agree a single editor for each shared file before working concurrently.
 
@@ -27,8 +29,15 @@ Good help-wanted tasks are bounded and independently reviewable:
 
 - Label a small permitted push-up/squat clip set: full reps, partial reps, pauses, loss of view and count timestamps. Record consent/licence and provenance privately where needed.
 - Check 19 catalogue entries for correct units, instructions and manual/timer behavior; camera support remains limited to two exercises.
+- Review the 19 lesson guides and record authorized real demonstrations. Keep private imported movies and recordings out of Git; merged illustrations are not substitutes for filmed movement.
 - Rehearse offline, permission-denied and stale-response paths; file reproducible bugs with expected behavior.
 - Collect measured physical phone/Watch timings and source-labelled missingness without publishing private biometric data.
 - Fact-check the landing page, slides and eventual DEV draft against the integration evidence ledger.
 
-There is no CI/CD. Authors attach local checks and a short smoke-test result to each feature PR. New image generation is paused; use the existing assets. No deployment, firmware flash or public article publication is implied by a feature PR.
+There is no CI/CD. Authors attach local checks and a short smoke-test result to each feature PR. The 19 icons and six phase illustrations are merged; coordinate further artwork changes. Container packaging is prepared, but creating a VM, spending credits, firmware changes and public publication remain separately scoped actions. Do not use a historical pending milestone or a prepared fixture as current live evidence.
+
+## Python camera-demo contributions
+
+Nakki’s `42043df` standalone source is integrated under [`squat/`](../squat/README.md), with timing, save and voice-default regressions corrected. Rebase future `nakki-squat-model` work on main or carry these focused fixes before opening another PR; coordinate shared native geometry separately. Binary example footage was omitted pending provenance. The demo JSON is diagnostic output, not a native/Tiger workout contract. Run its documented standard-library checks before proposing changes; physical count/cue validation remains [#4](https://github.com/NakkiV7/oxhack-team/issues/4).
+
+The latest teammate browser/CV head is reviewed separately in [the integration review](teammate-cv-integration-review.md). Coordinate its voice picker with Misha and preserve the merged native audio owner; automatic synthesis prewarming is not part of the accepted app path.

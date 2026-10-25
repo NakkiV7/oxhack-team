@@ -2,6 +2,8 @@
 
 Prepared 24 October 2026. Omar deferred Delta usage until it is installed. No Delta account setup, provider request, generation run or judge score is claimed here.
 
+A separate [single-turn Codex review](../evaluations/codex/2026-10-24-cue-review/) has now exercised the authored controls without external provider calls. It retained a disagreement over whether “Stop now and rest” adds an unauthorized action. The raw answer and limitations are recorded; this is not Delta collaboration evidence or a comparison of generated prompt quality.
+
 The useful prize story is an actual iteration on a real product problem: a coach that gives short, well-timed and evidence-grounded cues. Do that work in Delta once available and retain its shared thread, comments, candidate prompts, fixture versions and reviewed changes. A plan prepared in Codex is preparation, not evidence of having built with Delta.
 
 ## Proposed workflow

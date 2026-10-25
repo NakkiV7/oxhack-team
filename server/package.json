@@ -10,10 +10,15 @@
     "migrate": "node --env-file-if-exists=../.env src/migrate.mjs",
     "tiger:smoke": "node --env-file-if-exists=../.env src/tiger-smoke-cli.mjs",
     "snowflake:check": "node --env-file-if-exists=../.env src/snowflake-check.mjs",
+    "snowflake:configuration": "node --env-file-if-exists=../.env src/snowflake-benchmark-cli.mjs --check-configuration",
+    "snowflake:benchmark": "node src/snowflake-benchmark-cli.mjs",
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
     "pg": "^8.23.1",
     "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.11"
   }
 }

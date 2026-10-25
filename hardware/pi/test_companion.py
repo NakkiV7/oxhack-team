@@ -8,6 +8,12 @@ import subprocess
 import socket
 import sys
 import time
+import ssl
+import tempfile
+from pathlib import Path
+import shutil
+import os
+from unittest.mock import patch
 from datetime import datetime, timezone
 
 from companion import make_server
@@ -57,11 +63,113 @@ class FakeProcess:
 
 
 class CaptureDriverTests(unittest.TestCase):
+    def test_stopping_a_blocked_pipe_reader_does_not_emit_a_thread_exception(self):
+        entered, closed = threading.Event(), threading.Event()
+        failures = queue.Queue()
+
+        class ClosingPipe:
+            def read(self, size):
+                entered.set()
+                closed.wait(2)
+                raise ValueError("I/O operation on closed file")
+
+            def close(self):
+                closed.set()
+
+        process = FakeProcess([])
+        process.stdout = ClosingPipe()
+        capture = companion.FFmpegCapture(process_factory=lambda *args, **kwargs: process)
+        original_thread, readers = threading.Thread, []
+
+        def launch_reader(*args, **kwargs):
+            thread = original_thread(*args, **kwargs)
+            readers.append(thread)
+            return thread
+
+        with patch("companion.threading.Thread", side_effect=launch_reader), \
+                patch("threading.excepthook", lambda args: failures.put(args.exc_type)):
+            capture.start(lambda frame: self.fail("Stopped reader cannot publish a frame"))
+            self.assertTrue(entered.wait(1))
+            capture.stop()
+            readers[0].join(1)
+            self.assertFalse(readers[0].is_alive())
+        self.assertTrue(failures.empty(), "Closing the capture pipe leaked a reader exception")
+
+    def test_cli_requires_both_tls_files_when_tls_is_requested(self):
+        result = subprocess.run([sys.executable, companion.__file__, "--tls-cert", "missing.pem"],
+                                capture_output=True, text=True, timeout=3)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("TLS requires both certificate and key", result.stderr)
+
+    def test_incomplete_tls_configuration_cannot_fall_back_to_plain_http(self):
+        for options in ({"tls_cert": "missing.pem"}, {"tls_key": "missing.key"}):
+            with self.subTest(options=options), self.assertRaises(ValueError):
+                make_server(port=0, **options)
+
+    @unittest.skipUnless(shutil.which("openssl"), "TLS check requires existing openssl")
+    def test_tls_endpoint_uses_a_verifiable_certificate_without_global_trust_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cert = Path(directory) / "cert.pem"
+            key = Path(directory) / "key.pem"
+            subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
+                            "-keyout", str(key), "-out", str(cert), "-days", "1",
+                            "-subj", "/CN=localhost", "-addext", "subjectAltName=IP:127.0.0.1"],
+                           check=True, capture_output=True)
+            server = make_server(host="127.0.0.1", port=0, token="test-token",
+                                 capture=FakeCapture(), tls_cert=str(cert), tls_key=str(key))
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            connection = http.client.HTTPSConnection(*server.server_address,
+                                                     context=ssl.create_default_context(cafile=str(cert)), timeout=2)
+            try:
+                connection.request("GET", "/health")
+                response = connection.getresponse()
+                self.assertEqual(response.status, 200)
+                self.assertEqual(json.loads(response.read())["camera"], "stopped")
+            finally:
+                connection.close()
+                server.shutdown()
+                server.server_close()
+                thread.join(2)
+
+    def test_capture_mode_rejects_invalid_sizes_rates_and_filter_expressions(self):
+        for options in ({"input_size": "640x480,other"}, {"input_size": "9999x9999"},
+                        {"output_size": "640x0"}, {"output_size": "640:360"},
+                        {"input_fps": 0}, {"input_fps": 61}, {"output_fps": -1},
+                        {"output_fps": True}, {"input_format": "unsupported"}):
+            with self.subTest(options=options), self.assertRaises(ValueError):
+                companion.FFmpegCapture(**options)
+
+    def test_explicit_elgato_mode_captures_mjpeg_and_emits_small_low_rate_frames(self):
+        launches = []
+        process = FakeProcess([JPEG])
+
+        def launch(argv, **kwargs):
+            launches.append(argv)
+            return process
+
+        capture = companion.FFmpegCapture(process_factory=launch,
+                                          input_format="mjpeg", input_size="1920x1080",
+                                          input_fps=30, output_size="640x360", output_fps=10)
+        frames = queue.Queue()
+        capture.start(frames.put)
+        self.assertEqual(frames.get(timeout=1), JPEG)
+        capture.stop()
+        argv = launches[0]
+        before_input = argv[:argv.index("-i")]
+        self.assertIn("mjpeg", before_input)
+        self.assertIn("1920x1080", before_input)
+        self.assertIn("30", before_input)
+        self.assertEqual(argv[argv.index("-vf") + 1], "fps=10,scale=640:360")
+        self.assertIn("-threads", argv)
+
     def test_cli_starts_health_without_opening_camera_and_accepts_termination(self):
         with socket.socket() as reservation:
             reservation.bind(("127.0.0.1", 0))
             port = reservation.getsockname()[1]
-        process = subprocess.Popen([sys.executable, companion.__file__, "--port", str(port)],
+        process = subprocess.Popen([sys.executable, companion.__file__, "--port", str(port),
+                                    "--input-format", "mjpeg", "--input-size", "1920x1080",
+                                    "--input-fps", "30", "--output-size", "640x360", "--output-fps", "10"],
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         health = None
         try:
@@ -139,6 +247,94 @@ class CaptureDriverTests(unittest.TestCase):
         self.assertFalse(launches[0][1].get("shell", False))
         with self.assertRaises(ValueError):
             companion.FFmpegCapture(device="/dev/video0; touch BAD")
+
+
+@unittest.skipUnless(socket.has_ipv6 and shutil.which("openssl"), "IPv6 TLS needs existing IPv6 and openssl")
+class IPv6CompanionTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.cert = Path(self.directory.name) / "cert.pem"
+        self.key = Path(self.directory.name) / "key.pem"
+        subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
+                        "-keyout", str(self.key), "-out", str(self.cert), "-days", "1",
+                        "-subj", "/CN=localhost", "-addext", "subjectAltName=IP:::1"],
+                       check=True, capture_output=True)
+
+    def make(self, **options):
+        args = dict(host="::1", port=0, token="fixture-private-token", capture=FakeCapture(),
+                    tls_cert=str(self.cert), tls_key=str(self.key), allowed_network="::1/128")
+        args.update(options)
+        return make_server(**args)
+
+    def test_exact_ipv6_tls_listener_starts_idle_and_private_routes_require_auth(self):
+        server = self.make()
+        self.assertEqual(server.address_family, socket.AF_INET6)
+        self.assertEqual(server.socket.getsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY), 1)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        context = ssl.create_default_context(cafile=str(self.cert))
+        try:
+            for route, expected in (("/health", 200), ("/frame.jpg", 401)):
+                connection = http.client.HTTPSConnection("::1", server.server_address[1], context=context, timeout=2)
+                try:
+                    connection.request("GET", route)
+                    response = connection.getresponse()
+                    self.assertEqual(response.status, expected)
+                    body = response.read()
+                    if route == "/health":
+                        body = json.loads(body)
+                        self.assertEqual(body["camera"], "stopped")
+                        self.assertFalse(body["frame_available"])
+                finally:
+                    connection.close()
+        finally:
+            server.shutdown(); server.server_close(); thread.join(2)
+
+    def test_ipv6_requires_exact_bind_tls_token_and_a_matching_narrow_network(self):
+        for options in ({"host": "::"}, {"host": "ff02::1"}, {"host": "::ffff:127.0.0.1"},
+                        {"tls_cert": None, "tls_key": None}, {"token": ""},
+                        {"allowed_network": None}, {"allowed_network": "::/0"},
+                        {"allowed_network": "2001:db8::/64"}, {"allowed_network": "127.0.0.0/8"},
+                        {"allowed_network": "not-a-network"}):
+            with self.subTest(options=options), self.assertRaises(ValueError):
+                server = self.make(**options)
+                server.server_close()
+
+    def test_outside_peer_is_closed_before_tls_or_http_processing(self):
+        server = self.make()
+        listener = server.socket
+        accepted = []
+
+        class Peer:
+            closed = False
+            def close(self): self.closed = True
+
+        peer = Peer()
+
+        class Listener:
+            def accept(self):
+                accepted.append(True)
+                return peer, ("2001:db8::2", 12345, 0, 0)
+
+        try:
+            server.socket = Listener()
+            with self.assertRaises(OSError):
+                server.get_request()
+            self.assertEqual(accepted, [True])
+            self.assertTrue(peer.closed)
+        finally:
+            server.socket = listener
+            server.server_close()
+
+    def test_cli_rejects_broad_ipv6_network_before_binding_or_loading_tls(self):
+        result = subprocess.run([sys.executable, companion.__file__, "--host", "::1",
+                                 "--allowed-network", "::/0", "--tls-cert", "missing.pem",
+                                 "--tls-key", "missing.key"],
+                                env={**os.environ, "SPOTTR_PI_TOKEN": "fixture-private-token"},
+                                capture_output=True, text=True, timeout=3)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("IPv6 requires an exact bind and matching /64 or narrower peer network", result.stderr)
 
 
 class CompanionHTTPTests(unittest.TestCase):

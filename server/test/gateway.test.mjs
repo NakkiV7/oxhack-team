@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import test from 'node:test';
 import { createGateway } from '../src/gateway.mjs';
+import { jsonContract, outputContract, promptCatalog } from '../src/contracts.mjs';
 import { spawn } from 'node:child_process';
 
 async function serve(t, options = {}) {
@@ -28,6 +29,35 @@ const env = { SPOTTR_GATEWAY_TOKEN: 'test-token', GEMINI_API_KEY: 'test-key', GE
 const input = { generationID: 'generation-1', message: 'How did I do?', history: [], facts: [{ id: 'set-1', text: 'Recorded 8 squats.' }], availableSupport: [] };
 const post = data => ({ method: 'POST', headers: { authorization: 'Bearer test-token', 'content-type': 'application/json' }, body: JSON.stringify(data) });
 
+test('planning context carries server time and supplied instructions without inventing recovery', async t => {
+  const now = () => Date.parse('2026-10-25T09:00:00.000Z');
+  const captured = [];
+  const request = await serve(t, { env, now, fetchImpl: async (_url, options) => {
+    const payload = JSON.parse(options.body);
+    captured.push(payload);
+    const task = JSON.parse(payload.contents.at(-1).parts.at(-1).text).task;
+    return providerResponse(task === '/v1/chat' ? 'A short suggested session.' : task === '/v1/summary' ? summary : proposal);
+  } });
+  const data = { ...input, message: 'Only ten minutes today; train again tomorrow.',
+    history: [{ role: 'user', text: 'Yesterday I completed a lower-body session.' }],
+    facts: [{ id: 'set-1', text: 'Recorded 8 squats on 2026-10-24T09:00:00Z; manual self-report.' }] };
+  for (const path of ['/v1/chat', '/v1/proposal', '/v1/summary']) {
+    assert.equal((await request(path, post({ ...data, ...(path === '/v1/summary' ? { kind: 'session' } : {}) }))).status, 200);
+    const payload = captured.at(-1);
+    const current = JSON.parse(payload.contents.at(-1).parts.at(-1).text);
+    assert.equal(current.requestedAtUTC, '2026-10-25T09:00:00.000Z');
+    assert.equal(current.message, data.message);
+    assert.deepEqual(current.facts, data.facts);
+    assert.equal(payload.contents[0].parts[0].text, data.history[0].text);
+  }
+  assert.equal((await request('/v1/proposal', post({ ...data, requestedAtUTC: '2099-01-01T00:00:00Z' }))).status, 422);
+  assert.equal(captured.length, 3);
+  const instructions = captured[0].systemInstruction.parts.map(part => part.text).join(' ');
+  assert.match(instructions, /calendar spacing/);
+  assert.match(instructions, /self.report/);
+  assert.match(instructions, /not.*recovery.*dates/i);
+});
+
 test('protected routes reject absent and incorrect bearer credentials before provider requests', async t => {
   const request = await serve(t, { env, fetchImpl: () => { throw Error('provider must not be called'); } });
   for (const authorization of [undefined, 'Bearer wrong']) {
@@ -52,6 +82,33 @@ test('chat sends bounded context to Google REST and returns only matching genera
   const response = await request('/v1/chat', post(input));
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { generationID: input.generationID, text: 'You recorded eight squats.' });
+});
+
+test('chat supplies server-owned camera and manual capabilities without inventing personal evidence', async t => {
+  let outbound;
+  const request = await serve(t, { env, fetchImpl: async (_url, options) => {
+    outbound = JSON.parse(options.body);
+    return providerResponse('Camera tracking supports push-ups and squats.');
+  } });
+  const response = await request('/v1/chat', post({ ...input, message: 'Which exercises can you track with the camera?', facts: [] }));
+  assert.equal(response.status, 200);
+  const metadata = outbound.systemInstruction.parts.flatMap(part => {
+    try { return [JSON.parse(part.text)]; } catch { return []; }
+  }).find(part => part.appCapabilities)?.appCapabilities;
+  assert.ok(metadata, 'Gemini needs server-owned app capabilities to answer product questions without personal facts');
+  assert.deepEqual(metadata.exercises.filter(item => item.cameraTracking).map(item => item.id).sort(), ['pushup', 'squat']);
+  assert.equal(metadata.exercises.find(item => item.id === 'pushup').name, 'Push-ups');
+  assert.equal(metadata.exercises.find(item => item.id === 'wallPushup').cameraTracking, false);
+  assert.equal(metadata.exercises.find(item => item.id === 'wallPushup').unit, 'reps');
+  assert.equal(metadata.exercises.find(item => item.id === 'plank').cameraTracking, false);
+  assert.equal(metadata.exercises.find(item => item.id === 'plank').unit, 'seconds');
+  assert.match(metadata.inputRules, /manual self-report/);
+  assert.match(metadata.inputRules, /active hold timer/);
+  assert.match(metadata.setControl, /explicit Start/i);
+  assert.match(metadata.voiceFeedback, /off.*enabled/i);
+  assert.deepEqual(JSON.parse(outbound.contents.at(-1).parts.at(-1).text).facts, []);
+  assert.match(outbound.systemInstruction.parts[0].text, /Ground personal claims in supplied facts/);
+  assert.equal((await request('/v1/chat', post({ ...input, appCapabilities: metadata }))).status, 422);
 });
 
 test('invalid, oversized, duplicate or unknown request data never reaches Gemini', async t => {
@@ -111,6 +168,67 @@ test('structured routes send constrained schemas and return Swift-compatible val
     const response = await request(path, post(input));
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), expected);
+  }
+});
+
+test('native empty-history proposals pass the provider grammar boundary without changing other constraints', async t => {
+  const nativeInput = {
+    generationID: 'E6AF6784-BF67-48FB-BB53-426DF69D4A86', history: [], availableSupport: [],
+    facts: [
+      { id: 'context', text: 'No saved sessions or measured physical capacity.' },
+      { id: 'scope-totals', text: 'Zero sessions, sets, reps and recorded hold seconds.' },
+      ...['strength', 'stamina', 'mobility', 'balance'].map(skill => ({ id: `skill-${skill}`, text: 'Zero game points; not a physical capability measurement.' }))
+    ]
+  };
+  const expected = jsonContract(outputContract({ path: '/v1/proposal', data: nativeInput }));
+  delete expected.properties.items.maxItems;
+  delete expected.properties.items.items.properties.factIDs.maxItems;
+  delete expected.properties.rationale.properties.factIDs.maxItems;
+  const output = { ...proposal, generationID: nativeInput.generationID,
+    items: [{ ...proposal.items[0], factIDs: ['context'] }],
+    rationale: { text: 'A suggested starting plan without recorded training history.', factIDs: ['context'] } };
+  let calls = 0, outbound;
+  const request = await serve(t, { env, fetchImpl: async (_url, options) => {
+    calls++;
+    outbound = JSON.parse(options.body);
+    const schema = outbound.generationConfig.responseFormat.text.schema;
+    if (JSON.stringify(schema).includes('"maxItems":')) {
+      return Response.json({ error: { code: 400, status: 'INVALID_ARGUMENT', message: 'Request contains an invalid argument.' } }, { status: 400 });
+    }
+    return providerResponse(output);
+  } });
+
+  const response = await request('/v1/proposal', post(nativeInput));
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), output);
+  assert.equal(calls, 1);
+  assert.deepEqual(outbound.generationConfig.responseFormat.text.schema, expected);
+  assert.equal(outbound.generationConfig.maxOutputTokens, 2048);
+  const context = JSON.parse(outbound.contents.at(-1).parts.at(-1).text);
+  assert.deepEqual(context.facts, nativeInput.facts);
+  assert.equal(context.permittedExercises.length, 15);
+  assert.deepEqual(context.limits, { maxExercises: 12, maxSets: 5, maxReps: 30, maxHoldSeconds: 120, maxRestSeconds: 600, maxTotalSets: 24 });
+});
+
+test('provider-compatible schemas still reject excess exercises and unique known evidence references', async t => {
+  const facts = Array.from({ length: 17 }, (_, index) => ({ id: `fact-${index}`, text: 'Synthetic supplied observation.' }));
+  const data = { ...input, facts };
+  const evidence = facts.map(fact => fact.id);
+  const item = { ...proposal.items[0], sets: 1, factIDs: evidence.slice(0, 1) };
+  const valid = { ...proposal, items: [item], rationale: { text: 'Synthetic suggestion.', factIDs: evidence.slice(0, 1) } };
+  const cases = [
+    { ...valid, items: promptCatalog(data).slice(0, 13).map(exercise => ({ ...item, exerciseID: exercise.id, unit: exercise.unit })) },
+    { ...valid, items: [{ ...item, factIDs: evidence }] },
+    { ...valid, rationale: { ...valid.rationale, factIDs: evidence } }
+  ];
+  for (const output of cases) {
+    let calls = 0;
+    const request = await serve(t, { env, fetchImpl: async () => { calls++; return providerResponse(output); } });
+    const response = await request('/v1/proposal', post(data));
+    assert.equal(response.status, 502);
+    assert.equal((await response.json()).error.code, 'invalid_provider_response');
+    assert.equal(calls, 1);
   }
 });
 
@@ -213,7 +331,7 @@ test('chat accepts 4000 characters and rejects longer combined provider text', a
 
 test('Gemini history starts with user and merges adjacent roles including the current request', async t => {
   const outbound = [];
-  const request = await serve(t, { env, fetchImpl: async (_url, options) => {
+  const request = await serve(t, { env, now: () => Date.parse('2026-10-25T09:00:00.000Z'), fetchImpl: async (_url, options) => {
     outbound.push(JSON.parse(options.body).contents);
     return providerResponse('A concise response.');
   } });
@@ -234,7 +352,7 @@ test('Gemini history starts with user and merges adjacent roles including the cu
   assert.equal(outbound[0][2].parts[0].text, history[6].text);
   assert.deepEqual(JSON.parse(outbound[0][2].parts[1].text), {
     task: '/v1/chat', generationID: input.generationID, message: input.message,
-    facts: input.facts, availableSupport: input.availableSupport
+    facts: input.facts, availableSupport: input.availableSupport, requestedAtUTC: '2026-10-25T09:00:00.000Z'
   });
   const onlyModels = await request('/v1/chat', post({ ...input, history: history.slice(0, 2) }));
   assert.equal(onlyModels.status, 200);
