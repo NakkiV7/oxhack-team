@@ -10,6 +10,7 @@ struct CoachView: View {
     @State private var selected = Set<String>()
     @State private var task: Task<Void, Never>?
     @State private var logItem: CoachSavedPlan.Item?
+    @State private var removingPlan = false
     private let supports = Array(Set(ExerciseCatalog.all.compactMap(\.support))).sorted()
 
     init(store: TrainingStore, profile: LocalProfile? = nil) { self.store = store; self.profile = profile }
@@ -27,7 +28,10 @@ struct CoachView: View {
                                     .font(.subheadline).tint(Palette.ink)
                             }.padding(.top, 8)
                         }.font(.subheadline.weight(.medium)).disabled(model.isLoading)
-                        Button { run { await model.propose(history: store.history, support: support) } } label: {
+                        Button {
+                            let draft = message
+                            run { await model.propose(message: draft, history: store.history, support: support) }
+                        } label: {
                             Label("Propose a workout", systemImage: "sparkles").font(.subheadline.weight(.semibold))
                                 .frame(maxWidth: .infinity).padding(17).background(Palette.ink, in: RoundedRectangle(cornerRadius: 16)).foregroundStyle(.white)
                         }.buttonStyle(.plain).disabled(model.isLoading)
@@ -61,6 +65,10 @@ struct CoachView: View {
             }.navigationTitle("Coach").navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .topBarTrailing) { Button { settingsPresented = true } label: { Image(systemName: "slider.horizontal.3") }.accessibilityLabel("Coach settings") } }
                 .sheet(isPresented: $settingsPresented) { CoachSettingsView() }
+                .alert("Remove saved workout?", isPresented: $removingPlan) {
+                    Button("Remove workout", role: .destructive) { model.removeApprovedPlan() }
+                    Button("Cancel", role: .cancel) {}
+                } message: { Text("Completed sessions stay in your history.") }
                 .sheet(item: $logItem) { item in
                     if let entry = ExerciseCatalog.find(item.exerciseID) {
                         ManualWorkoutView(store: store, entry: entry, initialCount: item.target, initialSets: item.sets)
@@ -82,8 +90,8 @@ struct CoachView: View {
             CoachGoalContext(profile: profile, identifier: "coach-goal-context")
             Text("Ask about your training, or build a session you can make your own.").font(.subheadline).foregroundStyle(.secondary)
             Text(profile == nil
-                 ? "Your message, training sets and recorded Watch summaries are shared with Gemini when you tap Send or Propose."
-                 : "Your message, selected goals, weekly target, training sets and recorded Watch summaries are shared with Gemini when you tap Send or Propose. Your optional profile name stays on this iPhone.")
+                 ? "Send and Propose share your current text, recent conversation, training sets and recorded Watch summaries with Gemini."
+                 : "Send and Propose share your current text, recent conversation, selected goals, weekly target, training sets and recorded Watch summaries with Gemini. Your profile name isn’t added automatically.")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }
@@ -136,6 +144,8 @@ struct CoachView: View {
                 .accessibilityIdentifier("start-saved-workout")
             Text("Follow the saved order with manual reps and active hold timers. Log is also available after training.")
                 .font(.caption).foregroundStyle(.secondary)
+            Button("Remove saved workout", role: .destructive) { removingPlan = true }
+                .font(.subheadline).accessibilityIdentifier("remove-saved-workout")
             if let error = store.error { Text(error).font(.caption).foregroundStyle(Palette.red) }
         }.padding(19).background(Palette.surface, in: RoundedRectangle(cornerRadius: 20))
     }

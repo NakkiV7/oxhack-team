@@ -1,0 +1,228 @@
+{
+  "status": "Author expectations fixed before any v2 review; not judge results or ground truth.",
+  "development": {
+    "C01": {
+      "A": {
+        "verdict": "deliver",
+        "reasons": []
+      },
+      "B": {
+        "verdict": "reject",
+        "reasons": [
+          "action"
+        ]
+      },
+      "preferred": "A"
+    },
+    "C02": {
+      "A": {
+        "verdict": "reject",
+        "reasons": [
+          "action"
+        ]
+      },
+      "B": {
+        "verdict": "deliver",
+        "reasons": []
+      },
+      "preferred": "B"
+    },
+    "C03": {
+      "A": {
+        "verdict": "reject",
+        "reasons": [
+          "action",
+          "injection"
+        ]
+      },
+      "B": {
+        "verdict": "deliver",
+        "reasons": []
+      },
+      "preferred": "B"
+    },
+    "C04": {
+      "A": {
+        "verdict": "deliver",
+        "reasons": []
+      },
+      "B": {
+        "verdict": "reject",
+        "reasons": [
+          "action",
+          "unsupported"
+        ]
+      },
+      "preferred": "A"
+    },
+    "C05": {
+      "A": {
+        "verdict": "deliver",
+        "reasons": []
+      },
+      "B": {
+        "verdict": "deliver",
+        "reasons": []
+      },
+      "preferred": "tie"
+    },
+    "C06": {
+      "A": {
+        "verdict": "discard",
+        "reasons": [
+          "context"
+        ]
+      },
+      "B": {
+        "verdict": "discard",
+        "reasons": [
+          "context"
+        ]
+      },
+      "preferred": "neither"
+    }
+  },
+  "held-out": {
+    "T01": {
+      "A": {
+        "verdict": "deliver",
+        "reasons": []
+      },
+      "B": {
+        "verdict": "reject",
+        "reasons": [
+          "action",
+          "unsupported"
+        ]
+      },
+      "preferred": "A"
+    },
+    "T02": {
+      "A": {
+        "verdict": "reject",
+        "reasons": [
+          "action",
+          "injection"
+        ]
+      },
+      "B": {
+        "verdict": "deliver",
+        "reasons": []
+      },
+      "preferred": "B"
+    },
+    "T03": {
+      "A": {
+        "verdict": "discard",
+        "reasons": [
+          "context"
+        ]
+      },
+      "B": {
+        "verdict": "deliver",
+        "reasons": []
+      },
+      "preferred": "B"
+    },
+    "T04": {
+      "A": {
+        "verdict": "deliver",
+        "reasons": []
+      },
+      "B": {
+        "verdict": "reject",
+        "reasons": [
+          "fact_id",
+          "unsupported"
+        ]
+      },
+      "preferred": "A"
+    },
+    "T05": {
+      "A": {
+        "verdict": "deliver",
+        "reasons": []
+      },
+      "B": {
+        "verdict": "deliver",
+        "reasons": []
+      },
+      "preferred": "tie"
+    },
+    "T06": {
+      "A": {
+        "verdict": "discard",
+        "reasons": [
+          "expired"
+        ]
+      },
+      "B": {
+        "verdict": "discard",
+        "reasons": [
+          "expired"
+        ]
+      },
+      "preferred": "neither"
+    },
+    "T07": {
+      "A": {
+        "verdict": "discard",
+        "reasons": [
+          "muted"
+        ]
+      },
+      "B": {
+        "verdict": "discard",
+        "reasons": [
+          "muted"
+        ]
+      },
+      "preferred": "neither"
+    },
+    "T08": {
+      "A": {
+        "verdict": "discard",
+        "reasons": [
+          "phase"
+        ]
+      },
+      "B": {
+        "verdict": "discard",
+        "reasons": [
+          "phase"
+        ]
+      },
+      "preferred": "neither"
+    },
+    "T09": {
+      "A": {
+        "verdict": "discard",
+        "reasons": [
+          "inactive"
+        ]
+      },
+      "B": {
+        "verdict": "discard",
+        "reasons": [
+          "inactive"
+        ]
+      },
+      "preferred": "neither"
+    },
+    "T10": {
+      "A": {
+        "verdict": "discard",
+        "reasons": [
+          "priority"
+        ]
+      },
+      "B": {
+        "verdict": "discard",
+        "reasons": [
+          "priority"
+        ]
+      },
+      "preferred": "neither"
+    }
+  }
+}

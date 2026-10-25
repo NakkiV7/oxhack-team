@@ -3,6 +3,216 @@ import XCTest
 
 @MainActor
 final class CoachFlowTests: XCTestCase {
+    private static let savedWorkout = Data(#"{"items":[{"exerciseID":"squat","sets":1,"target":2,"unit":"reps","restSeconds":30}],"approvedAt":0,"rationale":"Synthetic saved workout"}"#.utf8)
+
+    func testProposalCarriesDraftAndPriorConversationWithoutReplacingSavedWorkout() async throws {
+        let suite = "CoachProposalContextTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(Self.savedWorkout, forKey: "coach.approvedPlan")
+        var requests: [URLRequest] = []
+        let client = CoachGatewayClient(baseURL: URL(string: "https://coach.example")!, token: "test") { request in
+            await MainActor.run { requests.append(request) }
+            return try Self.response(for: request)
+        }
+        let profile = try LocalProfile(weeklyTarget: 3, goals: [.strength])
+        let model = CoachModel(configuration: { client }, savedPlanData: Self.savedWorkout, profile: profile, defaults: defaults)
+        XCTAssertTrue(requests.isEmpty)
+        await model.send(message: "I trained yesterday and have only ten minutes today.", history: [], support: [])
+
+        await model.propose(message: "  Keep the session short; I plan to train tomorrow too.  ", history: [], support: [])
+
+        XCTAssertEqual(requests.count, 2)
+        let body = try XCTUnwrap(try JSONSerialization.jsonObject(with: XCTUnwrap(requests.last?.httpBody)) as? [String: Any])
+        XCTAssertEqual(body["message"] as? String, "Keep the session short; I plan to train tomorrow too.")
+        let conversation = try XCTUnwrap(body["history"] as? [[String: String]])
+        XCTAssertEqual(conversation.map { $0["role"] }, ["user", "model"])
+        XCTAssertEqual(conversation.first?["text"], "I trained yesterday and have only ten minutes today.")
+        XCTAssertNotNil(model.proposal)
+        XCTAssertEqual(model.approvedPlan?.items.first?.target, 2)
+        XCTAssertEqual(defaults.data(forKey: "coach.approvedPlan"), Self.savedWorkout)
+        XCTAssertNil(model.error)
+    }
+
+    func testOversizedProposalInstructionsAreRejectedBeforeTransport() async throws {
+        var calls = 0
+        let client = CoachGatewayClient(baseURL: URL(string: "https://coach.example")!, token: "test") { request in
+            await MainActor.run { calls += 1 }
+            return try Self.response(for: request)
+        }
+        let model = CoachModel(configuration: { client }, savedPlanData: nil)
+
+        await model.propose(message: String(repeating: "x", count: 4001), history: [], support: [])
+
+        XCTAssertEqual(calls, 0)
+        XCTAssertFalse(model.isLoading)
+        XCTAssertNil(model.proposal)
+        XCTAssertNotNil(model.error)
+    }
+
+    func testProposalUsesOnlyTheMostRecentTwentyConversationTurnsAndDoesNotAppendItsDraft() async throws {
+        var proposalRequest: URLRequest?
+        let client = CoachGatewayClient(baseURL: URL(string: "https://coach.example")!, token: "test") { request in
+            if request.url?.lastPathComponent == "proposal" {
+                await MainActor.run { proposalRequest = request }
+            }
+            return try Self.response(for: request)
+        }
+        let profile = try LocalProfile(weeklyTarget: 3, goals: [.strength])
+        let model = CoachModel(configuration: { client }, savedPlanData: nil, profile: profile)
+        for index in 0..<12 {
+            await model.send(message: "Planning turn \(index)", history: [], support: [])
+        }
+        let existingTurns = model.turns
+        let draft = String(repeating: "x", count: 4000)
+
+        await model.propose(message: " \(draft)\n", history: [], support: [])
+
+        let body = try XCTUnwrap(try JSONSerialization.jsonObject(with: XCTUnwrap(proposalRequest?.httpBody)) as? [String: Any])
+        let conversation = try XCTUnwrap(body["history"] as? [[String: String]])
+        XCTAssertEqual(body["message"] as? String, draft)
+        XCTAssertEqual(conversation.count, 20)
+        XCTAssertEqual(conversation.first?["text"], "Planning turn 2")
+        XCTAssertEqual(conversation.first?["role"], "user")
+        XCTAssertEqual(conversation.last?["role"], "model")
+        XCTAssertEqual(model.turns, existingTurns)
+        XCTAssertNotNil(model.proposal)
+        XCTAssertNil(model.error)
+    }
+
+    func testCancellationRejectsALateProposalWithDraftContext() async throws {
+        let received = expectation(description: "Proposal entered offline transport")
+        var pending: CheckedContinuation<(Data, URLResponse), Never>?
+        var captured: URLRequest?
+        let client = CoachGatewayClient(baseURL: URL(string: "https://coach.example")!, token: "test") { request in
+            await withCheckedContinuation { continuation in
+                Task { @MainActor in pending = continuation; captured = request; received.fulfill() }
+            }
+        }
+        let profile = try LocalProfile(weeklyTarget: 3, goals: [.strength])
+        let model = CoachModel(configuration: { client }, savedPlanData: nil, profile: profile)
+        let task = Task { await model.propose(message: "Keep it short today", history: [], support: []) }
+        await fulfillment(of: [received], timeout: 2)
+
+        model.cancel()
+        pending?.resume(returning: try Self.response(for: XCTUnwrap(captured)))
+        await task.value
+
+        XCTAssertFalse(model.isLoading)
+        XCTAssertNil(model.proposal)
+        XCTAssertNil(model.proposalContext)
+        XCTAssertNil(model.error)
+    }
+
+    func testProposalCancelledBeforeItStartsNeverReachesTransport() async throws {
+        var calls = 0
+        let client = CoachGatewayClient(baseURL: URL(string: "https://coach.example")!, token: "test") { request in
+            await MainActor.run { calls += 1 }
+            return try Self.response(for: request)
+        }
+        let profile = try LocalProfile(weeklyTarget: 3, goals: [.strength])
+        let model = CoachModel(configuration: { client }, savedPlanData: nil, profile: profile)
+        let task = Task { await model.propose(message: "Make a short workout", history: [], support: []) }
+        task.cancel()
+
+        await task.value
+
+        XCTAssertEqual(calls, 0)
+        XCTAssertFalse(model.isLoading)
+        XCTAssertNil(model.proposal)
+        XCTAssertNil(model.error)
+    }
+
+    func testRemovingSavedWorkoutClearsOnlyItsPersistenceAndReopenedModel() throws {
+        let suite = "CoachRemovalTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(Self.savedWorkout, forKey: "coach.approvedPlan")
+        defaults.set("https://coach.example", forKey: "coach.gatewayURL")
+        defaults.set("linear", forKey: "skills.layout")
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let history = HistoryStore(url: folder.appendingPathComponent("history.json"))
+        try history.save(LoggedWorkout.make(exerciseID: "squat", count: 2, sets: 1))
+        let profileURL = folder.appendingPathComponent("profile.json")
+        try NativeProfileStore(url: profileURL).save(LocalProfile(weeklyTarget: 3, goals: [.strength]))
+        let historyBytes = try Data(contentsOf: history.url), profileBytes = try Data(contentsOf: profileURL)
+        let model = CoachModel(configuration: { throw CoachGatewayError.configuration }, savedPlanData: Self.savedWorkout, defaults: defaults)
+
+        model.removeApprovedPlan()
+
+        XCTAssertNil(model.approvedPlan)
+        XCTAssertEqual(defaults.persistentDomain(forName: suite) as NSDictionary?,
+                       ["coach.gatewayURL": "https://coach.example", "skills.layout": "linear"] as NSDictionary)
+        XCTAssertNil(CoachModel(savedPlanData: defaults.data(forKey: "coach.approvedPlan"), defaults: defaults).approvedPlan)
+        XCTAssertEqual(try Data(contentsOf: history.url), historyBytes)
+        XCTAssertEqual(try Data(contentsOf: profileURL), profileBytes)
+        XCTAssertNil(model.error)
+    }
+
+    func testRemovingSavedWorkoutPreservesInFlightChatProposalAndReport() async throws {
+        for path in ["chat", "proposal", "summary"] {
+            let suite = "CoachRemovalTests.\(UUID().uuidString)"
+            let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+            defer { defaults.removePersistentDomain(forName: suite) }
+            defaults.set(Self.savedWorkout, forKey: "coach.approvedPlan")
+            let received = expectation(description: "\(path) entered offline transport")
+            var pending: CheckedContinuation<(Data, URLResponse), Never>?
+            var captured: URLRequest?
+            let client = CoachGatewayClient(baseURL: URL(string: "https://coach.example")!, token: "test") { request in
+                await withCheckedContinuation { continuation in
+                    Task { @MainActor in pending = continuation; captured = request; received.fulfill() }
+                }
+            }
+            let profile = try LocalProfile(weeklyTarget: 3, goals: [.strength])
+            let model = CoachModel(configuration: { client }, savedPlanData: Self.savedWorkout, profile: profile, defaults: defaults)
+            let task = Task {
+                switch path {
+                case "chat": await model.send(message: "Help me plan", history: [], support: [])
+                case "proposal": await model.propose(history: [], support: [])
+                default: await model.summarize(history: [], kind: .session)
+                }
+            }
+            await fulfillment(of: [received], timeout: 2)
+
+            model.removeApprovedPlan()
+            XCTAssertTrue(model.isLoading, path)
+            XCTAssertNil(defaults.data(forKey: "coach.approvedPlan"), path)
+            pending?.resume(returning: try Self.response(for: XCTUnwrap(captured)))
+            await task.value
+
+            XCTAssertFalse(model.isLoading, path)
+            XCTAssertNil(model.approvedPlan, path)
+            XCTAssertNil(defaults.data(forKey: "coach.approvedPlan"), path)
+            XCTAssertNil(model.error, path)
+            switch path {
+            case "chat": XCTAssertTrue(model.turns.contains { $0.role == .model })
+            case "proposal": XCTAssertNotNil(model.proposal)
+            default: XCTAssertNotNil(model.summary)
+            }
+        }
+    }
+
+    func testNewWorkoutApprovalStillPersistsAfterRemoval() async throws {
+        let suite = "CoachRemovalTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let client = CoachGatewayClient(baseURL: URL(string: "https://coach.example")!, token: "test") { request in try Self.response(for: request) }
+        let profile = try LocalProfile(weeklyTarget: 3, goals: [.strength])
+        let model = CoachModel(configuration: { client }, savedPlanData: Self.savedWorkout, profile: profile, defaults: defaults)
+        model.removeApprovedPlan()
+        await model.propose(history: [], support: [])
+
+        model.approve(selected: ["squat"], currentSupport: [])
+
+        let saved = try JSONDecoder().decode(CoachSavedPlan.self, from: XCTUnwrap(defaults.data(forKey: "coach.approvedPlan")))
+        XCTAssertEqual(saved.items.map(\.exerciseID), ["squat"])
+        XCTAssertEqual(saved.items.first?.sets, 2)
+        XCTAssertEqual(saved.items.first?.target, 8)
+        XCTAssertEqual(model.approvedPlan?.items.first?.sets, 2)
+        XCTAssertEqual(model.approvedPlan?.items.first?.target, 8)
+    }
+
     func testDebugApprovedPlanFixtureRequiresAnIsolatedUUIDAndNeverPersists() throws {
         let suite = "CoachPlanFixtureTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))

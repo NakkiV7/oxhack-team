@@ -98,6 +98,20 @@ public struct CoachSavedPlan: Codable, Sendable {
     public let items: [Item]
     public let approvedAt: Date
     public let rationale: String
+
+    public static func catalogue(exerciseID: String, sets: Int, target: Int, restSeconds: Int,
+                                 availableSupport: Set<String> = [], createdAt: Date = Date()) throws -> CoachSavedPlan {
+        guard let entry = ExerciseCatalog.find(exerciseID) else { throw ConfigurableSession.Invalid.plan }
+        let plan = CoachSavedPlan(item: Item(exerciseID: entry.id, sets: sets, target: target,
+                                            unit: entry.unit, restSeconds: restSeconds), createdAt: createdAt)
+        _ = try ConfigurableSession(plan: plan, availableSupport: availableSupport)
+        return plan
+    }
+
+    private init(item: Item, createdAt: Date) {
+        items = [item]; approvedAt = createdAt; rationale = "A local workout you configured."
+    }
+
     public init(proposal: WorkoutProposal, selectedExerciseIDs: Set<String>, context: CoachValidationContext, approvedAt: Date = Date()) throws {
         items = try CoachContracts.approvedItems(from: proposal, selectedExerciseIDs: selectedExerciseIDs, context: context).map {
             Item(exerciseID: $0.exerciseID, sets: $0.sets, target: $0.target, unit: $0.unit, restSeconds: $0.restSeconds)

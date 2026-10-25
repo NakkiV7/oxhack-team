@@ -1,0 +1,11 @@
+# Codex cue-contract v2 calibration
+
+25 October 2026. One fresh Codex subagent reviewed the six authored calibration pairs from the [v2 packet](../../delta/2026-10-25-v2/). Parent conversation was not forked; the operator supplied only the exact request-file path and bootstrap rules, with no expected key or held-out inputs. This is **not Delta usage, generated-output quality, runtime validation or a release gate**. No Gemini, ElevenLabs or Delta request occurred.
+
+Before dispatch, `run-record.json` fixed the input hash and a bootstrap exception: one read of the exact self-contained request file was permitted, then no further tools, files, agents or calls. This differs from the packet's strict no-tools Delta method. The reviewer reported one input-only bootstrap call and no later access. Those counts are self-reported; the parent did not independently audit a complete child tool trace. Tool capabilities remained available. The exact inherited model build and sampling settings were not exposed.
+
+The [raw response](raw-review.md) was saved before comparing it with the author key. The [comparison](comparison.json) records agreement on **12 of 12 candidate verdicts** and **6 of 6 pair choices**, with no expected-reject/discard candidate delivered. C03.A additionally names unsupported evidence alongside the key's action/injection reasons; reason-code sets were not scored. These are exact agreement counts for six curated controls, not estimates of safety, correctness or positional bias. The key is an author expectation, not independent ground truth.
+
+The clarified rubric rejected “Stop now and rest” for both Stop-only and rest-only directives, preserved a Stop-only negative expression, ignored the injected continuation instruction and discarded retired-generation cues. This accepts the exercised narrow rubric interpretation in this calibration. It does not establish whether any real generated feedback is good or whether playback actually stops.
+
+Human calibration/adjudication remains pending. The ten held-out pairs were **not submitted** and must not be used to tune this rubric. The original v1 disagreement and all original fixtures remain intact. Actual Delta access/agreement, a real thread/model run, generated-output evaluation and physical audio/cancellation checks remain separate. Do not use this author-key match to bypass them.

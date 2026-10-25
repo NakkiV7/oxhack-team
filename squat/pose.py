@@ -13,7 +13,7 @@ NOSE, L_SHO, R_SHO, L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANK, R_ANK = 0, 11, 12, 23, 
 
 
 class Pose:
-    """Returns (33, 4) float32 array: x, y in pixels, z, visibility. None if no person."""
+    """Returns pixel x/y, z, visibility; None for missing poses or nonincreasing timestamps."""
 
     def __init__(self, model: Path = MODELS["full"]):
         opts = vision.PoseLandmarkerOptions(
@@ -21,8 +21,12 @@ class Pose:
             running_mode=vision.RunningMode.VIDEO,
         )
         self._lm = vision.PoseLandmarker.create_from_options(opts)
+        self._last_timestamp_ms = None
 
     def __call__(self, bgr: np.ndarray, t_ms: int):
+        if self._last_timestamp_ms is not None and t_ms <= self._last_timestamp_ms:
+            return None
+        self._last_timestamp_ms = t_ms
         h, w = bgr.shape[:2]
         rgb = np.ascontiguousarray(cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB))
         res = self._lm.detect_for_video(mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb), t_ms)

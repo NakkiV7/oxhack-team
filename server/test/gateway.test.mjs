@@ -29,6 +29,35 @@ const env = { SPOTTR_GATEWAY_TOKEN: 'test-token', GEMINI_API_KEY: 'test-key', GE
 const input = { generationID: 'generation-1', message: 'How did I do?', history: [], facts: [{ id: 'set-1', text: 'Recorded 8 squats.' }], availableSupport: [] };
 const post = data => ({ method: 'POST', headers: { authorization: 'Bearer test-token', 'content-type': 'application/json' }, body: JSON.stringify(data) });
 
+test('planning context carries server time and supplied instructions without inventing recovery', async t => {
+  const now = () => Date.parse('2026-10-25T09:00:00.000Z');
+  const captured = [];
+  const request = await serve(t, { env, now, fetchImpl: async (_url, options) => {
+    const payload = JSON.parse(options.body);
+    captured.push(payload);
+    const task = JSON.parse(payload.contents.at(-1).parts.at(-1).text).task;
+    return providerResponse(task === '/v1/chat' ? 'A short suggested session.' : task === '/v1/summary' ? summary : proposal);
+  } });
+  const data = { ...input, message: 'Only ten minutes today; train again tomorrow.',
+    history: [{ role: 'user', text: 'Yesterday I completed a lower-body session.' }],
+    facts: [{ id: 'set-1', text: 'Recorded 8 squats on 2026-10-24T09:00:00Z; manual self-report.' }] };
+  for (const path of ['/v1/chat', '/v1/proposal', '/v1/summary']) {
+    assert.equal((await request(path, post({ ...data, ...(path === '/v1/summary' ? { kind: 'session' } : {}) }))).status, 200);
+    const payload = captured.at(-1);
+    const current = JSON.parse(payload.contents.at(-1).parts.at(-1).text);
+    assert.equal(current.requestedAtUTC, '2026-10-25T09:00:00.000Z');
+    assert.equal(current.message, data.message);
+    assert.deepEqual(current.facts, data.facts);
+    assert.equal(payload.contents[0].parts[0].text, data.history[0].text);
+  }
+  assert.equal((await request('/v1/proposal', post({ ...data, requestedAtUTC: '2099-01-01T00:00:00Z' }))).status, 422);
+  assert.equal(captured.length, 3);
+  const instructions = captured[0].systemInstruction.parts.map(part => part.text).join(' ');
+  assert.match(instructions, /calendar spacing/);
+  assert.match(instructions, /self.report/);
+  assert.match(instructions, /not.*recovery.*dates/i);
+});
+
 test('protected routes reject absent and incorrect bearer credentials before provider requests', async t => {
   const request = await serve(t, { env, fetchImpl: () => { throw Error('provider must not be called'); } });
   for (const authorization of [undefined, 'Bearer wrong']) {
@@ -302,7 +331,7 @@ test('chat accepts 4000 characters and rejects longer combined provider text', a
 
 test('Gemini history starts with user and merges adjacent roles including the current request', async t => {
   const outbound = [];
-  const request = await serve(t, { env, fetchImpl: async (_url, options) => {
+  const request = await serve(t, { env, now: () => Date.parse('2026-10-25T09:00:00.000Z'), fetchImpl: async (_url, options) => {
     outbound.push(JSON.parse(options.body).contents);
     return providerResponse('A concise response.');
   } });
@@ -323,7 +352,7 @@ test('Gemini history starts with user and merges adjacent roles including the cu
   assert.equal(outbound[0][2].parts[0].text, history[6].text);
   assert.deepEqual(JSON.parse(outbound[0][2].parts[1].text), {
     task: '/v1/chat', generationID: input.generationID, message: input.message,
-    facts: input.facts, availableSupport: input.availableSupport
+    facts: input.facts, availableSupport: input.availableSupport, requestedAtUTC: '2026-10-25T09:00:00.000Z'
   });
   const onlyModels = await request('/v1/chat', post({ ...input, history: history.slice(0, 2) }));
   assert.equal(onlyModels.status, 200);

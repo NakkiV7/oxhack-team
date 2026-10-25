@@ -119,6 +119,7 @@
 		EA48BA4391EACA069BFB4406 /* ExerciseCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F61C912078542306F735C5 /* ExerciseCatalog.swift */; };
 		EBBCEE17EE61058D0F859F5D /* DemonstrationVideoLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D47FDB08309D6C2D6A440C9 /* DemonstrationVideoLibrary.swift */; };
 		EEF34E6B3D1E4BD55D031735 /* CoachGrounding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EE66EA4759B2222D9FFB1E3 /* CoachGrounding.swift */; };
+		F25CA92311036E5F6C8B6BBB /* CatalogueWorkoutSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A858629485CDD5E296ED3F02 /* CatalogueWorkoutSetupView.swift */; };
 		F32BEBDABE24673FC32D18E5 /* WorkoutReports.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EEEA5A7A0313F7478F35B27 /* WorkoutReports.swift */; };
 		F3BCC0A1E242A24A70A98A36 /* TrainingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FE234B0A746A72C9391650C /* TrainingSession.swift */; };
 		F4B9E3526E6003882EDB4495 /* ConfigurableSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9FF1606C8D1D311C82FEBD1 /* ConfigurableSession.swift */; };
@@ -251,6 +252,7 @@
 		A2EDE5A9D38D1A2E402422CB /* CompanionLink.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CompanionLink.swift; path = Shared/Apple/CompanionLink.swift; sourceTree = "<group>"; };
 		A49CCBEBE418A54C5246D0FA /* CoachViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CoachViews.swift; path = Native/iOS/CoachViews.swift; sourceTree = "<group>"; };
 		A4D4BF044424C2181E3A19FC /* SpottrWatchApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SpottrWatchApp.swift; path = Native/Watch/SpottrWatchApp.swift; sourceTree = "<group>"; };
+		A858629485CDD5E296ED3F02 /* CatalogueWorkoutSetupView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CatalogueWorkoutSetupView.swift; path = Native/iOS/CatalogueWorkoutSetupView.swift; sourceTree = "<group>"; };
 		A8A63B705328B30FB0B455C4 /* CoachGrounding.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CoachGrounding.swift; path = Shared/Core/CoachGrounding.swift; sourceTree = "<group>"; };
 		A97C0CA82EF31B8C87994AF8 /* CoachContracts.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CoachContracts.swift; path = Shared/Core/CoachContracts.swift; sourceTree = "<group>"; };
 		AD3C1E257801EE736A2C8CF0 /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = Native/Resources/Assets.xcassets; sourceTree = "<group>"; };
@@ -467,6 +469,7 @@
 				4C445B2A730A51E7D2E0A3AD /* MediaPipeTaskGraphs_library.xcframework */,
 				724256B738386498C9BFED3C /* MediaPipeTasksCommon.xcframework */,
 				F1F153B56991438120900681 /* MediaPipeTasksVision.xcframework */,
+				A858629485CDD5E296ED3F02 /* CatalogueWorkoutSetupView.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -777,6 +780,7 @@
 				1C37699A21C9991BC71BFB41 /* WatchCaptureLifecycle.swift in Sources */,
 				455DE86626FD4F935BAFF69F /* WorkoutReports.swift in Sources */,
 				7258AA4847ACAA8F1397CF7A /* WorkoutSync.swift in Sources */,
+				F25CA92311036E5F6C8B6BBB /* CatalogueWorkoutSetupView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

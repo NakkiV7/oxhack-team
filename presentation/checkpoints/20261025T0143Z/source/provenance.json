@@ -1,0 +1,186 @@
+{
+  "title": "Spottr judges presentation: build 4 and approved-plan checkpoint",
+  "evidence_snapshot_utc": "2026-10-25T01:43:00Z",
+  "created_utc": "2026-10-25T01:45:11.185666+00:00",
+  "git_head_at_source_inventory": "485a33c",
+  "source_inventory_authority": "Current main checkpoint supplied by the release owner. No Git operation performed; exact evidence bytes are hashed below.",
+  "native_build_source_commit": "7f4b5ba5f5478b0efa2c18605eb0252c6f9cb3ec",
+  "native_release_readback_utc": "2026-10-25T01:32:51.286Z",
+  "native_release_state": {
+    "build": "0.1 (4)",
+    "processing": "VALID",
+    "internal": "IN_BETA_TESTING",
+    "external": "IN_BETA_TESTING",
+    "beta_review": "APPROVED",
+    "internal_group_builds": [
+      4,
+      3,
+      2,
+      1
+    ],
+    "external_group_builds": [
+      4,
+      3,
+      1
+    ],
+    "physical_installation_verified": false
+  },
+  "slide_count": 10,
+  "font": {
+    "family": "Helvetica Neue",
+    "basis": "unchanged reference deck; encoded font verified by finalizer"
+  },
+  "reference_deck": {
+    "path": "../../../output/spottr-judges.pptx",
+    "sha256": "e1a5666887158512ac1cbf886858b3de5e1ca07044a2f4c02563abd255e137d3",
+    "snapshot_utc": "2026-10-25T00:36:00Z"
+  },
+  "assets_manifest": "../../../source/assets.json",
+  "asset_scope": "Existing shared assets read in place from presentation/assets; no new images, generated illustration or copied asset. Eleven historical asset/source entries preserved via historical-preservation.json.",
+  "source_sha256": {
+    "Native/iOS/TrainingStore.swift": "53f113550dca25bfa336a762e993da197837407a10ba6a49960745e1b0ac616d",
+    "Shared/Core/CoachingPolicy.swift": "4b1a439505cb3a52564791bee48a537e7766f8dcfa7bbb367fe9cd1964e364b5",
+    "Shared/Core/ExerciseCatalog.swift": "e979c2a0d1b800ccc82d29aadafd93eaf30a629df810d5e31de1c439c09c3f1d",
+    "Shared/Core/RepCounter.swift": "5d7834843009054ea83562b9c1bfe10d9162cad6f85f9d304b5c73ba54ee5a95",
+    "Shared/Core/SkillProgress.swift": "caf0464e18f1b26af50e6c8d893812cdcfaef7e628a172c03c234b04814ffa6b",
+    "Tests/iOS/CoachingFlowTests.swift": "77967e36bfc639be6263b2731429045e76c0ce213a030761e2b4df78211f1682",
+    "docs/ISSUES.md": "8e7a040ccf4cabd23c5137424b07eacbb1cb1b065cc66530efdfe2fbd306a18b",
+    "docs/app-guide.md": "a2d3257a53b21a4b8cd2e530d2efa9e690c41910e18193f8e9ac1c0c088a8da3",
+    "docs/coach-goals.md": "af46246795436fe5314cd2e3e3f6f103a3fae63b400f985a04827691c35180cd",
+    "docs/coaching-policy.md": "b34397b2224f5dec62e373b67905de89e6839b877eb386dd5a7b60403a577a9e",
+    "docs/delta-workflow.md": "055f45e7321b4a8bcb2fc35b958fa8e6f16367c27a3df1ab477ff70685be55f1",
+    "docs/evidence/gemini-structured-compatibility-2026-10-25.md": "e29325c3ca416737e9073050966454e247cebe8106f7e35f92e5e0a65f89c820",
+    "docs/evidence/landing-browser-2026-10-24.md": "468918f3bfcbdbe70a8972be0238abddcae890abca4cfc73bfbe0b5492429047",
+    "docs/evidence/native-gemini-approved-plan-2026-10-25.jpg": "8dcb83001c2f4f5bd9b78d90bcb9486ce07b66d26565a4fdbea62dd8625619bb",
+    "docs/evidence/native-gemini-chat-2026-10-24.md": "ea4b718820e5ce4f11252b45cf31d70a8a6a034dcb85798f685a35f279af2b6e",
+    "docs/evidence/native-gemini-completed-plan-2026-10-25.jpg": "9d2fc4875795b70adc2ef8fee9129d8e4149ec403e124bb07be2a276d1fde967",
+    "docs/evidence/native-gemini-plan-execution-2026-10-25.md": "3a81d0029ba3459f2e04265c012791a1341e148e369e1ee6edf1511b4962451c",
+    "docs/evidence/native-gemini-proposal-2026-10-25.jpg": "42442600df68fa2a164b36c91a4599b03c849340138b4891d2b33e507ec6daf4",
+    "docs/evidence/native-gemini-session-2026-10-25.jpg": "235b4f97344dce19f70816f2b8158fb90a46bea6ee91299e1264b70e30f20874",
+    "docs/evidence/native-gemini-weekly-2026-10-25.jpg": "c87435a25d53765542a0ec78bdb14db7c1e456c644477209180dff9c3f1cedf2",
+    "docs/evidence/pushup-prototype-integrity-2026-10-24.md": "fda75de57cf9d4a2921e43678db474272ae6b06105f24d8aa5bbfa39cb64fbca",
+    "docs/evidence/testflight-availability-2026-10-25.md": "63e4a5bf44829f0f5355b35233bcbc16f9dba572345b1db022042bc8cdcf266c",
+    "docs/evidence/testflight-build-4-2026-10-25.md": "e637aaf6d32ee898f4b5da549e1e3b331cb100c56df427de31444c6f468b2128",
+    "docs/evidence/tiger-console-2026-10-24.md": "5615d5d75d585271f355a5bddafcc4e69fedafb169b9ef2a9e28819839967695",
+    "docs/integration-readiness.md": "bc9bee8ed801d7cd3287107fd1c969c9abbaa856edc40cd3fdd5a80051b16862",
+    "docs/judges-guide.md": "13c484b1b3e854e33e3aa288ad40e5e986a47d4ff3df0497ca13a5e5ee45765f",
+    "docs/presage-integration.md": "33b6b621efdd371b6ab10529590576963ca13f06401f2ae32997c8a314d81cc0",
+    "docs/public-data-benchmark.md": "84d33c91097fd3141355f40b60a3f607ca59b58f516320ea089d05abbe2b934c",
+    "docs/release-readiness.md": "ad8fab68f7b87f2cebc954ba1681773bbaae1edf97541a606e9167d4beb17d9f",
+    "docs/snowflake-analytics.md": "4d751ef09ec4dcabef40e379499279cb59e3526bca3b6aa2d0714c21c2228433",
+    "docs/testflight-provisioning.md": "315343b5e70b15e77eb825cf78746806172978175d96373758990a611fec8780",
+    "docs/testflight.md": "d65bb02b838d91128313101eeb25085c69cae843e0e16934a93c6420f260ac1c",
+    "docs/tiger-live-readiness.md": "2112690ccc1d65b089c5626476c96d641fab65a16fae8330e7339b96ff06cfe9",
+    "docs/voice-feedback.md": "73097d0551acc4112ff2ec58e47d0bb1c7621d9cf34a99fec36a3788d4f0420b",
+    "docs/vultr-deployment.md": "f3675ea21ff10435761e3e23b00553e0214eb2b585ad67e4eaaa9c1f1b17806a",
+    "docs/watch-simulator-acceptance.md": "880b631c99addb3dd39309b1d662cbb1b6ab6a68de1dd0fe38783f071bbb5a0c",
+    "docs/watch-telemetry.md": "b852e62c820a9649065dfa920163cbc1acfc2688a25af206c614a1161138d206",
+    "evaluations/codex/2026-10-24-cue-review/README.md": "42587bce87b4f1041adc96395c530ac933e9f2863f5f0af2bf63a7f7808184b4",
+    "evaluations/delta/2026-10-25-v2/README.md": "ebbe02e4bd2c83af8b2533836ffee743caa238917dbeacbece9c3b6bec7f3c86",
+    "hardware/pi/EVIDENCE-2026-10-24.md": "a7c52d27fa498b5cc6133df9d43c4e69bac5f2e9a8a3a7f5aa54f3cb9fdd2c22",
+    "landing/index.html": "2aa7251d77715399ee1f6ff6c365e76128925bd8b69ae37c28b82e4517b95bb3",
+    "presentation/checkpoints/20261025T0143Z/source/build.mjs": "1f8b2622715987ed0792b7d3f7f16a9fb42108d206ff5226f8caa823d76d59ca",
+    "presentation/checkpoints/20261025T0143Z/source/export-rendered-pdf.py": "ee6804635dd40d1c322c162e6b1d2b4ceb309db34a91431d34590cc749897879",
+    "research/hr_forecast/results/inventory.json": "0d90c7cd4b59c82bde5d953e2444e50f0796fa1805566ac7c59837d0f3c32d23",
+    "research/hr_forecast/results/report.json": "f7c12bfaf022c90ebb6cbc86b84c87695051d737de435a707b50cdac685f4576",
+    "server/src/contracts.mjs": "3d7813a2c3e5a21051e528271ae79a093da38888a903aceb7741ce8ad2683e57",
+    "server/src/gateway.mjs": "89f248d6d1c7d9c84c1a1def03e3ac21678d78372870981814626e939506922f",
+    "squat/README.md": "5b9543839cafc327cfb06f8922b284111636e1aede15fab6239128960ea5fae4"
+  },
+  "outputs": {
+    "preview-montage.png": {
+      "bytes": 700116,
+      "sha256": "509897b3c1dde22d9b195826db88852bbd0ad61b6a255ee1ec2ccce75bb1d94d"
+    },
+    "spottr-judges-rendered.pdf": {
+      "bytes": 975107,
+      "sha256": "2905efad7ae10f97f5eb880715a720a474e1c7da52b5674f3ef41fb3cd6de6da"
+    },
+    "spottr-judges.pptx": {
+      "bytes": 256465,
+      "sha256": "acbfe6ade175042be2f111d43c4d669be3816ba4c7d1dd558defdb93d387a628"
+    }
+  },
+  "preview_sha256": {
+    "slide-01.png": "87d5f88be8591fe0c1e1a9ed5aa89bad49a718f77888ed34f7b6e9c705c596f1",
+    "slide-02.png": "91a3f969d8e081b29e4ba95b957f89859c8cb744dcf0b8701c7fc7b6f2838956",
+    "slide-03.png": "6e28fb71a9e950b592d4f978576b24ef2a3aa27cb84e5c15bc070c87559139f3",
+    "slide-04.png": "2585de540996fa51d95f5b89b181b6eac734f6c0e59a7159269e6bf0fa0f806d",
+    "slide-05.png": "858c69fcada6707034f1b15fcb19962d0f708474bd520c7ee2a11c381d9672fc",
+    "slide-06.png": "1a23b4366b2a538663bab15a8f3595bfdac6f3e0984e6bd46652c2e8e38a23de",
+    "slide-07.png": "70aab7118aa7db4815788ebde747287fa307fa6116b7a4bf011990ecf5eea0da",
+    "slide-08.png": "b6bf3e62cf4821bf9bcfca82605051701e2c0726d48db30a9080b5c84c262669",
+    "slide-09.png": "7897f828f0e88ab298755e629411ec2e4501e27b503578e29f6cdedbc5841499",
+    "slide-10.png": "94411dede497030cf98ae3ce4c3a663a4e8f8c76fcd29b2b6a2da7dd3cf51807"
+  },
+  "historical_preservation": {
+    "manifest": "historical-preservation.json",
+    "checked_files": 29,
+    "mismatches": 0
+  },
+  "render_review": {
+    "slides_rendered": 10,
+    "slides_inspected_individually_at_full_size": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "changed_visible_slides": [
+      6,
+      9,
+      10
+    ],
+    "unchanged_preview_count": 7,
+    "unchanged_preview_bytes_equal": true,
+    "montage_inspected": true,
+    "changed_slides_compared_against_reference": true,
+    "slide_9_visual_overlap_observed": false,
+    "final_note_only_revision_preview_hashes_equal": true
+  },
+  "validation": {
+    "private_receipt": ".build/20261025T0143Z-final-v3/validation.json",
+    "receipt_sha256": "dc0acfeab64e6981e4b043e340733f747066e1d94af297f243e91ac1b515c429",
+    "package_integrity": "pass",
+    "font_policy": "pass",
+    "first_party_import": "pass",
+    "editable_chart_and_embedded_literal_workbook": "pass",
+    "layout_findings": 0,
+    "layout_warnings": [
+      {
+        "available_bottom_in": 6.5312,
+        "columns": 3,
+        "declared_bottom_in": 6.375,
+        "estimated_native_bottom_in": 6.8735,
+        "footer_object_ids": [
+          "4"
+        ],
+        "kind": "native_table_overflow",
+        "overflow_in": 0.3423,
+        "rows": 8,
+        "slide": 9,
+        "table_id": "3"
+      }
+    ],
+    "native_pdf_error": "Error: Cannot find module '#standard-fonts/Helvetica'\nRequire stack:\n- /Users/scsoc/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/@oai/artifact-tool/dist/artifact_tool.mjs"
+  },
+  "pdf": "Static image-based PDF assembled from final imported-PPTX renders. Native PDF export fails on missing #standard-fonts/Helvetica; no runtime dependency modified or installed.",
+  "limits": [
+    "One additional real Gemini proposal was explicitly approved and executed as three synthetic manual sets3/2/1 in signed Debug0.1(1) through loopback8843, not a physical workout or installation of TestFlight4.",
+    "Physical phone networking, rep-count accuracy, Watch physiology, audible playback and personal coaching quality remain unverified.",
+    "Standalone Python demo has13 offline fake-boundary behavior checks; no real inference, native/Tiger adapter or measured cross-language parity.",
+    "Web prototype92offline checks and mock-profile browser acceptance do not establish real Tiger persistence or labelled physical CV validation.",
+    "Tiger console schema has zero rows; strict NodeTLS, ingestion/replay/readback and native/prototype sync remain unaccepted.",
+    "Snowflake console account/warehouse readiness does not establish live SQLAPI workload acceptance. Other provider/spending/legal gates remain.",
+    "Experimental MediaPipe source build is not the app SDK; privacy/origin-signature issue52 remains open.",
+    "Existing simulator screenshots, exercise illustrations and PAMAP2 chart retain their original evidence limits; HR adaptation worsened error, with one eligible participant at30s.",
+    "No provider calls, new generated assets, native PowerPoint/Keynote UI acceptance, publication or Git mutation performed during this refresh."
+  ],
+  "finalized_utc": "2026-10-25T01:46:06.519617+00:00"
+}

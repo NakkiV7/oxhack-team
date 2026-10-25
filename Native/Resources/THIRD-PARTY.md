@@ -1,6 +1,6 @@
 # MediaPipe
 
-SDK: Google AI Edge MediaPipe 1.1.1, official arm64 iPhone and simulator binary distributions. Source revision: `d761bb9a3fdc2135ebf046a093a99b95484897dc`. Apache 2.0 license is bundled as `MediaPipe-LICENSE.txt`.
+SDK: Google AI Edge MediaPipe 1.1.1, official arm64 iPhone and simulator binary distributions. The official release tag `v1.1.1` resolves to `50505c8312c7eacb1bd411cecdc4cc9fd08d53cb`; this identifies the release source tag, not independently verified source-to-binary build provenance for Google’s ZIPs. Apache 2.0 license is bundled as `MediaPipe-LICENSE.txt`.
 
 The three XCFramework URLs and upstream SHA-256 hashes are pinned in `scripts/fetch-mediapipe.sh`. XCFrameworks are downloaded locally and excluded from git.
 

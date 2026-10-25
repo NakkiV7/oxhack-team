@@ -50,3 +50,10 @@ frame, so someone leaning into the camera is not one either.
 
 Thresholds live at the top of `analyzer.py`; the ascent-time trend is the hook for the
 "push to failure / back off" logic once watch heart rate is fused in.
+
+## Guided Python demo (camera demo integrated by Omar)
+
+`app.py` runs a self-contained guided flow in one window (title, example set with voice, countdown,
+your set against a target, results) for `--exercise squat|pushup`; `pushup.py` is a Python port of
+the browser prototype's push-up rules and `tests/test_runtime.py` covers the runtime. This is the
+camera demo wired into the native story; the browser prototypes under `prototype/` are the primary UI.

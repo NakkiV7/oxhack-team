@@ -12,11 +12,13 @@ final class CoachModel {
     private(set) var proposalContext: CoachValidationContext?
     private var generation = UUID()
     private let configuration: @MainActor () throws -> CoachGatewayClient
+    private let planDefaults: UserDefaults
     private var lastMessage = ""
     private var profile: LocalProfile?
 
-    init(configuration: @escaping @MainActor () throws -> CoachGatewayClient = CoachSettings.client, savedPlanData: Data? = CoachSettings.planData(), profile: LocalProfile? = nil) {
+    init(configuration: @escaping @MainActor () throws -> CoachGatewayClient = CoachSettings.client, savedPlanData: Data? = CoachSettings.planData(), profile: LocalProfile? = nil, defaults: UserDefaults = .standard) {
         self.configuration = configuration
+        planDefaults = defaults
         self.profile = profile
         approvedPlan = savedPlanData.flatMap { try? JSONDecoder().decode(CoachSavedPlan.self, from: $0) }
     }
@@ -47,11 +49,18 @@ final class CoachModel {
         } catch { finish(error, token: token) }
     }
 
-    func propose(history: [SessionRecord], support: Set<String>) async {
-        guard !isLoading else { return }
+    func propose(message: String = "", history: [SessionRecord], support: Set<String>) async {
+        guard !isLoading, !Task.isCancelled else { return }
+        let text = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard text.count <= 4000 else {
+            error = "Keep your workout instructions to 4,000 characters, then tap Propose again."
+            return
+        }
         proposal = nil; proposalContext = nil
         let token = begin()
-        let input = CoachRequest(generationID: token.uuidString, facts: CoachGrounding.facts(history: history, profile: profile), availableSupport: support.sorted())
+        let input = CoachRequest(generationID: token.uuidString, message: text.isEmpty ? nil : text,
+                                 history: Array(turns.suffix(20)), facts: CoachGrounding.facts(history: history, profile: profile),
+                                 availableSupport: support.sorted())
         do {
             let response = try await configuration().proposal(input)
             guard generation == token, !Task.isCancelled else { return }
@@ -79,9 +88,14 @@ final class CoachModel {
         do {
             let plan = try CoachSavedPlan(proposal: proposal, selectedExerciseIDs: selected, context: proposalContext)
             let data = try JSONEncoder().encode(plan)
-            UserDefaults.standard.set(data, forKey: "coach.approvedPlan")
+            planDefaults.set(data, forKey: "coach.approvedPlan")
             approvedPlan = plan; self.proposal = nil; error = nil
         } catch { self.error = "Select at least one valid exercise before saving your plan." }
+    }
+
+    func removeApprovedPlan() {
+        planDefaults.removeObject(forKey: "coach.approvedPlan")
+        approvedPlan = nil
     }
 
     private func begin() -> UUID { generation = UUID(); isLoading = true; error = nil; return generation }

@@ -1,4 +1,4 @@
-"""Speak cues: macOS `say` or ElevenLabs. Every line is synthesised once into voice_cache/ and played with afplay."""
+"""On-demand macOS or ElevenLabs speech, cached by voice/model/text and played with afplay."""
 import hashlib
 import json
 import os
@@ -11,6 +11,7 @@ import certifi
 
 CACHE = Path(__file__).with_name("voice_cache")
 DEFAULT_VOICE = "21m00Tcm4TlvDq8ikWAM"      # ElevenLabs "Rachel", a standard voice
+MODEL = "eleven_turbo_v2_5"
 STANDARD_LINES = [str(n) for n in range(1, 31)] + ["Go", "Set complete. Nice work"]
 
 
@@ -29,7 +30,7 @@ def synth(text: str, backend: str, path: Path) -> None:
         return
     req = urllib.request.Request(
         f"https://api.elevenlabs.io/v1/text-to-speech/{os.environ.get('ELEVENLABS_VOICE_ID', DEFAULT_VOICE)}",
-        data=json.dumps({"text": text, "model_id": "eleven_turbo_v2_5"}).encode(),
+        data=json.dumps({"text": text, "model_id": MODEL}).encode(),
         headers={"xi-api-key": os.environ["ELEVENLABS_API_KEY"], "Content-Type": "application/json"},
     )
     ctx = ssl.create_default_context(cafile=certifi.where())   # python.org builds ship without a CA bundle
@@ -37,17 +38,17 @@ def synth(text: str, backend: str, path: Path) -> None:
 
 
 class Voice:
-    """Callable speaker for Coach: non-blocking playback, disk cache keyed by backend + text."""
+    """First uncached synthesis blocks; playback starts a separate audio process."""
 
     def __init__(self, backend: str = "say", lines=STANDARD_LINES):
         self.backend = backend
         load_env()
         CACHE.mkdir(exist_ok=True)
-        for line in lines:                      # synthesise once now, so the live loop never waits on the API
-            self.path(line)
 
     def path(self, text: str) -> Path:
-        p = CACHE / f"{self.backend}_{hashlib.sha1(text.encode()).hexdigest()[:12]}.{'wav' if self.backend == 'say' else 'mp3'}"
+        identity = f"{os.environ.get('ELEVENLABS_VOICE_ID', DEFAULT_VOICE)}:{MODEL}" if self.backend == "elevenlabs" else "Daniel"
+        digest = hashlib.sha256(f"{identity}:{text}".encode()).hexdigest()
+        p = CACHE / f"{self.backend}_{digest}.{'wav' if self.backend == 'say' else 'mp3'}"
         if not p.exists():
             synth(text, self.backend, p)
         return p

@@ -1,0 +1,41 @@
+{
+  "fixtureVersion": "spottr-cue-contract-v2",
+  "historicalImmutableSHA256": {
+    "evaluations/delta/2026-10-24/README.md": "15eb0e031291d4a8b837bbcbe3395fe2020e1398be2cf27c8749573222773c76",
+    "evaluations/delta/2026-10-24/expected-controls.json": "749620b1f01bdead8bddb470101c52d1c4046814cd6907d9e7102b22b40ecb9f",
+    "evaluations/delta/2026-10-24/fixtures.json": "9ffff0c98acb739be535871695c005007ca0505e8b6240134693984bc849563c",
+    "evaluations/delta/2026-10-24/judge-request.md": "48c9491e889e3bc0dd8cf850e3f44c824469b7f5c0426e087ac072536afe63c8",
+    "evaluations/delta/2026-10-24/run-record.json": "86e8859c0761469208e8b612b2587c969abc5dbe8da9d39518b45ddd9d8a3346",
+    "evaluations/codex/2026-10-24-cue-review/README.md": "42587bce87b4f1041adc96395c530ac933e9f2863f5f0af2bf63a7f7808184b4",
+    "evaluations/codex/2026-10-24-cue-review/judge-request.md": "479d65a85ffe40206a61ceab27c74e0be54ea5ea5c165b28733d0bc68ad55669",
+    "evaluations/codex/2026-10-24-cue-review/raw-review.md": "ae0dcd0c46b94b79e75c0a009b69298f8c8ea8b234db0d3af70e4291c9c5ed44",
+    "evaluations/codex/2026-10-24-cue-review/run-record.json": "8d337022a0f47957b9cffea0c273e53e1c61dcf85f2d30101499c339e9d1e456"
+  },
+  "sourceSHA256": {
+    "Shared/Core/CoachingPolicy.swift": "4b1a439505cb3a52564791bee48a537e7766f8dcfa7bbb367fe9cd1964e364b5",
+    "Shared/Core/VoiceCuePlayback.swift": "935718e76ebdf0e75dcb43e651f633c6542cb71e78ebb1aff5efc1163f242632",
+    "Native/iOS/CoachingVoiceBridge.swift": "4217bf2dd6abfc9e2b87ba7ed47e147f775690b75edf405720f65424fda2c026",
+    "Native/iOS/TrainingStore.swift": "53f113550dca25bfa336a762e993da197837407a10ba6a49960745e1b0ac616d",
+    "Native/iOS/LocalVoicePlayback.swift": "9fd686f7d89dcf0bcf1cada96f1bf377a0595fb683b2c4b3d37f7583750ec452"
+  },
+  "packetSHA256": {
+    "README.md": "ebbe02e4bd2c83af8b2533836ffee743caa238917dbeacbece9c3b6bec7f3c86",
+    "action-contract.md": "ec57ca191d117ba4e94804f1b3cfca604cafd8a0dae7c821ce891ed3e98b04f0",
+    "development.json": "1d3055e9e89658c83549b4c0c3b6034aa51e18841233c8e8058225d81106d236",
+    "expected-controls.json": "7d938317ae4eeb867580101855ed3e7671324a191f7f566d26ec88d5d05d41ca",
+    "held-out.json": "5920beeeecc437602dcec045ced6e4b438c78ea93b1d8c695116389f35d9e89b",
+    "judge-request-development.md": "12002bf7ea13d1a6d82af795475959b61ac535f6251489bd33f895fa31578dae",
+    "judge-request-held-out.md": "f936611a9d3667e1acdb3704473cada5532831763ed56b3eca3de306d0a1e7b3",
+    "preflight.json": "3df05551b5b9921673f0b1fb0abf4bae709f0cb17b9c1e42ad644bbde89b7fe2",
+    "run-record.json": "680eb2f8f1ee0c5ff79ed18a25ac520a1e5cbc75288dbc4ceabe485e4540cd62"
+  },
+  "checkBoundary": "Structural authoring preflight only, not semantic judge execution or deployed runtime validation.",
+  "workflowSHA256": {
+    "docs/delta-workflow.md": "055f45e7321b4a8bcb2fc35b958fa8e6f16367c27a3df1ab477ff70685be55f1"
+  },
+  "preparationSHA256": {
+    "evaluations/delta/2026-10-25-v2/README.md": "67af78edddfe88f0cbac1b7708fc055ebe74dccb6087d84e65b1fd6c751718e3",
+    "docs/delta-workflow.md": "0bb8291bb928d15226318bade48f84aeacd198f862f89872b71e0dfbdf878c1d"
+  },
+  "documentationHashNote": "Preparation-time documentation hashes are retained separately. Current README/workflow hashes reflect the later disclosed Codex development-only calibration; frozen request, fixture, contract, preflight, prepared run-record, source and historical hashes are unchanged."
+}

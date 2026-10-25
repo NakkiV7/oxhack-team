@@ -46,7 +46,7 @@ def main():
     fps = cap.get(cv2.CAP_PROP_FPS) or 30
     pose, analyzer = Pose(MODELS[args.model]), ex.Analyzer()
     coach = Coach(speak=Voice(args.voice, STANDARD_LINES + ex.LINES) if args.voice != "off" else print)
-    writers, f, n, t0 = {}, None, 0, time.time()
+    writers, f, n, t0 = {}, None, 0, time.monotonic()
 
     def write(key, path, img):
         if path:
@@ -60,7 +60,7 @@ def main():
             if not ok:
                 break
             write("raw", args.record, img)
-            t = time.time() - t0 if live else n / fps
+            t = time.monotonic() - t0 if live else n / fps
             lm = pose(img, int(t * 1000))
             if lm is not None:
                 f = analyzer.update(lm, t, img.shape[0])
