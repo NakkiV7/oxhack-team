@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spottr — Training Calendar & Workout History</title>
+  <meta name="description" content="View your daily workouts, inspect Apple Watch heart-rate telemetry, and compare your weekly progress powered by TigerData.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --white: #ffffff;
+      --black: #141414;
+      --gray: #737373;
+      --gray-light: #e5e5e4;
+      --surface: #f5f5f4;
+      --surface-hover: #ececeb;
+      --green: #26745a;
+      --green-light: #e8f5f0;
+      --amber: #946a18;
+      --amber-light: #fef7ec;
+      --red: #ac3535;
+      --red-light: #fdf2f2;
+      --blue: #2563eb;
+      --blue-light: #eff6ff;
+      --radius: 16px;
+      --radius-sm: 8px;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: var(--black);
+      background: var(--white);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    .container {
+      width: 100%;
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ───── Fixed Nav ───── */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0;
+      z-index: 100;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border-bottom: 1px solid rgba(20,20,20,0.06);
+    }
+
+    .nav__inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+
+    .nav__logo {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav__logo span {
+      display: inline-block;
+      width: 8px; height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+    }
+
+    .nav__links { display: flex; gap: 28px; align-items: center; }
+
+    .nav__links a {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--gray);
+      transition: color 0.2s;
+      position: relative;
+    }
+
+    .nav__links a:hover, .nav__links a.active { color: var(--black); }
+    .nav__links a.active::after {
+      content: '';
+      position: absolute;
+      bottom: -6px; left: 0; right: 0;
+      height: 2px;
+      background: var(--black);
+      border-radius: 2px;
+    }
+
+    .nav__cta {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 18px;
+      background: var(--black);
+      color: var(--white) !important;
+      border-radius: 100px;
+      font-size: 14px;
+      font-weight: 600;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .nav__cta:hover { background: #333; transform: scale(1.02); }
+
+    /* ───── Header ───── */
+    .page-header {
+      padding: 120px 0 40px;
+    }
+
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .kicker-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 14px;
+      background: var(--green-light);
+      border: 1px solid rgba(38,116,90,0.18);
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: var(--green);
+      margin-bottom: 12px;
+    }
+
+    .kicker-badge .dot {
+      width: 7px; height: 7px;
+      background: var(--green);
+      border-radius: 50%;
+      box-shadow: 0 0 0 3px rgba(38,116,90,0.25);
+    }
+
+    .page-title {
+      font-size: clamp(32px, 5vw, 44px);
+      font-weight: 800;
+      letter-spacing: -1.2px;
+      line-height: 1.15;
+    }
+
+    .page-desc {
+      font-size: 16px;
+      color: var(--gray);
+      max-width: 620px;
+      margin-top: 8px;
+    }
+
+    .db-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 18px;
+      background: var(--surface);
+      border: 1px solid rgba(20,20,20,0.08);
+      border-radius: var(--radius);
+      font-size: 13px;
+    }
+
+    .db-status-pill code {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      color: var(--green);
+      font-size: 12px;
+    }
+
+    /* ───── Layout Grid ───── */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1.25fr 1fr;
+      gap: 28px;
+      margin-bottom: 48px;
+    }
+
+    .card {
+      background: var(--white);
+      border: 1px solid rgba(20,20,20,0.08);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+    }
+
+    .card__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .card__title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .card__subtitle {
+      font-size: 13px;
+      color: var(--gray);
+    }
+
+    /* ───── Calendar ───── */
+    .calendar-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .month-label {
+      font-size: 16px;
+      font-weight: 700;
+      min-width: 140px;
+      text-align: center;
+    }
+
+    .icon-btn {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      border: 1px solid rgba(20,20,20,0.1);
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .icon-btn:hover { background: var(--surface-hover); }
+
+    .calendar-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray);
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .calendar-days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+    }
+
+    .cal-day {
+      aspect-ratio: 1;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.2s;
+      background: var(--surface);
+    }
+
+    .cal-day:hover {
+      border-color: rgba(20,20,20,0.2);
+      transform: translateY(-1px);
+    }
+
+    .cal-day.empty {
+      background: transparent;
+      cursor: default;
+      border: none;
+    }
+
+    .cal-day.selected {
+      background: var(--black) !important;
+      color: var(--white);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+    }
+
+    .cal-day.today {
+      border-color: var(--black);
+      font-weight: 800;
+    }
+
+    .cal-day__num {
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1;
+    }
+
+    .cal-day__pills {
+      display: flex;
+      gap: 3px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .cal-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+    .cal-dot.amber { background: var(--amber); }
+    .cal-day.selected .cal-dot { background: #4ade80; }
+
+    .cal-day__vol {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--green);
+      line-height: 1;
+    }
+    .cal-day.selected .cal-day__vol { color: #86efac; }
+
+    /* ───── Session Details Inspector ───── */
+    .session-inspector {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .inspector-header {
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(20,20,20,0.06);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .inspector-date {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .session-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: var(--green-light);
+      color: var(--green);
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .stats-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .metric-tile {
+      background: var(--surface);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      text-align: center;
+    }
+
+    .metric-tile .num {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      line-height: 1.1;
+    }
+
+    .metric-tile .lbl {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--gray);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 4px;
+    }
+
+    .set-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 280px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .set-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--surface);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+    }
+
+    .set-row__ex {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+    }
+
+    .set-index-tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--white);
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid rgba(20,20,20,0.08);
+    }
+
+    .set-row__stats {
+      display: flex;
+      gap: 16px;
+      color: var(--gray);
+      font-size: 12px;
+    }
+
+    .set-row__stats strong {
+      color: var(--black);
+      font-weight: 700;
+    }
+
+    /* ───── Raw TigerData Record Drawer ───── */
+    .tiger-query-drawer {
+      margin-top: 10px;
+      border: 1px dashed rgba(20,20,20,0.15);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      font-size: 12px;
+      background: #fafafa;
+    }
+
+    .drawer-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--gray);
+    }
+
+    .drawer-toggle:hover { color: var(--black); }
+
+    .json-code {
+      display: none;
+      margin-top: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      background: #18181b;
+      color: #e4e4e7;
+      padding: 12px;
+      border-radius: 6px;
+      max-height: 180px;
+      overflow: auto;
+      white-space: pre;
+    }
+
+    /* ───── Comparison Section ───── */
+    .comparison-section {
+      margin-bottom: 60px;
+    }
+
+    .comparison-header {
+      margin-bottom: 24px;
+    }
+
+    .comparison-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .comp-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 24px;
+      position: relative;
+    }
+
+    .comp-card__label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .comp-card__val-row {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    .comp-card__val {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -1px;
+    }
+
+    .comp-card__delta {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 100px;
+    }
+
+    .comp-card__delta.positive {
+      background: var(--green-light);
+      color: var(--green);
+    }
+
+    .comp-card__delta.neutral {
+      background: var(--surface-hover);
+      color: var(--gray);
+    }
+
+    .comp-card__desc {
+      font-size: 13px;
+      color: var(--gray);
+      margin-top: 10px;
+      line-height: 1.4;
+    }
+
+    /* ───── 30-Day Activity Heatmap ───── */
+    .heatmap-section {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 28px;
+      margin-bottom: 60px;
+    }
+
+    .heatmap-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .heatmap-grid {
+      display: grid;
+      grid-template-columns: repeat(30, 1fr);
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .heat-box {
+      aspect-ratio: 1;
+      border-radius: 4px;
+      background: #e2e2e0;
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+    .heat-box:hover { transform: scale(1.2); z-index: 2; }
+    .heat-box.lvl-1 { background: #a7f3d0; }
+    .heat-box.lvl-2 { background: #34d399; }
+    .heat-box.lvl-3 { background: #059669; }
+    .heat-box.lvl-4 { background: #064e3b; }
+
+    .heatmap-legend {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--gray);
+    }
+
+    .legend-box {
+      width: 10px; height: 10px;
+      border-radius: 2px;
+    }
+
+    /* ───── Architecture TigerData Callout ───── */
+    .tiger-arch-box {
+      background: var(--black);
+      color: var(--white);
+      border-radius: var(--radius);
+      padding: 36px;
+      margin-bottom: 60px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 32px;
+      align-items: center;
+    }
+
+    .tiger-arch-box h3 {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 10px;
+    }
+
+    .tiger-arch-box p {
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 18px;
+    }
+
+    .sql-code-block {
+      background: #1e1e24;
+      border-radius: 12px;
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: #93c5fd;
+      border: 1px solid rgba(255,255,255,0.1);
+      overflow-x: auto;
+    }
+
+    .sql-code-block .keyword { color: #f472b6; font-weight: 600; }
+    .sql-code-block .comment { color: #6b7280; }
+
+    /* ───── Footer ───── */
+    .footer {
+      padding: 40px 0;
+      border-top: 1px solid rgba(20,20,20,0.06);
+    }
+
+    .footer__inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .footer__copy { font-size: 13px; color: var(--gray); }
+    .footer__links { display: flex; gap: 24px; }
+    .footer__links a { font-size: 13px; color: var(--gray); transition: color 0.2s; }
+    .footer__links a:hover { color: var(--black); }
+
+    /* ───── Responsive ───── */
+    @media (max-width: 900px) {
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .comparison-cards { grid-template-columns: 1fr; }
+      .tiger-arch-box { grid-template-columns: 1fr; }
+      .heatmap-grid { grid-template-columns: repeat(15, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ════════ Nav ════════ -->
+  <nav class="nav">
+    <div class="container nav__inner">
+      <a href="index.html" class="nav__logo">
+        <span></span> Spottr
+      </a>
+      <div class="nav__links">
+        <a href="index.html">Overview</a>
+        <a href="calendar.html" class="active">Calendar</a>
+        <a href="statistics.html">Progression & Stats</a>
+        <a href="index.html#download" class="nav__cta">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.33-3.14-2.57C4.25 16 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+          Get App
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ════════ Header ════════ -->
+  <header class="page-header">
+    <div class="container">
+      <div class="header-row">
+        <div>
+          <div class="kicker-badge">
+            <span class="dot"></span> TIGERDATA CLOUD PERSISTENCE
+          </div>
+          <h1 class="page-title">Every rep. Every day.</h1>
+          <p class="page-desc">
+            Explore daily workouts, drill down into Apple Watch sensor telemetry, and observe personal adaptation over time backed by TigerData hypertables.
+          </p>
+        </div>
+        <div class="db-status-pill">
+          <div>
+            <div style="font-weight:700; font-size:12px; color:var(--black)">Live Tiger Cloud · Service oxhack</div>
+            <code>eyx5jmou3r:32273 / spottr_gateway</code>
+          </div>
+          <span style="display:inline-block; width:10px; height:10px; background:var(--green); border-radius:50%"></span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- ════════ Main Grid: Calendar + Inspector ════════ -->
+    <div class="dashboard-grid">
+
+      <!-- Calendar Left Card -->
+      <div class="card">
+        <div class="card__header">
+          <div>
+            <h2 class="card__title">Workout Calendar</h2>
+            <p class="card__subtitle">Select a day to inspect session telemetry</p>
+          </div>
+          <div class="calendar-controls">
+            <button class="icon-btn" id="prevMonthBtn" title="Previous Month">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <span class="month-label" id="currentMonthLabel">October 2026</span>
+            <button class="icon-btn" id="nextMonthBtn" title="Next Month">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="calendar-weekdays">
+          <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+        </div>
+
+        <div class="calendar-days" id="calendarDaysGrid">
+          <!-- Populated by JS -->
+        </div>
+
+        <div style="margin-top:20px; display:flex; gap:16px; font-size:12px; color:var(--gray); align-items:center;">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span class="cal-dot"></span> Camera Verified Session
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span class="cal-dot amber"></span> Manual Logged
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="display:inline-block; width:8px; height:8px; border:1.5px solid var(--black); border-radius:3px;"></span> Current Day
+          </div>
+        </div>
+      </div>
+
+      <!-- Session Inspector Right Card -->
+      <div class="card session-inspector" id="sessionInspector">
+        <div class="inspector-header">
+          <div>
+            <span class="session-badge" id="inspectorBadge">CAMERA TRACKED</span>
+            <h3 class="inspector-date" id="inspectorDate">Friday, Oct 24, 2026</h3>
+            <p style="font-size:12px; color:var(--gray); margin-top:2px;" id="inspectorWorkoutId">ID: wkt-20261024-8fa2</p>
+          </div>
+          <div style="text-align:right;">
+            <span style="font-size:11px; font-weight:700; color:var(--green)">SYNCHRONIZED</span>
+            <div style="font-size:11px; color:var(--gray)">TigerData TSDB</div>
+          </div>
+        </div>
+
+        <!-- 3 Core Tiles -->
+        <div class="stats-summary-grid">
+          <div class="metric-tile">
+            <div class="num" id="inspectorVolume">84</div>
+            <div class="lbl">Total Reps</div>
+          </div>
+          <div class="metric-tile">
+            <div class="num" id="inspectorDuration">18m 40s</div>
+            <div class="lbl">Session Time</div>
+          </div>
+          <div class="metric-tile">
+            <div class="num" id="inspectorHeartRate" style="color:var(--red)">142 <span style="font-size:13px; font-weight:500;">BPM</span></div>
+            <div class="lbl">Avg Watch HR</div>
+          </div>
+        </div>
+
+        <!-- Sets Breakdown List -->
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <span style="font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Set Breakdown</span>
+            <span style="font-size:12px; color:var(--gray)" id="inspectorSetCount">5 Sets Completed</span>
+          </div>
+          <div class="set-list" id="inspectorSetList">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Raw TigerData Payload Drawer -->
+        <div class="tiger-query-drawer">
+          <div class="drawer-toggle" id="rawRecordToggle">
+            <span>Query TigerData Raw Record JSON</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <pre class="json-code" id="rawRecordCode"></pre>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ════════ Comparison Over Time ════════ -->
+    <section class="comparison-section">
+      <div class="comparison-header">
+        <h2 style="font-size:24px; font-weight:800; letter-spacing:-0.6px;">Weekly Progress Comparison</h2>
+        <p style="font-size:14px; color:var(--gray);">Derived from aggregated `scalar_sample` telemetry and session logs in TigerData.</p>
+      </div>
+
+      <div class="comparison-cards">
+        <div class="comp-card">
+          <div class="comp-card__label">Weekly Rep Volume</div>
+          <div class="comp-card__val-row">
+            <span class="comp-card__val">348</span>
+            <span class="comp-card__delta positive">+18.4%</span>
+          </div>
+          <p class="comp-card__desc">vs. 294 reps last week. Squat depth consistency improved by 14% based on MediaPipe knee angle thresholds.</p>
+        </div>
+
+        <div class="comp-card">
+          <div class="comp-card__label">Average Rep Tempo</div>
+          <div class="comp-card__val-row">
+            <span class="comp-card__val">2.3s</span>
+            <span class="comp-card__delta positive">-0.3s cadence</span>
+          </div>
+          <p class="comp-card__desc">Lower rep duration with zero form breakdown cues indicates neural adaptation and control during eccentric descent.</p>
+        </div>
+
+        <div class="comp-card">
+          <div class="comp-card__label">Rest-Heart Rate Drop</div>
+          <div class="comp-card__val-row">
+            <span class="comp-card__val">38 bpm</span>
+            <span class="comp-card__delta positive">+6 bpm recovery</span>
+          </div>
+          <p class="comp-card__desc">Heart rate recovery during 90s inter-set rest measured by Apple Watch optical PPG sensors.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════ 30-Day Heatmap Strip ════════ -->
+    <section class="heatmap-section">
+      <div class="heatmap-header">
+        <div>
+          <h3 style="font-size:18px; font-weight:800;">30-Day Consistency Streak</h3>
+          <p style="font-size:13px; color:var(--gray);">Continuous training activity registered on TigerData gateway</p>
+        </div>
+        <div style="display:flex; gap:24px; font-size:13px;">
+          <div><strong style="font-size:18px; font-weight:800;">5 days</strong> <span style="color:var(--gray)">Current Streak</span></div>
+          <div><strong style="font-size:18px; font-weight:800;">14 days</strong> <span style="color:var(--gray)">Peak Streak</span></div>
+          <div><strong style="font-size:18px; font-weight:800;">19</strong> <span style="color:var(--gray)">Sessions This Month</span></div>
+        </div>
+      </div>
+
+      <div class="heatmap-grid" id="heatmapGrid">
+        <!-- 30 boxes generated by JS -->
+      </div>
+
+      <div class="heatmap-legend">
+        <span>Less active</span>
+        <span class="legend-box" style="background:#e2e2e0"></span>
+        <span class="legend-box" style="background:#a7f3d0"></span>
+        <span class="legend-box" style="background:#34d399"></span>
+        <span class="legend-box" style="background:#059669"></span>
+        <span class="legend-box" style="background:#064e3b"></span>
+        <span>High volume</span>
+      </div>
+    </section>
+
+    <!-- ════════ TigerData Under The Hood ════════ -->
+    <section class="tiger-arch-box">
+      <div>
+        <div style="font-size:11px; font-weight:700; color:#34d399; letter-spacing:1px; text-transform:uppercase; margin-bottom:8px;">Timescale Continuous Aggregates</div>
+        <h3>How TigerData Powers Spottr</h3>
+        <p>
+          Every push-up, squat, and Apple Watch heart-rate scalar is partitioned into 1-day chunks inside TigerData. Instead of querying millions of individual PPG samples, pre-aggregated views compute daily rollups with sub-millisecond query latency.
+        </p>
+        <a href="statistics.html" style="display:inline-flex; align-items:center; gap:8px; color:#fff; font-size:14px; font-weight:600; text-decoration:underline;">
+          View Detailed Analytics & Progress Graphs &rarr;
+        </a>
+      </div>
+      <div>
+        <pre class="sql-code-block">
+<span class="comment">-- Continuous Aggregate on TigerData</span>
+<span class="keyword">CREATE MATERIALIZED VIEW</span> spottr_gateway.daily_rollups
+<span class="keyword">WITH</span> (timescaledb.continuous) <span class="keyword">AS</span>
+<span class="keyword">SELECT</span>
+  installation_id,
+  time_bucket(<span class="keyword">'1 day'</span>, measured_at) <span class="keyword">AS</span> day,
+  avg(value) FILTER (WHERE kind = <span class="keyword">'heartRate'</span>) <span class="keyword">AS</span> avg_hr,
+  max(value) FILTER (WHERE kind = <span class="keyword">'heartRate'</span>) <span class="keyword">AS</span> max_hr,
+  count(*) <span class="keyword">AS</span> sample_count
+<span class="keyword">FROM</span> spottr_gateway.scalar_sample
+<span class="keyword">GROUP BY</span> 1, 2;
+        </pre>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ════════ Footer ════════ -->
+  <footer class="footer">
+    <div class="container footer__inner">
+      <p class="footer__copy">&copy; 2026 Spottr &mdash; Powered by TigerData Timescale & OxHack 2026</p>
+      <div class="footer__links">
+        <a href="index.html">Home</a>
+        <a href="calendar.html">Calendar</a>
+        <a href="statistics.html">Statistics</a>
+        <a href="https://github.com/NakkiV7/oxhack-team" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="https://26.oxhack.net" target="_blank" rel="noopener noreferrer">OxHack</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ════════ Interactive Script ════════ -->
+  <script>
+    // ───── Sample TigerData Database Recordset ─────
+    const databaseSessions = {
+      "2026-10-02": {
+        id: "wkt-20261002-c11a",
+        type: "camera",
+        volume: 60,
+        duration: "15m 12s",
+        avgHR: 136,
+        maxHR: 164,
+        sets: [
+          { exercise: "Push-ups", reps: 15, target: 15, tempo: 2.4, rest: "60s", source: "MediaPipe Vision" },
+          { exercise: "Push-ups", reps: 15, target: 15, tempo: 2.5, rest: "60s", source: "MediaPipe Vision" },
+          { exercise: "Bodyweight Squats", reps: 15, target: 15, tempo: 2.8, rest: "75s", source: "MediaPipe Vision" },
+          { exercise: "Bodyweight Squats", reps: 15, target: 15, tempo: 2.9, rest: "—", source: "MediaPipe Vision" }
+        ]
+      },
+      "2026-10-05": {
+        id: "wkt-20261005-4f92",
+        type: "camera",
+        volume: 75,
+        duration: "17m 45s",
+        avgHR: 139,
+        maxHR: 168,
+        sets: [
+          { exercise: "Push-ups", reps: 20, target: 20, tempo: 2.3, rest: "60s", source: "MediaPipe Vision" },
+          { exercise: "Push-ups", reps: 18, target: 20, tempo: 2.4, rest: "60s", source: "MediaPipe Vision" },
+          { exercise: "Bodyweight Squats", reps: 20, target: 20, tempo: 2.7, rest: "75s", source: "MediaPipe Vision" },
+          { exercise: "Bodyweight Squats", reps: 17, target: 20, tempo: 2.8, rest: "—", source: "MediaPipe Vision" }
+        ]
+      },
+      "2026-10-07": {
+        id: "wkt-20261007-88ab",
+        type: "manual",
+        volume: 50,
+        duration: "12m 30s",
+        avgHR: 128,
+        maxHR: 155,
+        sets: [
+          { exercise: "Glute Bridge", reps: 20, target: 20, tempo: 3.0, rest: "45s", source: "Manual Logger" },
+          { exercise: "Plank Hold", reps: 30, target: 30, tempo: 1.0, rest: "60s", source: "Timed Hold" }
+        ]
+      },
+      "2026-10-09": {
+        id: "wkt-20261009-d3e1",
+        type: "camera",
+        volume: 80,
+        duration: "19m 10s",
+        avgHR: 144,
+        maxHR: 172,
+        sets: [
+          { exercise: "Push-ups", reps: 22, target: 20, tempo: 2.2, rest: "60s", source: "MediaPipe Vision" },
+          { exercise: "Push-ups", reps: 20, target: 20, tempo: 2.3, rest: "60s", source: "MediaPipe Vision" },
+          { exercise: "Bodyweight Squats", reps: 20, target: 20, tempo: 2.6, rest: "75s", source: "MediaPipe Vision" },
+          { exercise: "Bodyweight Squats", reps: 18, target: 20, tempo: 2.7, rest: "—", source: "MediaPipe Vision" }
+        ]
+      },
+      "2026-10-12": {
+        id: "wkt-20261012-e55c",
+        type: "camera",
+        volume: 72,
+        duration: "16m 20s",
+        avgHR: 138,
+        maxHR: 165,
+        sets: [
+          { exercise: "Push-ups", reps: 18, target: 18, tempo: 2.2, rest: "60s", source: "MediaPipe Vision" },
+          { exercise: "Push-ups", reps: 18, target: 18, tempo: 2.4, rest: "60s", source: "MediaPipe Vision" },
+          { exercise: "Bodyweight Squats", reps: 18, target: 18, tempo: 2.5, rest: "60s", source: "MediaPipe Vision" },
+          { exercise: "Bodyweight Squats", reps: 18, target: 18, tempo: 2.6, rest: "—", source: "MediaPipe Vision" }
+        ]
+      },
+      "2026-10-14": {
+        id: "wkt-20261014-99ff",
+        type: "camera",
+        volume: 85,
+        duration: "20m 05s",
+        avgHR: 145,
+        maxHR: 175,
+        sets: [
+          { exercise: "Push-ups", reps: 25, target: 25, tempo: 2.1, rest: "75s", source: "MediaPipe Vision" },
+          { exercise: "Push-ups", reps: 20, target: 25, tempo: 2.3, rest: "75s", source: "MediaPipe Vision" },
+          { exercise: "Bodyweight Squats", reps: 20, target: 20, tempo: 2.5, rest: "60s", source: "MediaPipe Vision" },
+          { exercise: "Bodyweight Squats", reps: 20, target: 20, tempo: 2.6, rest: "—", source: "MediaPipe Vision" }
+        ]
+      },
+      "2026-10-16": {
+        id: "wkt-20261016-1b4d",
+        type: "camera",
+        volume: 70,
+        duration: "16m 50s",
+        avgHR: 137,
+        maxHR: 166,
+        sets: [
+          { exercise: "Push-ups", reps: 20, target: 20, tempo: 2.2, rest: "60s", source: "MediaPipe Vision" },
+          { exercise: "Bodyweight Squats", reps: 25, target: 25, tempo: 2.5, rest: "60s", source: "MediaPipe Vision" },
+          { exercise: "Bodyweight Squats", reps: 25, target: 25, tempo: 2.7, rest: "—", source: "MediaPipe Vision" }
+        ]
+      },
+      "2026-10-19": {
+        id: "wkt-20261019-33aa",
+        type: "camera",
+        volume: 90,
+        duration: "21m 15s",
+        avgHR: 146,
+        maxHR: 177,
+        sets: [
+          { exercise: "Push-ups", reps: 25, target: 25, tempo: 2.1, rest: "60s", source: "MediaPipe Vision" },
+          { exercise: "Push-ups", reps: 25, target: 25, tempo: 2.2, rest: "60s", source: "MediaPipe Vision" },
+          { exercise: "Bodyweight Squats", reps: 20, target: 20, tempo: 2.5, rest: "60s", source: "MediaPipe Vision" },
+          { exercise: "Bodyweight Squats", reps: 20, target: 20, tempo: 2.5, rest: "—", source: "MediaPipe Vision" }
+        ]
+      },
+      "2026-10-21": {
+        id: "wkt-20261021-789a",
+        type: "camera",
+        volume: 85,
+        duration: "19m 30s",
+        avgHR: 141,
+        maxHR: 170,
+        sets: [
+          { exercise: "Push-ups", reps: 25, target: 25, tempo: 2.1, rest: "60s", source: "MediaPipe Vision" },
+          { exercise: "Bodyweight Squats", reps: 30, target: 30, tempo: 2.4, rest: "75s", source: "MediaPipe Vision" },
+          { exercise: "Bodyweight Squats", reps: 30, target: 30, tempo: 2.6, rest: "—", source: "MediaPipe Vision" }
+        ]
+      },
+      "2026-10-23": {
+        id: "wkt-20261023-bb02",
+        type: "manual",
+        volume: 60,
+        duration: "14m 10s",
+        avgHR: 131,
+        maxHR: 158,
+        sets: [
+          { exercise: "Plank Hold", reps: 30, target: 30, tempo: 1.0, rest: "45s", source: "Timed Hold" },
+          { exercise: "Glute Bridge", reps: 30, target: 30, tempo: 2.5, rest: "—", source: "Manual Logger" }
+        ]
+      },
+      "2026-10-24": {
+        id: "wkt-20261024-8fa2",
+        type: "camera",
+        volume: 84,
+        duration: "18m 40s",
+        avgHR: 142,
+        maxHR: 171,
+        sets: [
+          { exercise: "Push-ups", reps: 22, target: 20, tempo: 2.1, rest: "60s", source: "MediaPipe Vision" },
+          { exercise: "Push-ups", reps: 20, target: 20, tempo: 2.2, rest: "60s", source: "MediaPipe Vision" },
+          { exercise: "Bodyweight Squats", reps: 22, target: 20, tempo: 2.4, rest: "75s", source: "MediaPipe Vision" },
+          { exercise: "Bodyweight Squats", reps: 20, target: 20, tempo: 2.5, rest: "—", source: "MediaPipe Vision" }
+        ]
+      }
+    };
+
+    // ───── Calendar Generator ─────
+    const year = 2026;
+    const month = 9; // October (0-indexed: 9)
+    let selectedDateKey = "2026-10-24";
+
+    function renderCalendar() {
+      const grid = document.getElementById("calendarDaysGrid");
+      grid.innerHTML = "";
+
+      // 1st of October 2026 is a Thursday (4 in 1-indexed Mon-start, so 3 empty cells)
+      const firstDay = new Date(year, month, 1).getDay(); // 0 is Sun, 1 is Mon...
+      const offset = (firstDay + 6) % 7; // Convert to Mon = 0
+      const totalDays = new Date(year, month + 1, 0).getDate();
+
+      for (let i = 0; i < offset; i++) {
+        const empty = document.createElement("div");
+        empty.className = "cal-day empty";
+        grid.appendChild(empty);
+      }
+
+      for (let d = 1; d <= totalDays; d++) {
+        const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const dayEl = document.createElement("div");
+        dayEl.className = "cal-day";
+        if (dateKey === selectedDateKey) dayEl.classList.add("selected");
+        if (d === 24) dayEl.classList.add("today");
+
+        const session = databaseSessions[dateKey];
+
+        let content = `<div class="cal-day__num">${d}</div>`;
+        if (session) {
+          const dotColor = session.type === 'camera' ? 'cal-dot' : 'cal-dot amber';
+          content += `
+            <div class="cal-day__pills">
+              <span class="${dotColor}"></span>
+            </div>
+            <div class="cal-day__vol">${session.volume} reps</div>
+          `;
+        } else {
+          content += `<div></div>`;
+        }
+
+        dayEl.innerHTML = content;
+        dayEl.addEventListener("click", () => {
+          selectedDateKey = dateKey;
+          renderCalendar();
+          updateInspector(dateKey);
+        });
+
+        grid.appendChild(dayEl);
+      }
+    }
+
+    function updateInspector(dateKey) {
+      const session = databaseSessions[dateKey];
+      const d = new Date(dateKey + "T12:00:00Z");
+      const dateStr = d.toLocaleDateString("en-US", { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+
+      document.getElementById("inspectorDate").textContent = dateStr;
+
+      if (!session) {
+        document.getElementById("inspectorBadge").textContent = "REST DAY";
+        document.getElementById("inspectorBadge").style.background = "var(--surface)";
+        document.getElementById("inspectorBadge").style.color = "var(--gray)";
+        document.getElementById("inspectorWorkoutId").textContent = "No session recorded in TigerData for this date.";
+        document.getElementById("inspectorVolume").textContent = "0";
+        document.getElementById("inspectorDuration").textContent = "0m";
+        document.getElementById("inspectorHeartRate").textContent = "—";
+        document.getElementById("inspectorSetCount").textContent = "0 Sets";
+        document.getElementById("inspectorSetList").innerHTML = `
+          <div style="padding:24px; text-align:center; color:var(--gray); font-size:13px;">
+            Scheduled rest or no workout logged. Select an indicated day with green dots to inspect data.
+          </div>
+        `;
+        document.getElementById("rawRecordCode").textContent = JSON.stringify({ message: "No workout for date " + dateKey }, null, 2);
+        return;
+      }
+
+      document.getElementById("inspectorBadge").textContent = session.type === 'camera' ? "CAMERA TRACKED" : "MANUAL LOGGED";
+      document.getElementById("inspectorBadge").style.background = session.type === 'camera' ? "var(--green-light)" : "var(--amber-light)";
+      document.getElementById("inspectorBadge").style.color = session.type === 'camera' ? "var(--green)" : "var(--amber)";
+      document.getElementById("inspectorWorkoutId").textContent = `ID: ${session.id} · Verified`;
+      document.getElementById("inspectorVolume").textContent = session.volume;
+      document.getElementById("inspectorDuration").textContent = session.duration;
+      document.getElementById("inspectorHeartRate").innerHTML = `${session.avgHR} <span style="font-size:13px; font-weight:500;">BPM</span>`;
+      document.getElementById("inspectorSetCount").textContent = `${session.sets.length} Sets Completed`;
+
+      let setHtml = "";
+      session.sets.forEach((set, idx) => {
+        setHtml += `
+          <div class="set-row">
+            <div class="set-row__ex">
+              <span class="set-index-tag">${idx + 1}</span>
+              <span>${set.exercise}</span>
+            </div>
+            <div class="set-row__stats">
+              <span><strong>${set.reps}</strong> / ${set.target} reps</span>
+              <span>${set.tempo}s cadence</span>
+              <span>Rest: ${set.rest}</span>
+            </div>
+          </div>
+        `;
+      });
+      document.getElementById("inspectorSetList").innerHTML = setHtml;
+
+      // Construct Mock TigerData JSON Record
+      const tigerRecord = {
+        installation_id: "00000000-0000-0000-0000-000000000001",
+        workout_id: session.id,
+        received_at: `${dateKey}T18:42:10.000Z`,
+        source: session.type,
+        summary: {
+          total_reps: session.volume,
+          duration: session.duration,
+          avg_heart_rate: session.avgHR,
+          max_heart_rate: session.maxHR
+        },
+        sets: session.sets
+      };
+      document.getElementById("rawRecordCode").textContent = JSON.stringify(tigerRecord, null, 2);
+    }
+
+    // Toggle Raw Record Drawer
+    document.getElementById("rawRecordToggle").addEventListener("click", () => {
+      const code = document.getElementById("rawRecordCode");
+      code.style.display = code.style.display === "block" ? "none" : "block";
+    });
+
+    // Populate 30-Day Heatmap
+    const heatGrid = document.getElementById("heatmapGrid");
+    for (let day = 1; day <= 30; day++) {
+      const dKey = `2026-10-${String(day).padStart(2, '0')}`;
+      const sess = databaseSessions[dKey];
+      const box = document.createElement("div");
+      box.className = "heat-box";
+      if (sess) {
+        if (sess.volume > 80) box.classList.add("lvl-4");
+        else if (sess.volume > 65) box.classList.add("lvl-3");
+        else if (sess.volume > 50) box.classList.add("lvl-2");
+        else box.classList.add("lvl-1");
+      }
+      box.title = `${dKey}: ${sess ? sess.volume + ' reps' : 'No workout'}`;
+      box.addEventListener("click", () => {
+        if (databaseSessions[dKey]) {
+          selectedDateKey = dKey;
+          renderCalendar();
+          updateInspector(dKey);
+          window.scrollTo({ top: 120, behavior: 'smooth' });
+        }
+      });
+      heatGrid.appendChild(box);
+    }
+
+    // Initialize
+    renderCalendar();
+    updateInspector(selectedDateKey);
+  </script>
+</body>
+</html>

@@ -26,7 +26,8 @@ struct SpottrRoot: View {
                         if workspace?.isPreview == true { DemoProgressView(store: store, profile: profileStore.profile) }
                         else { WeeklyProgressView(store: store, profile: profileStore.profile) }
                     }.tabItem { Label("Progress", systemImage: "chart.bar.xaxis") }
-                    SkillsView(store: store, profile: profileStore.profile, previewMode: workspace?.isPreview == true).tabItem { Label("Skills", systemImage: "point.3.connected.trianglepath.dotted") }
+                    PathSkillsView(store: store, profile: profileStore.profile, previewMode: workspace?.isPreview == true).tabItem { Label("Skills", systemImage: "point.3.connected.trianglepath.dotted") }
+                    InsightsView(store: store, profile: profileStore.profile, previewMode: workspace?.isPreview == true).tabItem { Label("Insights", systemImage: "doc.text.magnifyingglass") }
                     Group {
                         if workspace?.isPreview == true { DemoCoachView(store: store, profile: profileStore.profile) }
                         else { CoachView(store: store, profile: profileStore.profile) }

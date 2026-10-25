@@ -13,7 +13,7 @@ struct WorkoutVoiceControls: View {
                 }.accessibilityLabel("Choose coach voice")
                     .accessibilityIdentifier("choose-coach-voice")
                     .sheet(isPresented: $choosing) {
-                        VoiceCoachSettingsView(playback: voice, cancelCoaching: store.cancelCoaching)
+                        VoiceCoachSettingsView(playback: voice, cancelCoaching: store.cancelCoaching, repVoice: store.repVoice)
                     }
             }
             Toggle("Voice feedback", isOn: Binding(get: { store.voiceFeedbackEnabled }, set: { store.setVoiceFeedback($0) }))
@@ -25,6 +25,7 @@ struct WorkoutVoiceControls: View {
 struct VoiceCoachSettingsView: View {
     let playback: RemoteVoicePlayback
     let cancelCoaching: () -> Void
+    var repVoice: RepVoicePlayer? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var refresh: UUID?
     @State private var loading = false
@@ -62,6 +63,17 @@ struct VoiceCoachSettingsView: View {
                     }
                 } header: { Text("Your coach") } footer: {
                     Text("Voice feedback stays off until you enable it in a workout. Choosing a voice doesn’t play audio.")
+                }
+                if let repVoice {
+                    Section {
+                        Picker("Rep counter voice", selection: Binding(get: { repVoice.coach?.rawValue ?? "off" },
+                                                                      set: { repVoice.choose(RepVoicePlan.Coach(rawValue: $0)) })) {
+                            Text("Off").tag("off")
+                            ForEach(RepVoicePlan.Coach.allCases, id: \.self) { coach in Text(coach.title).tag(coach.rawValue) }
+                        }.pickerStyle(.segmented).accessibilityIdentifier("rep-counter-voice")
+                    } header: { Text("Rep counter") } footer: {
+                        Text("Counts each camera rep out loud and adds a line every third clean rep, using audio bundled in the app, so it works offline. It speaks only when Voice feedback is on, steps aside for form and stop cues, and stays silent if you report pain.")
+                    }
                 }
                 Section {
                     Button { refresh = UUID() } label: {
