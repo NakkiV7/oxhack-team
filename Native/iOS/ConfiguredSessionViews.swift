@@ -60,7 +60,7 @@ private struct ConfiguredLiveSetView: View {
                             Text(run.current.unit == .seconds ? clockText(run.elapsed(at: store.now)) : run.actualReps.map(String.init) ?? "—")
                                 .font(.system(size: 66, weight: .semibold, design: .rounded)).monospacedDigit()
                                 .accessibilityIdentifier("configured-quantity")
-                            Text("/ \(run.current.target) \(run.current.unit == .seconds ? "sec" : "reps")").foregroundStyle(.secondary)
+                            Text("/ \(run.current.target) \(run.current.unit == .seconds ? "sec" : (run.current.target == 1 ? "rep" : "reps"))").foregroundStyle(.secondary)
                             Spacer()
                             let heartRate = store.heartRate(at: context.date)
                             Label { Text(heartRate) } icon: {
@@ -296,7 +296,7 @@ private struct ConfiguredFinishedView: View {
                     ForEach(run.completed) { set in
                         VStack(alignment: .leading, spacing: 7) {
                             Text("\(ExerciseCatalog.find(set.exerciseID)?.name ?? set.exerciseID) · Set \(set.number ?? 1)").font(.headline)
-                            Text("\(set.seconds > 0 ? "\(Int(set.seconds)) sec" : "\(set.reps) reps") · \(set.source == .camera ? "camera observation" : (set.quantityOrigin == .activeTimer ? "active hold timer" : "manual self-report"))")
+                            Text("\(set.seconds > 0 ? "\(Int(set.seconds)) sec" : "\(set.reps) \(set.reps == 1 ? "rep" : "reps")") · \(set.source == .camera ? "camera observation" : (set.quantityOrigin == .activeTimer ? "active hold timer" : "manual self-report"))")
                                 .font(.subheadline)
                             Text(set.reason.title).font(.caption).foregroundStyle(.secondary)
                             if let rest = set.restSecondsBefore { Text("\(Int(rest)) sec recorded rest before this set").font(.caption).foregroundStyle(.secondary) }
