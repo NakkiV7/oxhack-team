@@ -28,6 +28,7 @@ final class TrainingStore {
     var sessionPhase: SessionPhase { configured?.phase ?? session.phase }
     var presented = false
     var history: [SessionRecord] = []
+    private(set) var historyAvailable = true
     var error: String?
     var visionState: VisionState = .idle
     var frame: PoseFrame?
@@ -43,6 +44,8 @@ final class TrainingStore {
     var watchReachable = false
     private(set) var reportedDiscomfort = false
     private let historyStore: HistoryStore
+    let rewards: NativeRewardsStore
+    private let rewardDefaults: UserDefaults
     private var preferredSide: Int?
     private var coachingPolicy = CoachingPolicy()
     private var activeCoachingEvent: CoachingEvent?
@@ -150,7 +153,9 @@ final class TrainingStore {
 
     init(historyURL: URL? = nil, secondaryVision: SecondaryCameraVisionWorker? = nil,
          secondaryCameraClient: @escaping @MainActor () throws -> SecondaryCameraClient = { try SecondaryCameraSettings.client() },
-         voicePlayback: VoicePlayback? = nil, vision: VisionWorker? = nil) {
+         voicePlayback: VoicePlayback? = nil, vision: VisionWorker? = nil, rewardsStore: NativeRewardsStore? = nil,
+         defaults: UserDefaults = .standard) {
+        rewardDefaults = defaults
         self.vision = vision ?? VisionWorker()
         coachingVoice = CoachingVoiceBridge(playback: voicePlayback ?? LocalVoicePlayback())
         self.secondaryVision = secondaryVision ?? SecondaryCameraVisionWorker()
@@ -159,8 +164,9 @@ final class TrainingStore {
         let namespace = ProcessInfo.processInfo.environment["SPOTTR_DATA_NAMESPACE"].flatMap(UUID.init(uuidString:))
         let folder = namespace.map { root.appendingPathComponent($0.uuidString) } ?? root
         historyStore = HistoryStore(url: historyURL ?? folder.appendingPathComponent("history.json"))
+        rewards = rewardsStore ?? NativeRewardsStore(url: historyStore.url.deletingLastPathComponent().appendingPathComponent("rewards.json"))
         do { history = try historyStore.load().reversed() }
-        catch { self.error = "Couldn’t read your saved sessions." }
+        catch { historyAvailable = false; self.error = "Couldn’t read your saved sessions." }
         self.vision.onFrame = { [weak self] frame, image, generation in
             Task { @MainActor in
                 guard let self, !self.usingSecondaryCamera else { return }
@@ -408,10 +414,26 @@ final class TrainingStore {
         }
         persist(session.record)
     }
-    func persist(_ record: SessionRecord) {
+    func persist(_ record: SessionRecord, completedAt: Date = Date()) {
+        var before = history
         do {
-            history = try historyStore.save(record).reversed(); error = nil
-        } catch { self.error = "Couldn’t save this session. Try again." }
+            if !historyAvailable { before = try historyStore.load() }
+            history = try historyStore.save(record).reversed(); historyAvailable = true; error = nil
+        } catch { self.error = "Couldn’t save this session. Try again."; return }
+        do {
+            try rewards.award(record: record, before: before, history: history, completedAt: completedAt)
+        } catch { self.error = "Workout saved. Training rewards couldn’t be updated." }
+        refreshRewards(at: completedAt)
+    }
+    func refreshRewards(at date: Date = Date()) {
+        guard historyAvailable else { return }
+        let week = rewardDefaults.data(forKey: "coach.approvedWeek").flatMap { try? CoachSavedWeek.decode($0) }
+        do {
+            try rewards.advance(history: history, at: date,
+                                plannedRestDays: week?.plannedRestDays(calendar: rewards.ledger.calendar, at: date) ?? [])
+        } catch {
+            if self.error == nil { self.error = "Training rewards couldn’t be updated. Your saved workouts are unchanged." }
+        }
     }
     func exportHistory() throws -> URL {
         var exportDirectory = historyStore.url.appendingPathExtension("exports")
@@ -428,11 +450,13 @@ final class TrainingStore {
         guard sessionPhase == .idle || sessionPhase == .finished else { throw DataControlError.workoutInProgress }
         try historyStore.clear()
         history = []
+        historyAvailable = true
         error = nil
         let exportDirectory = historyStore.url.appendingPathExtension("exports")
         if FileManager.default.fileExists(atPath: exportDirectory.path) {
             try FileManager.default.removeItem(at: exportDirectory)
         }
+        try rewards.reset(at: Date())
     }
     enum DataControlError: LocalizedError {
         case workoutInProgress

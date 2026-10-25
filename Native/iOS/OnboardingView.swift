@@ -116,7 +116,7 @@ struct ProfileGoalPicker: View {
                     if goals.contains(goal) { goals.remove(goal) } else { goals.insert(goal) }
                 } label: {
                     HStack(spacing: 15) {
-                        Image(systemName: symbol(goal)).font(.title3).frame(width: 27)
+                        Image(goal.rawValue).resizable().scaledToFit().frame(width: 27, height: 27).accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(goal.title).font(.subheadline.weight(.semibold))
                             Text(detail(goal)).font(.caption).foregroundStyle(.secondary)
@@ -130,14 +130,6 @@ struct ProfileGoalPicker: View {
                     .accessibilityValue(goals.contains(goal) ? "Selected" : "Not selected")
                     .accessibilityIdentifier("goal-\(goal.rawValue)")
             }
-        }
-    }
-    private func symbol(_ goal: TrainingAttribute) -> String {
-        switch goal {
-        case .strength: return "figure.strengthtraining.traditional"
-        case .stamina: return "heart"
-        case .mobility: return "figure.flexibility"
-        case .balance: return "figure.yoga"
         }
     }
     private func detail(_ goal: TrainingAttribute) -> String {

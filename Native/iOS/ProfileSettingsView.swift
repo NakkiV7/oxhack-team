@@ -68,11 +68,14 @@ struct ProfileSettingsView: View {
     let history: [SessionRecord]
     let exportData: () throws -> URL
     let resetHistory: () throws -> Void
+    let rewards: NativeRewardsStore?
+    let historyAvailable: Bool
     @Environment(\.dismiss) private var dismiss
     @State private var name: String
     @State private var weeklyTarget: Int
     @State private var goals: Set<TrainingAttribute>
     @State private var introduction: Introduction?
+    @State private var rewardsPresented = false
     @State private var deletion: Deletion?
     @State private var exportURL: URL?
     @State private var message: String?
@@ -81,11 +84,14 @@ struct ProfileSettingsView: View {
     @FocusState private var editingName: Bool
 
     init(profileStore: NativeProfileStore, history: [SessionRecord],
-         exportData: @escaping () throws -> URL, resetHistory: @escaping () throws -> Void) {
+         exportData: @escaping () throws -> URL, resetHistory: @escaping () throws -> Void,
+         rewards: NativeRewardsStore? = nil, historyAvailable: Bool = true) {
         self.profileStore = profileStore
         self.history = history
         self.exportData = exportData
         self.resetHistory = resetHistory
+        self.rewards = rewards
+        self.historyAvailable = historyAvailable
         _persistence = State(initialValue: ProfileDraftPersistence(store: profileStore))
         _name = State(initialValue: profileStore.profile?.name ?? "")
         _weeklyTarget = State(initialValue: profileStore.profile?.weeklyTarget ?? 3)
@@ -126,14 +132,37 @@ struct ProfileSettingsView: View {
                     }
                 }
                 Section("Your training") {
-                    TimelineView(.periodic(from: .now, by: 60)) { timeline in
-                        let summary = StreakSummary(history: history, now: timeline.date)
-                        LabeledContent("Current streak", value: dayCount(summary.currentStreak))
-                        LabeledContent("Longest streak", value: dayCount(summary.longestStreak))
-                        LabeledContent("Training days this week", value: "\(summary.daysThisWeek)")
+                    if historyAvailable {
+                        TimelineView(.periodic(from: .now, by: 60)) { timeline in
+                            let summary = StreakSummary(history: history, now: timeline.date)
+                            LabeledContent("Current streak", value: dayCount(summary.currentStreak))
+                            LabeledContent("Longest streak", value: dayCount(summary.longestStreak))
+                            LabeledContent("Training days this week", value: "\(summary.daysThisWeek)")
+                        }
+                        Text("Streaks use distinct days with a recorded non-zero set. Video replays and planned sessions don’t count.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        Text("Training history unavailable").font(.subheadline.weight(.semibold))
+                            .accessibilityIdentifier("profile-history-unavailable")
+                        Text("Your saved sessions couldn’t be read. Streaks and training-day totals are unavailable.")
+                            .font(.caption).foregroundStyle(.secondary)
                     }
-                    Text("Streaks use distinct days with a recorded non-zero set. Video replays and planned sessions don’t count.")
-                        .font(.caption).foregroundStyle(.secondary)
+                    if let rewards {
+                        if let issue = rewards.loadError {
+                            Text("Training rewards unavailable").font(.subheadline.weight(.semibold))
+                            Text(issue).font(.caption).foregroundStyle(Palette.red)
+                        } else {
+                            Button {
+                                editingName = false
+                                if flushPendingSave() { rewardsPresented = true }
+                            } label: {
+                                HStack(spacing: 10) {
+                                    Image("xp-double").resizable().scaledToFit().frame(width: 25, height: 25).accessibilityHidden(true)
+                                    Text("Training rewards")
+                                }
+                            }.accessibilityIdentifier("training-rewards-settings")
+                        }
+                    }
                 }
                 Section("Get started again") {
                     Button("Restart introduction", systemImage: "arrow.counterclockwise") {
@@ -165,6 +194,9 @@ struct ProfileSettingsView: View {
             } } }
             .sheet(item: $introduction, onDismiss: reloadDraft) { _ in
                 OnboardingView(profileStore: profileStore, onComplete: reloadDraft)
+            }
+            .sheet(isPresented: $rewardsPresented) {
+                if let rewards { TrainingRewardsSettingsView(store: rewards) }
             }
             .alert(deletion == .profile ? "Reset local profile?" : "Delete local training history?",
                    isPresented: Binding(get: { deletion != nil }, set: { if !$0 { deletion = nil } })) {
