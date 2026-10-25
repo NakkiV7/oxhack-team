@@ -36,6 +36,11 @@ async function measure(action) {
   return { value, ms: performance.now() - started };
 }
 
+function rollupValues(result) {
+  return result.buckets.map(row => [new Date(row.bucket).toISOString(), row.kind, row.observedSamples, row.mean, row.min, row.max,
+    new Date(row.firstMeasuredAt).toISOString(), new Date(row.lastMeasuredAt).toISOString(), row.unit, row.source]);
+}
+
 async function verifyDatabase(pool) {
   const result = await pool.query(`SELECT current_setting('server_version_num')::integer AS postgres_version_num,
     (SELECT extversion FROM pg_extension WHERE extname = 'timescaledb') AS timescale_version,
@@ -74,10 +79,27 @@ export async function runTigerSmoke({ pool }) {
   assert.deepEqual(window.value.samples.map(sample => sample.kind), ['accelerationMagnitude', 'rotationMagnitude']);
   const gap = await measure(() => store.telemetry({ workoutID, from: '2000-01-01T00:00:02.500Z', to: '2000-01-01T00:00:03Z' }));
   assert.equal(gap.value.samples.length, 0);
+  const rollup5s = await measure(() => store.rollups({ workoutID, from: record.date, to: '2000-01-01T00:00:03Z', bucketSeconds: 5 }));
+  assert.deepEqual(rollupValues(rollup5s.value), [
+    ['2000-01-01T00:00:00.000Z', 'accelerationMagnitude', 2, 0, 0, 0, '2000-01-01T00:00:01.000Z', '2000-01-01T00:00:02.000Z', 'g', 'apple_watch'],
+    ['2000-01-01T00:00:00.000Z', 'heartRate', 1, 1, 1, 1, '2000-01-01T00:00:00.000Z', '2000-01-01T00:00:00.000Z', 'bpm', 'apple_watch'],
+    ['2000-01-01T00:00:00.000Z', 'rotationMagnitude', 1, 0, 0, 0, '2000-01-01T00:00:01.000Z', '2000-01-01T00:00:01.000Z', 'rad/s', 'apple_watch']
+  ]);
+  const rollup60s = await measure(() => store.rollups({ workoutID, from: record.date, to: '2000-01-01T00:00:03Z', bucketSeconds: 60 }));
+  assert.deepEqual(rollupValues(rollup60s.value), rollupValues(rollup5s.value));
+  const rollupWindow = await measure(() => store.rollups({ workoutID, from: '2000-01-01T00:00:01Z', to: '2000-01-01T00:00:02Z', bucketSeconds: 5 }));
+  assert.deepEqual(rollupValues(rollupWindow.value), [
+    ['2000-01-01T00:00:00.000Z', 'accelerationMagnitude', 1, 0, 0, 0, '2000-01-01T00:00:01.000Z', '2000-01-01T00:00:01.000Z', 'g', 'apple_watch'],
+    ['2000-01-01T00:00:00.000Z', 'rotationMagnitude', 1, 0, 0, 0, '2000-01-01T00:00:01.000Z', '2000-01-01T00:00:01.000Z', 'rad/s', 'apple_watch']
+  ]);
+  const rollupGap = await measure(() => store.rollups({ workoutID, from: '2000-01-01T00:00:02.500Z', to: '2000-01-01T00:00:03Z', bucketSeconds: 5 }));
+  assert.deepEqual(rollupGap.value.buckets, []);
   return {
     fixtureIDs: TIGER_SMOKE_IDS,
-    counts: { environmentChecks: 4, created: initial.value.replayed ? 0 : 1, replays: initial.value.replayed ? 2 : 1, conflicts: 1, readbacks: 1, scalarRows: full.value.samples.length, windowRows: window.value.samples.length, gapRows: gap.value.samples.length },
-    timingsMs: { environment: environment.ms, ingest: initial.ms, replay: replay.ms, conflict: conflict.ms, readback: readback.ms, fullWindow: full.ms, halfOpenWindow: window.ms, gapWindow: gap.ms }
+    counts: { environmentChecks: 4, created: initial.value.replayed ? 0 : 1, replays: initial.value.replayed ? 2 : 1, conflicts: 1, readbacks: 1, scalarRows: full.value.samples.length, windowRows: window.value.samples.length, gapRows: gap.value.samples.length,
+      rollupRows5s: rollup5s.value.buckets.length, rollupRows60s: rollup60s.value.buckets.length, rollupWindowRows: rollupWindow.value.buckets.length, rollupGapRows: rollupGap.value.buckets.length },
+    timingsMs: { environment: environment.ms, ingest: initial.ms, replay: replay.ms, conflict: conflict.ms, readback: readback.ms, fullWindow: full.ms, halfOpenWindow: window.ms, gapWindow: gap.ms,
+      rollup5s: rollup5s.ms, rollup60s: rollup60s.ms, rollupWindow: rollupWindow.ms, rollupGap: rollupGap.ms }
   };
 }
 
@@ -87,6 +109,12 @@ export async function tigerSmokeCommand({ args = process.argv.slice(2), env = pr
   if (env.SPOTTR_INSTALLATION_ID?.toLowerCase() === TIGER_SMOKE_IDS.installationID) return { exitCode: 1, error: { code: 'fixture_scope_collision' } };
   let pool;
   try {
+    let url;
+    try { url = new URL(env.TIGER_DATABASE_URL); } catch { throw new SmokeError('strict_tls_required'); }
+    requireCheck(['postgres:', 'postgresql:'].includes(url.protocol) && Boolean(url.hostname)
+      && url.searchParams.getAll('sslmode').length === 1 && url.searchParams.get('sslmode') === 'verify-full'
+      && !url.searchParams.has('ssl') && env.NODE_TLS_REJECT_UNAUTHORIZED !== '0'
+      && process.env.NODE_TLS_REJECT_UNAUTHORIZED !== '0', 'strict_tls_required');
     pool = createPool({ connectionString: env.TIGER_DATABASE_URL, max: 1, connectionTimeoutMillis: 5000, statement_timeout: 10000, query_timeout: 12000 });
     pool.on?.('error', () => {});
     return { exitCode: 0, ...await runTigerSmoke({ pool }) };

@@ -4,6 +4,10 @@ Tiger's implemented adapter is intended to store operational workout snapshots a
 
 ## Current status and dry run
 
+On **25 October 2026**, a local configuration-only check of the primary environment found exactly **`SNOWFLAKE_TOKEN`, `SNOWFLAKE_DATABASE`, `SNOWFLAKE_SCHEMA` missing**, with no invalid configured fields. Account and warehouse settings are present; their availability/privileges have not been revalidated by SQL. No Snowflake request was sent. The local dry run validated **1,622** forecast rows and **18** expected metric rows, with run ID `5b0bf1d168c094f5e45aa799e77a9723431e04d79b3c3b8bffe8d7e374865024` and payload SHA-256 `d52c503e2face2f95d84e1784a894c71cb20bc4070e0400864e13bccbdc6e12d`. Private receipts are in `server/.local/data-integrations-20261025/` in the data-integrations worktree.
+
+From `server/`, `npm run snowflake:configuration` loads the local `.env` and prints **only** readiness plus missing/invalid environment names. It reads no artifacts, opens no network connection, runs no SQL and consumes no warehouse credits. Exit 0 means syntactically complete configuration; exit 1 lists the configuration gate. Neither proves authentication, privileges, table existence or sufficient credits. The normal `snowflake:benchmark` dry run still does not load or inspect credentials.
+
 Implementation and fake-network tests are complete. No Snowflake query, table creation, import or warehouse execution has been performed by this task. The existing fixed connection-check command remains available; configured credentials alone do not establish a successful analytics import.
 
 From `server/`:
@@ -29,7 +33,9 @@ The evaluation statement uses fixed `FLATTEN`/aggregate SQL over only the bound 
 
 ## Later live acceptance
 
-After explicit operator approval, an existing account/token, database, schema, warehouse and the precreated table are required. Required environment names are `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_TOKEN`, optional `SNOWFLAKE_TOKEN_TYPE`, `SNOWFLAKE_DATABASE`, `SNOWFLAKE_SCHEMA`, and `SNOWFLAKE_WAREHOUSE`. Context names must match Snowflake's existing identifier case. Store credentials only in the private local environment; do not put them in this directory or command arguments. The package dry-run command deliberately does not load `.env`.
+After explicit operator approval, an existing account/token, database, schema, warehouse and the precreated table are required. Required environment names are `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_TOKEN`, `SNOWFLAKE_DATABASE`, `SNOWFLAKE_SCHEMA`, and `SNOWFLAKE_WAREHOUSE`. Optional `SNOWFLAKE_TOKEN_TYPE` defaults to `PROGRAMMATIC_ACCESS_TOKEN`; `KEYPAIR_JWT` and `OAUTH` are also accepted. Optional `SNOWFLAKE_ROLE` selects an **existing** role on every benchmark statement; otherwise the SQL API uses the user's default role. Context identifiers use the existing unquoted-identifier format and must match the case returned by Snowflake SHOW. [SQL API context behavior](https://docs.snowflake.com/en/developer-guide/sql-api/submitting-requests#setting-up-the-request). Store credentials only in the private local environment; do not put them in this directory or command arguments. Both Snowflake transport and live benchmark refuse a global TLS-verification bypass before network access.
+
+The minimal next step is to privately supply the missing SQL API token plus an existing database/schema containing `SPOTTR_PUBLIC_PAMAP_FORECAST_RUNS`. Confirm the default role, or set `SNOWFLAKE_ROLE`, has USAGE on the existing warehouse/database/schema and SELECT/INSERT on that table. The review-only table definition is `integrations/snowflake/001_public_pamap_forecast.sql`; table creation remains separately gated. This workflow creates no warehouse, account, role, grant or database. No paid retries are automatic.
 
 ```sh
 node --env-file-if-exists=../.env src/snowflake-benchmark-cli.mjs --allow-live-public-data
