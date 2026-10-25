@@ -23,15 +23,21 @@
       "mimeType": "audio/mpeg",
       "requestID": "5vIdwK4KYjHP9Xd63eCP",
       "characterCost": "6",
-      "bytes": 8063,
-      "sha256": "9fac938d680dc88424d5522612cfdace105ecefb6365713267b7f2a1f362b986",
+      "bytes": 8064,
+      "sha256": "3aa4a9984a2bfd7c51b1ab9aefd5623879065a61363b2fb7242b85b49eeb11bc",
       "accepted": true,
       "decode": {
-        "tool": "ffmpeg / ffprobe",
         "success": true,
         "sampleRate": 22050,
         "durationSeconds": 1.904036,
         "audiblePlayback": false
+      },
+      "sourceSha256": "9fac938d680dc88424d5522612cfdace105ecefb6365713267b7f2a1f362b986",
+      "loudness": {
+        "meanDBFS": -12.6,
+        "peakDBFS": -1.8,
+        "normalization": "PCM RMS gain to -10dBFS; lookahead limiter0.75 level=false attack5 release50; MP3 22050Hz 32kbps",
+        "truePeakDBFS": -1.3
       }
     },
     {
@@ -44,15 +50,21 @@
       "mimeType": "audio/mpeg",
       "requestID": "TEssZ8Pbl7DdarLEinmo",
       "characterCost": "6",
-      "bytes": 6809,
-      "sha256": "a77ffa94f6ef09a664604351402eab68c40d8b2eae48179b95d1f5c2e9e8886c",
+      "bytes": 6810,
+      "sha256": "96fc5c49e21505e5f280034910a8201a59bdb691d02dafb99d8c7920b1342e97",
       "accepted": true,
       "decode": {
-        "tool": "ffmpeg / ffprobe",
         "success": true,
         "sampleRate": 22050,
         "durationSeconds": 1.578957,
         "audiblePlayback": false
+      },
+      "sourceSha256": "a77ffa94f6ef09a664604351402eab68c40d8b2eae48179b95d1f5c2e9e8886c",
+      "loudness": {
+        "meanDBFS": -12.5,
+        "peakDBFS": -2.3,
+        "normalization": "PCM RMS gain to -10dBFS; lookahead limiter0.75 level=false attack5 release50; MP3 22050Hz 32kbps",
+        "truePeakDBFS": -2.2
       }
     },
     {
@@ -65,15 +77,21 @@
       "mimeType": "audio/mpeg",
       "requestID": "ofj1ukZML7cxF8cv5G8N",
       "characterCost": "6",
-      "bytes": 7018,
-      "sha256": "2aec4644209fbf7ae89eb1714a4d697c2f7697a285afdeea276018ea8f5abbe9",
+      "bytes": 7019,
+      "sha256": "68670d8c9cdf3d35d0493011517baa2782e6b13216cdf0fd6001a938af2fba63",
       "accepted": true,
       "decode": {
-        "tool": "ffmpeg / ffprobe",
         "success": true,
         "sampleRate": 22050,
         "durationSeconds": 1.625397,
         "audiblePlayback": false
+      },
+      "sourceSha256": "2aec4644209fbf7ae89eb1714a4d697c2f7697a285afdeea276018ea8f5abbe9",
+      "loudness": {
+        "meanDBFS": -12.5,
+        "peakDBFS": -2.3,
+        "normalization": "PCM RMS gain to -10dBFS; lookahead limiter0.75 level=false attack5 release50; MP3 22050Hz 32kbps",
+        "truePeakDBFS": -2.3
       }
     },
     {
@@ -86,15 +104,21 @@
       "mimeType": "audio/mpeg",
       "requestID": "4SczEJdXRRwwIwqJphZj",
       "characterCost": "7",
-      "bytes": 7958,
-      "sha256": "0042a3b8591265bc1795ede9c02a0895c74ede429f1fa40d7ae0e861a7ab5fdb",
+      "bytes": 7959,
+      "sha256": "dec9654b1f46135fd70035ba6e0abbb9a54b01c9a7780622e086cf75e83ed9e8",
       "accepted": true,
       "decode": {
-        "tool": "ffmpeg / ffprobe",
         "success": true,
         "sampleRate": 22050,
         "durationSeconds": 1.857596,
         "audiblePlayback": false
+      },
+      "sourceSha256": "0042a3b8591265bc1795ede9c02a0895c74ede429f1fa40d7ae0e861a7ab5fdb",
+      "loudness": {
+        "meanDBFS": -12.2,
+        "peakDBFS": -1.8,
+        "normalization": "PCM RMS gain to -10dBFS; lookahead limiter0.75 level=false attack5 release50; MP3 22050Hz 32kbps",
+        "truePeakDBFS": -1.8
       }
     },
     {
@@ -107,15 +131,21 @@
       "mimeType": "audio/mpeg",
       "requestID": "IjHhLhbBKjszL3qOXzNh",
       "characterCost": "7",
-      "bytes": 7122,
-      "sha256": "a52e0c8ff75b2de32ac6ee9d04961d383a7bb898e21df978edc80f79c95a0ed5",
+      "bytes": 7123,
+      "sha256": "70b7a767b6c6569ead36819112cec340b5de93948c6c02661e861daa93182dc6",
       "accepted": true,
       "decode": {
-        "tool": "ffmpeg / ffprobe",
         "success": true,
         "sampleRate": 22050,
         "durationSeconds": 1.671837,
         "audiblePlayback": false
+      },
+      "sourceSha256": "a52e0c8ff75b2de32ac6ee9d04961d383a7bb898e21df978edc80f79c95a0ed5",
+      "loudness": {
+        "meanDBFS": -12.8,
+        "peakDBFS": -2.6,
+        "normalization": "PCM RMS gain to -10dBFS; lookahead limiter0.75 level=false attack5 release50; MP3 22050Hz 32kbps",
+        "truePeakDBFS": -2.5
       }
     },
     {
@@ -128,15 +158,21 @@
       "mimeType": "audio/mpeg",
       "requestID": "4gextX67LZ0MoAhZ2XO3",
       "characterCost": "3",
-      "bytes": 4197,
-      "sha256": "88d4c5b8f406d42eaf7e3adc9eafeebc1018e1ef48d6d00d4bf97cbafd64f304",
+      "bytes": 4198,
+      "sha256": "9fbdefe0c317601dd93e922cae66563c4044ae33c38db7e8a04e882f2c691b7e",
       "accepted": true,
       "decode": {
-        "tool": "ffmpeg / ffprobe",
         "success": true,
         "sampleRate": 22050,
         "durationSeconds": 0.928798,
         "audiblePlayback": false
+      },
+      "sourceSha256": "88d4c5b8f406d42eaf7e3adc9eafeebc1018e1ef48d6d00d4bf97cbafd64f304",
+      "loudness": {
+        "meanDBFS": -13.4,
+        "peakDBFS": -2.5,
+        "normalization": "PCM RMS gain to -10dBFS; lookahead limiter0.75 level=false attack5 release50; MP3 22050Hz 32kbps",
+        "truePeakDBFS": -1.5
       }
     },
     {
@@ -149,15 +185,21 @@
       "mimeType": "audio/mpeg",
       "requestID": "cfvq5Kwtiv7VgTlQ2bl1",
       "characterCost": "2",
-      "bytes": 3779,
-      "sha256": "08a84d85454d30644432db073f4fbdd6e31b1d744db642e5576bfdd89c90f5f0",
+      "bytes": 3780,
+      "sha256": "38dffa6d2b9d625d7c1bc3319f76bab36a6c35c50f72e55ff1c36087c1da0816",
       "accepted": true,
       "decode": {
-        "tool": "ffmpeg / ffprobe",
         "success": true,
         "sampleRate": 22050,
         "durationSeconds": 0.835918,
         "audiblePlayback": false
+      },
+      "sourceSha256": "08a84d85454d30644432db073f4fbdd6e31b1d744db642e5576bfdd89c90f5f0",
+      "loudness": {
+        "meanDBFS": -12.7,
+        "peakDBFS": -2.3,
+        "normalization": "PCM RMS gain to -10dBFS; lookahead limiter0.75 level=false attack5 release50; MP3 22050Hz 32kbps",
+        "truePeakDBFS": -2.2
       }
     },
     {
@@ -170,15 +212,21 @@
       "mimeType": "audio/mpeg",
       "requestID": "EmJfmy63XQhNDPI5OHFg",
       "characterCost": "4",
-      "bytes": 5346,
-      "sha256": "96e12e12cf6200322dbc19225a5f5cc00a9b9e9ba365cb2224320191a2950ba0",
+      "bytes": 5347,
+      "sha256": "317d45dbd8b119fb2dd32e7a12374acb02ceb0e57304a073139ccc3e611ae063",
       "accepted": true,
       "decode": {
-        "tool": "ffmpeg / ffprobe",
         "success": true,
         "sampleRate": 22050,
         "durationSeconds": 1.207438,
         "audiblePlayback": false
+      },
+      "sourceSha256": "96e12e12cf6200322dbc19225a5f5cc00a9b9e9ba365cb2224320191a2950ba0",
+      "loudness": {
+        "meanDBFS": -12.6,
+        "peakDBFS": -2.4,
+        "normalization": "PCM RMS gain to -10dBFS; lookahead limiter0.75 level=false attack5 release50; MP3 22050Hz 32kbps",
+        "truePeakDBFS": -2.4
       }
     },
     {
@@ -191,15 +239,21 @@
       "mimeType": "audio/mpeg",
       "requestID": "23cPq3LUNmAtU8rMFtAH",
       "characterCost": "2",
-      "bytes": 3988,
-      "sha256": "df043db7e24c536e51abab5d520fefc9596379388fc36b2c87155e4c44069db5",
+      "bytes": 3989,
+      "sha256": "0f00c4dd8bb086b9cd572d8c0265b80049d8c8ad14a31a30c40d6063c4516fda",
       "accepted": true,
       "decode": {
-        "tool": "ffmpeg / ffprobe",
         "success": true,
         "sampleRate": 22050,
         "durationSeconds": 0.882358,
         "audiblePlayback": false
+      },
+      "sourceSha256": "df043db7e24c536e51abab5d520fefc9596379388fc36b2c87155e4c44069db5",
+      "loudness": {
+        "meanDBFS": -12.8,
+        "peakDBFS": -2.3,
+        "normalization": "PCM RMS gain to -10dBFS; lookahead limiter0.75 level=false attack5 release50; MP3 22050Hz 32kbps",
+        "truePeakDBFS": -2.3
       }
     },
     {
@@ -212,15 +266,21 @@
       "mimeType": "audio/mpeg",
       "requestID": "WQzzVvFwWz08qN7DruDe",
       "characterCost": "3",
-      "bytes": 4406,
-      "sha256": "869c81c1d16f0d14eb8edfceeb66069c2a06f7b315b456e6e5f5b313575a76c0",
+      "bytes": 4407,
+      "sha256": "7eebaee97ffb2e6bbdadbfb44e2af9418a71fcda5308ca64fcc432194ae5f618",
       "accepted": true,
       "decode": {
-        "tool": "ffmpeg / ffprobe",
         "success": true,
         "sampleRate": 22050,
         "durationSeconds": 0.975238,
         "audiblePlayback": false
+      },
+      "sourceSha256": "869c81c1d16f0d14eb8edfceeb66069c2a06f7b315b456e6e5f5b313575a76c0",
+      "loudness": {
+        "meanDBFS": -12.8,
+        "peakDBFS": -2.5,
+        "normalization": "PCM RMS gain to -10dBFS; lookahead limiter0.75 level=false attack5 release50; MP3 22050Hz 32kbps",
+        "truePeakDBFS": -2.5
       }
     },
     {
@@ -233,15 +293,21 @@
       "mimeType": "audio/mpeg",
       "requestID": "As1aE5nVbC0WBXuRmiDA",
       "characterCost": "13",
-      "bytes": 11406,
-      "sha256": "c972c89262ad9bec947b60966ad63e3e04d4151110ce0c2a0fc898d869f691ad",
+      "bytes": 11407,
+      "sha256": "df9f39fcfa0a742e39bf536558b9894994267f486fcf026bac2c6123143a3798",
       "accepted": true,
       "decode": {
-        "tool": "ffmpeg / ffprobe",
         "success": true,
         "sampleRate": 22050,
         "durationSeconds": 2.739955,
         "audiblePlayback": false
+      },
+      "sourceSha256": "c972c89262ad9bec947b60966ad63e3e04d4151110ce0c2a0fc898d869f691ad",
+      "loudness": {
+        "meanDBFS": -12.2,
+        "peakDBFS": -2.2,
+        "normalization": "PCM RMS gain to -10dBFS; lookahead limiter0.75 level=false attack5 release50; MP3 22050Hz 32kbps",
+        "truePeakDBFS": -1.3
       }
     },
     {
@@ -254,15 +320,141 @@
       "mimeType": "audio/mpeg",
       "requestID": "gtbEm7hvXY44tBJDAPmW",
       "characterCost": "5",
-      "bytes": 6077,
-      "sha256": "dc3b575c76ab625f29d4b3039656f430259c4d04dd47fc066cd6585d14edae0b",
+      "bytes": 6078,
+      "sha256": "abba3624648df0c3c142f44fbaffddced86f7a0fabe797ac0fa53069bcd675e8",
       "accepted": true,
       "decode": {
-        "tool": "ffmpeg / ffprobe",
         "success": true,
         "sampleRate": 22050,
         "durationSeconds": 1.393197,
         "audiblePlayback": false
+      },
+      "sourceSha256": "dc3b575c76ab625f29d4b3039656f430259c4d04dd47fc066cd6585d14edae0b",
+      "loudness": {
+        "meanDBFS": -12.4,
+        "peakDBFS": -2.4,
+        "normalization": "PCM RMS gain to -10dBFS; lookahead limiter0.75 level=false attack5 release50; MP3 22050Hz 32kbps",
+        "truePeakDBFS": -2.4
+      }
+    },
+    {
+      "name": "stop",
+      "text": "Stop for pain or discomfort.",
+      "characters": 28,
+      "attempts": 1,
+      "status": 200,
+      "characterCost": "6",
+      "bytes": 7123,
+      "sha256": "e7262d6578747f5e9c5532b930e537ebf11fe04b9af0ebc8c9e18b1b4be23d1a",
+      "accepted": true,
+      "sourceSha256": "6c0c1764605cbd1161c5571e64bd7b961b0f5af389323dc09d55d7212a7c85b9",
+      "decode": {
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 1.671837,
+        "audiblePlayback": false
+      },
+      "loudness": {
+        "meanDBFS": -12.6,
+        "peakDBFS": -1.4,
+        "normalization": "PCM RMS gain to -10dBFS; lookahead limiter0.75 level=false attack5 release50; MP3 22050Hz 32kbps",
+        "truePeakDBFS": -1.2
+      }
+    },
+    {
+      "name": "tracking",
+      "text": "Keep your whole body visible.",
+      "characters": 29,
+      "attempts": 1,
+      "status": 200,
+      "characterCost": "6",
+      "bytes": 6601,
+      "sha256": "f66cad6315818e02b38cc2cbbb7cadfbae90f855eb6d3128336da3bd0286202c",
+      "accepted": true,
+      "sourceSha256": "10bf7bae35fc61f5d583ecace5971fd118a0d3f4d3508bc4553a328259ce3ef1",
+      "decode": {
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 1.532517,
+        "audiblePlayback": false
+      },
+      "loudness": {
+        "meanDBFS": -12.1,
+        "peakDBFS": -2.1,
+        "normalization": "PCM RMS gain to -10dBFS; lookahead limiter0.75 level=false attack5 release50; MP3 22050Hz 32kbps",
+        "truePeakDBFS": -2.0
+      }
+    },
+    {
+      "name": "alignment",
+      "text": "Keep your body straight.",
+      "characters": 24,
+      "attempts": 1,
+      "status": 200,
+      "characterCost": "5",
+      "bytes": 5869,
+      "sha256": "388d40f475e58a9b62a51576a301f02abb524121e779379fa764fd8396fbed97",
+      "accepted": true,
+      "sourceSha256": "c82c55c049604142a7d2f40c35f6cd11ee45ecf0d7fdd46753e086f1c4d01482",
+      "decode": {
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 1.346757,
+        "audiblePlayback": false
+      },
+      "loudness": {
+        "meanDBFS": -12.7,
+        "peakDBFS": -2.1,
+        "normalization": "PCM RMS gain to -10dBFS; lookahead limiter0.75 level=false attack5 release50; MP3 22050Hz 32kbps",
+        "truePeakDBFS": -1.9
+      }
+    },
+    {
+      "name": "target",
+      "text": "Target reached.",
+      "characters": 15,
+      "attempts": 1,
+      "status": 200,
+      "characterCost": "3",
+      "bytes": 5138,
+      "sha256": "db28c3e00decbcfc9a16637bfb05414660ff1568ba39a43be6e2097528e99090",
+      "accepted": true,
+      "sourceSha256": "a4d8759649ae7cbf38eb5edf0398b8e424d09942d0f435d0041d72b8b341b9e4",
+      "decode": {
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 1.160998,
+        "audiblePlayback": false
+      },
+      "loudness": {
+        "meanDBFS": -13.7,
+        "peakDBFS": -1.2,
+        "normalization": "PCM RMS gain to -10dBFS; lookahead limiter0.75 level=false attack5 release50; MP3 22050Hz 32kbps",
+        "truePeakDBFS": -1.2
+      }
+    },
+    {
+      "name": "rest",
+      "text": "Rest until ready.",
+      "characters": 17,
+      "attempts": 1,
+      "status": 200,
+      "characterCost": "4",
+      "bytes": 5451,
+      "sha256": "a5c6216a176ec02e05ea962a919bb661d432ce13d78982d760605753146d19e3",
+      "accepted": true,
+      "sourceSha256": "a7b25ccda101b7ee9db9fcdb7028ee5731918d2bcefdc9989d78c2ff281fb381",
+      "decode": {
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 1.253878,
+        "audiblePlayback": false
+      },
+      "loudness": {
+        "meanDBFS": -12.4,
+        "peakDBFS": -2.4,
+        "normalization": "PCM RMS gain to -10dBFS; lookahead limiter0.75 level=false attack5 release50; MP3 22050Hz 32kbps",
+        "truePeakDBFS": -2.4
       }
     }
   ],
@@ -481,7 +673,79 @@
         "character_count": 4089,
         "observedAccountDelta": 0
       }
+    },
+    {
+      "authorization": "User requested generated Arnold for all workout feedback, replacing Apple voice, louder recordings if needed.",
+      "generatedAt": "2026-10-25T11:27:23.372Z",
+      "provider": "ElevenLabs",
+      "alias": "Arnold",
+      "voiceCategory": "generated",
+      "identityClaim": false,
+      "model": "eleven_flash_v2_5",
+      "format": "mp3_22050_32",
+      "keyCapCredits": 100,
+      "keyCapChanged": false,
+      "retries": 0,
+      "accountUsageIsNotKeyUsage": true,
+      "capEnforcement": "Existing provider-enforced restricted key cap retained. Stop batch at first failed request. No retry or replacement key.",
+      "clips": [
+        {
+          "name": "stop",
+          "text": "Stop for pain or discomfort.",
+          "characters": 28,
+          "attempts": 1,
+          "status": 200,
+          "characterCost": "6",
+          "bytes": 7122,
+          "sha256": "6c0c1764605cbd1161c5571e64bd7b961b0f5af389323dc09d55d7212a7c85b9",
+          "accepted": true
+        },
+        {
+          "name": "tracking",
+          "text": "Keep your whole body visible.",
+          "characters": 29,
+          "attempts": 1,
+          "status": 200,
+          "characterCost": "6",
+          "bytes": 6600,
+          "sha256": "10bf7bae35fc61f5d583ecace5971fd118a0d3f4d3508bc4553a328259ce3ef1",
+          "accepted": true
+        },
+        {
+          "name": "alignment",
+          "text": "Keep your body straight.",
+          "characters": 24,
+          "attempts": 1,
+          "status": 200,
+          "characterCost": "5",
+          "bytes": 5868,
+          "sha256": "c82c55c049604142a7d2f40c35f6cd11ee45ecf0d7fdd46753e086f1c4d01482",
+          "accepted": true
+        },
+        {
+          "name": "target",
+          "text": "Target reached.",
+          "characters": 15,
+          "attempts": 1,
+          "status": 200,
+          "characterCost": "3",
+          "bytes": 5137,
+          "sha256": "a4d8759649ae7cbf38eb5edf0398b8e424d09942d0f435d0041d72b8b341b9e4",
+          "accepted": true
+        },
+        {
+          "name": "rest",
+          "text": "Rest until ready.",
+          "characters": 17,
+          "attempts": 1,
+          "status": 200,
+          "characterCost": "4",
+          "bytes": 5450,
+          "sha256": "a7b25ccda101b7ee9db9fcdb7028ee5731918d2bcefdc9989d78c2ff281fb381",
+          "accepted": true
+        }
+      ]
     }
   ],
-  "totalCharacters": 284
+  "totalCharacters": 397
 }
