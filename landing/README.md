@@ -1,6 +1,6 @@
 # Spottr landing page
 
-This is Misha's static landing page, with availability, accessibility and copy corrections. It needs no build step or service credentials.
+The existing white landing page is published at **https://spottr.omarchoudhry.co.uk/** on the already authorized Vultr demo VM. It needs no build step or service credentials. The [publication receipt](../docs/evidence/landing-publication-2026-10-25.md) records hosted checks and screenshots. Hosting is temporary within the existing VM's approved lifetime; publication does not extend its teardown deadline.
 
 From the repository root:
 
@@ -12,7 +12,7 @@ Open `http://127.0.0.1:8149/`. Any static host can serve the contents of `landin
 
 The page displays two actual white iPhone/Watch simulator captures: `assets/today-simulator.jpg` and `assets/watch-simulator.jpg`. The caption identifies them as simulator captures; they are not evidence of physical-device acceptance. The Watch image shows no heart-rate reading. The dark concept phones, fabricated Watch reading and How It Works concept images are no longer displayed. The two images retain their aspect ratios and explicit source dimensions.
 
-Both **Join the TestFlight beta** links point to the [public invitation](https://testflight.apple.com/join/f3MhePbf). At 00:28 UTC on 25 October 2026, Apple reported external build 0.1 (1) as `IN_BETA_TESTING`; the public Apple page subsequently offered **View in TestFlight**. At **00:36:00.626 UTC**, Apple confirmed latest build **0.1 (3)** externally `IN_BETA_TESTING`, with its beta submission `APPROVED`; the external group contains builds **3 and 1** and retains the 25-person limit. Build 1 remains a fallback, and build 2 stays internal only. This verifies the invitation, not installation on a physical device. Builds 1, 2 and 3 are also available to the existing internal group. See the [installation guide](../docs/testflight.md). Local Apple voice is implemented and opt-in; ElevenLabs synthesis and actual audible phone acceptance remain pending. Pose counting, local history and on-screen cues are distinguished from optional online Gemini requests and workout uploads.
+Both **Join the TestFlight beta** links use the existing [public invitation](https://testflight.apple.com/join/f3MhePbf). The current documented release is **0.1 (5)**; the page states iOS 26+ and watchOS 26+ for the optional companion. A reported build-5 onboarding crash remains under investigation. See the [installation guide](../docs/testflight.md) for distribution evidence and limits; this publication did not accept an invitation or install the app. The feature copy stays within build-5 capabilities: push-up/squat counting, local history, skill progression, opt-in local voice and optional configured Gemini coaching. It makes no claim about newly integrated active energy, remote ElevenLabs playback, Presage or physical Watch acceptance. Contributor and demo-guide links lead to the repository's existing documentation.
 
 Before contributing, check the hero, feature cards, How It Works and availability/footer at desktop and narrow widths. Use the keyboard to reach Skip to content and section links. Confirm image loads, visible focus, reduced-motion behavior, and both TestFlight links. Preserve the restrained white/black layout and existing green accent. The page loads local assets only and starts no camera, microphone, voice or provider request.
 
@@ -29,3 +29,17 @@ External link destinations were inspected but not opened. Physical iPhone/Safari
 ## Availability follow-up — 25 October 2026
 
 The public Apple invitation was verified before replacing the two disabled buttons with ordinary HTTPS links. The existing layout and artwork are unchanged. Local browser checks and the public invitation screenshot are recorded in the [availability receipt](../docs/evidence/testflight-availability-2026-10-25.md). No TestFlight invitation was accepted, app installed, provider called or landing site deployed by this check.
+
+## Hosting boundary and checks
+
+`deploy/compose.yaml` mounts only `landing/` read-only at `/srv/landing`. Caddy serves `/` and `/assets/*` publicly. Every other path retains the remote-IP allowlist and existing gateway behavior, including `/health`; API bearer authentication remains in the gateway. There is no SPA fallback. Private env files and repository directories are outside the static root. Publish only `index.html` and its referenced assets; tests and this README need not be copied.
+
+```sh
+python3 -m unittest discover -s landing -p 'test_*.py'
+# On the existing Docker host, with its spottr_default network and gateway running:
+python3 deploy/tests/landing-routing.py /absolute/path/to/source
+```
+
+The routing check uses the pinned Caddy image, a temporary named container and loopback port 18149. It tests both allowed and excluded clients, image byte identity, health, protected routes, missing files and forged forwarding headers, then removes its own container. All gateway requests lack a valid bearer; no provider is called. Older gateway images may return 404 for optional voice routes; supported protected routes must return 401. Do not run two copies concurrently.
+
+For deployment, validate Compose with `config --quiet`, validate Caddy, and recreate **only Caddy** with `up -d --no-deps --no-build caddy`, using the existing private `deployment.env`. Keep certificate volumes and gateway runtime intact. See the [receipt](../docs/evidence/landing-publication-2026-10-25.md) for this deployment's restoration trail. Landing updates do not authorize VM replacement, runtime-secret edits, public API access or extending the existing spending/lifetime limit.
