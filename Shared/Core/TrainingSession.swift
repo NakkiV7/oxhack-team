@@ -60,12 +60,14 @@ public struct TrainingSession: Sendable {
     public private(set) var sets: [SetRecord] = []
     public private(set) var telemetry: [WatchTelemetry] = []
     public private(set) var counter = RepCounter(exercise: .squat)
+    public private(set) var manualReps: Int?
+    public var actualReps: Int? { source == .manual ? manualReps : counter.reps }
     public var exercise: Exercise { counter.exercise }
     public var setNumber: Int { sets.count % 3 + 1 }
     public var cue: Cue = .ready
     private var activeStarted: Double?
     private var accumulated = 0.0
-    private var source: InputSource = .camera
+    public private(set) var source: InputSource = .camera
     private var repDurations: [Double] = []
     private var currentRestBefore: Double?
     private var restStartedAt: Double?
@@ -95,7 +97,7 @@ public struct TrainingSession: Sendable {
         restStartedAt = nil
         counter = RepCounter(exercise: sets.count < 3 ? firstExercise : (firstExercise == .squat ? .pushup : .squat))
         accumulated = 0; activeStarted = time; phase = .active; generation = UUID(); cue = .ready
-        source = .camera; repDurations = []
+        source = .camera; repDurations = []; manualReps = nil
     }
     public mutating func finish(at time: Double) {
         if phase == .active || phase == .paused { endSet(at: time) }
@@ -103,7 +105,7 @@ public struct TrainingSession: Sendable {
     }
     public mutating func restartSet(source: InputSource, at time: Double) {
         guard phase == .active || phase == .paused else { return }
-        self.source = source; counter = RepCounter(exercise: exercise); repDurations = []
+        self.source = source; counter = RepCounter(exercise: exercise); repDurations = []; manualReps = nil
         accumulated = 0; activeStarted = time; phase = .active; generation = UUID(); cue = .ready
     }
     public func elapsed(at time: Double) -> Double { accumulated + max(0, time - (activeStarted ?? time)) }
@@ -111,8 +113,12 @@ public struct TrainingSession: Sendable {
         guard phase == .idle else { return }
         phase = .active; activeStarted = time
     }
+    public mutating func setManualReps(_ value: Int?) {
+        guard source == .manual, phase == .active || phase == .paused else { return }
+        manualReps = value.flatMap { (1...200).contains($0) ? $0 : nil }
+    }
     public mutating func consume(_ sample: MovementSample, generation: UUID) {
-        guard phase == .active, generation == self.generation else { return }
+        guard source != .manual, phase == .active, generation == self.generation else { return }
         let previousReps = counter.reps
         let movementCue = counter.consume(sample)
         if counter.reps > previousReps, let duration = counter.lastRepDuration { repDurations.append(duration) }
@@ -128,10 +134,10 @@ public struct TrainingSession: Sendable {
         phase = .active; activeStarted = time; generation = UUID(); cue = .ready
     }
     public mutating func endSet(at time: Double, reason: StopReason = .voluntary) {
-        guard time.isFinite, phase == .active || phase == .paused else { return }
-        sets.append(.init(id: UUID(), exercise: exercise, number: setNumber, reps: counter.reps,
+        guard time.isFinite, phase == .active || phase == .paused, let reps = actualReps else { return }
+        sets.append(.init(id: UUID(), exercise: exercise, number: setNumber, reps: reps,
                           target: exercise.target, activeSeconds: elapsed(at: time), source: source, reason: reason,
-                          repDurations: repDurations, restSecondsBefore: currentRestBefore))
+                          repDurations: source == .manual ? nil : repDurations, restSecondsBefore: currentRestBefore))
         restStartedAt = time
         phase = .rest; activeStarted = nil; accumulated = 0; generation = UUID(); cue = .ready
     }
