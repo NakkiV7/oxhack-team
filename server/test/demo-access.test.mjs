@@ -3,6 +3,7 @@ import { once } from 'node:events';
 import test from 'node:test';
 import { randomUUID } from 'node:crypto';
 import { createGateway } from '../src/gateway.mjs';
+import { workoutRequest, workoutIDContract } from '../src/tiger-contracts.mjs';
 
 const instant = Date.parse('2026-10-25T00:00:00.000Z');
 const demoToken = 'synthetic-demo-credential-32-characters';
@@ -50,14 +51,43 @@ test('demo configuration requires a distinct credential and the existing finite 
   ]) assert.throws(() => createGateway({ env: configuration, now: () => instant }), error => error.code === 'invalid_demo_configuration');
 });
 
-test('demo identity cannot disable owner database configuration or reach it', async t => {
-  let calls = 0;
-  const request = await serve(t, { env: { ...env, TIGER_DATABASE_URL: 'postgresql://unused.invalid/demo', SPOTTR_INSTALLATION_ID: 'synthetic-installation' },
-    pool: { on() {}, query() { calls++; throw new Error('offline database'); } } });
+test('demo identity cannot read or write configured owner Tiger data before any connection or SQL', async t => {
+  const installationID = '5aa3804a-58e8-49fb-876f-5751ac9cbaca';
+  const workoutID = '5c69ed48-c98e-4b4e-8e21-78d246743535';
+  const workout = { installationID, record: { id: workoutID, date: '2026-10-25T00:00:00.000Z', sets: [], loggedSets: [], telemetry: [] } };
+  assert.equal(workoutIDContract.safeParse(installationID).success, true);
+  assert.equal(workoutRequest.safeParse(workout).success, true);
+  let connections = 0, queries = 0;
+  const query = async () => { queries++; throw new Error('offline SQL sentinel'); };
+  const pool = { on() {}, query, async connect() { connections++; return { query, release() {} }; } };
+  const request = await serve(t, { env: { ...env, TIGER_DATABASE_URL: 'postgresql://offline.invalid:5432/spottr?sslmode=verify-full', SPOTTR_INSTALLATION_ID: installationID }, pool });
+  const read = token => ({ method: 'GET', headers: { authorization: `Bearer ${token}` } });
+  const paths = [
+    ['/v1/workouts', post(workout)],
+    [`/v1/workouts/${workoutID}`, read(demoToken)],
+    [`/v1/workouts/${workoutID}/telemetry?from=2026-10-25T00:00:00.000Z&to=2026-10-25T01:00:00.000Z`, read(demoToken)]
+  ];
+  for (const [path, options] of paths) {
+    const denied = await request(path, options);
+    assert.equal(denied.status, 401, path);
+    assert.equal((await denied.json()).error.code, 'unauthorized', path);
+    assert.equal((await request(`/demo${path}`, options)).status, 404, path);
+    assert.equal(connections, 0, path);
+    assert.equal(queries, 0, path);
+  }
   assert.equal((await request('/demo/v1/chat')).status, 200);
-  assert.equal((await request('/v1/workouts')).status, 401);
-  assert.equal((await request('/demo/v1/workouts')).status, 404);
-  assert.equal(calls, 0);
+  assert.equal(connections, 0);
+  assert.equal(queries, 0);
+
+  // Positive controls prove the same valid owner configuration and payload reach the offline SQL boundary.
+  for (const [path, options] of [[`/v1/workouts/${workoutID}`, read(env.SPOTTR_GATEWAY_TOKEN)], ['/v1/workouts', post(workout, env.SPOTTR_GATEWAY_TOKEN)]]) {
+    const before = queries;
+    const owner = await request(path, options);
+    assert.equal(owner.status, 503, path);
+    assert.equal((await owner.json()).error.code, 'database_unavailable', path);
+    assert.ok(queries > before, path);
+  }
+  assert.equal(connections, 1);
 });
 
 test('demo expiry covers cached voice discovery, refusals and generation before provider access', async t => {
