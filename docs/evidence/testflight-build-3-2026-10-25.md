@@ -1,6 +1,6 @@
 # TestFlight build 3
 
-Source: `ebbe560737d16ec3c6a72da7436ba25730587e19`. Version **0.1 (3)** includes the [Skills/report rendering and history-persistence refactor](history-persistence-2026-10-25.md). Relative to build 2's `b7bf563` snapshot, exactly four Native/Shared files changed (eight insertions/six deletions): `ReportViews.swift`, `SkillsViews.swift`, `TrainingStore.swift` and `HistoryStore.swift`. There is no measured device-speedup claim. The Gemini schema correction runs on the separate gateway; it is not a new native feature in this binary. The judges' deck keeps its independent 00:09 UTC snapshot.
+Source: `ebbe560737d16ec3c6a72da7436ba25730587e19`. Version **0.1 (3)** includes the [Skills/report rendering and history-persistence refactor](history-persistence-2026-10-25.md). Relative to build 2's `b7bf563` snapshot, exactly four Native/Shared files changed (eight insertions/six deletions): `ReportViews.swift`, `SkillsViews.swift`, `TrainingStore.swift` and `HistoryStore.swift`. There is no measured device-speedup claim. The Gemini schema correction runs on the separate gateway; it is not a new native feature in this binary. The judges' deck has a separate 00:36 UTC evidence snapshot.
 
 ## Archive and export
 
@@ -45,4 +45,4 @@ At **00:35:42.134 UTC**, the operator updated build 3’s en-GB beta “What’s
 
 At **00:36:00.626 UTC**, a separate read-back confirmed build 3 `VALID`, encryption `false`, and **both internal and external `IN_BETA_TESTING`**. Its submission resource now reported **`APPROVED`**, still with `submittedDate: null`; the absent date does not establish a precise review timeline. External OxHack contained **builds 3 and 1**. Build 1’s existing availability was preserved as a fallback, and build 2 remains internal only. These current states supersede the initial 00:33 checkpoint above.
 
-The same enabled 25-person [public invitation](https://testflight.apple.com/join/f3MhePbf) remains the external entry point. Its earlier public-page/landing checks did not select or install a build. No new deep-link launch, invitation acceptance, actual phone/Watch installation or physical exercise acceptance is established by the API read-back. The frozen 00:09 UTC judges’ deck remains a dated historical snapshot.
+The same enabled 25-person [public invitation](https://testflight.apple.com/join/f3MhePbf) remains the external entry point. Its earlier public-page/landing checks did not select or install a build. No new deep-link launch, invitation acceptance, actual phone/Watch installation or physical exercise acceptance is established by the API read-back. The judges’ deck was subsequently refreshed to this 00:36 UTC release state; its render checks remain separate from device acceptance.

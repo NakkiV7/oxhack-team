@@ -8,7 +8,7 @@ if len(pages)!=10:
 out=root/'output/spottr-judges-rendered.pdf'
 pdf=canvas.Canvas(str(out),pagesize=(960,540),pageCompression=1)
 pdf.setTitle('Spottr judges presentation')
-pdf.setSubject('Static PDF of ten final slide renders, evidence snapshot 25 October 2026 00:09 UTC')
+pdf.setSubject('Static PDF of ten final slide renders, evidence snapshot 25 October 2026 00:36 UTC')
 for image in pages:
     pdf.drawImage(str(image),0,0,width=960,height=540,preserveAspectRatio=True,mask='auto')
     pdf.showPage()
