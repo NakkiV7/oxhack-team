@@ -5,6 +5,86 @@ import XCTest
 final class CoachFlowTests: XCTestCase {
     private static let savedWorkout = Data(#"{"items":[{"exerciseID":"squat","sets":1,"target":2,"unit":"reps","restSeconds":30}],"approvedAt":0,"rationale":"Synthetic saved workout"}"#.utf8)
 
+    func testWeeklyRequestCarriesDraftAndRequiresExplicitDayApprovalWithoutReplacingSinglePlan() async throws {
+        let suite = "CoachWeekTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(Self.savedWorkout, forKey: "coach.approvedPlan")
+        var captured: URLRequest?
+        let client = CoachGatewayClient(baseURL: URL(string: "https://coach.example")!, token: "test") { request in
+            await MainActor.run { captured = request }
+            return try Self.weekResponse(for: request)
+        }
+        let model = CoachModel(configuration: { client }, savedPlanData: Self.savedWorkout, defaults: defaults)
+        let week = try CoachWeekRequest(startDate: "2026-10-25", timeZone: "Europe/London", availableDays: [0, 2, 4], targetDays: 3)
+        await model.proposeWeek(message: "  Keep it short  ", week: week, history: [], support: [])
+        XCTAssertEqual(captured?.url?.path, "/v1/week-proposal")
+        let body = try XCTUnwrap(try JSONSerialization.jsonObject(with: XCTUnwrap(captured?.httpBody)) as? [String: Any])
+        XCTAssertEqual(body["message"] as? String, "Keep it short")
+        XCTAssertNotNil(model.weekProposal)
+        XCTAssertNil(model.approvedWeek)
+        model.approveWeek(selectedDates: [], movedDates: [:], currentSupport: [])
+        XCTAssertNil(model.approvedWeek)
+        model.approveWeek(selectedDates: ["2026-10-25"], movedDates: ["2026-10-25": "2026-10-27"], currentSupport: [])
+        XCTAssertEqual(model.approvedWeek?.days.map(\.date), ["2026-10-27"])
+        XCTAssertEqual(defaults.data(forKey: "coach.approvedPlan"), Self.savedWorkout)
+        let reopened = CoachModel(configuration: { client }, savedPlanData: Self.savedWorkout, defaults: defaults)
+        XCTAssertEqual(reopened.approvedWeek?.days.first?.plan.items.first?.target, 8)
+        XCTAssertNil(model.weekProposal)
+    }
+
+    func testCancelledWeeklyResponseIsDiscardedWithoutSavingAWeek() async throws {
+        let received = expectation(description: "Week entered offline transport")
+        var pending: CheckedContinuation<(Data, URLResponse), Never>?
+        var captured: URLRequest?
+        let client = CoachGatewayClient(baseURL: URL(string: "https://coach.example")!, token: "test") { request in
+            await withCheckedContinuation { continuation in
+                Task { @MainActor in pending = continuation; captured = request; received.fulfill() }
+            }
+        }
+        let model = CoachModel(configuration: { client }, savedPlanData: nil)
+        let week = try CoachWeekRequest(startDate: "2026-10-25", timeZone: "Europe/London", availableDays: [0], targetDays: 1)
+        let task = Task { await model.proposeWeek(message: "Short sessions", week: week, history: [], support: []) }
+        await fulfillment(of: [received], timeout: 2)
+        model.cancel()
+        pending?.resume(returning: try Self.weekResponse(for: XCTUnwrap(captured)))
+        await task.value
+        XCTAssertFalse(model.isLoading)
+        XCTAssertNil(model.weekProposal)
+        XCTAssertNil(model.approvedWeek)
+        XCTAssertNil(model.error)
+    }
+
+    func testWeeklyFailureRetriesOnlyItsCapturedOperationAndRejectsOversizedDraft() async throws {
+        var requests: [URLRequest] = []
+        let client = CoachGatewayClient(baseURL: URL(string: "https://coach.example")!, token: "test") { request in
+            let count = await MainActor.run { requests.append(request); return requests.count }
+            if count == 1 { throw URLError(.notConnectedToInternet) }
+            return try Self.weekResponse(for: request)
+        }
+        let model = CoachModel(configuration: { client }, savedPlanData: nil)
+        let week = try CoachWeekRequest(startDate: "2026-10-25", timeZone: "Europe/London", availableDays: [0], targetDays: 1)
+        await model.proposeWeek(message: String(repeating: "x", count: 4001), week: week, history: [], support: [])
+        XCTAssertTrue(requests.isEmpty)
+        await model.proposeWeek(message: "Short week", week: week, history: [], support: [])
+        XCTAssertNotNil(model.error)
+        XCTAssertEqual(model.retryTitle, "Retry week proposal")
+        await model.retry(history: [], support: [])
+        XCTAssertEqual(requests.map { $0.url?.path }, ["/v1/week-proposal", "/v1/week-proposal"])
+        XCTAssertNotNil(model.weekProposal)
+        XCTAssertTrue(model.turns.isEmpty)
+        XCTAssertNil(model.error)
+    }
+
+    nonisolated private static func weekResponse(for request: URLRequest) throws -> (Data, URLResponse) {
+        let input = try XCTUnwrap(try JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any])
+        let generationID = try XCTUnwrap(input["generationID"] as? String)
+        let grounded: [String: Any] = ["text": "A suggested week, not measured readiness.", "factIDs": ["context"]]
+        let workout: [String: Any] = ["generationID": generationID, "items": [["exerciseID": "squat", "sets": 2, "target": 8, "unit": "reps", "restSeconds": 60, "factIDs": ["context"]]], "rationale": grounded]
+        let value: [String: Any] = ["generationID": generationID, "status": "proposed", "weekStart": "2026-10-25", "timeZone": "Europe/London", "days": (25...31).map { day in ["date": "2026-10-\(day)", "kind": day == 25 ? "workout" : "rest", "workout": day == 25 ? workout : NSNull()] as [String: Any] }, "rationale": grounded, "guidanceIDs": ["nhs-strength"]]
+        return (try JSONSerialization.data(withJSONObject: value), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
+
     func testProposalCarriesDraftAndPriorConversationWithoutReplacingSavedWorkout() async throws {
         let suite = "CoachProposalContextTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
