@@ -1,5 +1,6 @@
 import AVFoundation
 import Foundation
+import Observation
 
 enum DemoVoiceRecoveryReason { case endedSet, fatigue }
 
@@ -153,6 +154,124 @@ private final class DemoBundledAudioOutput: NSObject, VoiceAudioOutput, AVAudioP
     nonisolated func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
         finished(ObjectIdentifier(player))
     }
+    private nonisolated func finished(_ identity: ObjectIdentifier) {
+        Task { @MainActor [weak self] in
+            guard let self, ObjectIdentifier(player) == identity else { return }
+            onFinish?()
+        }
+    }
+}
+
+/// A playable clip for the rep voice; tests substitute a fake.
+@MainActor protocol RepVoiceOutput: AnyObject {
+    var onFinish: (() -> Void)? { get set }
+    func play() -> Bool
+    func stop()
+}
+
+/// Plays `RepVoicePlan` lines from the bundled Arnold or Goggins rep clips (offline, no gateway). Silent unless a coach is
+/// chosen and the workout's Voice feedback is on; `cancel()` on pause, stop, voice off or background.
+@MainActor @Observable
+final class RepVoicePlayer {
+    static let defaultsKey = "voice.repCounterCoach"
+    /// The rep counter voice, or nil for off. Defaults to Arnold; `choose(_:)` remembers a person's choice.
+    var coach: RepVoicePlan.Coach? { didSet { if coach != oldValue { cancel() } } }
+    /// Clips started, newest last (for tests and diagnostics).
+    @ObservationIgnored private(set) var started: [String] = []
+    @ObservationIgnored private var plan = RepVoicePlan()
+    @ObservationIgnored private var output: RepVoiceOutput?
+    @ObservationIgnored private var audioSessionActive = false
+    @ObservationIgnored private let defaults: UserDefaults
+    @ObservationIgnored private let uptime: () -> Double
+    @ObservationIgnored private let makeOutput: @MainActor (String, String) throws -> RepVoiceOutput
+    @ObservationIgnored private let usesAudioSession: Bool
+
+    init(defaults: UserDefaults = .standard, uptime: @escaping () -> Double = { ProcessInfo.processInfo.systemUptime },
+         makeOutput: (@MainActor (String, String) throws -> RepVoiceOutput)? = nil) {
+        self.defaults = defaults; self.uptime = uptime
+        self.usesAudioSession = makeOutput == nil
+        self.makeOutput = makeOutput ?? { try RepClipOutput(name: $0, folder: $1, bundle: .main) }
+        let saved = defaults.string(forKey: Self.defaultsKey)
+        coach = saved == "off" ? nil : RepVoicePlan.Coach(rawValue: saved ?? "") ?? .arnold
+    }
+
+    /// A person's choice from the coach voice sheet; remembered across launches.
+    func choose(_ coach: RepVoicePlan.Coach?) {
+        self.coach = coach
+        defaults.set(coach?.rawValue ?? "off", forKey: Self.defaultsKey)
+    }
+
+    var isPlaying: Bool { output != nil }
+
+    func start() { guard coach != nil else { return }; plan.start(at: uptime()); pump() }
+    func rep(_ number: Int, clean: Bool) { guard coach != nil else { return }; plan.rep(number, clean: clean, at: uptime()); pump() }
+    func closing() { guard coach != nil else { return }; plan.closing(at: uptime()); pump() }
+
+    /// A form, pacing or stop cue is about to speak: stop rep lines so the cue is heard on its own.
+    func yield() {
+        plan.clear()
+        output?.onFinish = nil; output?.stop(); output = nil
+    }
+
+    func cancel() {
+        yield()
+        releaseAudioSession()
+    }
+
+    private func pump() {
+        guard output == nil, let coach else { return }
+        while let line = plan.next(at: uptime()) {
+            guard let clip = try? makeOutput(line.clip, coach.folder) else { continue }
+            if usesAudioSession, !audioSessionActive {
+                do {
+                    let session = AVAudioSession.sharedInstance()
+                    try session.setCategory(.playback, mode: .spokenAudio, options: .duckOthers)
+                    try session.setActive(true)
+                    audioSessionActive = true
+                } catch { return }
+            }
+            clip.onFinish = { [weak self] in
+                guard let self else { return }
+                self.output = nil
+                self.pump()
+            }
+            output = clip
+            started.append(line.clip)
+            if clip.play() { return }
+            output = nil
+        }
+        releaseAudioSession()
+    }
+
+    private func releaseAudioSession() {
+        guard audioSessionActive else { return }
+        audioSessionActive = false
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+}
+
+@MainActor
+private final class RepClipOutput: NSObject, RepVoiceOutput, AVAudioPlayerDelegate {
+    var onFinish: (() -> Void)?
+    private let player: AVAudioPlayer
+
+    init(name: String, folder: String, bundle: Bundle) throws {
+        guard RepVoicePlan.allClips.contains(name),
+              let url = bundle.url(forResource: name, withExtension: "mp3", subdirectory: folder) else { throw CocoaError(.fileNoSuchFile) }
+        player = try AVAudioPlayer(contentsOf: url)
+        super.init()
+        guard player.format.sampleRate == 22_050, player.duration.isFinite, player.duration > 0, player.duration <= 10 else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        player.delegate = self
+        player.volume = 1
+    }
+
+    func play() -> Bool { player.play() }
+    func stop() { player.stop() }
+
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) { finished(ObjectIdentifier(player)) }
+    nonisolated func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) { finished(ObjectIdentifier(player)) }
     private nonisolated func finished(_ identity: ObjectIdentifier) {
         Task { @MainActor [weak self] in
             guard let self, ObjectIdentifier(player) == identity else { return }

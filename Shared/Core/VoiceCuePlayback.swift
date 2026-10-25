@@ -96,3 +96,73 @@ public final class VoiceCuePlaybackController {
         playback.stop()
     }
 }
+
+/// Spoken rep counting from bundled coach clips, modelled on the web squat coach: the count on every camera-counted rep,
+/// a motivational line every third clean rep, a start line when a camera set begins and a closing line when it ends.
+/// One line plays at a time and is never cut off by another rep line; a newer count replaces one still waiting, so an
+/// old number is never said, and lines that waited too long are dropped. Form and stop cues take over through `clear()`.
+public struct RepVoicePlan: Sendable {
+    public enum Coach: String, CaseIterable, Codable, Sendable {
+        case arnold, goggins
+        public var title: String { rawValue.capitalized }
+        /// Bundle subdirectory holding this coach's clips.
+        public var folder: String { "DemoVoice/\(rawValue)-reps" }
+    }
+    public struct Line: Equatable, Sendable {
+        public enum Kind: String, Sendable { case count, motivation, start, closing }
+        public let clip: String
+        public let kind: Kind
+        public let issuedAt: Double
+        /// Seconds a line may wait before it is no longer worth saying.
+        public var maxWait: Double {
+            switch kind {
+            case .count: return 1.5
+            case .motivation, .start: return 4
+            case .closing: return 8
+            }
+        }
+    }
+    public static let countLimit = 30
+    public static let motivationEvery = 3
+    public static let motivationClips = (1...7).map { "motivate-\($0)" }
+    public static let closingClips = (1...3).map { "closing-\($0)" }
+    public static var allClips: [String] {
+        (1...countLimit).map(countClip) + motivationClips + closingClips + ["start"]
+    }
+    public static func countClip(_ rep: Int) -> String { String(format: "count-%02d", rep) }
+
+    public private(set) var queue: [Line] = []
+    private var motivationIndex = 0
+    private var closingIndex = 0
+    public init() {}
+
+    public mutating func start(at time: Double) {
+        queue = [Line(clip: "start", kind: .start, issuedAt: time)]
+    }
+
+    /// A counted rep. `clean` is true when the rep had no form issue.
+    public mutating func rep(_ number: Int, clean: Bool, at time: Double) {
+        queue.removeAll { $0.kind == .count || $0.kind == .start || time - $0.issuedAt > $0.maxWait }
+        if (1...Self.countLimit).contains(number) { queue.append(Line(clip: Self.countClip(number), kind: .count, issuedAt: time)) }
+        guard clean, number > 0, number.isMultiple(of: Self.motivationEvery) else { return }
+        queue.removeAll { $0.kind == .motivation }
+        queue.append(Line(clip: Self.motivationClips[motivationIndex % Self.motivationClips.count], kind: .motivation, issuedAt: time))
+        motivationIndex += 1
+    }
+
+    public mutating func closing(at time: Double) {
+        queue = [Line(clip: Self.closingClips[closingIndex % Self.closingClips.count], kind: .closing, issuedAt: time)]
+        closingIndex += 1
+    }
+
+    /// The next line to play now, skipping any that waited too long.
+    public mutating func next(at time: Double) -> Line? {
+        while !queue.isEmpty {
+            let line = queue.removeFirst()
+            if time >= line.issuedAt, time - line.issuedAt <= line.maxWait { return line }
+        }
+        return nil
+    }
+
+    public mutating func clear() { queue.removeAll() }
+}

@@ -55,6 +55,9 @@ final class TrainingStore {
     private var previewObservedReps = 0
     private var previewRepTime: Double?
     private(set) var voiceFeedbackEnabled = false
+    /// Spoken rep counts and lines from bundled Arnold or Goggins clips, under the same Voice feedback switch.
+    var repVoice = RepVoicePlayer()
+    private var repVoiceState: (sessionID: UUID, generation: UUID, phase: SessionPhase, reps: Int)?
     private var appActive = true
     let remoteVoice: RemoteVoicePlayback?
     let previewMode: Bool
@@ -84,11 +87,13 @@ final class TrainingStore {
     func cancelCoaching() {
         activeCoachingEvent = nil
         coachingVoice.cancel()
+        repVoice.cancel()
     }
 
     func setVoiceFeedback(_ enabled: Bool) {
         guard voiceFeedbackEnabled != enabled else { return }
         coachingVoice.update(context: feedbackContext, event: coachingEvent, enabled: false, now: now)
+        if !enabled { repVoice.cancel() }
         voiceFeedbackEnabled = enabled
     }
 
@@ -119,6 +124,7 @@ final class TrainingStore {
         guard time.isFinite else { return }
         let reps = configured?.actualReps ?? session.actualReps ?? 0
         let milestone = consumePreviewRep(context: context, reps: reps, time: time)
+        repVoiceTick(context: context, reps: reps, clean: (configured?.cue ?? session.cue) == .controlled)
         if context.phase == .finished {
             if coachingEvent?.expiresAt.map({ time >= $0 }) == true { cancelCoaching() }
             return
@@ -156,15 +162,16 @@ final class TrainingStore {
             restElapsed: restElapsed,
             target: configured?.current.target ?? session.exercise.target,
             stopReason: stopReason, source: configured?.source ?? source,
-            encouragementEnabled: !previewMode && voiceFeedbackEnabled && (remoteVoice?.preference == .david || remoteVoice?.preference == .arnold)
+            encouragementEnabled: !previewMode && voiceFeedbackEnabled && (remoteVoice?.preference == .david || remoteVoice?.preference == .arnold) && !repVoiceEnabled
         ))
         if let decision {
+            if decision.priority != .rest { repVoice.yield() }
             activeCoachingEvent = CoachingEvent(sessionID: context.sessionID, generation: context.generation,
                                                decision: decision, issuedAt: time,
                                                expiresAt: decision.priority == .stop ? nil : time + 6)
             return
         }
-        guard previewMode, milestone, voiceFeedbackEnabled, remoteVoice?.preference == .arnold,
+        guard previewMode, milestone, voiceFeedbackEnabled, remoteVoice?.preference == .arnold, !repVoiceEnabled,
               context.phase == .active, acceptsTracking, (configured?.source ?? source) == .camera,
               cue == .controlled, stopReason == nil, !reportedDiscomfort,
               coachingEvent?.decision.priority != .stop, coachingEvent?.decision.priority != .form,
@@ -173,6 +180,31 @@ final class TrainingStore {
             decision: .init(text: "Keep a steady rhythm.", priority: .pacing, reason: .steadyRhythm,
                             facts: ["\(reps) camera reps recorded in this set."], elapsed: nil),
             issuedAt: time, expiresAt: time + 6)
+    }
+
+    /// Rep counting replaces the occasional "steady rhythm" encouragement while it is on, so lines never double up.
+    private var repVoiceEnabled: Bool {
+        voiceFeedbackEnabled && repVoice.coach != nil && (configured?.source ?? source) == .camera && !reportedDiscomfort
+    }
+
+    /// Speaks the count on each camera-counted rep (a line every third clean rep), a start line when a camera set begins
+    /// and a closing line when it ends. Stop, form and pacing cues still take over through `repVoice.yield()`.
+    private func repVoiceTick(context: VoiceCueContext, reps: Int, clean: Bool) {
+        let previous = repVoiceState
+        repVoiceState = (context.sessionID, context.generation, context.phase, reps)
+        guard repVoiceEnabled, appActive else { return }
+        let sameSession = previous?.sessionID == context.sessionID
+        let sameSet = sameSession && previous?.generation == context.generation
+        if context.phase == .active, acceptsTracking {
+            if !sameSet || previous?.phase != .active {
+                if reps == 0 { repVoice.start() } else if reps == 1 { repVoice.rep(1, clean: clean) }
+            } else if let before = previous?.reps, reps > before, reps > 0 {
+                repVoice.rep(reps, clean: clean)
+            }
+        } else if sameSession, previous?.phase == .active, context.phase == .rest || context.phase == .finished,
+                  (previous?.reps ?? 0) > 0, coachingEvent == nil || coachingEvent?.decision.priority == .rest {
+            repVoice.closing()
+        }
     }
 
     private func consumePreviewRep(context: VoiceCueContext, reps: Int, time: Double) -> Bool {
