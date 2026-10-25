@@ -479,7 +479,7 @@ final class TrainingStore {
         session.finish(at: now); stopCapture(); frame = nil; image = nil; cancelCoaching(); save(); announceCompletion(); publish()
     }
     private func announceCompletion() {
-        guard previewMode, voiceFeedbackEnabled, appActive, remoteVoice?.preference == .arnold,
+        guard voiceFeedbackEnabled, appActive, remoteVoice?.preference == .arnold,
               !reportedDiscomfort, configured?.stoppedForDiscomfort != true, sessionPhase == .finished else { return }
         let record = configured?.record ?? session.record
         guard record.sets.contains(where: { $0.reps > 0 && $0.source != .video }) ||
