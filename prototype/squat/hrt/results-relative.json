@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-25T05:41:41.022Z",
-  "gitCommit": "2522221911dba6cb248427ffac649d5db8942a0e",
+  "generatedAt": "2026-10-25T05:50:05.816Z",
+  "gitCommit": "e3bb1e32ecb217edf2dd4a329527044cc576aed4",
   "datasetSha256": "d516d9b45ae7e4f571579eeded02a11bbef951ddabdd491d5bad08b171661ff0",
   "target": {
     "id": "relative-v1",
@@ -203,7 +203,7 @@
       "observed": 376,
       "positives": 15
     },
-    "labelDefinition": "v_t = 1 when the lowering duration of counted rep t is outside [undefined, undefined] s; Y_t = 1 when v = 1 for rep t+1 or t+2; origins need 3 counted reps and v_t = 0; horizons with an uncounted attempt or fewer than 2 further reps are excluded.",
+    "labelDefinition": "Bounds: within 25% of the median lowering duration of the set's first 3 counted reps. v_t = 1 when the lowering duration of counted rep t is outside the bounds. The event is the set's first sustained departure: the first rep k with v_k = 1 and at least 2 of reps k..k+2 outside. Y_t = 1 when that departure starts at one of reps t+1..t+5. Origins need 3 counted reps, v_t = 0 and no departure yet; an origin whose deciding reps include an uncounted attempt, or run past the end of the set, or that lies after the departure, is excluded.",
     "limitations": [
       "Labels are produced by the rep counter, not by independent annotation.",
       "Development clips were used to tune the counter.",
@@ -5216,5 +5216,5 @@
     },
     "note": "Each held set is predicted using the clips and only this person's earlier sets; threshold frozen from the main development selection."
   },
-  "modelRun": "hrt-tempo-v2-d516d9b4-94cb05"
+  "modelRun": "hrt-tempo-v2-relative-h5-d516d9b4-ae879b"
 }

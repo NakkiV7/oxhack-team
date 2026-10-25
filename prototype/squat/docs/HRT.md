@@ -80,6 +80,16 @@ What is demonstrable now is the infrastructure and the honesty of the evaluation
 
 **Ninety seconds**: "Every rep's lowering time goes into Tiger. After three reps the model forecasts whether one of the next two will leave the programme range. Here it forecast after rep 4, we reveal reps 5 and 6, and the stored outcome says rep 6 missed with a 4-second warning. The evidence panel shows this honestly: on 22 development origins the model does not beat a constant, so the coach stays quiet; the held-out test is what decides it."
 
+## 5b. Pitch for the HRT judges
+
+Lead: Spottr measures every rep's lowering phase into Tiger as it happens; after three reps it forecasts whether this set's tempo is about to shift and stay shifted, and decides whether that is worth an interruption. Forecasts are written before the next rep exists and scored when the horizon closes; the review and the evidence panel read the stored rows.
+
+Then the honest part: a fixed tempo range is rounding noise at a natural pace; single reps outside a band are boundary flicker (a model that "predicted" them on 56 origins vanished at 520, and we report it); the real event happens at most once per set and no public dataset contains it; we have five in 700 reps, so the deployed policy is a one-parameter drift rule and the fitted model equals the constant. Shadow mode makes every set anyone does an evaluation set.
+
+Show: a held-out replay with *pause at forecast* (cutoff, resume, outcome and lead time from the database); the Evidence dialog (budget line, bootstrap intervals that include zero, "not evaluated" test row, protocol log); the paper's Table 1, Figure 2 and the revision paragraph.
+
+Statistics, when asked: Brier and log loss because they are strictly proper and accuracy at 4% prevalence is meaningless; recall under a fixed false-alert budget because the decision is an interruption; grouping by person because reps are correlated and three sets share a subject; paired cluster bootstrap over groups, intervals reported even when they include zero; label revisions dated and reasoned before any held-out data, both labels reported; no held-out number because there is nothing honest to hold out yet.
+
 ## 6. Reproduce
 
 ```bash

@@ -1,5 +1,5 @@
 {
-  "modelRun": "hrt-tempo-v2-d516d9b4-94cb05",
+  "modelRun": "hrt-tempo-v2-relative-h2-d516d9b4-762ef2",
   "status": "dev-cv",
   "target": "relative-v1",
   "labelVersion": "tempo-v2",
@@ -81,6 +81,6 @@
     "recordings": 8,
     "datasetSha256": "d516d9b45ae7e4f571579eeded02a11bbef951ddabdd491d5bad08b171661ff0"
   },
-  "generatedAt": "2026-10-25T05:41:41.865Z",
+  "generatedAt": "2026-10-25T05:50:07.082Z",
   "note": "Probabilities are out-of-fold preliminary; see results.json before quoting them."
 }

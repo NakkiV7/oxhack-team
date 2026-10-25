@@ -5,7 +5,7 @@
 //   hrt/results-<target>.json  every table and curve shown in the evidence dialog
 //   hrt/data/split-manifest.json
 // Usage: node hrt/train.mjs [--target controlled|relative|slow] [--budget 0.5] [--seed 7] [--boot 1000]
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { execSync } from 'node:child_process';
 import { TARGETS, DEFAULT_TARGET, FEATURES, FEATURE_SETS, MIN_REPS, LABEL_VERSION, FEATURE_VERSION, POLICY_VERSION, featuresAt, ineligible, labelAt, heuristicAlert, sigmoid, setHorizon } from '../hrt.mjs';
@@ -184,7 +184,7 @@ const results = {
     attempts: rows.length, countedReps: rows.filter((r) => r.counted === 'true').length,
     bySplit: Object.fromEntries(['dev', 'test'].map((s) => [s, { recordings: Object.values(groups).filter((g) => g.split === s).length, eligibleOrigins: examples.filter((e) => e.split === s).length, positives: examples.filter((e) => e.split === s && e.y).length }])),
     provenance: Object.fromEntries(Object.values(groups).map((g) => [g.recording, { split: g.split, person: g.person, provenance: g.provenance, reps: g.reps.filter((r) => r.counted).length }])),
-    audit, labelDefinition: `v_t = 1 when the lowering duration of counted rep t is outside [${TARGET.L}, ${TARGET.U}] s; Y_t = 1 when v = 1 for rep t+1 or t+2; origins need ${MIN_REPS} counted reps and v_t = 0; horizons with an uncounted attempt or fewer than 2 further reps are excluded.`,
+    audit, labelDefinition: `Bounds: ${TARGET.rel != null ? `within ${Math.round(TARGET.rel * 100)}% of the median lowering duration of the set's first ${MIN_REPS} counted reps` : `${TARGET.L} to ${TARGET.U} s`}. v_t = 1 when the lowering duration of counted rep t is outside the bounds. The event is the set's first sustained departure: the first rep k with v_k = 1 and at least 2 of reps k..k+2 outside. Y_t = 1 when that departure starts at one of reps t+1..t+${HORIZON}. Origins need ${MIN_REPS} counted reps, v_t = 0 and no departure yet; an origin whose deciding reps include an uncounted attempt, or run past the end of the set, or that lies after the departure, is excluded.`,
     limitations: ['Labels are produced by the rep counter, not by independent annotation.', 'Development clips were used to tune the counter.', 'Most recordings are single short sets of different people under different loads and camera angles.', 'Test split is empty until the team\'s held-out recordings are added.'],
   },
   status: enough ? 'dev-cv' : 'insufficient-data',
@@ -268,7 +268,7 @@ if (enough) {
     oof: dev.map((e) => ({ group: e.group, t: e.t, actual: e.nextDown, ridge: Math.round(oofR.get(e) * 1000) / 1000, last: e.x.down, median: e.x.down_med })), note: 'Separate fallback experiment; not the primary question.' };
   // Deployable artifact: refit on all dev examples with the selected lambda; threshold from the dev frontier.
   const finalModel = fitLogistic(dev, FEATURE_SETS.full, cvFull.lambda);
-  const modelRun = `hrt-${LABEL_VERSION}-${datasetSha.slice(0, 8)}-${createHash('sha256').update(JSON.stringify({ l: cvFull.lambda, tau: tauStar, f: FEATURES })).digest('hex').slice(0, 6)}`;
+  const modelRun = `hrt-${LABEL_VERSION}-${KEY}-h${HORIZON}-${datasetSha.slice(0, 8)}-${createHash('sha256').update(JSON.stringify({ l: cvFull.lambda, tau: tauStar, theta: thetaStar, f: FEATURES, h: HORIZON })).digest('hex').slice(0, 6)}`;
   results.modelRun = modelRun;
   const artifact = { modelRun, status: results.status, target: TARGET.id, labelVersion: LABEL_VERSION, featureVersion: FEATURE_VERSION, policyVersion: POLICY_VERSION, horizon: HORIZON, minReps: MIN_REPS,
     features: finalModel.features, mean: finalModel.mean, sd: finalModel.sd, coef: finalModel.coef, intercept: finalModel.intercept, lambda: finalModel.lambda, threshold: tauStar, calibration: null,
@@ -289,6 +289,7 @@ if (enough) {
 }
 
 writeFileSync(new URL(`./results-${KEY}${opt('--suffix', '')}.json`, import.meta.url), JSON.stringify(results, null, 2) + '\n');
+if (!results.dev) { try { unlinkSync(new URL(`./model-${KEY}${opt('--suffix', '')}.json`, import.meta.url)); } catch { /* none to remove */ } } // no model is deployable from insufficient data
 writeFileSync(new URL('./data/split-manifest.json', import.meta.url), JSON.stringify({ datasetSha256: datasetSha, groups: Object.fromEntries(Object.values(groups).map((g) => [g.recording, g.split])) }, null, 2) + '\n');
 
 // ---------- console summary ----------

@@ -32,6 +32,12 @@ if dev:
     fr = [p for p in dev["frontier"]["full"] if p["recall"] is not None]
     fig, ax = plt.subplots(figsize=(3.4, 3.0))
     ax.plot([p["falseAlertsPerSet"] for p in fr], [p["recall"] for p in fr], "-o", color=BLUE, ms=3, lw=1, label="logistic model, thresholds")
+    drf = [p for p in dev["frontier"].get("drift", []) if p["recall"] is not None]
+    if drf:
+        ax.plot([p["falseAlertsPerSet"] for p in drf], [p["recall"] for p in drf], "-^", color="#bf5af2", ms=3, lw=1, label="drift rule, thresholds")
+    dsel = dev["policies"].get("drift")
+    if dsel:
+        ax.plot(dsel["falseAlertsPerSet"], dsel["recall"], "^", color="#bf5af2", ms=10, mfc="none", label=f"selected $\\theta$={dsel['theta']}")
     ax.axvline(R["budget"], color=ORANGE, ls="--", lw=0.8, label=f"budget {R['budget']} false alerts/set")
     h, s = dev["policies"]["heuristic"], dev["policies"]["silent"]
     ax.plot(h["falseAlertsPerSet"], h["recall"], "s", color=GREEN, label="existing slow-ascent rule")
@@ -39,8 +45,8 @@ if dev:
     sel = dev["policies"].get("full")
     if sel:
         ax.plot(sel["falseAlertsPerSet"], sel["recall"], "o", color=BLUE, ms=9, mfc="none", label=f"selected $\\tau$={sel['tau']}")
-    ax.set(xlabel="false alerts per monitored set", ylabel="event recall", ylim=(-0.02, 1.02))
-    ax.legend(fontsize=7, loc="upper right")
+    ax.set(xlabel="false alerts per monitored set", ylabel="departure recall", ylim=(-0.02, 1.02), xlim=(-0.02, max(1.0, 2.5 * R["budget"])))
+    ax.legend(fontsize=6.5, loc="upper right")
     fig.tight_layout(); fig.savefig(HERE / f"fig_frontier-{KEY}.pdf"); plt.close(fig)
 
     # Brier by model with the bootstrap interval of the primary difference drawn as text.
