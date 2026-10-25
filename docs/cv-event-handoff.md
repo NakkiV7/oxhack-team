@@ -19,8 +19,8 @@ The following are source findings at **`3d90c3f`**, not live exploit, persistenc
 
 | Gate | Evidence and integration consequence |
 | --- | --- |
-| Request authorization | Squat `server.mjs:165–172,398,438–450` uses loopback restriction for coaching/telemetry but chooses identity from `?user=` or a default. These routes have no owner token/Origin guard. Loopback is a network boundary, not user authentication. Do not expose them as the native gateway. |
-| Owner/session scope | `server.mjs:232–238` lists all squat workouts and accepts a workout ID for reports. `coach-service.mjs:20–30` reads that workout without an owner check, then saves a report for the selected user. `coach-store.mjs:102–116` reads by workout ID and updates reports on workout-ID conflict. Retain the existing owner-scoped gateway instead. |
+| Request authorization | Squat `server.mjs:165–172,402,438–450` uses loopback restriction for coaching/telemetry but chooses identity from `?user=` or a default. These routes have no owner token/Origin guard. Loopback is a network boundary, not user authentication. Do not expose them as the native gateway. |
+| Owner/session scope | `server.mjs:232–238` lists all squat workouts and accepts a workout ID for reports. `coach-service.mjs:20–30` reads that workout without an owner check, then saves a report for the selected user. `coach-store.mjs:112–125` reads by workout ID and updates reports on workout-ID conflict. Retain the existing owner-scoped gateway instead. |
 | Explicit opt-in | UI `326–334` selects/prewarms the first voice on load. `server.mjs:159` migrates Tiger on configuration; UI `624–637` posts analysed observations automatically. Camera start itself **does** require a user action (`476–489`); that permission does not authorize LAN frame publication, cloud telemetry or synthesis. |
 | Cancellation and delivery | UI `773–791` awaits cue/explanation work, then reads mutable `cl` and updates/speaks even if the attempt was cancelled or replaced. A rejected `cueReady` falls through to `cueFailed` and accesses `cl.cue.text`. Keep native generation/expiry/deduplication guards and recheck captured context after every await. Record delivered only on actual playback acceptance. |
 | Replay and loss | UI `503–511,557–572` normally loops video while counter time uses `video.currentTime`; complete pose absence skips `counter.update`. Regressing media time and unfinished attempts across loss remain gates. Each replay pass/seek needs a new generation and movement reset; do not stitch a rep across either. |
@@ -61,4 +61,12 @@ node --check prototype/shared/cv-feedback.mjs
 git diff --check
 ```
 
-Native regression selectors prepared for the primary's coordinated queue: `SpottrCoreTests/VoiceCuePlaybackTests`, `SpottrCoreTests/RepCounterTests`, `SpottrCoreTests/PoseTests`; iOS `VoiceFeedbackTests`, `PoseDetectorTests`. No native/shared simulator, camera, model, provider, server or database acceptance was run by this lane. Native fixture decoding/wiring and actual UI/device checks remain with primary. No TestFlight upload or merge is included.
+Observed: **52 tests passed, 0 failures** (11 adapter/fixture checks and 41 existing push-up checks); syntax and diff checks passed. Browser module parsing used exact Git blobs, regex extraction of `<script type="module">`, and Node's parser on stdin; it did not execute imports or page initialization. Historical parser failure and current parser success are separate from browser/device acceptance.
+
+Native regression selectors prepared for the primary's coordinated queue:
+
+```sh
+swift test --filter 'VoiceCuePlaybackTests|countsOnlyAfterReturningFromBottomToTop|losesIncompleteRepWhenTrackingIsUnreliable|rejectsBrokenMovementContinuity|doesNotCountHalfRepsOrOneFrameAtDepth|resetDropsIncompleteRepButPreservesCount|measuresAnglesInImageSpaceRatherThanStretchedNormalizedSpace|measuresPushupBodyLineSeparatelyFromArmDepth'
+```
+
+For the existing native iOS test target, select `VoiceFeedbackTests` and `PoseDetectorTests`. The core rep/pose tests use top-level Swift Testing functions, rather than XCTest classes named after their files. No native/shared simulator, camera, model, provider, server or database acceptance was run by this lane. Native fixture decoding/wiring and actual UI/device checks remain with primary. No TestFlight upload or merge is included.
