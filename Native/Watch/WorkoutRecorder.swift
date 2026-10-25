@@ -25,6 +25,7 @@ final class WorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBu
     }
 
     var onHeart: ((SensorReading) -> Void)?
+    var onEnergy: ((ActiveEnergy) -> Void)?
     var onMotion: ((SensorReading, SensorReading) -> Void)?
     var onState: ((State) -> Void)?
     private(set) var state = State.idle { didSet { onState?(state) } }
@@ -45,7 +46,7 @@ final class WorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBu
         guard workout == nil, HKHealthStore.isHealthDataAvailable() else { state = .unavailable; return }
         let token = capture.start(); generation = token
         state = .requestingAccess
-        health.requestAuthorization(toShare: [.workoutType()], read: [HKQuantityType(.heartRate)]) { [weak self] success, error in
+        health.requestAuthorization(toShare: [.workoutType()], read: [HKQuantityType(.heartRate), HKQuantityType(.activeEnergyBurned)]) { [weak self] success, error in
             Task { @MainActor in
                 guard let self, self.generation == token, self.state == .requestingAccess else { return }
                 guard success, error == nil, self.health.authorizationStatus(for: .workoutType()) == .sharingAuthorized else {
@@ -65,6 +66,7 @@ final class WorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBu
             let session = try HKWorkoutSession(healthStore: health, configuration: config)
             let builder = session.associatedWorkoutBuilder()
             builder.dataSource = HKLiveWorkoutDataSource(healthStore: health, workoutConfiguration: config)
+            builder.dataSource?.enableCollection(for: HKQuantityType(.activeEnergyBurned), predicate: nil)
             session.delegate = self; builder.delegate = self
             self.workout = session; self.builder = builder
             let date = Date(); session.startActivity(with: date)
@@ -153,13 +155,24 @@ final class WorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBu
     nonisolated func workoutBuilderDidCollectEvent(_ workoutBuilder: HKLiveWorkoutBuilder) {}
     nonisolated func workoutBuilder(_ workoutBuilder: HKLiveWorkoutBuilder, didCollectDataOf collectedTypes: Set<HKSampleType>) {
         let type = HKQuantityType(.heartRate)
-        guard collectedTypes.contains(type), let stats = workoutBuilder.statistics(for: type),
-              let value = stats.mostRecentQuantity()?.doubleValue(for: HKUnit.count().unitDivided(by: .minute())),
-              let date = stats.mostRecentQuantityDateInterval()?.end else { return }
+        if collectedTypes.contains(type), let stats = workoutBuilder.statistics(for: type),
+           let value = stats.mostRecentQuantity()?.doubleValue(for: HKUnit.count().unitDivided(by: .minute())),
+           let date = stats.mostRecentQuantityDateInterval()?.end {
+            Task { @MainActor in
+                guard self.builder === workoutBuilder,
+                      self.capture.acceptsSamples(for: self.generation, measuredAt: date) else { return }
+                self.onHeart?(.init(value: value, date: date))
+            }
+        }
+        let energyType = HKQuantityType(.activeEnergyBurned)
+        guard collectedTypes.contains(energyType), let stats = workoutBuilder.statistics(for: energyType),
+              let value = stats.sumQuantity()?.doubleValue(for: .kilocalorie()) else { return }
+        let date = stats.endDate
         Task { @MainActor in
-            guard self.builder === workoutBuilder,
-                  self.capture.acceptsSamples(for: self.generation, measuredAt: date) else { return }
-            self.onHeart?(.init(value: value, date: date))
+            let energy = ActiveEnergy(recordingID: self.generation, kilocalories: value, asOf: date)
+            guard self.builder === workoutBuilder, self.state == .recording,
+                  self.capture.acceptsSamples(for: self.generation, measuredAt: date), energy.isValid(at: Date()) else { return }
+            self.onEnergy?(energy)
         }
     }
 }

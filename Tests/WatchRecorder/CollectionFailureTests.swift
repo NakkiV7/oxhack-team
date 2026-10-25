@@ -153,6 +153,96 @@ import CoreMotion
         expect(recorder.state == .idle, "Late startup success cannot relabel cancelled recording")
     }
 
+    @MainActor static func energyOnlyCallbacksUseCumulativeKilocaloriesAndStatisticsDate() async {
+        let recorder = WorkoutRecorder()
+        var energy: [ActiveEnergy] = [], heart: [SensorReading] = []
+        recorder.onEnergy = { energy.append($0) }; recorder.onHeart = { heart.append($0) }
+        let before = HKWorkoutSession.created.count
+        recorder.start()
+        await until { HKWorkoutSession.created.count == before + 1 }
+        let builder = HKWorkoutSession.created[before].liveBuilder
+        expect(HKHealthStore.requestedReadTypes == [.heartRate, .activeEnergyBurned], "Explicit recording requests both HR and active-energy reading")
+        expect(builder.dataSource?.typesToCollect.contains(HKQuantityType(.activeEnergyBurned)) == true, "The workout datasource collects active energy")
+        let date = Date()
+        builder.statisticsByType[.activeEnergyBurned] = HKStatistics(sum: HKQuantity(unit: .kilocalorie(), doubleValue: 5), endDate: date)
+        recorder.workoutBuilder(builder, didCollectDataOf: [HKQuantityType(.activeEnergyBurned)])
+        for _ in 0..<20 { await Task.yield() }
+        expect(energy.isEmpty, "Collection still pending cannot publish energy")
+        builder.collectionCompletion?(true, nil)
+        await until { recorder.state == .recording }
+        recorder.workoutBuilder(builder, didCollectDataOf: [HKQuantityType(.activeEnergyBurned)])
+        await until { energy.count == 1 }
+        recorder.workoutBuilder(builder, didCollectDataOf: [HKQuantityType(.activeEnergyBurned)])
+        await until { energy.count == 2 }
+        expect(energy.map(\.kilocalories) == [5, 5], "Repeated cumulative callbacks do not increment the total")
+        expect(energy.allSatisfy { $0.asOf == date }, "Statistics endDate survives; callback/send time is not a measurement timestamp")
+        expect(heart.isEmpty, "Energy-only callbacks do not fabricate HR")
+        builder.statisticsByType[.activeEnergyBurned] = HKStatistics(sum: HKQuantity(unit: .kilocalorie(), doubleValue: 7), endDate: date)
+        builder.statisticsByType[.heartRate] = HKStatistics(recent: HKQuantity(unit: HKUnit.count().unitDivided(by: .minute()), doubleValue: 125), endDate: date)
+        recorder.workoutBuilder(builder, didCollectDataOf: [HKQuantityType(.heartRate), HKQuantityType(.activeEnergyBurned)])
+        await until { energy.count == 3 && heart.count == 1 }
+        expect(energy.last?.kilocalories == 7 && heart.last?.value == 125, "A combined callback preserves independent HR and cumulative-energy values")
+        recorder.end(); await until { recorder.state == .saved }
+    }
+
+    @MainActor static func invalidAndMissingEnergyNeverBecomeAnEstimate() async {
+        let recorder = WorkoutRecorder()
+        var energy: [ActiveEnergy] = []
+        recorder.onEnergy = { energy.append($0) }
+        let before = HKWorkoutSession.created.count
+        recorder.start(); await until { HKWorkoutSession.created.count == before + 1 }
+        let builder = HKWorkoutSession.created[before].liveBuilder
+        builder.collectionCompletion?(true, nil); await until { recorder.state == .recording }
+        let now = Date()
+        for (value, date) in [(-1.0, now), (.nan, now), (.infinity, now),
+                              (5, Date(timeIntervalSince1970: .nan)), (5, now.addingTimeInterval(30)),
+                              (5, now.addingTimeInterval(-60))] {
+            builder.statisticsByType[.activeEnergyBurned] = HKStatistics(sum: HKQuantity(unit: .kilocalorie(), doubleValue: value), endDate: date)
+            recorder.workoutBuilder(builder, didCollectDataOf: [HKQuantityType(.activeEnergyBurned)])
+        }
+        builder.statisticsByType[.activeEnergyBurned] = HKStatistics(recent: HKQuantity(unit: .kilocalorie(), doubleValue: 99), endDate: now)
+        recorder.workoutBuilder(builder, didCollectDataOf: [HKQuantityType(.activeEnergyBurned)])
+        for _ in 0..<30 { await Task.yield() }
+        expect(energy.isEmpty, "Missing sum, invalid kcal, nonfinite/future/pre-run dates stay unavailable; recent quantity is not a total")
+        builder.statisticsByType[.activeEnergyBurned] = HKStatistics(sum: HKQuantity(unit: .kilocalorie(), doubleValue: 0), endDate: Date())
+        recorder.workoutBuilder(builder, didCollectDataOf: [HKQuantityType(.activeEnergyBurned)])
+        await until { energy.count == 1 }
+        expect(energy.last?.kilocalories == 0, "A real reported zero is retained rather than confused with missing data")
+        recorder.end(); await until { recorder.state == .saved }
+    }
+
+    @MainActor static func energyIdentitySurvivesResumeButRejectsStoppedOrReplacedBuilders() async {
+        let recorder = WorkoutRecorder()
+        var energy: [ActiveEnergy] = []
+        recorder.onEnergy = { energy.append($0) }
+        let before = HKWorkoutSession.created.count
+        recorder.start(); await until { HKWorkoutSession.created.count == before + 1 }
+        let old = HKWorkoutSession.created[before].liveBuilder
+        old.collectionCompletion?(true, nil); await until { recorder.state == .recording }
+        func deliver(_ builder: HKLiveWorkoutBuilder, _ value: Double) {
+            builder.statisticsByType[.activeEnergyBurned] = HKStatistics(sum: HKQuantity(unit: .kilocalorie(), doubleValue: value), endDate: Date())
+            recorder.workoutBuilder(builder, didCollectDataOf: [HKQuantityType(.activeEnergyBurned)])
+        }
+        deliver(old, 7); await until { energy.count == 1 }
+        let firstID = energy.first?.recordingID
+        recorder.pause(); deliver(old, 8)
+        for _ in 0..<20 { await Task.yield() }
+        expect(energy.count == 1, "Paused callbacks cannot publish energy")
+        recorder.resume(); deliver(old, 6); await until { energy.count == 2 }
+        expect(energy.last?.recordingID == firstID && energy.last?.kilocalories == 6, "Resume retains the run ID and permits a lower genuine cumulative revision")
+        deliver(old, 9); recorder.end()
+        await until { recorder.state == .saved }
+        expect(energy.count == 2, "A queued callback cannot publish after stop")
+        recorder.start(); await until { HKWorkoutSession.created.count == before + 2 }
+        let current = HKWorkoutSession.created[before + 1].liveBuilder
+        current.collectionCompletion?(true, nil); await until { recorder.state == .recording }
+        deliver(old, 100); deliver(current, 1)
+        await until { energy.count == 3 }
+        expect(energy.count == 3 && energy.last?.kilocalories == 1 && energy.last?.recordingID != firstID,
+               "A replacement builder has a new run ID and rejects the old builder's late callback")
+        recorder.end(); await until { recorder.state == .saved }
+    }
+
     @MainActor static func main() async {
         await recordingWaitsForSuccessfulCollectionAndTracksPause()
         await cancelledAuthorizationCannotRelabelIdleOrBeginAWorkout()
@@ -161,7 +251,10 @@ import CoreMotion
         await successfulCollectionRemainsActive()
         await failedCollectionReleasesCaptureAndAllowsRetry(paused: false)
         await failedCollectionReleasesCaptureAndAllowsRetry(paused: true)
+        await energyOnlyCallbacksUseCumulativeKilocaloriesAndStatisticsDate()
+        await invalidAndMissingEnergyNeverBecomeAnEstimate()
+        await energyIdentitySurvivesResumeButRejectsStoppedOrReplacedBuilders()
         if failures > 0 { print("Watch recorder: \(failures) failures"); exit(1) }
-        print("Watch recorder: 7 behavioral cases passed (SDK doubles; no HealthKit/device acceptance)")
+        print("Watch recorder: 10 behavioral cases passed (SDK doubles; no HealthKit/device acceptance)")
     }
 }

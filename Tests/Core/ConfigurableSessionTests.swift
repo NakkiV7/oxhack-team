@@ -11,6 +11,30 @@ private func customPlan(_ items: String = """
     """.utf8))
 }
 
+@Test func configuredSessionRetainsValidEnergyAndRejectsInvalidFutureOrPriorRunTiming() throws {
+    var session = try ConfigurableSession(plan: customPlan(), availableSupport: ["Wall"])
+    session.start(at: 0)
+    let now = session.date.addingTimeInterval(10), run = UUID()
+    func message(_ energy: ActiveEnergy) -> WatchTelemetry {
+        .init(sessionID: session.id, sentAt: now, heartRate: nil, accelerationG: nil,
+              rotationRadiansPerSecond: nil, activeEnergy: energy)
+    }
+    for energy in [ActiveEnergy(recordingID: run, kilocalories: -.infinity, asOf: now),
+                   .init(recordingID: run, kilocalories: 2, asOf: now.addingTimeInterval(3)),
+                   .init(recordingID: run, kilocalories: 2, asOf: session.date.addingTimeInterval(-3))] {
+        session.receiveTelemetry(message(energy), now: now)
+    }
+    #expect(session.record.telemetry.isEmpty)
+    let accepted = message(.init(recordingID: run, kilocalories: 2, asOf: session.date))
+    session.receiveTelemetry(accepted, now: now)
+    #expect(session.record.telemetry == [accepted])
+    session.finish(at: 1)
+    session.receiveTelemetry(.init(sessionID: session.id, sentAt: now.addingTimeInterval(1), heartRate: nil,
+                                   accelerationG: nil, rotationRadiansPerSecond: nil,
+                                   activeEnergy: .init(recordingID: run, kilocalories: 3, asOf: now)), now: now.addingTimeInterval(1))
+    #expect(session.record.telemetry == [accepted])
+}
+
 @Test func configuredQueuePreservesApprovedOrderQuantitiesAndUnitsWithoutCompletedWork() throws {
     let run = try ConfigurableSession(plan: customPlan(), availableSupport: ["Wall"])
     #expect(run.steps.map(\.exerciseID) == ["wallPushup", "wallPushup", "plank"])

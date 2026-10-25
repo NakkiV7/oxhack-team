@@ -37,15 +37,29 @@ public struct WorkoutSyncClient: Sendable {
               baseURL.user == nil, baseURL.password == nil, baseURL.query == nil, baseURL.fragment == nil,
               !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw WorkoutSyncError.configuration }
         try Task.checkCancellation()
+        struct LegacyTelemetry: Encodable {
+            let sessionID: UUID
+            let sentAt: Date
+            let heartRate: SensorReading?
+            let accelerationG: SensorReading?
+            let rotationRadiansPerSecond: SensorReading?
+            init(_ sample: WatchTelemetry) {
+                sessionID = sample.sessionID; sentAt = sample.sentAt; heartRate = sample.heartRate
+                accelerationG = sample.accelerationG; rotationRadiansPerSecond = sample.rotationRadiansPerSecond
+            }
+        }
         struct SyncRecord: Encodable {
             let id: UUID
             let date: Date
             let sets: [SetRecord]
-            let telemetry: [WatchTelemetry]
+            let telemetry: [LegacyTelemetry]
             let loggedSets: [LoggedSet]
         }
         struct Upload: Encodable { let installationID: String; let record: SyncRecord }
-        let projected = SyncRecord(id: record.id, date: record.date, sets: record.sets, telemetry: record.telemetry, loggedSets: record.loggedSets)
+        let projected = SyncRecord(id: record.id, date: record.date, sets: record.sets,
+                                   telemetry: record.telemetry.filter {
+                                       $0.activeEnergy == nil || $0.heartRate != nil || $0.accelerationG != nil || $0.rotationRadiansPerSecond != nil
+                                   }.map(LegacyTelemetry.init), loggedSets: record.loggedSets)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         encoder.dateEncodingStrategy = .custom { date, output in

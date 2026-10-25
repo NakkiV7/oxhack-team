@@ -95,11 +95,74 @@ import CoreMotion
         await settle()
     }
 
+    @MainActor static func energyOnlyTelemetryPreservesTheCumulativeObservationAndResetsForANewSession() async {
+        let store = WatchStore()
+        var session = TrainingSession(); session.start(at: 0)
+        store.link.onSnapshot?(CompanionSnapshot(session: session))
+        await settle()
+        store.record(); await settle()
+        guard let workout = HKWorkoutSession.created.last else { expect(false, "Recorder starts for fresh session"); return }
+        workout.liveBuilder.collectionCompletion?(true, nil); await settle()
+        let date = Date()
+        workout.liveBuilder.statisticsByType[.activeEnergyBurned] = HKStatistics(sum: HKQuantity(unit: .kilocalorie(), doubleValue: 5), endDate: date)
+        store.recorder.workoutBuilder(workout.liveBuilder, didCollectDataOf: [HKQuantityType(.activeEnergyBurned)])
+        await settle()
+        store.tick(); store.tick()
+        expect(store.activeEnergy?.kilocalories == 5 && store.activeEnergy?.asOf == date, "Store retains actual energy and statistics timestamp")
+        expect(store.link.samples.count == 2 && store.link.samples.allSatisfy { $0.activeEnergy == store.activeEnergy }, "Energy-only telemetry carries the same cumulative observation without summing ticks")
+        expect(store.link.samples.allSatisfy { $0.heartRate == nil }, "Energy availability cannot create heart-rate data")
+        let count = store.link.samples.count
+        session.pause(at: 1)
+        store.link.onSnapshot?(CompanionSnapshot(session: session, sentAt: Date().addingTimeInterval(0.001)))
+        await settle(); store.tick()
+        expect(store.link.samples.count == count, "Paused store does not send cached energy")
+        var next = TrainingSession(); next.start(at: 0)
+        store.link.onSnapshot?(CompanionSnapshot(session: next, sentAt: Date().addingTimeInterval(0.002)))
+        await settle()
+        expect(store.activeEnergy == nil, "A new phone session cannot inherit the old recording's energy")
+        store.record(); await settle()
+        expect(store.activeEnergy == nil, "Starting again does not invent an energy estimate before callbacks")
+        store.recorder.end(); await settle()
+    }
+
+    @MainActor static func olderEnergyCannotReplaceTheLatestEstimateButCorrectionsCanLowerIt() async {
+        let store = WatchStore()
+        var session = TrainingSession(); session.start(at: 0)
+        store.link.onSnapshot?(CompanionSnapshot(session: session)); await settle()
+        store.record(); await settle()
+        guard let builder = HKWorkoutSession.created.last?.liveBuilder else { expect(false, "Recorder starts for fresh session"); return }
+        builder.collectionCompletion?(true, nil); await settle()
+        let first = Date(), second = first.addingTimeInterval(0.001), third = first.addingTimeInterval(0.002)
+        func deliver(_ kcal: Double, asOf: Date) async {
+            builder.statisticsByType[.activeEnergyBurned] = HKStatistics(sum: HKQuantity(unit: .kilocalorie(), doubleValue: kcal), endDate: asOf)
+            store.recorder.workoutBuilder(builder, didCollectDataOf: [HKQuantityType(.activeEnergyBurned)])
+            await settle()
+        }
+        await deliver(7, asOf: second)
+        let recordingID = store.activeEnergy?.recordingID
+        await deliver(5, asOf: first)
+        expect(store.link.samples.isEmpty, "The ordering regression is exercised before the next telemetry tick")
+        expect(store.activeEnergy?.kilocalories == 7 && store.activeEnergy?.asOf == second,
+               "An older same-run callback cannot replace a newer cumulative observation before tick")
+        store.tick()
+        expect(store.link.samples.last?.activeEnergy?.kilocalories == 7 && store.link.samples.last?.activeEnergy?.asOf == second,
+               "The next tick sends the latest timestamp rather than the last-arriving stale callback")
+        await deliver(6, asOf: second)
+        expect(store.activeEnergy?.kilocalories == 6 && store.activeEnergy?.asOf == second,
+               "An equal-asOf correction can lower cumulative energy")
+        await deliver(4, asOf: third)
+        expect(store.activeEnergy?.kilocalories == 4 && store.activeEnergy?.asOf == third && store.activeEnergy?.recordingID == recordingID,
+               "A newer-asOf correction can lower energy without changing the recording identity")
+        store.recorder.end(); await settle()
+    }
+
     @MainActor static func main() async {
         await endingRequiresConfirmationAndRejectsChangedContext()
         await pendingCollectionDoesNotClaimRecordingOrSendTelemetry()
         await staleDuplicateCannotResumeAPausedRecorder()
+        await energyOnlyTelemetryPreservesTheCumulativeObservationAndResetsForANewSession()
+        await olderEnergyCannotReplaceTheLatestEstimateButCorrectionsCanLowerIt()
         if failures > 0 { print("Watch store: \(failures) failures"); exit(1) }
-        print("Watch store: 3 behavioral cases passed (SDK/link doubles; no device acceptance)")
+        print("Watch store: 5 behavioral cases passed (SDK/link doubles; no device acceptance)")
     }
 }

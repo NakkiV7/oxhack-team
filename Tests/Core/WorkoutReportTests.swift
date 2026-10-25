@@ -2,6 +2,30 @@ import Foundation
 import Testing
 @testable import SpottrCore
 
+@Test func energyReportUsesLatestCumulativeObservationPerRunWithoutSummingOrMonotonicInvention() {
+    let id = UUID(), run = UUID(), secondRun = UUID(), start = Date(timeIntervalSince1970: 100)
+    func message(_ sent: Double, _ asOf: Double, _ value: Double, _ recordingID: UUID, owner: UUID? = nil) -> WatchTelemetry {
+        .init(sessionID: owner ?? id, sentAt: start.addingTimeInterval(sent), heartRate: nil,
+              accelerationG: nil, rotationRadiansPerSecond: nil,
+              activeEnergy: .init(recordingID: recordingID, kilocalories: value, asOf: start.addingTimeInterval(asOf)))
+    }
+    let first = [message(2, 1, 5, run), message(3, 1, 5, run), message(6, 5, 7, run)]
+    #expect(WorkoutReport(record: .init(id: id, date: start, sets: [], telemetry: first)).activeEnergy.map(\.kilocalories) == [7])
+    #expect(WorkoutReport(record: .init(id: id, date: start, sets: [], telemetry: [message(60, 5, 7, run)])).activeEnergy.map(\.kilocalories) == [7])
+    let samples = first + [message(8, 5, 6, run), message(9, 4, 99, run), message(10, 9, 0, secondRun),
+                           message(11, 10, 100, run, owner: UUID()), message(12, 11, -1, run),
+                           message(13, 16, 100, run), message(14, -3, 100, run),
+                           message(.nan, 15, 100, run), message(16, .nan, 100, run)]
+    let record = SessionRecord(id: id, date: start, sets: [], telemetry: Array(samples.reversed()))
+    let energy = WorkoutReport(record: record).activeEnergy
+    #expect(energy.map(\.recordingID) == [run, secondRun])
+    #expect(energy.map(\.kilocalories) == [6, 0])
+    #expect(energy.map(\.asOf) == [start.addingTimeInterval(5), start.addingTimeInterval(9)])
+    #expect(WorkoutReport(record: .init(id: id, date: start, sets: [])).activeEnergy.isEmpty)
+    let noEnergy = SessionRecord(id: id, date: start, sets: [])
+    #expect(CoachGrounding.facts(history: [record]) == CoachGrounding.facts(history: [noEnergy]))
+}
+
 private func highlightRecord(reps: Int, source: InputSource = .camera, exercise: Exercise = .squat,
                              reason: StopReason = .voluntary, date: Double = 100) -> SessionRecord {
     .init(id: UUID(), date: Date(timeIntervalSince1970: date), sets: [

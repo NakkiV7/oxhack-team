@@ -7,6 +7,7 @@ final class WatchStore {
     var reachable = false
     var status: String?
     var heart: SensorReading?
+    var activeEnergy: ActiveEnergy?
     var acceleration: SensorReading?
     var rotation: SensorReading?
     private(set) var recordingState = WorkoutRecorder.State.idle
@@ -24,6 +25,12 @@ final class WatchStore {
             Task { @MainActor in self?.reachable = reachable; self?.link.request() }
         }
         recorder.onHeart = { [weak self] reading in self?.heart = reading }
+        recorder.onEnergy = { [weak self] energy in
+            guard let self else { return }
+            if let previous = self.activeEnergy, previous.recordingID == energy.recordingID,
+               energy.asOf < previous.asOf { return }
+            self.activeEnergy = energy
+        }
         recorder.onMotion = { [weak self] acceleration, rotation in self?.acceleration = acceleration; self?.rotation = rotation }
         recorder.onState = { [weak self] state in
             self?.recordingState = state
@@ -65,15 +72,16 @@ final class WatchStore {
     func record() {
         guard let snapshot = state.snapshot, snapshot.isFresh(at: now()), [.active, .rest].contains(snapshot.phase) else { return }
         guard !recordingBusy else { return }
-        heart = nil; acceleration = nil; rotation = nil
+        heart = nil; acceleration = nil; rotation = nil; activeEnergy = nil
         recorder.start()
     }
     private func stopRecording() {
-        recorder.end(); heart = nil; acceleration = nil; rotation = nil
+        recorder.end(); heart = nil; acceleration = nil; rotation = nil; activeEnergy = nil
     }
     func tick() {
         guard let snapshot = state.snapshot, snapshot.isFresh(at: now()) else { recorder.pause(); return }
         guard recordingState == .recording else { return }
-        link.telemetry(.init(sessionID: snapshot.sessionID, heartRate: heart, accelerationG: acceleration, rotationRadiansPerSecond: rotation))
+        link.telemetry(.init(sessionID: snapshot.sessionID, heartRate: heart, accelerationG: acceleration,
+                             rotationRadiansPerSecond: rotation, activeEnergy: activeEnergy))
     }
 }
