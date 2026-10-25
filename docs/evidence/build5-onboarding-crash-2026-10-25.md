@@ -1,6 +1,6 @@
 # Build 5 onboarding crash investigation
 
-The reported physical crash immediately after onboarding in **TestFlight 0.1 (5)** remains unresolved. No physical crash report or reproduction is available. This investigation changes documentation only; it does not establish a fix.
+The reported physical crash immediately after onboarding in **TestFlight 0.1 (5)** remains unresolved. No matching crash report or failing physical reproduction is available. Subsequent checks on Omar's phone and the installed simulator app did not reproduce it, as detailed below. This investigation changes documentation only; it does not establish a fix.
 
 ## Release and symbols
 
@@ -32,7 +32,23 @@ The primary checkout's private `.local/build5-onboarding-probe-20261025/diagnost
 - Expanded final run `06:47:32_41567da4`: **2/2 passed**, 138.7 seconds total. One case used all goals, Regular practice, seven days and a blank name, including cold-relaunch persistence. The other used Mobility, Starting out, one day and an Arabic/emoji name with the keyboard open. Both completed onboarding and visited all tabs, practice suggestions and empty charts without Send/Start.
 - Earlier expanded attempts stopped at Stepper/text accessibility assertions before completion. The harness was corrected; those failures were not reproduced app crashes.
 
-The probe used Release optimization, unsigned simulator execution and `ENABLE_TESTABILITY=YES`. It was not the delivered arm64 executable on the affected phone. No simulator/device UI, installation, reset, native build or upload was performed in this investigation.
+The probe used Release optimization, unsigned simulator execution and `ENABLE_TESTABILITY=YES`. It was not the delivered arm64 executable on the affected phone. The initial evidence-only pass performed no simulator/device UI, installation, reset, native build or upload; the later requested live checks are recorded separately below.
+
+## Requested live follow-up: current simulator and Omar's phone
+
+Omar subsequently requested a fresh check of the installed simulator app and his connected phone. No app was built, installed, replaced, reset or uploaded for this check.
+
+**Physical phone:** Apple's device inventory identified Omar's wired iPhone 14 Pro Max, iOS **27.2 (24B115)**, Developer Mode enabled, with Spottr **0.1 (5)** installed. This identifies the phone checked now; it does not identify the original reporter's device or independently attest the installed app's distribution origin. After Omar unlocked it and opened Spottr, a private device screenshot visibly showed Today with his saved profile. Spottr process **2616** remained present before and after the subsequent test.
+
+The device CLI provides screen capture but no tap command. Omar therefore performed Profile → Restart introduction, retained his choices, completed onboarding and visited Progress, Skills and Coach, then explicitly reported **“Completed and stayed open”**. These transition/tap observations are user-reported; the agent did not remotely perform or record the whole sequence. A later screenshot captured a lock-screen overlay over Profile rather than a clean final Today frame, so it does not independently verify the final transition. A fresh post-test read found **zero Spottr-named system crash reports** and the same Spottr PID. The earlier bounded device inventory had **no JetsamEvent dated 25 October**. This is a successful human-assisted retry on this phone, not proof that an intermittent crash cannot occur elsewhere.
+
+**Simulator:** reused **Musalli-Test, iOS 26.5**, initially shut down. The already-installed Debug app is labelled **0.1 (1)** and includes later integration work; it is different from the frozen Release build-5 probe. The installed executable, `Spottr.debug.dylib` and SmartSpectra framework matched the corresponding primary `DerivedData/Build/Products/Debug-iphonesimulator/Spottr.app` files byte-for-byte. The app code dylib SHA-256 was `376284814cacc5ce5ee88940df5fb9ddce6649fb9b6cf93e15752ad14f3c63b1`; this is installed-artifact identity, not a claim that every current uncommitted source edit was built.
+
+Launched the installed app with a fresh UUID data namespace and forced onboarding. The agent selected Strength/Stamina/Mobility and seven days, skipped baseline/measurements, and completed with a blank name. Although the text-entry tool reported success, its snapshot never showed the attempted synthetic name or keyboard; text entry is not counted as verified. The saved namespaced profile confirms the blank name, three goals and target seven. Runtime snapshots confirmed **Today after completion**, then **Progress with an empty chart**, **Skills** and **Coach**, without sending a provider request or starting a workout. No app crash was observed. The final Today tap succeeded but its automatic snapshot did not settle; that final screen is not asserted. Two earlier tool issues (initial unavailable accessibility hierarchy and snapshot timeouts) were observation-tool failures, not reproduced app terminations.
+
+The simulator launch log also reports duplicate Objective-C classes in **both SmartSpectra and `Spottr.debug.dylib`**, including `TFLBufferConvert`, `GUSUtilStatusWrapper` and `MPPMetalSharedResources`. This concrete runtime warning was handed to the primary integration chat as a separate release gate. It is not a reproduced crash or an explanation of build 5, which contains no SmartSpectra integration. No SDK/integration edit was made in this lane.
+
+Only the namespaced Spottr process was stopped at the end; Musalli-Test was explicitly released to primary and left booted. No default profile/history reset or further simulator/device UI was performed after handoff. Private screenshots, process/log inventories and runtime snapshots remain in `.local/build5-crash-investigation/`; screenshots and raw account/device inventories are not attached to the public PR.
 
 ## Bounded source trace
 
