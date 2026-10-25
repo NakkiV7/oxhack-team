@@ -79,6 +79,12 @@ private struct CalendarSection: View {
                 HStack(spacing: 14) {
                     legend(Palette.blue, "Camera tracked"); legend(Palette.green, "Logged"); legend(nil, "Today")
                 }.font(.caption).foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    if sampleDays { Text("Faded days are sample training, not recorded on this phone.") }
+                    Spacer(minLength: 4)
+                    Button(sampleDays ? "Hide samples" : "Show samples") { sampleDays.toggle() }.fontWeight(.semibold).foregroundStyle(Palette.blue)
+                        .accessibilityIdentifier("calendar-samples")
+                }.font(.caption).foregroundStyle(.secondary).buttonStyle(.plain)
             }.padding(18).background(Palette.surface, in: RoundedRectangle(cornerRadius: 25))
 
             if let selected { DayDetail(date: selected, records: history.filter { calendar.isDate($0.date, inSameDayAs: selected) }, profile: profile, history: history) }
@@ -111,17 +117,19 @@ private struct DayCell: View {
     let action: () -> Void
     var body: some View {
         let tint = day?.kind == .camera ? Palette.blue : Palette.green
+        let sample = day?.isSample == true
         Button(action: action) {
             Text(date.formatted(.dateTime.day())).font(.subheadline.weight(day == nil ? .regular : .semibold)).monospacedDigit()
-                .foregroundStyle(day == nil ? Palette.ink : .white)
+                .foregroundStyle(day == nil || sample ? Palette.ink : .white)
                 .frame(width: 36, height: 36)
-                .background { if day != nil { Circle().fill(tint) } }
+                .background { if day != nil { Circle().fill(sample ? tint.opacity(0.22) : tint) } }
+                .overlay { if sample { Circle().strokeBorder(tint, style: StrokeStyle(lineWidth: 1.5, dash: [3, 2])) } }
                 .overlay { if today { Circle().stroke(Palette.ink, lineWidth: 1.5).padding(-3) } }
                 .overlay { if selected { Circle().stroke(Palette.blue.opacity(0.45), lineWidth: 3).padding(-5) } }
                 .frame(maxWidth: .infinity, minHeight: 42)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(date.formatted(date: .complete, time: .omitted) + (day.map { ", \($0.reps) reps, \($0.kind == .camera ? "camera tracked" : "logged")" } ?? ", no training"))
+        .accessibilityLabel(date.formatted(date: .complete, time: .omitted) + (day.map { ", \($0.reps) reps, \($0.isSample ? "sample" : $0.kind == .camera ? "camera tracked" : "logged")" } ?? ", no training"))
         .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
         .accessibilityIdentifier("calendar-day-\(Calendar.current.component(.day, from: date))")
     }
@@ -136,16 +144,18 @@ private struct DayDetail: View {
         let reports = records.map(WorkoutReport.init(record:)).filter { !$0.sets.isEmpty }.sorted { $0.date < $1.date }
         let sets = reports.flatMap(\.sets).filter { $0.source != .video }
         let heart = reports.compactMap(\.heartRate.average)
+        let sample = records.contains { TrainingCalendar.isSample($0.id) }
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text(date.formatted(.dateTime.weekday(.wide).day().month(.wide))).font(.headline)
                 Spacer()
                 if !sets.isEmpty {
-                    let camera = sets.contains { $0.source == .camera }
-                    Text(camera ? "Camera tracked" : "Logged").font(.caption.weight(.semibold)).padding(.horizontal, 10).padding(.vertical, 5)
-                        .foregroundStyle(camera ? Palette.blue : Palette.green).background((camera ? Palette.blue : Palette.green).opacity(0.1), in: Capsule())
+                    let tint = sample ? Palette.muted : sets.contains { $0.source == .camera } ? Palette.blue : Palette.green
+                    Text(sample ? "Sample" : tint == Palette.blue ? "Camera tracked" : "Logged").font(.caption.weight(.semibold)).padding(.horizontal, 10).padding(.vertical, 5)
+                        .foregroundStyle(tint).background(tint.opacity(0.1), in: Capsule())
                 }
             }
+            if sample { Text("Sample training for the demo, not recorded on this phone.").font(.caption).foregroundStyle(.secondary) }
             if sets.isEmpty {
                 Text("No training recorded on this day.").font(.subheadline).foregroundStyle(.secondary)
             } else {
@@ -171,7 +181,7 @@ private struct DayDetail: View {
                 }
                 ForEach(records.filter { !$0.sets.isEmpty || !$0.loggedSets.isEmpty }) { record in
                     NavigationLink { SessionReportView(record: record, profile: profile, history: history) } label: {
-                        Label("Open the \(record.date.formatted(date: .omitted, time: .shortened)) session report", systemImage: "doc.text")
+                        Label("Open the \(record.date.formatted(date: .omitted, time: .shortened)) \(sample ? "sample" : "session") report", systemImage: "doc.text")
                             .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, alignment: .leading)
                     }.foregroundStyle(Palette.blue)
                 }

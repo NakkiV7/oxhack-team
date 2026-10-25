@@ -32,6 +32,10 @@ final class InsightsFlowTests: XCTestCase {
         XCTAssertTrue(today.waitForExistence(timeout: 3))
         XCTAssertTrue(today.label.contains("24 reps, logged"), "Today reads: \(today.label)")
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "3 sets")).firstMatch.exists)
+        // Sample days fill the past for presentations and always say they are samples.
+        XCTAssertTrue(app.buttons["calendar-samples"].exists)
+        let dayOfMonth = Calendar.current.component(.day, from: Date())
+        if dayOfMonth > 1 { XCTAssertTrue(app.buttons["calendar-day-\(dayOfMonth - 1)"].label.hasSuffix("sample"), "Yesterday reads: \(app.buttons["calendar-day-\(dayOfMonth - 1)"].label)") }
         snapshot(app, "1-calendar")
         app.swipeUp()
         snapshot(app, "2-calendar-streaks")

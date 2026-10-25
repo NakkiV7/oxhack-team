@@ -61,6 +61,7 @@ private func camera(_ day: Int, reps: Int, durations: [Double]? = nil, source: I
     #expect(days[today] == nil && days[calendar().startOfDay(for: real.date)] == nil)
     #expect((20...35).contains(days.count))                             // about five days a week over six weeks
     #expect(days.values.contains { $0.kind == .camera } && days.values.contains { $0.kind == .manual })
+    #expect(days.values.allSatisfy(\.isSample) && !TrainingCalendar.days(history: [real], calendar: calendar()).values.contains(where: \.isSample))
     #expect(TrainingCalendar.streaks(trainingDays: Set(days.keys), today: now, calendar: calendar()).current == 2)   // Thursday's real day sits outside the sample
     #expect(TrainingCalendar.sampleHistory(now: now, excluding: [real], calendar: calendar()) == sample)   // the same on every render
 }

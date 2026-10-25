@@ -17,6 +17,8 @@ public enum TrainingCalendar {
         public var id: Date { date }
         /// A day with any camera-tracked set shows as camera tracked; otherwise it was logged.
         public var kind: Kind { cameraSets > 0 ? .camera : .manual }
+        /// A sample day is never mixed with real training, so one sample session means the whole day is sample.
+        public var isSample: Bool { sessionIDs.contains(where: TrainingCalendar.isSample) }
     }
 
     public struct WeekComparison: Equatable, Sendable {
@@ -84,6 +86,10 @@ public enum TrainingCalendar {
         return (current, max(current, longest))
     }
 
+    /// Sample sessions carry this id prefix, so the calendar can show them as samples and never as recorded training.
+    private static let samplePrefix = "5A3B1E00-0000-4000-8000-"
+    public static func isSample(_ id: UUID) -> Bool { id.uuidString.hasPrefix(samplePrefix) }
+
     /// Sample training for presentations: about five days a week over the last six weeks, ending yesterday, with camera
     /// sessions of squats and push-ups and logged accessory work. The same day always gets the same sample, today never gets
     /// one, and a day with real training keeps only its own sessions.
@@ -92,7 +98,7 @@ public enum TrainingCalendar {
         let real = Set(history.map { calendar.startOfDay(for: $0.date) })
         // A fixed scramble of the day number into 0..<100, so the pattern looks irregular but never changes between renders.
         func roll(_ day: Int, _ salt: Int) -> Int { Int(UInt64(truncatingIfNeeded: day &* 31 &+ salt) &* 2_654_435_761 % 100) }
-        func id(_ day: Int, _ index: Int) -> UUID { UUID(uuidString: String(format: "5A3B1E00-0000-4000-8000-%012ld", day * 100 + index))! }
+        func id(_ day: Int, _ index: Int) -> UUID { UUID(uuidString: samplePrefix + String(format: "%012ld", day * 100 + index))! }
         return (1...41).compactMap { offset -> SessionRecord? in
             guard let day = calendar.date(byAdding: .day, value: -offset, to: today), !real.contains(day) else { return nil }
             let n = calendar.ordinality(of: .day, in: .era, for: day) ?? offset
