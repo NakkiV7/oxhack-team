@@ -8,6 +8,8 @@ Keep an independent, ignored `.local/snowflake-live-20261025/account.env` with m
 
 Before SQL, inspect existing account metadata through the authorized account surface and record the chosen database/schema, table existence, effective role, warehouse size/status/auto-suspend and credit scope privately. Account and warehouse values in an old local file are configuration, not live verification. Do not create databases, schemas, roles or warehouses, grant privileges, resize a warehouse or change suspension settings for this procedure. The existing role needs USAGE on the chosen warehouse/database/schema and SELECT/INSERT on the target table.
 
+Use an existing **standard database**: personal databases such as `USER$<username>` cannot store table data, even when a `PUBLIC` schema exists. Verify the database kind before selecting the namespace. [Snowflake personal-database limits](https://docs.snowflake.com/en/user-guide/personal-databases#compare-personal-and-standard-databases)
+
 If the table is absent, stop and give the integration owner the **resolved existing database and schema**, effective role, exact SQL below and its scope for review. The identifiers below are placeholders; they must be replaced with reviewed existing identifiers before approval or execution. No table creation has been authorized or executed by this document.
 
 ```sql
