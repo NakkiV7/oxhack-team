@@ -57,6 +57,10 @@
   .split { flex:1; display:flex; flex-direction:column; gap:14px; min-height:0; }
   .split > .card { flex:1; display:flex; flex-direction:column; }
   .split > .coach { flex:1.6; }
+  .tiger .tiles { grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:6px; }
+  .tiger .tile { background:var(--bg); border:1px solid var(--line); padding:10px 4px; }
+  .tiger .tile b { font-size:20px; } .tiger .tile span { color:var(--mut); }
+  .tiger svg { width:100%; height:40px; display:block; margin:4px 0 8px; }
   input[type=text], input:not([type]) { -webkit-appearance:none; appearance:none; }
   #askQ { border-radius:980px !important; padding:9px 16px !important; border:1px solid var(--line) !important; background:var(--fill) !important; }
   dialog { padding:0; border:0; border-radius:22px; background:var(--card); color:var(--fg); box-shadow:0 30px 80px rgba(0,0,0,.35); }
@@ -142,6 +146,20 @@
           <button class="primary" id="askBtn">Ask</button>
           <span class="sub" id="askCount">0/256</span>
         </form>
+      </div>
+    </div>
+    <div class="card tiger" id="tigerCard">
+      <h2>Tiger Data <span class="sub" id="tgState">connecting…</span></h2>
+      <div class="tiles">
+        <div class="tile"><b id="tgFrames">–</b><span>frames stored</span></div>
+        <div class="tile"><b id="tgRate">–</b><span>rows / sec</span></div>
+        <div class="tile"><b id="tgRatio">–</b><span>compressed</span></div>
+        <div class="tile"><b id="tgMs">–</b><span>rollup query</span></div>
+      </div>
+      <svg id="tgSpark" viewBox="0 0 300 40" preserveAspectRatio="none" aria-label="Per-second rollup of the last 90 seconds, read back from the database"><polyline id="tgLine" fill="none" stroke="#0a84ff" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>
+      <div class="row" style="justify-content:space-between;align-items:center;gap:8px">
+        <span class="sub" id="tgNote">Every analysed frame is a row in a hypertable. The line is hip travel per second from the continuous aggregate.</span>
+        <button id="tgCompress" title="Convert closed five-minute chunks to columnstore now">Compress now</button>
       </div>
     </div>
   </div>
@@ -360,6 +378,7 @@ setInterval(showClock, 250);
 const panel = $('panel');
 const hidePanel = () => { const was = !panel.hidden && workoutEnded; panel.hidden = true; panel.innerHTML = ''; if (was) publish(null, true); };
 function newWorkout() {
+  tgEnd();
   hidePanel(); workoutEnded = false; counter.reset(); $('history').innerHTML = ''; clockReset();
 }
 
@@ -390,7 +409,7 @@ function summaryStats() {
 let inputGeneration = 0, cameraStarting = false;
 
 function endWorkout() {
-  clockPause(); stopAll(); showClock(); workoutEnded = true;
+  clockPause(); stopAll(); showClock(); workoutEnded = true; tgEnd();
   if (typeof say === 'function' && typeof CLOSING !== 'undefined') say(CLOSING[counter.count % CLOSING.length], 3); // voice is optional
   const st = summaryStats();
   const tile = (v, l) => `<div class="tile"><b>${v}</b><span>${l}</span></div>`;
@@ -508,6 +527,7 @@ function loop() {
     const lm = res.landmarks?.[0];
     if (lm) {
       const rep = counter.update(lm, clock(), video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 1);
+      tgFrame(); if (rep) tgRep(rep);
       if (rep) { rep.pace = timeClass(rep) || null; addHistory(rep); voiceRep(rep); }
       render(lm);
       publish(lm, !!rep);
@@ -554,6 +574,49 @@ function publishFrame() {
   const b64 = frameCanvas.toDataURL('image/jpeg', 0.5).split(',')[1];
   fetch('/frame', { method: 'POST', body: b64 }).catch(() => {}).finally(() => { frameBusy = false; });
 }
+
+// Tiger Data stream: every analysed frame and every rep are queued here and posted to the server once a second, which
+// writes them to the database. The card polls the server's rollups, so its numbers and the line come from Tiger, not the page.
+let tg = { id: null, start: null, end: null, frames: [], reps: [] }, tgLast = null;
+const tgNum = (v) => (Number.isFinite(v) ? Math.round(v * 1000) / 1000 : null);
+function tgStart(source) {
+  tg = { id: crypto.randomUUID(), start: { variation: counter.variation, source, client: 'squat-web', startedAt: new Date().toISOString() }, end: null, frames: [], reps: [] };
+  tgLast = tg.id;
+}
+function tgFrame() { // the first analysed frame opens the workout, so page start order does not matter
+  if (!tg.id) tgStart(video.src ? 'video' : 'camera');
+  tg.frames.push({ at: Date.now(), ms: Math.round(clockMs()), state: counter.state, view: counter.view, travel: tgNum(counter.drop), depth: tgNum(counter.live.depth), lean: tgNum(counter.live.lean), knees: tgNum(counter.live.knees), balance: tgNum(counter.live.balance) }); }
+function tgRep(rep) { if (tg.id) tg.reps.push({ at: Date.now(), n: rep.n, counted: rep.counted, good: rep.good, secs: tgNum(rep.secs), travel: tgNum(rep.travel), depth: tgNum(rep.depth), lean: tgNum(rep.lean), knees: tgNum(rep.knees), balance: tgNum(rep.balance), issue: rep.issue ?? null, faults: rep.faults ?? [] }); }
+function tgEnd() { if (!tg.id) return; tg.end = { endedAt: new Date().toISOString() }; tgFlush(); }
+async function tgFlush() {
+  if (!tg.id || !(tg.start || tg.end || tg.frames.length || tg.reps.length)) return;
+  const batch = { workoutId: tg.id, exercise: 'squat', start: tg.start, end: tg.end, frames: tg.frames, reps: tg.reps };
+  tg = tg.end ? { id: null, start: null, end: null, frames: [], reps: [] } : { ...tg, start: null, frames: [], reps: [] };
+  try { await fetch('/telemetry', { method: 'POST', body: JSON.stringify(batch) }); } catch { /* the next batch carries on */ }
+}
+setInterval(tgFlush, 1000);
+
+let tgTick = 0;
+async function tgStatus() {
+  let s;
+  try { s = await (await fetch('/tiger?workout=' + (tg.id ?? tgLast ?? ''))).json(); } catch { s = { on: false }; }
+  const st = $('tgState');
+  if (!s.on) { st.textContent = s.error ? 'error: ' + s.error : 'off (set TIGER_DATABASE_URL in .env)'; return; }
+  st.textContent = `on · ${s.workouts} workouts · ${s.compressedChunks}/${s.chunks} chunks in columnstore`;
+  $('tgFrames').textContent = s.frames.toLocaleString(); $('tgRate').textContent = s.rate.toFixed(0);
+  $('tgRatio').textContent = s.ratio == null ? '–' : s.ratio.toFixed(0) + '%';
+  $('tgMs').textContent = s.rollupMs == null ? '–' : s.rollupMs.toFixed(0) + ' ms';
+  const n = s.series.length;
+  $('tgLine').setAttribute('points', s.series.map((r, i) => `${(n > 1 ? i / (n - 1) : 0.5) * 300},${38 - Math.min(1, Math.max(0, (r.max_travel ?? 0) / 0.6)) * 36}`).join(' '));
+}
+setInterval(() => { tgTick++; if (running || tg.id || tgTick % 5 === 0) tgStatus(); }, 2000);
+tgStatus();
+$('tgCompress').onclick = async () => {
+  const b = $('tgCompress'); b.disabled = true;
+  try { const r = await (await fetch('/tiger/compress', { method: 'POST' })).json(); $('tgNote').textContent = `${r.converted} closed chunk${r.converted === 1 ? '' : 's'} converted to columnstore.`; }
+  catch { $('tgNote').textContent = 'Compression call failed.'; }
+  b.disabled = false; tgStatus();
+};
 
 // AI coach panel: reads the coach messages the server already generated (no extra Gemini calls) and sends questions to /ask.
 const coachSeen = new Set();

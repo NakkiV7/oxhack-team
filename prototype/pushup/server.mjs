@@ -185,6 +185,20 @@ async function tigerLib() { // loads pg only when Tiger is used; opens one share
   return lib;
 }
 const hasTiger = () => !!(process.env.TIGER_DATABASE_URL || process.env.TIGER_DB_ADDRESS);
+// Live frame/rep stream into Tiger, shared with the squat prototype (../shared/tiger-stream.mjs). Uses the same pool.
+let stream = null, streamFailedAt = 0; // one shared promise of { lib, pool }: concurrent callers never run the migration twice
+function streamLib() {
+  if (stream) return stream;
+  if (Date.now() - streamFailedAt < 10000) return Promise.reject(new Error('Tiger unavailable, retrying shortly'));
+  stream = (async () => {
+    await tigerLib();
+    const lib = await import('../shared/tiger-stream.mjs');
+    await lib.migrate(tigerPool); // idempotent schema + rollups
+    return { lib, pool: tigerPool };
+  })().catch((e) => { stream = null; streamFailedAt = Date.now(); throw e; });
+  return stream;
+}
+if (hasTiger()) streamLib().then(() => console.log('Tiger Data: stream schema ready')).catch((e) => console.error('Tiger:', e.message));
 const profileService = createProfileService({
   async loadRows() {
     if (!hasTiger()) {
@@ -215,6 +229,7 @@ const profileError = (res, e) => {
   res.writeHead(502, { 'Content-Type': 'application/json' }).end(json);
 };
 
+const tigerHost = (u) => { try { return new URL(u).host; } catch { return 'configured'; } }; // tests pass a placeholder URL
 const isLoopback = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
 
 const localOrigin = (req) => {
@@ -386,6 +401,25 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // Tiger Data stream: batches from the page, the live status for its card, and on-demand columnstore conversion.
+    if (req.method === 'POST' && path === '/telemetry') {
+      const body = await readBody(req);
+      if (!hasTiger()) return res.writeHead(204).end();
+      try { const { lib, pool } = await streamLib(); await lib.ingest(pool, JSON.parse(body)); return res.writeHead(204).end(); }
+      catch (e) { console.error('Tiger ingest:', e.message); return res.writeHead(500).end(); }
+    }
+    if (req.method === 'GET' && path === '/tiger') {
+      const json = (o) => res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(o));
+      if (!hasTiger()) return json({ on: false });
+      try { const { lib, pool } = await streamLib(); return json({ on: true, ...(await lib.status(pool, new URL(req.url, 'http://x').searchParams.get('workout'))) }); }
+      catch (e) { return json({ on: false, error: e.message }); }
+    }
+    if (req.method === 'POST' && path === '/tiger/compress') {
+      if (!hasTiger()) return res.writeHead(503).end();
+      try { const { lib, pool } = await streamLib(); return res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(await lib.compress(pool))); }
+      catch (e) { console.error('Tiger compress:', e.message); return res.writeHead(500).end(); }
+    }
+
     if (req.method === 'POST' && path === '/state') {
       const body = await readBody(req);
       JSON.parse(body); // reject garbage
@@ -427,6 +461,7 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, '0.0.0.0', () => {
   console.log(GEMINI_KEY ? `AI coach: on (${GEMINI_MODEL})` : 'AI coach: off (set GEMINI_API_KEY in .env)');
   console.log(ELEVEN_KEY ? `Voice: on (ElevenLabs voice ${ELEVEN_VOICE})` : 'Voice: off (set ELEVENLABS_API_KEY in .env)');
+  console.log(hasTiger() ? `Tiger Data: on (${tigerHost(process.env.TIGER_DATABASE_URL || process.env.TIGER_DB_ADDRESS)})` : 'Tiger Data: off (set TIGER_DATABASE_URL in .env)');
   console.log(`Mac:    http://localhost:${PORT}`);
   console.log(`Phone control code: ${controlToken} (enter it in the pushup-ios settings to pause/stop from the phone)`);
   const lan = Object.values(os.networkInterfaces()).flat().filter((i) => i.family === 'IPv4' && !i.internal);

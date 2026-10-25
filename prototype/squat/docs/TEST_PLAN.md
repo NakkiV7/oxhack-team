@@ -4,9 +4,10 @@ What is checked automatically, what was checked by hand, and how to re-check aft
 
 ## Automated
 
-`npm test` runs 16 node checks with no network and no model download:
+`npm test` runs 22 node checks with no network and no model download:
 
 - `test/ask.test.mjs`: the coach Q&A guardrails (shared with the push-up prototype).
+- `test/tiger-stream.test.mjs`: the Tiger batch validation, the four-statement ingest against a fake pool, the strict-TLS pool guard and the migration files (see [TIGER.md](TIGER.md)).
 - `test/squat.test.mjs`:
   - angle and grade helpers;
   - a synthetic side-on figure whose hip drops along a sine profile: three full squats count three and are clean; a shallow dip is listed but not counted; a tiny wobble is ignored; a rep under half a second does not count; bending at the hips with the torso folded is a hinge, not a squat; hallucinated hips below the frame are rejected; standing closer to the camera re-baselines instead of counting; the half-squat variation grades a shallow rep good while the standard one does not;
@@ -37,6 +38,7 @@ To rerun the comparison after a change: dump landmarks for the clips with the Py
 - Spoken coach during a replayed set: "1, 2, 3", a motivational line, "4, 5, 6", a second line, each played to the end before the next; all lines served from the cache after the first synthesis.
 - Tutorial dialog renders both videos and steps in light and dark themes; videos pause when the dialog closes.
 - Theme switch persists across reloads.
+- Tiger Data card with the team's service configured: the replayed side clip streamed 1,266 frames and 6 reps, the card's counters and sparkline updated every two seconds from the database, End workout wrote the end mark, Compress now converted the closed chunk. Same pass on the push-up page (6,083 frames, 24 reps). Details and numbers in [TIGER.md](TIGER.md).
 
 Not yet checked by hand: a live camera session in the browser on this machine, and a phone client against the squat state.
 

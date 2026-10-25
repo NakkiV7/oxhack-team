@@ -87,7 +87,11 @@ The chosen voice's name sets the Gemini coach's persona in the server prompt. Th
 
 Identical to the push-up prototype: the page posts a state snapshot to `/state` about ten times a second and a 480 px JPEG to `/frame`; the server fans them out on `/events`. Only `GET /events`, `GET /state`, `POST /ask` and `POST /control` (with the control code) are served to other devices on the Wi-Fi; everything else is loopback only. See the push-up [ALGORITHM.md, section 7](../../pushup/docs/ALGORITHM.md#7-streaming-to-the-iphone) for the details and the trust model. The squat server adds `GET /voices` and `GET /say`, both loopback only.
 
-## 9. Validation
+## 9. Tiger Data stream
+
+Every analysed frame and every rep is queued on the page and posted to the local server once a second; the server writes them to two TimescaleDB hypertables and the page reads the per-second and per-minute continuous aggregates back for its Tiger card. Schema, policies, verification and the reason for a time-series store are in [TIGER.md](TIGER.md).
+
+## 10. Validation
 
 The counting rules were tuned in the Python reference against 16 Creative Commons clips (front, side, three-quarter and low angles; bodyweight, goblet, racked and overhead squats) and a 2 minute 41 second webcam session with three testers. Every clean set counts exactly; the only misses are on footage that cuts away mid-rep. On identical landmark input `squat.mjs` agrees with the Python counts on all 17 clips. In the browser with the real MediaPipe, a single pass of a 6-rep side clip counted 6 of 6. See [TEST_PLAN.md](TEST_PLAN.md).
 
