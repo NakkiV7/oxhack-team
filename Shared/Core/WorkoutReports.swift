@@ -56,6 +56,7 @@ public struct WorkoutReport: Identifiable, Sendable {
     public let acceleration: ReportSignal
     public let rotation: ReportSignal
     public let activeEnergy: [ActiveEnergy]
+    public let energyTimeline: [ActiveEnergy]
     public var timedRepCount: Int { sets.reduce(0) { $0 + $1.repDurations.count } }
     public var averageRepSeconds: Double? {
         guard timedRepCount > 0 else { return nil }
@@ -100,6 +101,7 @@ public struct WorkoutReport: Identifiable, Sendable {
         heartRate = ReportSignal(record: record, keyPath: \.heartRate, validRange: 1...300)
         acceleration = ReportSignal(record: record, keyPath: \.accelerationG, validRange: 0...Double.greatestFiniteMagnitude)
         rotation = ReportSignal(record: record, keyPath: \.rotationRadiansPerSecond, validRange: 0...Double.greatestFiniteMagnitude)
+        energyTimeline = Self.activeEnergyTimeline(in: record)
         activeEnergy = Self.latestActiveEnergy(in: record)
         let projectedSets = record.sets.map { set in
             let entry = ExerciseCatalog.find(set.exercise.rawValue)
@@ -121,6 +123,20 @@ public struct WorkoutReport: Identifiable, Sendable {
         }
         sets = projectedSets.reduce(into: [ReportSet]()) { unique, set in
             if !unique.contains(where: { $0.id == set.id }) { unique.append(set) }
+        }
+    }
+
+    private static func activeEnergyTimeline(in record: SessionRecord) -> [ActiveEnergy] {
+        // Each value is cumulative within one recording, not an additive interval.
+        let observations = record.telemetry.sorted { $0.sentAt < $1.sentAt }
+        let runs = observations.reduce(into: [UUID: [Date: ActiveEnergy]]()) { runs, sample in
+            guard sample.sessionID == record.id, record.date.timeIntervalSince1970.isFinite,
+                  let energy = sample.activeEnergy, energy.isValid(at: sample.sentAt),
+                  energy.asOf >= record.date.addingTimeInterval(-2) else { return }
+            runs[energy.recordingID, default: [:]][energy.asOf] = energy
+        }
+        return runs.values.flatMap { $0.values }.sorted {
+            $0.asOf == $1.asOf ? $0.recordingID.uuidString < $1.recordingID.uuidString : $0.asOf < $1.asOf
         }
     }
 
@@ -213,6 +229,7 @@ public struct ReportSample: Identifiable, Sendable {
 
 public struct ReportSignal: Sendable {
     public let samples: [ReportSample]
+    public let sourceLabel: String
     public var average: Double? { samples.isEmpty ? nil : samples.reduce(0) { $0 + $1.value } / Double(samples.count) }
     public var minimum: Double? { samples.map(\.value).min() }
     public var maximum: Double? { samples.map(\.value).max() }
@@ -223,15 +240,19 @@ public struct ReportSignal: Sendable {
     public var gapCount: Int { samples.last?.segment ?? 0 }
 
     init(record: SessionRecord, keyPath: KeyPath<WatchTelemetry, SensorReading?>, validRange: ClosedRange<Double>) {
-        let readings = record.telemetry.filter { $0.sessionID == record.id }.compactMap { message -> SensorReading? in
+        sourceLabel = keyPath == \WatchTelemetry.heartRate ? "Apple Watch · HealthKit" : "Apple Watch · Core Motion"
+        let readings = record.telemetry.filter { $0.sessionID == record.id }
+            .sorted { $0.sentAt < $1.sentAt }.compactMap { message -> SensorReading? in
             guard let reading = message[keyPath: keyPath], reading.value.isFinite,
                   reading.date.timeIntervalSince1970.isFinite, message.sentAt.timeIntervalSince1970.isFinite,
+                  record.date.timeIntervalSince1970.isFinite,
+                  reading.date >= record.date.addingTimeInterval(-2),
                   validRange.contains(reading.value) else { return nil }
             let age = message.sentAt.timeIntervalSince(reading.date)
             return (-2...12).contains(age) ? reading : nil
         }
         let unique = readings.reduce(into: [Date: SensorReading]()) { values, reading in
-            if values[reading.date] == nil { values[reading.date] = reading }
+            values[reading.date] = reading
         }.values.sorted { $0.date < $1.date }
         samples = unique.reduce(into: [ReportSample]()) { points, reading in
             let previous = points.last

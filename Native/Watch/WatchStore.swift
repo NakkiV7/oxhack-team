@@ -24,7 +24,11 @@ final class WatchStore {
         link.onReachability = { [weak self] reachable in
             Task { @MainActor in self?.reachable = reachable; self?.link.request() }
         }
-        recorder.onHeart = { [weak self] reading in self?.heart = reading }
+        recorder.onHeart = { [weak self] reading in
+            guard let self, reading.heartRate(at: self.now()) != nil else { return }
+            if let previous = self.heart, reading.date < previous.date { return }
+            self.heart = reading
+        }
         recorder.onEnergy = { [weak self] energy in
             guard let self else { return }
             if let previous = self.activeEnergy, previous.recordingID == energy.recordingID,

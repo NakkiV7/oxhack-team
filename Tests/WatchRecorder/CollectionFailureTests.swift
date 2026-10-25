@@ -243,7 +243,30 @@ import CoreMotion
         recorder.end(); await until { recorder.state == .saved }
     }
 
+    @MainActor static func motionUsesAppleUnitsAndBootRelativeSampleTime() async {
+        let recorder = WorkoutRecorder()
+        var samples: [(SensorReading, SensorReading)] = []
+        recorder.onMotion = { samples.append(($0, $1)) }
+        let before = HKWorkoutSession.created.count
+        recorder.start(); await until { HKWorkoutSession.created.count == before + 1 }
+        let builder = HKWorkoutSession.created[before].liveBuilder
+        builder.collectionCompletion?(true, nil); await until { recorder.state == .recording }
+        let measuredAt = Date()
+        let data = CMDeviceMotion(acceleration: .init(x: -0.3, y: 0.4, z: 0),
+                                  rotation: .init(x: 0, y: -1.25, z: 0),
+                                  timestamp: ProcessInfo.processInfo.systemUptime)
+        CMMotionManager.created.last!.deliverQueuedSample(data)
+        await until { samples.count == 1 }
+        guard let sample = samples.first else { recorder.end(); return }
+        expect(abs(sample.0.value - 0.5) < 0.000001, "Gravity-removed acceleration magnitude retains g, not m/s²")
+        expect(sample.1.value == 1.25, "Rotation magnitude retains radians/s, not degrees/s")
+        expect(abs(sample.0.date.timeIntervalSince(measuredAt)) < 0.05 && sample.0.date == sample.1.date,
+               "Core Motion uptime timestamp maps to one shared measurement date, not the 1970 epoch")
+        recorder.end(); await until { recorder.state == .saved }
+    }
+
     @MainActor static func main() async {
+        await motionUsesAppleUnitsAndBootRelativeSampleTime()
         await recordingWaitsForSuccessfulCollectionAndTracksPause()
         await cancelledAuthorizationCannotRelabelIdleOrBeginAWorkout()
         await deniedWorkoutSharingAllowsAnExplicitRetry()
@@ -255,6 +278,6 @@ import CoreMotion
         await invalidAndMissingEnergyNeverBecomeAnEstimate()
         await energyIdentitySurvivesResumeButRejectsStoppedOrReplacedBuilders()
         if failures > 0 { print("Watch recorder: \(failures) failures"); exit(1) }
-        print("Watch recorder: 10 behavioral cases passed (SDK doubles; no HealthKit/device acceptance)")
+        print("Watch recorder: 11 behavioral cases passed (SDK doubles; no HealthKit/device acceptance)")
     }
 }

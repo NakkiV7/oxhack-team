@@ -6,7 +6,7 @@ test-only HealthKit, CoreMotion, WatchKit and companion-link boundaries in a tem
 It never imports Apple's HealthKit implementation, accesses health data, uses a
 physical device, or changes the Xcode project. Temporary outputs are removed.
 
-Ten recorder cases exercise authorization/start/collection/save states,
+Eleven recorder cases exercise authorization/start/collection/save states,
 active/paused collection failure, cancellation during authorization/startup,
 workout-write denial and explicit retry, queued motion rejection and old-builder
 callback isolation. Recording and motion begin only after collection succeeds;
@@ -18,7 +18,7 @@ future/pre-run observations, pending/paused collection and old builders. Repeate
 totals are not added; pause/resume retains the recording UUID, a new builder uses
 a new UUID, and a lower genuine revision is retained.
 
-Five store cases verify that End session requires an explicit, current-generation
+Six store cases verify that End session requires an explicit, current-generation
 confirmation, Cancel sends nothing, stale confirmation cannot end a replacement
 context, and pending/paused recording sends no telemetry. An injected clock also
 checks that an expired retained snapshot pauses the recorder, replaying that same
@@ -43,3 +43,17 @@ Digital Crown, sensor availability, permission sheets and saving remain device
 acceptance checks; this SDK-double runner cannot establish them.
 These controlled boundary tests do not establish real Watch/HealthKit behavior;
 native compilation and physical callback acceptance remain separate checks.
+
+The additional recorder case checks gravity-removed acceleration magnitude in g,
+rotation magnitude in rad/s, and mapping of a Core Motion boot-relative timestamp
+to the shared measurement date. The additional store case reproduces an older
+HealthKit HR callback replacing a newer one before a tick, then verifies the fix,
+equal-date corrections and rejection of invalid HR without fabricating a reading.
+
+Run `bash Tests/WatchRecorder/replay.sh` for actual CompanionLink encoding and
+receiving against a test-only WCSession delivery boundary. It replays context/live
+duplicates, out-of-order/foreign/expired envelopes, malformed JSON, disconnect and
+stale retained context through real session ownership, history/export and reports.
+Both tracking and configured workout paths are covered. This is synthetic software
+evidence, not physical Bluetooth, HealthKit, pairing or WatchConnectivity acceptance.
+See `docs/watch-sensor-report-acceptance.md` for units, limitations and human gates.

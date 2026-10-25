@@ -156,13 +156,40 @@ import CoreMotion
         store.recorder.end(); await settle()
     }
 
+
+    @MainActor static func heartRateCallbacksCannotRegressOrInventAValidReading() async {
+        let store = WatchStore()
+        var session = TrainingSession(); session.start(at: 0)
+        store.link.onSnapshot?(CompanionSnapshot(session: session)); await settle()
+        store.record(); await settle()
+        guard let builder = HKWorkoutSession.created.last?.liveBuilder else { expect(false, "Recorder starts"); return }
+        builder.collectionCompletion?(true, nil); await settle()
+        let first = Date(), later = first.addingTimeInterval(0.001)
+        func deliver(_ value: Double, at date: Date) async {
+            builder.statisticsByType[.heartRate] = HKStatistics(recent: HKQuantity(unit: HKUnit.count().unitDivided(by: .minute()), doubleValue: value), endDate: date)
+            store.recorder.workoutBuilder(builder, didCollectDataOf: [HKQuantityType(.heartRate)])
+            await settle()
+        }
+        await deliver(122, at: later)
+        await deliver(119, at: first)
+        expect(store.heart == SensorReading(value: 122, date: later), "Older HealthKit callback cannot displace the latest heart reading")
+        await deliver(121, at: later)
+        expect(store.heart?.value == 121, "Equal-timestamp correction retains the original sample date")
+        await deliver(0, at: later.addingTimeInterval(0.001))
+        expect(store.heart?.value == 121, "Invalid heart rate cannot displace an observed value")
+        store.tick()
+        expect(store.link.samples.last?.heartRate == store.heart, "Tick transports the measured value and timestamp")
+        store.recorder.end(); await settle()
+    }
+
     @MainActor static func main() async {
+        await heartRateCallbacksCannotRegressOrInventAValidReading()
         await endingRequiresConfirmationAndRejectsChangedContext()
         await pendingCollectionDoesNotClaimRecordingOrSendTelemetry()
         await staleDuplicateCannotResumeAPausedRecorder()
         await energyOnlyTelemetryPreservesTheCumulativeObservationAndResetsForANewSession()
         await olderEnergyCannotReplaceTheLatestEstimateButCorrectionsCanLowerIt()
         if failures > 0 { print("Watch store: \(failures) failures"); exit(1) }
-        print("Watch store: 5 behavioral cases passed (SDK/link doubles; no device acceptance)")
+        print("Watch store: 6 behavioral cases passed (SDK/link doubles; no device acceptance)")
     }
 }
