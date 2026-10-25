@@ -191,6 +191,7 @@ struct SessionReportView: View {
 
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Watch heart rate").font(.headline)
+                    Text(report.heartRate.sourceLabel).font(.caption).foregroundStyle(.secondary)
                     if let average = report.heartRate.average {
                         HStack {
                             Metric(value: "\(Int(average.rounded())) bpm", title: "Average heart rate", symbol: "heart", symbolColor: Palette.red)
@@ -206,6 +207,7 @@ struct SessionReportView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     Label("Watch active energy", systemImage: "flame.fill")
                         .font(.headline).foregroundStyle(Palette.amber)
+                    Text("Apple Watch · HealthKit").font(.caption).foregroundStyle(.secondary)
                     if report.activeEnergy.isEmpty {
                         Text("No Watch active-energy readings recorded.").font(.subheadline).foregroundStyle(.secondary)
                     } else {
@@ -220,6 +222,7 @@ struct SessionReportView: View {
                                     .font(.caption).foregroundStyle(.secondary)
                                 Text("As of \(energy.asOf.formatted(date: .omitted, time: .standard))")
                                     .font(.caption).foregroundStyle(.secondary)
+                                ReportEnergyChart(samples: report.energyTimeline.filter { $0.recordingID == energy.recordingID })
                             }
                             .accessibilityElement(children: .combine)
                             .accessibilityIdentifier("watch-active-energy-reading")
@@ -236,23 +239,17 @@ struct SessionReportView: View {
                     } else {
                         Text("Rep tempo was not recorded.").font(.subheadline).foregroundStyle(.secondary)
                     }
-                    if !report.acceleration.samples.isEmpty {
-                        Text("Wrist acceleration magnitude").font(.subheadline.weight(.medium))
-                        ReportSignalChart(signal: report.acceleration, unit: "g")
-                    }
-                    if !report.rotation.samples.isEmpty {
-                        Text("Wrist rotation magnitude").font(.subheadline.weight(.medium))
-                        ReportSignalChart(signal: report.rotation, unit: "rad/s")
-                    }
-                    if report.acceleration.samples.isEmpty && report.rotation.samples.isEmpty {
-                        Text("No Watch motion samples recorded.").font(.subheadline).foregroundStyle(.secondary)
-                    }
+                    ReportMotionSignal(title: "Wrist acceleration magnitude", signal: report.acceleration,
+                                       unit: "g", missing: "No Watch acceleration readings recorded.")
+                    ReportMotionSignal(title: "Wrist rotation magnitude", signal: report.rotation,
+                                       unit: "rad/s", missing: "No Watch rotation readings recorded.")
                 }
                 CoachSummaryCard(record: record, profile: profile)
                 DisclosureGroup("How this is recorded") {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Camera counts are observations; manual reps are self-reported. Video results describe replayed footage.")
                         Text("Recorded time includes tracked sets, live manual set timers and logged hold durations. Bulk manual rep entries have no recorded duration.")
+                        Text("Acceleration is the magnitude of Core Motion user acceleration with gravity removed, in g. Rotation is angular-speed magnitude in radians per second. The Watch sends sampled magnitudes, not continuous raw motion.")
                         Text("Watch averages weight each distinct reading once. Wrist movement does not establish exercise form. Missing periods stay unknown; timestamps do not establish exact set boundaries.")
                         Text("Active energy is the latest cumulative Watch estimate for each recording. Repeated readings are not added together. These estimates stay in local history and exports; they are not included in Coach requests or cloud sync.")
                         Text("Count highlights compare earlier saved sets of the same exercise and source; they do not establish strength or fitness changes.")
@@ -356,6 +353,50 @@ private struct ReportSourceBadge: View {
             .padding(.horizontal, 8).padding(.vertical, 5)
             .background(source == .camera ? Palette.blue.opacity(0.07) : .white, in: Capsule())
             .overlay(Capsule().stroke((source == .camera ? Palette.blue : Palette.muted).opacity(0.2)))
+    }
+}
+
+private struct ReportMotionSignal: View {
+    let title: String
+    let signal: ReportSignal
+    let unit: String
+    let missing: String
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title).font(.subheadline.weight(.medium))
+            Text(signal.sourceLabel).font(.caption).foregroundStyle(.secondary)
+            if let average = signal.average, let maximum = signal.maximum {
+                Text("Average \(average.formatted(.number.precision(.fractionLength(2)))) \(unit) · highest \(maximum.formatted(.number.precision(.fractionLength(2)))) \(unit)")
+                    .font(.subheadline).monospacedDigit()
+                ReportSignalChart(signal: signal, unit: unit)
+            } else {
+                Text(missing).font(.subheadline).foregroundStyle(.secondary)
+            }
+        }.accessibilityIdentifier(unit == "g" ? "watch-acceleration-report" : "watch-rotation-report")
+    }
+}
+
+private struct ReportEnergyChart: View {
+    let samples: [ActiveEnergy]
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Chart {
+                ForEach(Array(samples.enumerated()), id: \.offset) { _, sample in
+                    // Points preserve sparse observations without suggesting continuous coverage.
+                    PointMark(x: .value("As of", sample.asOf), y: .value("kcal", sample.kilocalories))
+                        .foregroundStyle(Palette.amber).symbolSize(24)
+                }
+            }
+            .chartXAxis {
+                AxisMarks(values: .automatic(desiredCount: 3)) { _ in
+                    AxisValueLabel(format: .dateTime.hour().minute().second())
+                }
+            }
+            .chartLegend(.hidden)
+            .chartYAxisLabel("kcal").frame(height: 130)
+            Text("Cumulative observations for this recording. Points are not added together; no new point means no new energy observation.")
+                .font(.caption2).foregroundStyle(.secondary)
+        }.accessibilityIdentifier("watch-energy-timeline")
     }
 }
 

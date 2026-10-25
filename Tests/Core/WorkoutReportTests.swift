@@ -285,3 +285,38 @@ func reportRejectsInvalidOrIncompleteRecordedTempo(durations: [Double]) {
         #expect(report.sets.first?.source == source)
     }
 }
+
+@Test func watchSignalReportExcludesPreSessionReadingsAndUsesLatestTimestampedCorrection() {
+    let id = UUID(), start = Date(timeIntervalSince1970: 1_792_886_400)
+    func packet(_ sent: Double, _ measured: Double, _ value: Double) -> WatchTelemetry {
+        let reading = SensorReading(value: value, date: start.addingTimeInterval(measured))
+        return .init(sessionID: id, sentAt: start.addingTimeInterval(sent), heartRate: reading,
+                     accelerationG: reading, rotationRadiansPerSecond: reading)
+    }
+    let messages = [packet(1, -3, 99), packet(3, 2, 121), packet(2, 2, 120), packet(4, 4, 130)]
+    let report = WorkoutReport(record: .init(id: id, date: start, sets: [], telemetry: messages))
+    #expect(report.heartRate.samples.map(\.value) == [121, 130])
+    #expect(report.acceleration.samples.map(\.value) == [121, 130])
+    #expect(report.rotation.samples.map(\.value) == [121, 130])
+    #expect(report.heartRate.average == 125.5)
+    #expect(report.heartRate.sourceLabel == "Apple Watch · HealthKit")
+    #expect(report.acceleration.sourceLabel == "Apple Watch · Core Motion")
+    #expect(report.rotation.sourceLabel == "Apple Watch · Core Motion")
+}
+
+@Test func watchEnergyTimelineKeepsCumulativeRunsSeparateAndAcceptsCorrectionsWithoutSumming() {
+    let id = UUID(), run = UUID(), nextRun = UUID(), start = Date(timeIntervalSince1970: 1_792_886_400)
+    func packet(_ sent: Double, _ asOf: Double, _ kcal: Double, _ recording: UUID) -> WatchTelemetry {
+        .init(sessionID: id, sentAt: start.addingTimeInterval(sent), heartRate: nil, accelerationG: nil,
+              rotationRadiansPerSecond: nil, activeEnergy: .init(recordingID: recording, kilocalories: kcal,
+                                                               asOf: start.addingTimeInterval(asOf)))
+    }
+    let messages = [packet(20, 20, 4.5, run), packet(2, 0, 0, run), packet(1, 0, 0, run),
+                    packet(10, 10, 3, run), packet(11, 10, 2.75, run), packet(30, 30, 1, nextRun),
+                    packet(31, 30, 1, nextRun), packet(32, 40, 8, nextRun), packet(0, -3, 9, run)]
+    let report = WorkoutReport(record: .init(id: id, date: start, sets: [], telemetry: messages))
+    #expect(report.energyTimeline.map(\.kilocalories) == [0, 2.75, 4.5, 1])
+    #expect(report.energyTimeline.map(\.recordingID) == [run, run, run, nextRun])
+    #expect(report.activeEnergy.map(\.kilocalories) == [4.5, 1])
+    #expect(WorkoutReport(record: .init(id: id, date: start, sets: [])).energyTimeline.isEmpty)
+}
