@@ -149,7 +149,7 @@ public enum CoachContracts {
         guard proposal.items.reduce(0, { $0 + $1.sets }) <= limits.maxTotalSets else { throw CoachContractError.invalidProposal }
     }
 
-    private static func validate(_ text: GroundedCoachText, context: CoachValidationContext) throws {
+    static func validate(_ text: GroundedCoachText, context: CoachValidationContext) throws {
         guard (1...500).contains(text.text.count), !text.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw CoachContractError.malformed }
         try validateEvidence(text.factIDs, context: context)
     }

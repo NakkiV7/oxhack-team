@@ -21,9 +21,10 @@ public struct CoachRequest: Encodable, Sendable {
     public let facts: [CoachFact]
     public let availableSupport: [String]
     public let kind: String?
-    public init(generationID: String = UUID().uuidString, message: String? = nil, history: [CoachTurn] = [], facts: [CoachFact], availableSupport: [String] = [], kind: CoachSummaryKind? = nil) {
+    public let week: CoachWeekRequest?
+    public init(generationID: String = UUID().uuidString, message: String? = nil, history: [CoachTurn] = [], facts: [CoachFact], availableSupport: [String] = [], kind: CoachSummaryKind? = nil, week: CoachWeekRequest? = nil) {
         self.generationID = generationID; self.message = message; self.history = history
-        self.facts = facts; self.availableSupport = availableSupport; self.kind = kind?.rawValue
+        self.facts = facts; self.availableSupport = availableSupport; self.kind = kind?.rawValue; self.week = week
     }
     public var context: CoachValidationContext {
         .init(generationID: generationID, suppliedFactIDs: Set(facts.map(\.id)), availableSupport: Set(availableSupport))
@@ -64,6 +65,11 @@ public struct CoachGatewayClient: Sendable {
     public func proposal(_ input: CoachRequest) async throws -> WorkoutProposal {
         try CoachContracts.parseProposal(await send(input, path: "proposal"), context: input.context)
     }
+    public func weekProposal(_ input: CoachRequest, guidance: CoachGuidanceRegistry) async throws -> CoachWeekProposal {
+        guard let week = input.week else { throw CoachContractError.invalidProposal }
+        try week.validate()
+        return try CoachWeekContracts.parse(await send(input, path: "week-proposal"), request: week, context: input.context, guidance: guidance)
+    }
     private func send(_ input: CoachRequest, path: String) async throws -> Data {
         let local = ["localhost", "127.0.0.1", "::1"].contains(baseURL.host ?? "")
         guard (baseURL.scheme == "https" || (local && baseURL.scheme == "http")), baseURL.user == nil, baseURL.password == nil,
@@ -85,7 +91,7 @@ public struct CoachGatewayClient: Sendable {
         for removed in 0...input.history.count {
             let candidate = CoachRequest(generationID: input.generationID, message: input.message,
                 history: Array(input.history.dropFirst(removed)), facts: input.facts,
-                availableSupport: input.availableSupport, kind: input.kind.flatMap(CoachSummaryKind.init(rawValue:)))
+                availableSupport: input.availableSupport, kind: input.kind.flatMap(CoachSummaryKind.init(rawValue:)), week: input.week)
             let data = try JSONEncoder().encode(candidate)
             if data.count <= 65_536 { return data }
         }

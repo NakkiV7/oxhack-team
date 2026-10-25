@@ -21,11 +21,15 @@ struct CoachView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 22) {
                         introduction
+                        WeeklyCoachPanel(model: model, store: store, profile: profile, support: support) { week in
+                            let draft = message
+                            run { await model.proposeWeek(message: draft, week: week, history: store.history, support: support) }
+                        }
                         if let plan = model.approvedPlan { approvedPlan(plan) }
                         DisclosureGroup("What support do you have?") {
                             ForEach(supports, id: \.self) { name in
                                 Toggle(name, isOn: Binding(get: { support.contains(name) }, set: { if $0 { support.insert(name) } else { support.remove(name) } }))
-                                    .font(.subheadline).tint(Palette.ink)
+                                    .font(.subheadline).tint(Palette.blue)
                             }.padding(.top, 8)
                         }.font(.subheadline.weight(.medium)).disabled(model.isLoading)
                         Button {
@@ -33,7 +37,7 @@ struct CoachView: View {
                             run { await model.propose(message: draft, history: store.history, support: support) }
                         } label: {
                             Label("Propose a workout", systemImage: "sparkles").font(.subheadline.weight(.semibold))
-                                .frame(maxWidth: .infinity).padding(17).background(Palette.ink, in: RoundedRectangle(cornerRadius: 16)).foregroundStyle(.white)
+                                .frame(maxWidth: .infinity).padding(17).background(Palette.blue, in: RoundedRectangle(cornerRadius: 16)).foregroundStyle(.white)
                         }.buttonStyle(.plain).disabled(model.isLoading)
                         if let proposal = model.proposal { proposalReview(proposal) }
                         ForEach(Array(model.turns.enumerated()), id: \.offset) { _, turn in
@@ -48,13 +52,13 @@ struct CoachView: View {
                             }
                         }
                         if model.isLoading {
-                            HStack { ProgressView().tint(Palette.ink); Text("Thinking…").font(.subheadline); Spacer(); Button("Cancel", action: cancel) }
+                            HStack { ProgressView().tint(Palette.blue); Text(model.loadingText).font(.subheadline); Spacer(); Button("Cancel", action: cancel) }
                         }
                         if let error = model.error {
                             VStack(alignment: .leading, spacing: 10) {
                                 Text(error).font(.caption).foregroundStyle(Palette.red)
-                                Button("Retry last message") { run { await model.send(message: "", history: store.history, support: support, retry: true) } }
-                                    .font(.caption.weight(.semibold)).disabled(model.turns.isEmpty || model.isLoading)
+                                Button(model.retryTitle) { run { await model.retry(history: store.history, support: support) } }
+                                    .font(.caption.weight(.semibold)).disabled(!model.canRetry)
                             }
                         }
                         Color.clear.frame(height: 1).id("latest")
@@ -63,7 +67,11 @@ struct CoachView: View {
                     .onChange(of: model.turns.count) { _, _ in withAnimation { proxy.scrollTo("latest", anchor: .bottom) } }
                     .safeAreaInset(edge: .bottom) { composer }
             }.navigationTitle("Coach").navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .topBarTrailing) { Button { settingsPresented = true } label: { Image(systemName: "slider.horizontal.3") }.accessibilityLabel("Coach settings") } }
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        if model.isLoading { Button("Cancel", action: cancel).accessibilityLabel("Cancel coach request") }
+                    }
+                    ToolbarItem(placement: .topBarTrailing) { Button { settingsPresented = true } label: { Image(systemName: "slider.horizontal.3") }.accessibilityLabel("Coach settings") } }
                 .sheet(isPresented: $settingsPresented) { CoachSettingsView() }
                 .alert("Remove saved workout?", isPresented: $removingPlan) {
                     Button("Remove workout", role: .destructive) { model.removeApprovedPlan() }
@@ -88,10 +96,10 @@ struct CoachView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Your next move.").font(.system(size: 32, weight: .bold)).tracking(-1)
             CoachGoalContext(profile: profile, identifier: "coach-goal-context")
-            Text("Ask about your training, or build a session you can make your own.").font(.subheadline).foregroundStyle(.secondary)
+            Text("Plan your week, build a single workout, or talk through your recorded training.").font(.subheadline).foregroundStyle(.secondary)
             Text(profile == nil
-                 ? "Send and Propose share your current text, recent conversation, training sets and recorded Watch summaries with Gemini."
-                 : "Send and Propose share your current text, recent conversation, selected goals, weekly target, training sets and recorded Watch summaries with Gemini. Your profile name isn’t added automatically.")
+                 ? "Send, Propose a workout and Propose my week share your current text, recent conversation, training sets and recorded Watch summaries with Gemini."
+                 : "Send, Propose a workout and Propose my week share your current text, recent conversation, selected goals, weekly target, training sets and recorded Watch summaries with Gemini. Your profile name isn’t added automatically.")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }
@@ -103,7 +111,7 @@ struct CoachView: View {
             Button {
                 let text = message; message = ""
                 run { await model.send(message: text, history: store.history, support: support) }
-            } label: { Image(systemName: "arrow.up").font(.headline).frame(width: 44, height: 44).background(Palette.ink, in: Circle()).foregroundStyle(.white) }
+            } label: { Image(systemName: "arrow.up").font(.headline).frame(width: 44, height: 44).background(Palette.blue, in: Circle()).foregroundStyle(.white) }
                 .accessibilityLabel("Send message").disabled(model.isLoading || message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || message.count > 4000)
         }.padding(.horizontal, 20).padding(.vertical, 12).background(.white)
     }
@@ -118,10 +126,10 @@ struct CoachView: View {
                         Text(ExerciseCatalog.find(item.exerciseID)?.name ?? item.exerciseID).font(.subheadline.weight(.semibold))
                         Text("\(item.sets) × \(item.target) \(item.unit == .reps ? "reps" : "sec") · \(item.restSeconds)s rest").font(.caption).foregroundStyle(.secondary)
                     }
-                }.tint(Palette.ink)
+                }.tint(Palette.blue)
             }
             Button("Approve & save selected exercises") { model.approve(selected: selected, currentSupport: support) }
-                .font(.subheadline.weight(.semibold)).disabled(selected.isEmpty)
+                .font(.subheadline.weight(.semibold)).foregroundStyle(selected.isEmpty ? Palette.muted : Palette.blue).disabled(selected.isEmpty)
             Text("Choose exercises to save your plan. Log only the work you complete.")
                 .font(.caption).foregroundStyle(.secondary)
         }.padding(19).background(Palette.surface, in: RoundedRectangle(cornerRadius: 20))
@@ -129,7 +137,7 @@ struct CoachView: View {
 
     private func approvedPlan(_ plan: CoachSavedPlan) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("Your saved plan", systemImage: "checkmark.circle").font(.headline)
+            Label("Your saved plan", systemImage: "checkmark.circle").font(.headline).foregroundStyle(Palette.green)
             ForEach(plan.items) { item in
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
@@ -145,7 +153,7 @@ struct CoachView: View {
             Text("Follow the saved order with manual reps and active hold timers. Log is also available after training.")
                 .font(.caption).foregroundStyle(.secondary)
             Button("Remove saved workout", role: .destructive) { removingPlan = true }
-                .font(.subheadline).accessibilityIdentifier("remove-saved-workout")
+                .font(.subheadline).foregroundStyle(Palette.red).accessibilityIdentifier("remove-saved-workout")
             if let error = store.error { Text(error).font(.caption).foregroundStyle(Palette.red) }
         }.padding(19).background(Palette.surface, in: RoundedRectangle(cornerRadius: 20))
     }
@@ -187,7 +195,8 @@ struct CoachSettingsView: View {
                     if let error { Text(error).font(.caption).foregroundStyle(Palette.red) }
                 }
             }.navigationTitle("Coach settings").navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Cancel") { dismiss() } } }
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) { Button("Cancel") { dismiss() } } }
         }
     }
 }
@@ -216,7 +225,7 @@ struct CoachSummaryCard: View {
                 if profile != nil { Text("Your optional profile name stays on this iPhone.").font(.caption).foregroundStyle(.secondary) }
             }
             if model.isLoading {
-                HStack { ProgressView(); Text("Thinking…").font(.caption); Spacer(); Button("Cancel") { task?.cancel(); model.cancel() } }
+                HStack { ProgressView(); Text(model.loadingText).font(.caption); Spacer(); Button("Cancel") { task?.cancel(); model.cancel() } }
             } else {
                 Button(model.summary == nil ? "Generate coach summary" : "Regenerate summary") { task = Task { await model.summarize(history: history, kind: kind) } }
                     .font(.subheadline.weight(.semibold)).disabled(history.isEmpty)

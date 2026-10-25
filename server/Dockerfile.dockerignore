@@ -11,3 +11,5 @@
 !Shared/
 !Shared/Core/
 !Shared/Core/ExerciseCatalog.swift
+!Shared/Core/Resources/
+!Shared/Core/Resources/coach-guidance.json

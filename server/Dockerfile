@@ -9,6 +9,7 @@ RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund && npm cache clean -
 COPY --chown=node:node server/src ./src
 COPY --chown=node:node server/migrations ./migrations
 COPY --chown=node:node Shared/Core/ExerciseCatalog.swift /app/Shared/Core/ExerciseCatalog.swift
+COPY --chown=node:node Shared/Core/Resources/coach-guidance.json /app/Shared/Core/Resources/coach-guidance.json
 
 EXPOSE 8787
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 CMD ["node", "--input-type=module", "-e", "const r=await fetch('http://127.0.0.1:8787/health',{signal:AbortSignal.timeout(2000)});const h=await r.json();if(!r.ok||h.status!=='ok'||h.authenticationConfigured!==true)process.exit(1)"]
