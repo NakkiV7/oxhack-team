@@ -5,6 +5,7 @@ struct CoachView: View {
     let profile: LocalProfile?
     @State private var model = CoachModel()
     @State private var message = ""
+    @FocusState private var composerFocused: Bool
     @State private var settingsPresented = false
     @State private var support = Set<String>()
     @State private var selected = Set<String>()
@@ -64,6 +65,8 @@ struct CoachView: View {
                         Color.clear.frame(height: 1).id("latest")
                     }.padding(24)
                 }.background(.white)
+                    .scrollDismissesKeyboard(.immediately)
+                    .accessibilityIdentifier("coach-conversation")
                     .onChange(of: model.turns.count) { _, _ in withAnimation { proxy.scrollTo("latest", anchor: .bottom) } }
                     .safeAreaInset(edge: .bottom) { composer }
             }.navigationTitle("Coach").navigationBarTitleDisplayMode(.inline)
@@ -71,7 +74,15 @@ struct CoachView: View {
                     ToolbarItem(placement: .topBarLeading) {
                         if model.isLoading { Button("Cancel", action: cancel).accessibilityLabel("Cancel coach request") }
                     }
-                    ToolbarItem(placement: .topBarTrailing) { Button { settingsPresented = true } label: { Image(systemName: "slider.horizontal.3") }.accessibilityLabel("Coach settings") } }
+                    ToolbarItem(placement: .principal) {
+                        if model.isLoading {
+                            HStack(spacing: 7) {
+                                ProgressView().tint(Palette.blue)
+                                Text(model.loadingText).font(.caption.weight(.medium))
+                            }.accessibilityElement(children: .combine).accessibilityIdentifier("coach-loading-status")
+                        }
+                    }
+                    ToolbarItem(placement: .topBarTrailing) { Button { composerFocused = false; settingsPresented = true } label: { Image(systemName: "slider.horizontal.3") }.accessibilityLabel("Coach settings") } }
                 .sheet(isPresented: $settingsPresented) { CoachSettingsView() }
                 .alert("Remove saved workout?", isPresented: $removingPlan) {
                     Button("Remove workout", role: .destructive) { model.removeApprovedPlan() }
@@ -101,12 +112,13 @@ struct CoachView: View {
                  ? "Send, Propose a workout and Propose my week share your current text, recent conversation, training sets and recorded Watch summaries with Gemini."
                  : "Send, Propose a workout and Propose my week share your current text, recent conversation, selected goals, weekly target, training sets and recorded Watch summaries with Gemini. Your profile name isn’t added automatically.")
                 .font(.caption).foregroundStyle(.secondary)
-        }
+        }.contentShape(Rectangle()).onTapGesture { composerFocused = false }
     }
 
     private var composer: some View {
         HStack(alignment: .bottom, spacing: 12) {
             TextField("Ask your coach", text: $message, axis: .vertical).lineLimit(1...4).font(.subheadline)
+                .focused($composerFocused)
                 .padding(13).background(Palette.surface, in: RoundedRectangle(cornerRadius: 15)).accessibilityIdentifier("coach-message")
             Button {
                 let text = message; message = ""
@@ -145,10 +157,10 @@ struct CoachView: View {
                         Text("\(item.sets) × \(item.target) \(item.unit == .reps ? "reps" : "sec") · \(item.restSeconds)s rest").font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Button("Log") { logItem = item }.font(.subheadline.weight(.semibold)).accessibilityLabel("Log \(ExerciseCatalog.find(item.exerciseID)?.name ?? item.exerciseID)")
+                    Button("Log") { composerFocused = false; logItem = item }.font(.subheadline.weight(.semibold)).accessibilityLabel("Log \(ExerciseCatalog.find(item.exerciseID)?.name ?? item.exerciseID)")
                 }
             }
-            PrimaryButton(title: "Start saved workout", symbol: "play") { store.startPlan(plan, availableSupport: support) }
+            PrimaryButton(title: "Start saved workout", symbol: "play") { composerFocused = false; store.startPlan(plan, availableSupport: support) }
                 .accessibilityIdentifier("start-saved-workout")
             Text("Follow the saved order with manual reps and active hold timers. Log is also available after training.")
                 .font(.caption).foregroundStyle(.secondary)
@@ -158,8 +170,8 @@ struct CoachView: View {
         }.padding(19).background(Palette.surface, in: RoundedRectangle(cornerRadius: 20))
     }
 
-    private func run(_ action: @escaping @MainActor () async -> Void) { task?.cancel(); task = Task { await action() } }
-    private func cancel() { task?.cancel(); model.cancel() }
+    private func run(_ action: @escaping @MainActor () async -> Void) { composerFocused = false; task?.cancel(); task = Task { await action() } }
+    private func cancel() { composerFocused = false; task?.cancel(); model.cancel() }
     private func profileChanged() { task?.cancel(); model.updateProfile(profile); selected = [] }
 }
 

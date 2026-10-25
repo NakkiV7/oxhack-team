@@ -1,6 +1,35 @@
 import XCTest
 
 final class CoachFlowTests: XCTestCase {
+    @MainActor func testCoachTitleAndDownwardScrollDismissKeyboardWithoutSendingTheDraft() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
+        app.launch()
+        app.tabBars.buttons["Coach"].tap()
+        let title = app.staticTexts["Your next move."]
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        let composer = app.descendants(matching: .any)["coach-message"]
+        XCTAssertTrue(composer.waitForExistence(timeout: 3))
+        composer.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
+        let draft = "Synthetic draft, do not send."
+        composer.typeText(draft)
+
+        XCTAssertTrue(title.isHittable)
+        title.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3))
+        XCTAssertEqual(composer.value as? String, draft)
+
+        composer.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
+        app.scrollViews["coach-conversation"].swipeDown()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3))
+        XCTAssertEqual(composer.value as? String, draft)
+        XCTAssertFalse(app.buttons["Cancel coach request"].exists)
+        XCTAssertFalse(app.staticTexts["SPOTTR · GEMINI"].exists)
+    }
+
     @MainActor func testSavedProfileFocusAndWeeklyTargetAppearInCoachAndReportContextWithoutSending() {
         continueAfterFailure = false
         let app = XCUIApplication()
