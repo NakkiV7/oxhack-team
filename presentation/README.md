@@ -1,6 +1,6 @@
 # Spottr judges' presentation
 
-Ten editable slides for the 25 October 2026, 00:09 UTC evidence snapshot. The deck keeps actual simulator captures, illustrations, implemented behavior, offline tests, live Gemini responses and unverified integrations distinct. Builds 1 and 2 are internally available through TestFlight; only build 1 is externally submitted, with beta review pending. Physical installations remain unverified.
+Ten editable slides for the 25 October 2026, 00:36 UTC evidence snapshot. The deck keeps actual simulator captures, illustrations, implemented behavior, offline tests, live Gemini responses and unverified integrations distinct. Builds 1, 2 and 3 are internally available through TestFlight; builds 1 and 3 are externally available, and build 3 beta review is approved. Physical installations remain unverified.
 
 ## Deliverables
 
@@ -15,7 +15,7 @@ No PowerPoint/Keynote UI was opened, no provider call was made, and nothing was 
 
 `source/assets.json` records original paths and SHA-256 hashes. Existing PNG artwork and the owner's approved actual iPhone/Watch simulator JPEGs were copied byte-for-byte. The current deck uses the two actual screenshots and three existing push-up phase illustrations. The two unchanged PAMAP2 plot PNGs are supplementary evidence in `assets/`; the deck's chart uses the same recorded result JSON as an editable chart.
 
-Each slide's notes contain relevant local source documents and interpretation limits. `source/provenance.json` records the evidence snapshot, asset types, source hashes, deliverable hashes and validation boundary. The refresh records merged Tiger/landing evidence and the Gemini compatibility correction: two signed-simulator native Gemini chats, the corrected camera/manual capability answer, the standalone prototype's 92 offline checks, the configured discomfort-cue correction, Tiger's authenticated console schema acceptance with zero rows, and the revised white-screen landing's local browser acceptance. Strict Node TLS still blocks gateway ingestion/readback; no Tiger workout, rollup or prototype persistence is accepted. Landing publication remains pending. Three explicit production native proposal/session/week actions accepted real Gemini responses after a provider-only schema fix, with isolated synthetic inputs and unchanged full output validation. No proposed plan was approved/saved. Physical networking, real-user coaching quality, physical capture and audible voice remain pending. Recheck release/provider labels before judging if work continues. The 30-second HR test includes only one eligible participant. The fixed adapter worsened error and is not a validated improvement.
+Each slide's notes contain relevant local source documents and interpretation limits. `source/provenance.json` records the evidence snapshot, asset types, source hashes, deliverable hashes and validation boundary. The refresh records merged Tiger/landing evidence and the Gemini compatibility correction: two signed-simulator native Gemini chats, the corrected camera/manual capability answer, the standalone prototype's 92 offline checks, the configured discomfort-cue correction, Tiger's authenticated console schema acceptance with zero rows, and the revised white-screen landing's local browser acceptance. Strict Node TLS still blocks gateway ingestion/readback; no Tiger workout, rollup or prototype persistence is accepted. Landing publication remains pending. The existing public TestFlight invitation and both landing HTTPS links were verified; no invitation was accepted or app installed. Three explicit production native proposal/session/week actions accepted real Gemini responses after a provider-only schema fix, with isolated synthetic inputs and unchanged full output validation. No proposed plan was approved/saved. Physical networking, real-user coaching quality, physical capture and audible voice remain pending. Recheck release/provider labels before judging if work continues. The 30-second HR test includes only one eligible participant. The fixed adapter worsened error and is not a validated improvement.
 
 The builder uses the bundled `@oai/artifact-tool` and existing assets. It generates no SVG artwork. Native shapes implement only the requested editable diagrams, text and tables. Source: `source/build.mjs`. To revise on this host:
 
@@ -32,10 +32,10 @@ The finalizer passed package, font, chart/workbook and first-party import checks
 
 ## Output hashes
 
-SHA-256 for the 00:09 UTC snapshot; the complete source/output manifest is in `source/provenance.json`.
+SHA-256 for the 00:36 UTC snapshot; the complete source/output manifest is in `source/provenance.json`.
 
 | Deliverable | SHA-256 |
 | --- | --- |
-| `preview-montage.png` | `23fcd09d37bbd2e17840d660d5b66cd37ae4187a588b17644132d7c53aeea809` |
-| `spottr-judges-rendered.pdf` | `c5624cc1a3b9d0ea631cf880d54c3edce092762c248dd629c54179c411bf34b5` |
-| `spottr-judges.pptx` | `ccdfe04d22ddcc20e7f2918dcc4c34a7db93c282d53b30bfa6bd8e2dfd8f4013` |
+| `preview-montage.png` | `4c7cf81bb0071f8b0fbf9e02553f458453bbd8b995b804b2a3bee7f4c5eb2c52` |
+| `spottr-judges-rendered.pdf` | `0086b7ffbccfd9befe0aa16dc585664c163de9cfbbdd3228c1f666cc2760c23a` |
+| `spottr-judges.pptx` | `e1a5666887158512ac1cbf886858b3de5e1ca07044a2f4c02563abd255e137d3` |
