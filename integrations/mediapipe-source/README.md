@@ -1,6 +1,6 @@
 # Experimental Pose-only source build
 
-This optional source experiment is separate from Spottr’s working downloaded SDK. It adds three reduced Pose API targets to the exact MediaPipe release source, preserving original targets. **Do not substitute its outputs into the app.** Analysis passed; compilation, Swift imports, graph registration, resource packaging, privacy declarations and publisher/origin review remain separate gates. [Analysis receipt](../../docs/evidence/sdk-pose-analysis-2026-10-25.md), [build/packaging plan](../../docs/sdk-source-build-plan.md).
+This optional source experiment is separate from Spottr’s working downloaded SDK. It adds three reduced Pose API targets to the exact MediaPipe release source, preserving original targets. **Do not substitute its outputs into the app.** Analysis passed; the first [compile attempt](../../docs/evidence/sdk-pose-compile-attempt-2026-10-25.md) stopped at a simulator module-export error. Complete compilation, Swift imports, graph registration, resource packaging, privacy declarations and publisher/origin review remain separate gates. [Analysis receipt](../../docs/evidence/sdk-pose-analysis-2026-10-25.md), [build/packaging plan](../../docs/sdk-source-build-plan.md).
 
 ## Reproduce the source patch
 
