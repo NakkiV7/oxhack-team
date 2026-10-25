@@ -2,6 +2,8 @@
 
 Counts squat reps and checks depth, lean, knee tracking and balance from a webcam or a video, in the browser, with no training: Google's MediaPipe Pose Landmarker finds 33 body landmarks and the rules in `squat.mjs` do the rest. Same shape as the push-up prototype next door, so the two look and work the same.
 
+New in this branch: a **tempo forecast** card that, after three counted reps, estimates whether the lowering tempo of one of the next two reps will leave the programme's range, records every forecast and its outcome in Tiger Data, shows "What we anticipated" in the summary, and opens an **Evidence** dialog with the evaluation (baselines, calibration, decision frontier, dataset card) and the technical paper. Specification, results and demo script: [docs/HRT.md](docs/HRT.md). The Tiger Data stream behind it: [docs/TIGER.md](docs/TIGER.md).
+
 Optional extras, shared with the push-up prototype:
 
 - **AI coach (Gemini)**: a short pep talk or tip every few reps, plus a Q&A box that answers only from official health pages (WHO, CDC, NHS, NIH) with citations.
