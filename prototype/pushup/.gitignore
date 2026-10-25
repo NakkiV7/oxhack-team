@@ -1,0 +1,9 @@
+node_modules/
+models/*.task
+.env
+.DS_Store
+ios/**/xcuserdata/
+ios/build/
+.control-token
+data/profile.json
+certs/

@@ -1,0 +1,165 @@
+test_adaptation_predicts_before_matured_update_and_never_reuses_outcome (test_contract.ForecastContractTests.test_adaptation_predicts_before_matured_update_and_never_reuses_outcome) ... ERROR
+test_future_outcome_cannot_update_adaptation_and_bias_is_bounded (test_contract.ForecastContractTests.test_future_outcome_cannot_update_adaptation_and_bias_is_bounded) ... ERROR
+test_future_samples_cannot_change_origin_features (test_contract.ForecastContractTests.test_future_samples_cannot_change_origin_features) ... ERROR
+test_missing_target_bin_is_not_filled_or_interpolated (test_contract.ForecastContractTests.test_missing_target_bin_is_not_filled_or_interpolated) ... ERROR
+test_negative_nonfinite_hr_and_missing_wrist_are_not_measurements (test_contract.ForecastContractTests.test_negative_nonfinite_hr_and_missing_wrist_are_not_measurements) ... ERROR
+test_nonmonotonic_duplicate_or_negative_timestamps_rejected (test_contract.ForecastContractTests.test_nonmonotonic_duplicate_or_negative_timestamps_rejected) ... ERROR
+test_participants_have_one_locked_group_unknown_and_overlap_rejected (test_contract.ForecastContractTests.test_participants_have_one_locked_group_unknown_and_overlap_rejected) ... ERROR
+test_scaling_uses_training_only_and_handles_constant_feature (test_contract.ForecastContractTests.test_scaling_uses_training_only_and_handles_constant_feature) ... ERROR
+test_stale_or_gappy_history_abstains_even_when_target_exists (test_contract.ForecastContractTests.test_stale_or_gappy_history_abstains_even_when_target_exists) ... ERROR
+test_target_is_only_five_observed_seconds_ending_at_horizon (test_contract.ForecastContractTests.test_target_is_only_five_observed_seconds_ending_at_horizon) ... ERROR
+
+======================================================================
+ERROR: test_adaptation_predicts_before_matured_update_and_never_reuses_outcome (test_contract.ForecastContractTests.test_adaptation_predicts_before_matured_update_and_never_reuses_outcome)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/scsoc/dev/AI PT/research/hr_forecast/tests/test_contract.py", line 12, in setUp
+    self.api = importlib.import_module('research.hr_forecast.forecast')
+               ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1406, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1335, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'research.hr_forecast.forecast'
+
+======================================================================
+ERROR: test_future_outcome_cannot_update_adaptation_and_bias_is_bounded (test_contract.ForecastContractTests.test_future_outcome_cannot_update_adaptation_and_bias_is_bounded)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/scsoc/dev/AI PT/research/hr_forecast/tests/test_contract.py", line 12, in setUp
+    self.api = importlib.import_module('research.hr_forecast.forecast')
+               ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1406, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1335, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'research.hr_forecast.forecast'
+
+======================================================================
+ERROR: test_future_samples_cannot_change_origin_features (test_contract.ForecastContractTests.test_future_samples_cannot_change_origin_features)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/scsoc/dev/AI PT/research/hr_forecast/tests/test_contract.py", line 12, in setUp
+    self.api = importlib.import_module('research.hr_forecast.forecast')
+               ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1406, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1335, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'research.hr_forecast.forecast'
+
+======================================================================
+ERROR: test_missing_target_bin_is_not_filled_or_interpolated (test_contract.ForecastContractTests.test_missing_target_bin_is_not_filled_or_interpolated)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/scsoc/dev/AI PT/research/hr_forecast/tests/test_contract.py", line 12, in setUp
+    self.api = importlib.import_module('research.hr_forecast.forecast')
+               ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1406, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1335, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'research.hr_forecast.forecast'
+
+======================================================================
+ERROR: test_negative_nonfinite_hr_and_missing_wrist_are_not_measurements (test_contract.ForecastContractTests.test_negative_nonfinite_hr_and_missing_wrist_are_not_measurements)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/scsoc/dev/AI PT/research/hr_forecast/tests/test_contract.py", line 12, in setUp
+    self.api = importlib.import_module('research.hr_forecast.forecast')
+               ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1406, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1335, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'research.hr_forecast.forecast'
+
+======================================================================
+ERROR: test_nonmonotonic_duplicate_or_negative_timestamps_rejected (test_contract.ForecastContractTests.test_nonmonotonic_duplicate_or_negative_timestamps_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/scsoc/dev/AI PT/research/hr_forecast/tests/test_contract.py", line 12, in setUp
+    self.api = importlib.import_module('research.hr_forecast.forecast')
+               ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1406, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1335, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'research.hr_forecast.forecast'
+
+======================================================================
+ERROR: test_participants_have_one_locked_group_unknown_and_overlap_rejected (test_contract.ForecastContractTests.test_participants_have_one_locked_group_unknown_and_overlap_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/scsoc/dev/AI PT/research/hr_forecast/tests/test_contract.py", line 12, in setUp
+    self.api = importlib.import_module('research.hr_forecast.forecast')
+               ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1406, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1335, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'research.hr_forecast.forecast'
+
+======================================================================
+ERROR: test_scaling_uses_training_only_and_handles_constant_feature (test_contract.ForecastContractTests.test_scaling_uses_training_only_and_handles_constant_feature)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/scsoc/dev/AI PT/research/hr_forecast/tests/test_contract.py", line 12, in setUp
+    self.api = importlib.import_module('research.hr_forecast.forecast')
+               ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1406, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1335, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'research.hr_forecast.forecast'
+
+======================================================================
+ERROR: test_stale_or_gappy_history_abstains_even_when_target_exists (test_contract.ForecastContractTests.test_stale_or_gappy_history_abstains_even_when_target_exists)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/scsoc/dev/AI PT/research/hr_forecast/tests/test_contract.py", line 12, in setUp
+    self.api = importlib.import_module('research.hr_forecast.forecast')
+               ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1406, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1335, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'research.hr_forecast.forecast'
+
+======================================================================
+ERROR: test_target_is_only_five_observed_seconds_ending_at_horizon (test_contract.ForecastContractTests.test_target_is_only_five_observed_seconds_ending_at_horizon)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/scsoc/dev/AI PT/research/hr_forecast/tests/test_contract.py", line 12, in setUp
+    self.api = importlib.import_module('research.hr_forecast.forecast')
+               ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1406, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1335, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'research.hr_forecast.forecast'
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.003s
+
+FAILED (errors=10)

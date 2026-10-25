@@ -1,0 +1,115 @@
+{
+  "observedAtUTC": "2026-10-24T20:34:01Z",
+  "status": "blocked-app-unavailable",
+  "deltaRequestCount": 0,
+  "account": "unverified; app could not launch",
+  "provider": "unverified",
+  "model": "unverified",
+  "threadID": null,
+  "threadURL": null,
+  "rawJudgeResult": null,
+  "humanReview": "No Delta judge result exists. Expected controls are authored expectations only.",
+  "observations": [
+    "CUA inventory listed Delta com.zed-industries.delta as not running.",
+    "CUA getApp by bundle ID and name both returned Invalid app.",
+    "Finder showed no Delta in /Applications or ~/Applications.",
+    "Bounded filesystem check found no Delta-named entry in /Applications, ~/Applications, or ~/Downloads. /Volumes contained only Macintosh HD."
+  ],
+  "nextAction": "Restore/open the official Delta app, verify existing account/provider/model, then send judge-request.md once. Do not create credentials, accept agreements, grant new access, upgrade, or share publicly during this bounded task.",
+  "preflightChecks": [
+    {
+      "case": "stop-priority",
+      "candidate": "A",
+      "wordCount": 7,
+      "within14Words": true,
+      "unknownFactIDs": [],
+      "currentGeneration": true
+    },
+    {
+      "case": "stop-priority",
+      "candidate": "B",
+      "wordCount": 9,
+      "within14Words": true,
+      "unknownFactIDs": [],
+      "currentGeneration": true
+    },
+    {
+      "case": "late-context",
+      "candidate": "A",
+      "wordCount": 6,
+      "within14Words": true,
+      "unknownFactIDs": [],
+      "currentGeneration": false
+    },
+    {
+      "case": "late-context",
+      "candidate": "B",
+      "wordCount": 5,
+      "within14Words": true,
+      "unknownFactIDs": [],
+      "currentGeneration": false
+    },
+    {
+      "case": "evidence-boundary",
+      "candidate": "A",
+      "wordCount": 7,
+      "within14Words": true,
+      "unknownFactIDs": [],
+      "currentGeneration": true
+    },
+    {
+      "case": "evidence-boundary",
+      "candidate": "B",
+      "wordCount": 8,
+      "within14Words": true,
+      "unknownFactIDs": [
+        "f-capacity-missing"
+      ],
+      "currentGeneration": true
+    },
+    {
+      "case": "data-instruction",
+      "candidate": "A",
+      "wordCount": 4,
+      "within14Words": true,
+      "unknownFactIDs": [],
+      "currentGeneration": true
+    },
+    {
+      "case": "data-instruction",
+      "candidate": "B",
+      "wordCount": 4,
+      "within14Words": true,
+      "unknownFactIDs": [],
+      "currentGeneration": true
+    },
+    {
+      "case": "identical-control",
+      "candidate": "A",
+      "wordCount": 5,
+      "within14Words": true,
+      "unknownFactIDs": [],
+      "currentGeneration": true
+    },
+    {
+      "case": "identical-control",
+      "candidate": "B",
+      "wordCount": 5,
+      "within14Words": true,
+      "unknownFactIDs": [],
+      "currentGeneration": true
+    }
+  ],
+  "sha256": {
+    "fixtures.json": "9ffff0c98acb739be535871695c005007ca0505e8b6240134693984bc849563c",
+    "expected-controls.json": "749620b1f01bdead8bddb470101c52d1c4046814cd6907d9e7102b22b40ecb9f",
+    "judge-request.md": "48c9491e889e3bc0dd8cf850e3f44c824469b7f5c0426e087ac072536afe63c8"
+  },
+  "followUpAtUTC": "2026-10-24T20:35:14Z",
+  "downloadStatus": "not started: official download page makes downloading agreement to Terms and Early Access Agreement; action-time human confirmation pending",
+  "officialSources": {
+    "download": "https://delta.dev/download",
+    "terms": "https://zed.dev/terms",
+    "earlyAccessAgreement": "https://delta.dev/early-access"
+  }
+}

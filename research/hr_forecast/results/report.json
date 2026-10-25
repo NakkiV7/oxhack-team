@@ -1,0 +1,580 @@
+{
+  "started_at_utc": "2026-10-24T20:43:51.302260+00:00",
+  "finished_at_utc": "2026-10-24T20:43:59.908274+00:00",
+  "protocol_sha256": "a5b26bbce4488110539bd37a0db189eaad7c93383291fd576a10ad9ce9d2974f",
+  "selection_sha256_before_test_scoring": "9cf9235e317ca6357d6ca38704dcdd882e079f26b60653005e933d11bfe34a62",
+  "provenance_sha256": "aec9d56fc4a08c180696ba4f3d0f34c71e159d59c148749352728ac631313623",
+  "code_sha256": {
+    "forecast.py": "a70a70f631afc4f582ab83cccff17929131f6f60971d17a82ad94acd8e955318",
+    "benchmark.py": "9cf7b7bcf99ec19dea1805f69d69de7479a3f987902936cdd61fd6df06592cba"
+  },
+  "environment": {
+    "python": "3.14.7",
+    "numpy": "2.4.4",
+    "sklearn": "1.8.0",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "thread_limits": {
+      "OPENBLAS_NUM_THREADS": "2",
+      "OMP_NUM_THREADS": "2",
+      "VECLIB_MAXIMUM_THREADS": "2"
+    }
+  },
+  "resources": {
+    "wall_seconds": 8.605958875035867,
+    "cpu_seconds": 8.528783,
+    "peak_rss_bytes": 228835328
+  },
+  "test_results": {
+    "10": {
+      "selected": "hr-ridge-0.1",
+      "prespecified_candidate_scores_own_eligibility": {
+        "persistence": {
+          "participant_macro_mae": 3.0813300816382974,
+          "per_participant": {
+            "108": {
+              "count": 803,
+              "mae": 2.91654905216549,
+              "rmse": 4.160088736219852,
+              "bias": -0.08389649923896507
+            },
+            "109": {
+              "count": 4,
+              "mae": 3.246111111111105,
+              "rmse": 3.817165421075147,
+              "bias": -3.246111111111105
+            }
+          },
+          "pooled_dependent_windows": {
+            "count": 807,
+            "mae": 2.918182569186287,
+            "rmse": 4.158458729480216,
+            "bias": -0.09957042544403144
+          }
+        },
+        "hr-ridge-0.1": {
+          "participant_macro_mae": 2.8077343937693686,
+          "per_participant": {
+            "108": {
+              "count": 803,
+              "mae": 2.551307219073556,
+              "rmse": 3.6269653643366504,
+              "bias": 0.008993442628863733
+            },
+            "109": {
+              "count": 4,
+              "mae": 3.064161568465181,
+              "rmse": 3.8659255202445992,
+              "bias": -2.7388980679580897
+            }
+          },
+          "pooled_dependent_windows": {
+            "count": 807,
+            "mae": 2.5538492480668227,
+            "rmse": 3.6281886129265613,
+            "bias": -0.0046268374731781685
+          }
+        },
+        "hr-ridge-1": {
+          "participant_macro_mae": 2.7902515616531107,
+          "per_participant": {
+            "108": {
+              "count": 803,
+              "mae": 2.5488845963325906,
+              "rmse": 3.628505051736549,
+              "bias": 0.0026216358827085545
+            },
+            "109": {
+              "count": 4,
+              "mae": 3.031618526973631,
+              "rmse": 3.875498874488593,
+              "bias": -2.7680652064341302
+            }
+          },
+          "pooled_dependent_windows": {
+            "count": 807,
+            "mae": 2.5512773295699693,
+            "rmse": 3.6297707556825385,
+            "bias": -0.011111632232864377
+          }
+        },
+        "hr-ridge-10": {
+          "participant_macro_mae": 2.747690619231306,
+          "per_participant": {
+            "108": {
+              "count": 803,
+              "mae": 2.560105019962129,
+              "rmse": 3.6585200331958396,
+              "bias": -0.01659671511403252
+            },
+            "109": {
+              "count": 4,
+              "mae": 2.9352762185004835,
+              "rmse": 3.839014397083583,
+              "bias": -2.7858963660345566
+            }
+          },
+          "pooled_dependent_windows": {
+            "count": 807,
+            "mae": 2.5619646045893325,
+            "rmse": 3.659436630841245,
+            "bias": -0.030323107435819504
+          }
+        },
+        "wrist-ridge-0.1": {
+          "participant_macro_mae": 2.378260564661849,
+          "per_participant": {
+            "108": {
+              "count": 799,
+              "mae": 2.375460984961084,
+              "rmse": 3.413293248365998,
+              "bias": 0.09268373016424832
+            },
+            "109": {
+              "count": 4,
+              "mae": 2.381060144362614,
+              "rmse": 2.6346756130120217,
+              "bias": -1.0029404187929245
+            }
+          },
+          "pooled_dependent_windows": {
+            "count": 803,
+            "mae": 2.3754888761660733,
+            "rmse": 3.4098553471063866,
+            "bias": 0.08722607562398842
+          }
+        },
+        "wrist-ridge-1": {
+          "participant_macro_mae": 2.3825835923315237,
+          "per_participant": {
+            "108": {
+              "count": 799,
+              "mae": 2.3724953056385503,
+              "rmse": 3.412057520470519,
+              "bias": 0.0874350355332627
+            },
+            "109": {
+              "count": 4,
+              "mae": 2.3926718790244976,
+              "rmse": 2.635264359512654,
+              "bias": -1.021246813380607
+            }
+          },
+          "pooled_dependent_windows": {
+            "count": 803,
+            "mae": 2.3725958116080945,
+            "rmse": 3.408626802836365,
+            "bias": 0.08191233641040407
+          }
+        },
+        "wrist-ridge-10": {
+          "participant_macro_mae": 2.380907223480544,
+          "per_participant": {
+            "108": {
+              "count": 799,
+              "mae": 2.3831628827634344,
+              "rmse": 3.4309564038532017,
+              "bias": 0.07510685109255816
+            },
+            "109": {
+              "count": 4,
+              "mae": 2.3786515641976536,
+              "rmse": 2.6062893898157933,
+              "bias": -1.0278501311031363
+            }
+          },
+          "pooled_dependent_windows": {
+            "count": 803,
+            "mae": 2.3831404104418117,
+            "rmse": 3.427340260322441,
+            "bias": 0.06961266936306525
+          }
+        }
+      },
+      "selected_primary_same_origins": {
+        "frozen": {
+          "participant_macro_mae": 2.8077343937693686,
+          "per_participant": {
+            "108": {
+              "count": 803,
+              "mae": 2.551307219073556,
+              "rmse": 3.6269653643366504,
+              "bias": 0.008993442628863733
+            },
+            "109": {
+              "count": 4,
+              "mae": 3.064161568465181,
+              "rmse": 3.8659255202445992,
+              "bias": -2.7388980679580897
+            }
+          },
+          "pooled_dependent_windows": {
+            "count": 807,
+            "mae": 2.5538492480668227,
+            "rmse": 3.6281886129265613,
+            "bias": -0.0046268374731781685
+          }
+        },
+        "adaptive": {
+          "participant_macro_mae": 2.843272962519797,
+          "per_participant": {
+            "108": {
+              "count": 803,
+              "mae": 2.6106106131363,
+              "rmse": 3.7148979498467543,
+              "bias": 0.005587635813074252
+            },
+            "109": {
+              "count": 4,
+              "mae": 3.0759353119032937,
+              "rmse": 3.867977881042713,
+              "bias": -2.727124324519977
+            }
+          },
+          "pooled_dependent_windows": {
+            "count": 807,
+            "mae": 2.6129170552615393,
+            "rmse": 3.715672262786987,
+            "bias": -0.007957404882504689
+          }
+        },
+        "persistence": {
+          "participant_macro_mae": 3.0813300816382974,
+          "per_participant": {
+            "108": {
+              "count": 803,
+              "mae": 2.91654905216549,
+              "rmse": 4.160088736219852,
+              "bias": -0.08389649923896507
+            },
+            "109": {
+              "count": 4,
+              "mae": 3.246111111111105,
+              "rmse": 3.817165421075147,
+              "bias": -3.246111111111105
+            }
+          },
+          "pooled_dependent_windows": {
+            "count": 807,
+            "mae": 2.918182569186287,
+            "rmse": 4.158458729480216,
+            "bias": -0.09957042544403144
+          }
+        },
+        "cold_start": {
+          "frozen": {
+            "participant_macro_mae": 2.9643372621824966,
+            "per_participant": {
+              "108": {
+                "count": 12,
+                "mae": 2.864512955899812,
+                "rmse": 3.8032949906212545,
+                "bias": 1.5508342737535656
+              },
+              "109": {
+                "count": 4,
+                "mae": 3.064161568465181,
+                "rmse": 3.8659255202445992,
+                "bias": -2.7388980679580897
+              }
+            },
+            "pooled_dependent_windows": {
+              "count": 16,
+              "mae": 2.9144251090411544,
+              "rmse": 3.819048915801311,
+              "bias": 0.4784011883256518
+            }
+          },
+          "adaptive": {
+            "participant_macro_mae": 2.950025970752156,
+            "per_participant": {
+              "108": {
+                "count": 12,
+                "mae": 2.8241166296010185,
+                "rmse": 3.8542020369893626,
+                "bias": 1.3493463350352155
+              },
+              "109": {
+                "count": 4,
+                "mae": 3.0759353119032937,
+                "rmse": 3.867977881042713,
+                "bias": -2.727124324519977
+              }
+            },
+            "pooled_dependent_windows": {
+              "count": 16,
+              "mae": 2.8870713001765873,
+              "rmse": 3.8576506099579095,
+              "bias": 0.33022867014641744
+            }
+          },
+          "persistence": {
+            "participant_macro_mae": 3.0812037037037,
+            "per_participant": {
+              "108": {
+                "count": 12,
+                "mae": 2.916296296296295,
+                "rmse": 3.6722978083776954,
+                "bias": 1.468148148148148
+              },
+              "109": {
+                "count": 4,
+                "mae": 3.246111111111105,
+                "rmse": 3.817165421075147,
+                "bias": -3.246111111111105
+              }
+            },
+            "pooled_dependent_windows": {
+              "count": 16,
+              "mae": 2.9987499999999976,
+              "rmse": 3.709045208409392,
+              "bias": 0.28958333333333464
+            }
+          }
+        },
+        "paired_participant_mae_delta": {
+          "108": -0.3652418330919338,
+          "109": -0.1819495426459241
+        }
+      }
+    },
+    "30": {
+      "selected": "hr-ridge-0.1",
+      "prespecified_candidate_scores_own_eligibility": {
+        "persistence": {
+          "participant_macro_mae": 7.649689890140452,
+          "per_participant": {
+            "108": {
+              "count": 799,
+              "mae": 7.649689890140452,
+              "rmse": 11.39573090142659,
+              "bias": -0.3292727019885969
+            }
+          },
+          "pooled_dependent_windows": {
+            "count": 799,
+            "mae": 7.649689890140452,
+            "rmse": 11.39573090142659,
+            "bias": -0.3292727019885969
+          }
+        },
+        "hr-ridge-0.1": {
+          "participant_macro_mae": 7.066391791853008,
+          "per_participant": {
+            "108": {
+              "count": 799,
+              "mae": 7.066391791853008,
+              "rmse": 10.381483684711844,
+              "bias": -0.2561718845372942
+            }
+          },
+          "pooled_dependent_windows": {
+            "count": 799,
+            "mae": 7.066391791853008,
+            "rmse": 10.381483684711844,
+            "bias": -0.2561718845372942
+          }
+        },
+        "hr-ridge-1": {
+          "participant_macro_mae": 7.0685948410016595,
+          "per_participant": {
+            "108": {
+              "count": 799,
+              "mae": 7.0685948410016595,
+              "rmse": 10.388028233675517,
+              "bias": -0.2599130765440817
+            }
+          },
+          "pooled_dependent_windows": {
+            "count": 799,
+            "mae": 7.0685948410016595,
+            "rmse": 10.388028233675517,
+            "bias": -0.2599130765440817
+          }
+        },
+        "hr-ridge-10": {
+          "participant_macro_mae": 7.066440595098828,
+          "per_participant": {
+            "108": {
+              "count": 799,
+              "mae": 7.066440595098828,
+              "rmse": 10.419660571177802,
+              "bias": -0.26396363092024694
+            }
+          },
+          "pooled_dependent_windows": {
+            "count": 799,
+            "mae": 7.066440595098828,
+            "rmse": 10.419660571177802,
+            "bias": -0.26396363092024694
+          }
+        },
+        "wrist-ridge-0.1": {
+          "participant_macro_mae": 6.261012289392616,
+          "per_participant": {
+            "108": {
+              "count": 795,
+              "mae": 6.261012289392616,
+              "rmse": 9.4655080354041,
+              "bias": 0.004055271850250252
+            }
+          },
+          "pooled_dependent_windows": {
+            "count": 795,
+            "mae": 6.261012289392616,
+            "rmse": 9.4655080354041,
+            "bias": 0.004055271850250252
+          }
+        },
+        "wrist-ridge-1": {
+          "participant_macro_mae": 6.260412278975897,
+          "per_participant": {
+            "108": {
+              "count": 795,
+              "mae": 6.260412278975897,
+              "rmse": 9.464436592578645,
+              "bias": 0.004649090485563848
+            }
+          },
+          "pooled_dependent_windows": {
+            "count": 795,
+            "mae": 6.260412278975897,
+            "rmse": 9.464436592578645,
+            "bias": 0.004649090485563848
+          }
+        },
+        "wrist-ridge-10": {
+          "participant_macro_mae": 6.237090534242544,
+          "per_participant": {
+            "108": {
+              "count": 795,
+              "mae": 6.237090534242544,
+              "rmse": 9.458209669309573,
+              "bias": 0.02382120623611096
+            }
+          },
+          "pooled_dependent_windows": {
+            "count": 795,
+            "mae": 6.237090534242544,
+            "rmse": 9.458209669309573,
+            "bias": 0.02382120623611096
+          }
+        }
+      },
+      "selected_primary_same_origins": {
+        "frozen": {
+          "participant_macro_mae": 7.066391791853008,
+          "per_participant": {
+            "108": {
+              "count": 799,
+              "mae": 7.066391791853008,
+              "rmse": 10.381483684711844,
+              "bias": -0.2561718845372942
+            }
+          },
+          "pooled_dependent_windows": {
+            "count": 799,
+            "mae": 7.066391791853008,
+            "rmse": 10.381483684711844,
+            "bias": -0.2561718845372942
+          }
+        },
+        "adaptive": {
+          "participant_macro_mae": 7.473061169627814,
+          "per_participant": {
+            "108": {
+              "count": 799,
+              "mae": 7.473061169627814,
+              "rmse": 11.113913741899557,
+              "bias": 0.008879408244204566
+            }
+          },
+          "pooled_dependent_windows": {
+            "count": 799,
+            "mae": 7.473061169627814,
+            "rmse": 11.113913741899557,
+            "bias": 0.008879408244204566
+          }
+        },
+        "persistence": {
+          "participant_macro_mae": 7.649689890140452,
+          "per_participant": {
+            "108": {
+              "count": 799,
+              "mae": 7.649689890140452,
+              "rmse": 11.39573090142659,
+              "bias": -0.3292727019885969
+            }
+          },
+          "pooled_dependent_windows": {
+            "count": 799,
+            "mae": 7.649689890140452,
+            "rmse": 11.39573090142659,
+            "bias": -0.3292727019885969
+          }
+        },
+        "cold_start": {
+          "frozen": {
+            "participant_macro_mae": 7.376860368205976,
+            "per_participant": {
+              "108": {
+                "count": 16,
+                "mae": 7.376860368205976,
+                "rmse": 9.318344690909477,
+                "bias": 7.376860368205976
+              }
+            },
+            "pooled_dependent_windows": {
+              "count": 16,
+              "mae": 7.376860368205976,
+              "rmse": 9.318344690909477,
+              "bias": 7.376860368205976
+            }
+          },
+          "adaptive": {
+            "participant_macro_mae": 6.190780662528907,
+            "per_participant": {
+              "108": {
+                "count": 16,
+                "mae": 6.190780662528907,
+                "rmse": 8.76116050338957,
+                "bias": 6.190780662528907
+              }
+            },
+            "pooled_dependent_windows": {
+              "count": 16,
+              "mae": 6.190780662528907,
+              "rmse": 8.76116050338957,
+              "bias": 6.190780662528907
+            }
+          },
+          "persistence": {
+            "participant_macro_mae": 5.6597222222222205,
+            "per_participant": {
+              "108": {
+                "count": 16,
+                "mae": 5.6597222222222205,
+                "rmse": 7.603227303724304,
+                "bias": 5.579166666666665
+              }
+            },
+            "pooled_dependent_windows": {
+              "count": 16,
+              "mae": 5.6597222222222205,
+              "rmse": 7.603227303724304,
+              "bias": 5.579166666666665
+            }
+          }
+        },
+        "paired_participant_mae_delta": {
+          "108": -0.5832980982874441
+        }
+      }
+    }
+  },
+  "test_participants_expected": [
+    108,
+    109
+  ],
+  "zero_coverage_participants": [],
+  "claims": "Offline public-data HR forecast only; two held-out participants, no Watch transfer, recovery, RIR, clinical or runtime app validation."
+}

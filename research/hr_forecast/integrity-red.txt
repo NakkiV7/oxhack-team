@@ -1,0 +1,17 @@
+test_changed_archive_cannot_be_used_with_original_provenance (test_training_boundary.SourceIntegrityTests.test_changed_archive_cannot_be_used_with_original_provenance) ... ERROR
+test_held_out_labels_and_features_cannot_affect_fitted_models (test_training_boundary.TrainingBoundaryTests.test_held_out_labels_and_features_cannot_affect_fitted_models) ... ok
+test_model_selection_refuses_test_rows (test_training_boundary.TrainingBoundaryTests.test_model_selection_refuses_test_rows) ... ok
+
+======================================================================
+ERROR: test_changed_archive_cannot_be_used_with_original_provenance (test_training_boundary.SourceIntegrityTests.test_changed_archive_cannot_be_used_with_original_provenance)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/scsoc/dev/AI PT/research/hr_forecast/tests/test_training_boundary.py", line 46, in test_changed_archive_cannot_be_used_with_original_provenance
+    api.verify_archive(archive,expected)
+    ^^^^^^^^^^^^^^^^^^
+AttributeError: module 'research.hr_forecast.benchmark' has no attribute 'verify_archive'
+
+----------------------------------------------------------------------
+Ran 3 tests in 1.417s
+
+FAILED (errors=1)

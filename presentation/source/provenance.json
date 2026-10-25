@@ -1,0 +1,100 @@
+{
+  "title": "Spottr judges presentation",
+  "evidence_snapshot_utc": "2026-10-25T00:36:00Z",
+  "created_utc": "2026-10-25T00:39:01.335163+00:00",
+  "git_head_at_source_inventory": "0006472",
+  "slide_count": 10,
+  "font": {
+    "family": "Helvetica Neue",
+    "basis": "design; available bundled-runtime font discovery"
+  },
+  "assets_manifest": "assets.json",
+  "asset_scope": "Existing exercise PNGs and explicitly owner-approved actual iPhone/Watch simulator JPEGs. No authored SVG or generated new artwork. PNG HR plots are supplementary unchanged evidence.",
+  "source_sha256": {
+    "Native/iOS/TrainingStore.swift": "53f113550dca25bfa336a762e993da197837407a10ba6a49960745e1b0ac616d",
+    "Shared/Core/CoachingPolicy.swift": "4b1a439505cb3a52564791bee48a537e7766f8dcfa7bbb367fe9cd1964e364b5",
+    "Shared/Core/ExerciseCatalog.swift": "e979c2a0d1b800ccc82d29aadafd93eaf30a629df810d5e31de1c439c09c3f1d",
+    "Shared/Core/RepCounter.swift": "5d7834843009054ea83562b9c1bfe10d9162cad6f85f9d304b5c73ba54ee5a95",
+    "Shared/Core/SkillProgress.swift": "caf0464e18f1b26af50e6c8d893812cdcfaef7e628a172c03c234b04814ffa6b",
+    "Tests/iOS/CoachingFlowTests.swift": "77967e36bfc639be6263b2731429045e76c0ce213a030761e2b4df78211f1682",
+    "docs/ISSUES.md": "8e7a040ccf4cabd23c5137424b07eacbb1cb1b065cc66530efdfe2fbd306a18b",
+    "docs/app-guide.md": "a2d3257a53b21a4b8cd2e530d2efa9e690c41910e18193f8e9ac1c0c088a8da3",
+    "docs/coach-goals.md": "af46246795436fe5314cd2e3e3f6f103a3fae63b400f985a04827691c35180cd",
+    "docs/coaching-policy.md": "b34397b2224f5dec62e373b67905de89e6839b877eb386dd5a7b60403a577a9e",
+    "docs/delta-workflow.md": "81a547269ca531a93baaca198bfe440865c780945cd102865cf86f5266de2d32",
+    "docs/evidence/native-gemini-chat-2026-10-24.md": "ea4b718820e5ce4f11252b45cf31d70a8a6a034dcb85798f685a35f279af2b6e",
+    "docs/evidence/pushup-prototype-integrity-2026-10-24.md": "fda75de57cf9d4a2921e43678db474272ae6b06105f24d8aa5bbfa39cb64fbca",
+    "docs/evidence/testflight-build-2-2026-10-24.md": "b3dfe4aecf54458a8abba483ada21bd03f5ea0fe5d9b585a44bde89238683d45",
+    "docs/integration-readiness.md": "70db4fa6b9ab04c25157aff8ffca8b5321de900c0c8404bff81a7fcc5456c410",
+    "docs/presage-integration.md": "33b6b621efdd371b6ab10529590576963ca13f06401f2ae32997c8a314d81cc0",
+    "docs/public-data-benchmark.md": "84d33c91097fd3141355f40b60a3f607ca59b58f516320ea089d05abbe2b934c",
+    "docs/release-readiness.md": "0b8de9061a338b8c865288304378bcb673613c7f793da716b574844fdf05219b",
+    "docs/snowflake-analytics.md": "4d751ef09ec4dcabef40e379499279cb59e3526bca3b6aa2d0714c21c2228433",
+    "docs/testflight-provisioning.md": "315343b5e70b15e77eb825cf78746806172978175d96373758990a611fec8780",
+    "docs/testflight.md": "690c327e05afc3ef291446a4b257dcf8b41ef9812cde83f17d01121cb1c32a0f",
+    "docs/tiger-live-readiness.md": "2112690ccc1d65b089c5626476c96d641fab65a16fae8330e7339b96ff06cfe9",
+    "docs/voice-feedback.md": "73097d0551acc4112ff2ec58e47d0bb1c7621d9cf34a99fec36a3788d4f0420b",
+    "docs/vultr-deployment.md": "f3675ea21ff10435761e3e23b00553e0214eb2b585ad67e4eaaa9c1f1b17806a",
+    "docs/watch-simulator-acceptance.md": "880b631c99addb3dd39309b1d662cbb1b6ab6a68de1dd0fe38783f071bbb5a0c",
+    "docs/watch-telemetry.md": "b852e62c820a9649065dfa920163cbc1acfc2688a25af206c614a1161138d206",
+    "evaluations/codex/2026-10-24-cue-review/README.md": "42587bce87b4f1041adc96395c530ac933e9f2863f5f0af2bf63a7f7808184b4",
+    "hardware/pi/EVIDENCE-2026-10-24.md": "a7c52d27fa498b5cc6133df9d43c4e69bac5f2e9a8a3a7f5aa54f3cb9fdd2c22",
+    "research/hr_forecast/results/inventory.json": "0d90c7cd4b59c82bde5d953e2444e50f0796fa1805566ac7c59837d0f3c32d23",
+    "research/hr_forecast/results/report.json": "f7c12bfaf022c90ebb6cbc86b84c87695051d737de435a707b50cdac685f4576",
+    "docs/evidence/tiger-console-2026-10-24.md": "5615d5d75d585271f355a5bddafcc4e69fedafb169b9ef2a9e28819839967695",
+    "docs/evidence/landing-browser-2026-10-24.md": "468918f3bfcbdbe70a8972be0238abddcae890abca4cfc73bfbe0b5492429047",
+    "landing/index.html": "2aa7251d77715399ee1f6ff6c365e76128925bd8b69ae37c28b82e4517b95bb3",
+    "presentation/source/build.mjs": "953a9b284bd35824af0c5c9d7387cfaf29dbfde16e9263ecce82adae868c13fd",
+    "presentation/source/export-rendered-pdf.py": "19eb81f558abc1eefa9d3178605d165a4f09c66edb6a5b7411981f1064138e56",
+    "docs/evidence/gemini-structured-compatibility-2026-10-25.md": "e29325c3ca416737e9073050966454e247cebe8106f7e35f92e5e0a65f89c820",
+    "docs/evidence/native-gemini-proposal-2026-10-25.jpg": "42442600df68fa2a164b36c91a4599b03c849340138b4891d2b33e507ec6daf4",
+    "docs/evidence/native-gemini-weekly-2026-10-25.jpg": "c87435a25d53765542a0ec78bdb14db7c1e456c644477209180dff9c3f1cedf2",
+    "docs/evidence/native-gemini-session-2026-10-25.jpg": "235b4f97344dce19f70816f2b8158fb90a46bea6ee91299e1264b70e30f20874",
+    "server/src/gateway.mjs": "89f248d6d1c7d9c84c1a1def03e3ac21678d78372870981814626e939506922f",
+    "server/src/contracts.mjs": "3d7813a2c3e5a21051e528271ae79a093da38888a903aceb7741ce8ad2683e57",
+    "docs/evidence/testflight-build-3-2026-10-25.md": "c494cfb46b5da1c3ad35a8afaf8c644a615645952888c7301ede07eb54e6da7f",
+    "docs/evidence/testflight-availability-2026-10-25.md": "63e4a5bf44829f0f5355b35233bcbc16f9dba572345b1db022042bc8cdcf266c",
+    "docs/judges-guide.md": "ad694462449bb81819c7a753e04639636fff988fbec26a2c2b4ed8a66bfccbbf"
+  },
+  "outputs": {
+    "preview-montage.png": {
+      "bytes": 696460,
+      "sha256": "4c7cf81bb0071f8b0fbf9e02553f458453bbd8b995b804b2a3bee7f4c5eb2c52"
+    },
+    "spottr-judges-rendered.pdf": {
+      "bytes": 971770,
+      "sha256": "0086b7ffbccfd9befe0aa16dc585664c163de9cfbbdd3228c1f666cc2760c23a"
+    },
+    "spottr-judges.pptx": {
+      "bytes": 255567,
+      "sha256": "e1a5666887158512ac1cbf886858b3de5e1ca07044a2f4c02563abd255e137d3"
+    }
+  },
+  "pdf": "Static image-based PDF assembled from final imported-PPTX renders; native PDF export failed with missing #standard-fonts/Helvetica dependency.",
+  "limits": [
+    "Simulator captures do not establish physical Watch readings or exercise accuracy.",
+    "All four native Gemini request types accepted real provider responses with synthetic inputs: two earlier chats and three structured actions after the provider-only schema correction. Physical networking and real-user coaching quality remain unverified; no generated plan was approved/saved.",
+    "Pi delivered real initial frames but sustained USB capture is blocked.",
+    "Voice tests use fake playback; audible acceptance is pending.",
+    "HR forecast is offline, exploratory and not Watch/failure/recovery validation.",
+    "Builds 1, 2 and 3 are internally IN_BETA_TESTING; external OxHack contains builds 3 and 1. Build 3 is VALID, externally IN_BETA_TESTING and beta submission APPROVED at the 25 October 00:36 UTC read-back. The public invitation and both landing HTTPS links were verified; no invitation was accepted or physical installation established. Build 2 is not externally submitted.",
+    "Prototype integrity is offline plus mock-profile browser acceptance, not real Tiger persistence or labelled physical CV validation.",
+    "No native PowerPoint UI acceptance or external presentation publication.",
+    "Tiger authenticated console schema acceptance has zero rows; strict Node TLS, gateway ingestion/replay/readback, rollups, native sync and standalone prototype database acceptance remain pending.",
+    "Landing passed local desktop/emulated-width CUA/Chrome checks with actual white simulator captures; no public deployment, physical Safari or touchscreen acceptance."
+  ],
+  "validation_receipt_private": ".build/20261025T0036Z-final/validation.json",
+  "finalizer_sha256": "e1a5666887158512ac1cbf886858b3de5e1ca07044a2f4c02563abd255e137d3",
+  "source_working_tree_notice": "Current main checkpoint supplied by the release owner: 0006472. Native build 3 is frozen at ebbe560737d16ec3c6a72da7436ba25730587e19. Exact source bytes are recorded independently of Git HEAD. This refresh updates release slide 10 and notes only; no new provider, performance or physical acceptance is claimed.",
+  "render_review": {
+    "slides_rendered": 10,
+    "changed_visible_slides": [
+      10
+    ],
+    "table_estimate_warning": "Slide 9 native_table_overflow heuristic estimates 0.3423 inches beyond available table space. Actual full-size Artifact Tool render inspected with no table/footer overlap; native PowerPoint remains unverified.",
+    "unchanged_preview_count": 9,
+    "asset_hashes_verified": 11
+  },
+  "native_build_source_commit": "ebbe560737d16ec3c6a72da7436ba25730587e19",
+  "post_render_documentation_notice": "After rendering, deck-pointer sentences in docs/morning-handoff.md, docs/release-readiness.md and docs/evidence/testflight-build-3-2026-10-25.md were refreshed to reference this deck. Recorded source hashes retain the authoring snapshot; slide/output bytes were unchanged."
+}

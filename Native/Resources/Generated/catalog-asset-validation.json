@@ -1,0 +1,220 @@
+{
+  "catalogEntries": 19,
+  "resolvedEntries": 19,
+  "newImagesets": 9,
+  "existingAssetsPreserved": true,
+  "copyValidation": "byte-identical and original SHA-256 match",
+  "onboardingHero": "Native/Resources/Assets.xcassets/onboarding-skills.imageset/onboarding-skills.png",
+  "catalog": [
+    {
+      "exercise": "wallPushup",
+      "asset": "wallPushup",
+      "image": "Native/Resources/Assets.xcassets/wallPushup.imageset/wallPushup.png",
+      "size": [
+        420,
+        420
+      ],
+      "rgba": true,
+      "transparent": true
+    },
+    {
+      "exercise": "inclinePushup",
+      "asset": "inclinePushup",
+      "image": "Native/Resources/Assets.xcassets/inclinePushup.imageset/inclinePushup.png",
+      "size": [
+        420,
+        420
+      ],
+      "rgba": true,
+      "transparent": true
+    },
+    {
+      "exercise": "kneePushup",
+      "asset": "kneePushup",
+      "image": "Native/Resources/Assets.xcassets/kneePushup.imageset/kneePushup.png",
+      "size": [
+        420,
+        420
+      ],
+      "rgba": true,
+      "transparent": true
+    },
+    {
+      "exercise": "pushup",
+      "asset": "pushup-mid",
+      "image": "Native/Resources/Assets.xcassets/pushup-mid.imageset/pushup-mid.png",
+      "size": [
+        420,
+        348
+      ],
+      "rgba": true,
+      "transparent": true
+    },
+    {
+      "exercise": "closeGripPushup",
+      "asset": "closeGripPushup",
+      "image": "Native/Resources/Assets.xcassets/closeGripPushup.imageset/closeGripPushup.png",
+      "size": [
+        420,
+        420
+      ],
+      "rgba": true,
+      "transparent": true
+    },
+    {
+      "exercise": "gluteBridge",
+      "asset": "gluteBridge",
+      "image": "Native/Resources/Assets.xcassets/gluteBridge.imageset/gluteBridge.png",
+      "size": [
+        420,
+        420
+      ],
+      "rgba": true,
+      "transparent": true
+    },
+    {
+      "exercise": "squat",
+      "asset": "squat-mid",
+      "image": "Native/Resources/Assets.xcassets/squat-mid.imageset/squat-mid.png",
+      "size": [
+        420,
+        492
+      ],
+      "rgba": true,
+      "transparent": true
+    },
+    {
+      "exercise": "reverseLunge",
+      "asset": "reverseLunge",
+      "image": "Native/Resources/Assets.xcassets/reverseLunge.imageset/reverseLunge.png",
+      "size": [
+        420,
+        420
+      ],
+      "rgba": true,
+      "transparent": true
+    },
+    {
+      "exercise": "splitSquat",
+      "asset": "splitSquat",
+      "image": "Native/Resources/Assets.xcassets/splitSquat.imageset/splitSquat.png",
+      "size": [
+        420,
+        420
+      ],
+      "rgba": true,
+      "transparent": true
+    },
+    {
+      "exercise": "assistedSquat",
+      "asset": "assistedSquat",
+      "image": "Native/Resources/Assets.xcassets/assistedSquat.imageset/assistedSquat.png",
+      "size": [
+        420,
+        420
+      ],
+      "rgba": true,
+      "transparent": true
+    },
+    {
+      "exercise": "deadBug",
+      "asset": "deadBug",
+      "image": "Native/Resources/Assets.xcassets/deadBug.imageset/deadBug.png",
+      "size": [
+        1774,
+        887
+      ],
+      "rgba": true,
+      "transparent": true
+    },
+    {
+      "exercise": "plank",
+      "asset": "plank",
+      "image": "Native/Resources/Assets.xcassets/plank.imageset/plank.png",
+      "size": [
+        420,
+        420
+      ],
+      "rgba": true,
+      "transparent": true
+    },
+    {
+      "exercise": "sidePlank",
+      "asset": "sidePlank",
+      "image": "Native/Resources/Assets.xcassets/sidePlank.imageset/sidePlank.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "rgba": true,
+      "transparent": true
+    },
+    {
+      "exercise": "stepJack",
+      "asset": "stepJack",
+      "image": "Native/Resources/Assets.xcassets/stepJack.imageset/stepJack.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "rgba": true,
+      "transparent": true
+    },
+    {
+      "exercise": "highKnees",
+      "asset": "highKnees",
+      "image": "Native/Resources/Assets.xcassets/highKnees.imageset/highKnees.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "rgba": true,
+      "transparent": true
+    },
+    {
+      "exercise": "mountainClimber",
+      "asset": "mountainClimber",
+      "image": "Native/Resources/Assets.xcassets/mountainClimber.imageset/mountainClimber.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "rgba": true,
+      "transparent": true
+    },
+    {
+      "exercise": "catCow",
+      "asset": "catCow",
+      "image": "Native/Resources/Assets.xcassets/catCow.imageset/catCow.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "rgba": true,
+      "transparent": true
+    },
+    {
+      "exercise": "hipFlexorStretch",
+      "asset": "hipFlexorStretch",
+      "image": "Native/Resources/Assets.xcassets/hipFlexorStretch.imageset/hipFlexorStretch.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "rgba": true,
+      "transparent": true
+    },
+    {
+      "exercise": "singleLegBalance",
+      "asset": "singleLegBalance",
+      "image": "Native/Resources/Assets.xcassets/singleLegBalance.imageset/singleLegBalance.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "rgba": true,
+      "transparent": true
+    }
+  ],
+  "newSVGArtwork": false
+}

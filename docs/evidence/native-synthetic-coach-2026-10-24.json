@@ -1,0 +1,185 @@
+{
+  "dateUTC": "2026-10-24",
+  "scope": "Manual CUA acceptance with a local deterministic fake provider; not a live Gemini or physical-device check.",
+  "simulator": {
+    "name": "Musalli-Test",
+    "runtime": "iOS26.5",
+    "reused": true
+  },
+  "namespace": "BE228517-A5E2-43C3-92BC-C9B8F08D5CD8",
+  "initialBinary": {
+    "version": "0.1",
+    "build": "1",
+    "executableSHA256": "b5111216e54ee3379bf2aa5f5b2a7ff483a94267f84ae975bb946b44f7bceaad",
+    "debugDylibSHA256": "976a6ddddc2b4761df4659c05b044fa600fa271abee2e85a61dc6134c81b3a4c"
+  },
+  "gatewaySourceCommit": "4e3bf62",
+  "gatewaySourceSHA256": "7aa19029fc963d31e2dd08620cc73bdf1f3a99a58136475277d3a206f7b00251",
+  "stubMode": "Existing createGateway injected fetchImpl returning authored content. Loopback8841; only existing owner token read privately. Real provider keys were not passed to this gateway.",
+  "stubGenerations": [
+    {
+      "time": "2026-10-24T21:58:33.524Z",
+      "task": "/v1/proposal",
+      "kind": null,
+      "generationID": "6EEE5047-5A47-4EA9-9A30-E6DC74AE1BA2",
+      "factIDs": [
+        "context",
+        "scope-totals",
+        "skill-strength",
+        "skill-stamina",
+        "skill-mobility",
+        "skill-balance"
+      ],
+      "message": null,
+      "output": {
+        "generationID": "6EEE5047-5A47-4EA9-9A30-E6DC74AE1BA2",
+        "items": [
+          {
+            "exerciseID": "squat",
+            "sets": 1,
+            "target": 2,
+            "unit": "reps",
+            "restSeconds": 30,
+            "factIDs": [
+              "context"
+            ]
+          },
+          {
+            "exerciseID": "plank",
+            "sets": 1,
+            "target": 5,
+            "unit": "seconds",
+            "restSeconds": 30,
+            "factIDs": [
+              "context"
+            ]
+          }
+        ],
+        "rationale": {
+          "text": "Synthetic review plan: choose exercises before saving.",
+          "factIDs": [
+            "context"
+          ]
+        }
+      }
+    },
+    {
+      "time": "2026-10-24T22:02:35.746Z",
+      "task": "/v1/summary",
+      "kind": "weekly",
+      "generationID": "7F1D0541-95D2-4004-AEB0-09064400E656",
+      "factIDs": [
+        "context",
+        "scope-totals",
+        "session-9E89D448-8ABB-4CBB-8A2B-3BB7B7BACC07",
+        "set-581DE3E6-C6DC-409D-9511-7CF22CB18A70",
+        "skill-strength",
+        "skill-stamina",
+        "skill-mobility",
+        "skill-balance"
+      ],
+      "message": null,
+      "output": {
+        "generationID": "7F1D0541-95D2-4004-AEB0-09064400E656",
+        "kind": "weekly",
+        "headline": {
+          "text": "Synthetic report response",
+          "factIDs": [
+            "context"
+          ]
+        },
+        "insights": [
+          {
+            "text": "This response checks display behavior only.",
+            "factIDs": [
+              "context"
+            ]
+          }
+        ],
+        "focus": {
+          "text": "Review your recorded sets before the next workout.",
+          "factIDs": [
+            "context"
+          ]
+        }
+      }
+    },
+    {
+      "time": "2026-10-24T22:03:28.395Z",
+      "task": "/v1/summary",
+      "kind": "session",
+      "generationID": "04679B87-3515-44F5-BFEC-4F9F53177E6D",
+      "factIDs": [
+        "context",
+        "scope-totals",
+        "session-9E89D448-8ABB-4CBB-8A2B-3BB7B7BACC07",
+        "set-581DE3E6-C6DC-409D-9511-7CF22CB18A70",
+        "skill-strength",
+        "skill-stamina",
+        "skill-mobility",
+        "skill-balance"
+      ],
+      "message": null,
+      "output": {
+        "generationID": "04679B87-3515-44F5-BFEC-4F9F53177E6D",
+        "kind": "session",
+        "headline": {
+          "text": "Synthetic report response",
+          "factIDs": [
+            "context"
+          ]
+        },
+        "insights": [
+          {
+            "text": "This response checks display behavior only.",
+            "factIDs": [
+              "context"
+            ]
+          }
+        ],
+        "focus": {
+          "text": "Review your recorded sets before the next workout.",
+          "factIDs": [
+            "context"
+          ]
+        }
+      }
+    }
+  ],
+  "externalProviderCalls": 0,
+  "uiObservations": [
+    "Proposal rendered Squats1x2reps and Forearm plank1x5seconds; both initially unselected. Selecting Squats left plank unselected; approval was not submitted.",
+    "Empty-history weekly summary was disabled and produced no request.",
+    "One synthetic bulk manual squat set of2reps saved in the isolated namespace, sourceManual, no telemetry and no duration.",
+    "Weekly report showed1session1set2reps; response headline and insight displayed.",
+    "Session report showed Manual2reps and00:00 recorded time; response headline, insight and focus displayed.",
+    "After stopping the exact fixture server, one Regenerate attempt showed an actionable connection error; saved local stats remained.",
+    "A subsequent copy-only rebuild displayed1set1rep per set; its extra manual test record also stayed in the isolated namespace."
+  ],
+  "copyFixBuild": {
+    "status": "SUCCEEDED",
+    "warnings": 0,
+    "durationMs": 6630,
+    "log": "build_sim_2026-10-24T22-06-31-681Z_pid4129_cbc3828b.log",
+    "manualResult": "CUA screenshot showed1 set \u00b71 rep per set"
+  },
+  "cleanup": {
+    "fixtureServerStopped": true,
+    "port8841ListenerAbsent": true,
+    "originalGatewayURLRestored": "http://127.0.0.1:8788",
+    "ownerTokenNotChanged": true,
+    "approvedPlanNotPersisted": true,
+    "removedOnlyTaskNamespaceRecords": 2,
+    "privateBackupRetained": true,
+    "normalAppLaunchRestored": true,
+    "keyboardCapture": "off"
+  },
+  "limitations": [
+    "Synthetic authored outputs do not establish live Gemini generation or factual quality.",
+    "Proposal approval persistence was not exercised in this pass; separate native tests cover approval.",
+    "Weekly focus text below the tab bar was not visually accepted in this pass; session focus was visible.",
+    "No screenshots were saved as public artifacts; CUA observations are recorded from the session.",
+    "No phone, Watch, camera, audio, Tiger or hosted HTTPS acceptance.",
+    "The copy fix is source-only and is not included in uploaded TestFlight build1."
+  ]
+}

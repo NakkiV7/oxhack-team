@@ -1,9 +1,29 @@
-.venv/
-__pycache__/
+# shared
 .DS_Store
+__pycache__/
+.env*
+!*.example
+.local/
+
+# Apple / Xcode
+.build/
+build/
+DerivedData/
+DerivedDataDevice/
+*.xcuserstate
+xcuserdata/
+.swiftpm/
+.superpowers/
+.xcodebuildmcp/
+Native/Vendor/
+
+# Node
+server/node_modules/
+
+# squat tracker (Python)
+.venv/
 *.mp4
-squat/models/*.task
-.env
-squat/voice_cache/
 !squat/assets/*.mp4
+squat/models/*.task
+squat/voice_cache/
 squat/sessions/

@@ -1,0 +1,998 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "generationID": {
+      "type": "string",
+      "minLength": 1
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "items": {
+        "anyOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "exerciseID": {
+                "type": "string",
+                "enum": [
+                  "wallPushup"
+                ]
+              },
+              "sets": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "target": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 30
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "reps"
+                ]
+              },
+              "restSeconds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 600
+              },
+              "factIDs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "exerciseID",
+              "sets",
+              "target",
+              "unit",
+              "restSeconds",
+              "factIDs"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "exerciseID": {
+                "type": "string",
+                "enum": [
+                  "inclinePushup"
+                ]
+              },
+              "sets": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "target": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 30
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "reps"
+                ]
+              },
+              "restSeconds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 600
+              },
+              "factIDs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "exerciseID",
+              "sets",
+              "target",
+              "unit",
+              "restSeconds",
+              "factIDs"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "exerciseID": {
+                "type": "string",
+                "enum": [
+                  "kneePushup"
+                ]
+              },
+              "sets": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "target": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 30
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "reps"
+                ]
+              },
+              "restSeconds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 600
+              },
+              "factIDs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "exerciseID",
+              "sets",
+              "target",
+              "unit",
+              "restSeconds",
+              "factIDs"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "exerciseID": {
+                "type": "string",
+                "enum": [
+                  "pushup"
+                ]
+              },
+              "sets": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "target": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 30
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "reps"
+                ]
+              },
+              "restSeconds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 600
+              },
+              "factIDs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "exerciseID",
+              "sets",
+              "target",
+              "unit",
+              "restSeconds",
+              "factIDs"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "exerciseID": {
+                "type": "string",
+                "enum": [
+                  "closeGripPushup"
+                ]
+              },
+              "sets": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "target": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 30
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "reps"
+                ]
+              },
+              "restSeconds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 600
+              },
+              "factIDs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "exerciseID",
+              "sets",
+              "target",
+              "unit",
+              "restSeconds",
+              "factIDs"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "exerciseID": {
+                "type": "string",
+                "enum": [
+                  "gluteBridge"
+                ]
+              },
+              "sets": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "target": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 30
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "reps"
+                ]
+              },
+              "restSeconds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 600
+              },
+              "factIDs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "exerciseID",
+              "sets",
+              "target",
+              "unit",
+              "restSeconds",
+              "factIDs"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "exerciseID": {
+                "type": "string",
+                "enum": [
+                  "squat"
+                ]
+              },
+              "sets": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "target": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 30
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "reps"
+                ]
+              },
+              "restSeconds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 600
+              },
+              "factIDs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "exerciseID",
+              "sets",
+              "target",
+              "unit",
+              "restSeconds",
+              "factIDs"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "exerciseID": {
+                "type": "string",
+                "enum": [
+                  "reverseLunge"
+                ]
+              },
+              "sets": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "target": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 30
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "reps"
+                ]
+              },
+              "restSeconds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 600
+              },
+              "factIDs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "exerciseID",
+              "sets",
+              "target",
+              "unit",
+              "restSeconds",
+              "factIDs"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "exerciseID": {
+                "type": "string",
+                "enum": [
+                  "splitSquat"
+                ]
+              },
+              "sets": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "target": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 30
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "reps"
+                ]
+              },
+              "restSeconds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 600
+              },
+              "factIDs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "exerciseID",
+              "sets",
+              "target",
+              "unit",
+              "restSeconds",
+              "factIDs"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "exerciseID": {
+                "type": "string",
+                "enum": [
+                  "assistedSquat"
+                ]
+              },
+              "sets": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "target": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 30
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "reps"
+                ]
+              },
+              "restSeconds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 600
+              },
+              "factIDs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "exerciseID",
+              "sets",
+              "target",
+              "unit",
+              "restSeconds",
+              "factIDs"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "exerciseID": {
+                "type": "string",
+                "enum": [
+                  "deadBug"
+                ]
+              },
+              "sets": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "target": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 30
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "reps"
+                ]
+              },
+              "restSeconds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 600
+              },
+              "factIDs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "exerciseID",
+              "sets",
+              "target",
+              "unit",
+              "restSeconds",
+              "factIDs"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "exerciseID": {
+                "type": "string",
+                "enum": [
+                  "plank"
+                ]
+              },
+              "sets": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "target": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 120
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "seconds"
+                ]
+              },
+              "restSeconds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 600
+              },
+              "factIDs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "exerciseID",
+              "sets",
+              "target",
+              "unit",
+              "restSeconds",
+              "factIDs"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "exerciseID": {
+                "type": "string",
+                "enum": [
+                  "sidePlank"
+                ]
+              },
+              "sets": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "target": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 120
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "seconds"
+                ]
+              },
+              "restSeconds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 600
+              },
+              "factIDs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "exerciseID",
+              "sets",
+              "target",
+              "unit",
+              "restSeconds",
+              "factIDs"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "exerciseID": {
+                "type": "string",
+                "enum": [
+                  "stepJack"
+                ]
+              },
+              "sets": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "target": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 30
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "reps"
+                ]
+              },
+              "restSeconds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 600
+              },
+              "factIDs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "exerciseID",
+              "sets",
+              "target",
+              "unit",
+              "restSeconds",
+              "factIDs"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "exerciseID": {
+                "type": "string",
+                "enum": [
+                  "highKnees"
+                ]
+              },
+              "sets": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "target": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 120
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "seconds"
+                ]
+              },
+              "restSeconds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 600
+              },
+              "factIDs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "exerciseID",
+              "sets",
+              "target",
+              "unit",
+              "restSeconds",
+              "factIDs"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "exerciseID": {
+                "type": "string",
+                "enum": [
+                  "mountainClimber"
+                ]
+              },
+              "sets": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "target": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 30
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "reps"
+                ]
+              },
+              "restSeconds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 600
+              },
+              "factIDs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "exerciseID",
+              "sets",
+              "target",
+              "unit",
+              "restSeconds",
+              "factIDs"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "exerciseID": {
+                "type": "string",
+                "enum": [
+                  "catCow"
+                ]
+              },
+              "sets": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "target": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 30
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "reps"
+                ]
+              },
+              "restSeconds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 600
+              },
+              "factIDs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "exerciseID",
+              "sets",
+              "target",
+              "unit",
+              "restSeconds",
+              "factIDs"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "exerciseID": {
+                "type": "string",
+                "enum": [
+                  "hipFlexorStretch"
+                ]
+              },
+              "sets": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "target": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 120
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "seconds"
+                ]
+              },
+              "restSeconds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 600
+              },
+              "factIDs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "exerciseID",
+              "sets",
+              "target",
+              "unit",
+              "restSeconds",
+              "factIDs"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "exerciseID": {
+                "type": "string",
+                "enum": [
+                  "singleLegBalance"
+                ]
+              },
+              "sets": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "target": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 120
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "seconds"
+                ]
+              },
+              "restSeconds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 600
+              },
+              "factIDs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "exerciseID",
+              "sets",
+              "target",
+              "unit",
+              "restSeconds",
+              "factIDs"
+            ]
+          }
+        ]
+      }
+    },
+    "rationale": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "factIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "text",
+        "factIDs"
+      ]
+    }
+  },
+  "required": [
+    "generationID",
+    "items",
+    "rationale"
+  ]
+}
