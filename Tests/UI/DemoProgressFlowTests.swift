@@ -27,6 +27,8 @@ final class DemoProgressFlowTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Workout insights"].waitForExistence(timeout: 5))
         let firstWorkout = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "demo-insight-workout-")).firstMatch
         XCTAssertTrue(firstWorkout.waitForExistence(timeout: 5))
+        XCTAssertTrue(firstWorkout.label.contains("A complete sample session"))
+        XCTAssertTrue(firstWorkout.label.contains("99"))
         firstWorkout.tap()
         XCTAssertTrue(app.staticTexts["Effort & achievement"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Preview grade"].exists)
@@ -35,5 +37,21 @@ final class DemoProgressFlowTests: XCTestCase {
         XCTAssertTrue(report.exists)
         report.tap()
         XCTAssertTrue(app.navigationBars["Session report"].waitForExistence(timeout: 5))
+
+        app.tabBars.buttons["Today"].tap()
+        app.buttons["profile-settings"].tap()
+        for _ in 0..<8 where !preview.isHittable { app.swipeUp() }
+        XCTAssertTrue(preview.waitForExistence(timeout: 5))
+        preview.tap()
+        app.navigationBars.buttons["Done"].tap()
+        app.tabBars.buttons["Progress"].tap()
+        XCTAssertTrue(app.staticTexts["Your first session starts here."].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Sample progress"].exists)
+
+        app.terminate()
+        app.launch()
+        app.tabBars.buttons["Progress"].tap()
+        XCTAssertTrue(app.staticTexts["Your first session starts here."].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Sample progress"].exists)
     }
 }

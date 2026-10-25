@@ -20,7 +20,7 @@ Workout cards open an insight containing the authored summary/rationale, separat
 SpottrUITests/DemoProgressFlowTests/testFreshProgressHasNoPreviewAndExplicitPreviewOpensSampleInsights
 ```
 
-The test uses a unique data namespace, verifies normal empty progress, explicitly enables account preview, opens Insights, taps its first sample workout and opens the existing full report. Account toggle integration is `testflight-preview-toggle`.
+The test uses a unique data namespace, verifies normal empty progress, explicitly enables account preview, opens Insights, checks that the newest authored workout and its 99 score appear first, opens the existing full report, then disables preview and verifies empty real history both immediately and after relaunch. Account toggle integration is `testflight-preview-toggle`.
 
 | Selector | Meaning |
 | --- | --- |
