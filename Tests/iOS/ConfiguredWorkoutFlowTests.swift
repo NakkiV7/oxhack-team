@@ -61,6 +61,101 @@ final class ConfiguredWorkoutFlowTests: XCTestCase {
 }
 
 extension ConfiguredWorkoutFlowTests {
+    func testCatalogueWorkoutStartsLocallyAndSavesActualWorkWithoutReplacingCoachPlan() throws {
+        let suiteName = "CatalogueWorkout-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let savedCoachData = try JSONEncoder().encode(cameraPlan(exerciseID: "pushup"))
+        defaults.set(savedCoachData, forKey: "coach.approvedPlan")
+        var providerRequests = 0
+        let coach = CoachModel(configuration: {
+            providerRequests += 1
+            throw CoachGatewayError.configuration
+        }, savedPlanData: savedCoachData, defaults: defaults)
+        let store = TrainingStore(historyURL: cameraHistoryURL())
+        let plan = try CoachSavedPlan.catalogue(exerciseID: "squat", sets: 2, target: 12, restSeconds: 45)
+
+        store.startPlan(plan, availableSupport: [])
+        XCTAssertTrue(store.presented)
+        XCTAssertEqual(store.configured?.current.exerciseID, "squat")
+        XCTAssertEqual(store.configured?.steps.count, 2)
+        XCTAssertEqual(store.configured?.current.target, 12)
+        XCTAssertEqual(store.configured?.current.restSeconds, 45)
+        XCTAssertEqual(store.configured?.source, .manual)
+        XCTAssertFalse(store.configured?.hasStarted ?? true)
+        XCTAssertNil(store.configured?.actualReps)
+        XCTAssertFalse(store.hasInput)
+        XCTAssertFalse(store.voiceFeedbackEnabled)
+        store.endSet()
+        XCTAssertTrue(store.configured?.completed.isEmpty ?? false)
+
+        store.beginConfiguredSet(); store.setConfiguredReps(4); store.endSet()
+        XCTAssertTrue(store.history.isEmpty)
+        store.finish()
+        let record = try XCTUnwrap(store.history.first)
+        XCTAssertEqual(record.setCount, 1)
+        XCTAssertEqual(record.loggedSets.first?.reps, 4)
+        XCTAssertEqual(record.loggedSets.first?.source, .manual)
+        XCTAssertEqual(record.loggedSets.first?.quantityOrigin, .selfReport)
+        XCTAssertEqual(WorkoutReport(record: record).sets.first?.exerciseID, "squat")
+        XCTAssertEqual(defaults.data(forKey: "coach.approvedPlan"), savedCoachData)
+        XCTAssertEqual(coach.approvedPlan?.items.first?.exerciseID, "pushup")
+        XCTAssertEqual(providerRequests, 0)
+    }
+
+    func testEveryCatalogueExerciseKeepsItsCanonicalUnitAndExistingCameraEligibility() throws {
+        let store = TrainingStore(historyURL: cameraHistoryURL())
+        for entry in ExerciseCatalog.all {
+            let support = Set(entry.support.map { [$0] } ?? [])
+            let plan = try CoachSavedPlan.catalogue(exerciseID: entry.id, sets: 2,
+                                                   target: entry.goal, restSeconds: 30, availableSupport: support)
+            store.startPlan(plan, availableSupport: support)
+            XCTAssertEqual(store.configured?.current.unit, entry.unit, entry.id)
+            XCTAssertEqual(store.configured?.steps.count, 2, entry.id)
+            XCTAssertEqual(store.configured?.source, .manual, entry.id)
+            XCTAssertFalse(store.configured?.hasStarted ?? true, entry.id)
+            XCTAssertEqual(store.selectConfiguredInput(.phoneCamera), entry.tracking != nil, entry.id)
+            XCTAssertFalse(store.hasInput, entry.id)
+            XCTAssertTrue(store.history.isEmpty, entry.id)
+            store.finish()
+        }
+    }
+
+    func testCatalogueSetupRejectsUnknownExercisesInvalidBoundsAndUnconfirmedSupport() throws {
+        for input in [("missing", 1, 8, 30), ("squat", 0, 8, 30), ("squat", 11, 8, 30),
+                      ("squat", 1, 0, 30), ("squat", 1, 201, 30), ("plank", 1, 601, 30),
+                      ("squat", 1, 8, -1), ("squat", 1, 8, 601)] {
+            XCTAssertThrowsError(try CoachSavedPlan.catalogue(exerciseID: input.0, sets: input.1,
+                                                              target: input.2, restSeconds: input.3))
+        }
+        XCTAssertThrowsError(try CoachSavedPlan.catalogue(exerciseID: "wallPushup", sets: 1,
+                                                          target: 8, restSeconds: 30))
+        XCTAssertThrowsError(try CoachSavedPlan.catalogue(exerciseID: "squat", sets: 1,
+                                                          target: 8, restSeconds: 30,
+                                                          createdAt: Date(timeIntervalSince1970: .infinity)))
+        let supported = try CoachSavedPlan.catalogue(exerciseID: "wallPushup", sets: 1, target: 8,
+                                                     restSeconds: 30, availableSupport: ["Wall"])
+        XCTAssertNoThrow(try ConfigurableSession(plan: supported, availableSupport: ["Wall"]))
+        XCTAssertNoThrow(try CoachSavedPlan.catalogue(exerciseID: "squat", sets: 10, target: 200, restSeconds: 600))
+        XCTAssertNoThrow(try CoachSavedPlan.catalogue(exerciseID: "plank", sets: 10, target: 600, restSeconds: 0))
+    }
+
+    func testCatalogueHoldRecordsOnlyActiveSecondsInsteadOfItsPlannedTarget() throws {
+        let plan = try CoachSavedPlan.catalogue(exerciseID: "plank", sets: 1, target: 20, restSeconds: 30)
+        var run = try ConfigurableSession(plan: plan, availableSupport: [])
+        run.start(at: 10)
+        XCTAssertEqual(run.elapsed(at: 50), 0)
+        run.beginSet(at: 50); run.pause(at: 55); run.resume(at: 100)
+        XCTAssertTrue(run.endSet(at: 107))
+        run.nextSet(at: 108)
+        let report = WorkoutReport(record: run.record)
+        XCTAssertEqual(report.holdSeconds, 12)
+        XCTAssertEqual(report.reps, 0)
+        XCTAssertEqual(report.sets.first?.quantityOrigin, .activeTimer)
+        XCTAssertEqual(report.sets.first?.source, .manual)
+        XCTAssertFalse(SkillProgress.evaluate(history: [run.record]).node(exerciseID: "plank")?.isComplete ?? true)
+    }
+
     func testConfiguredPhoneCameraStartsOnlyOnBeginAndRejectsOtherOrStaleFrames() async throws {
         let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { _ in })
         let side = SecondaryCameraVisionWorker(infer: { _, time in

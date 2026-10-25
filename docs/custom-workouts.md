@@ -1,4 +1,6 @@
-# Run a saved workout
+# Start a workout
+
+From **Skills** (Grid or Linear) or the exercise library, open an exercise and choose **Start workout**. Set its number of sets, rep/hold target and suggested rest; confirm household support when shown. This local setup opens the existing Manual preparation screen without Gemini, and does not save or replace your approved Coach plan. It is available even while a skill challenge's prerequisites are pending. **Log manually** remains the separate option for work you already completed.
 
 In Coach, approve selected exercises, then choose **Start saved workout**. Keep required household support selected. The queue preserves catalogue IDs, exercise order, set counts, targets, units and rest targets. The existing **Log** action and fixed camera workout remain available.
 
@@ -31,3 +33,9 @@ The UI fixture is DEBUG-only, requires a valid UUID `SPOTTR_DATA_NAMESPACE`, typ
 Sustained phone/Pi exercise counting, physical Watch rendering and audible coaching remain separate device acceptance checks. The known Pi USB disconnect remains open; this feature does not fix it.
 
 Final reviewed snapshot: **35 focused native tests** passed without warnings, covering configured input, Coach, legacy cues, Pi lifecycle, voice cancellation and built-bundle packaging (`21-14-14…45245804`, `21-14-47…648717a7`). The same snapshot’s Watch simulator build passed without warnings (`build_sim_2026-10-24T21-13-47-813Z_pid4129_6e332d89.log`). The complete gateway suite, including the separate Snowflake additions, passed 50 tests.
+
+## Catalogue launch check — 25 October 2026
+
+The new factory first failed at the missing API, then all nine configured native cases passed within the 37-check app run (`test_sim_2026-10-25T01-58-05-394Z_pid4129_253efbf1.log`). All 19 catalogue entries retain canonical units and existing camera eligibility; bounds, support, actual quantities and active hold time are covered.
+
+Actual CUA checks on the existing Musalli-Test accepted Grid → Wall push-ups → setup → support confirmation → explicit Start/End → save, retaining one synthetic manual set of 2 reps against its target of 8. Today → exercise-library sheet → base Push-ups → setup also opened preparation successfully, showing manual, iPhone and Pi choices without starting capture. A first screen check exposed Start beneath the tab bar; the persistent bottom action and numeric Done control corrected that layout. These checks used an isolated namespace, not a physical workout or TestFlight build. [Receipt](evidence/catalogue-start-2026-10-25.md).
