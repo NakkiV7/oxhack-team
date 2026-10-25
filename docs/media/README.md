@@ -1,15 +1,5 @@
-# docs/media
+# README media
 
-Drop README images here (keep each under about 5 MB). Suggested names:
+`app/` contains the Spottr app icon and the eleven screenshots supplied by Omar on 25 October 2026, in their original numbered order. The main README links every screenshot to its full-resolution PNG. Source images are preserved without cropping or retouching.
 
-| File | What |
-|---|---|
-| `hero.gif` | 5 to 10 s screen recording: live video + skeleton + rep count |
-| `mac-page.png` | Mac web page |
-| `iphone-dashboard.png` | iPhone dashboard |
-| `iphone-coach.png` | Coach page with a cited answer |
-| `watch.png` | Apple Watch (Omar) |
-| `arduino.jpg` | Arduino display (Omar) |
-| `architecture.png` | Only if the Mermaid diagram is not enough |
-
-Only commit media people agreed to share. No faces without consent.
+The app icon is copied from `Native/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png`. Screenshots include preview data and sample Coach responses; they illustrate the interface rather than establish exercise accuracy or provider acceptance.
