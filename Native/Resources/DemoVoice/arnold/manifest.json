@@ -1,0 +1,130 @@
+{
+  "generatedAt": "2026-10-25T08:47:42.798Z",
+  "provider": "ElevenLabs",
+  "alias": "Arnold",
+  "voiceCategory": "generated",
+  "identityClaim": false,
+  "purpose": "TestFlight preview only",
+  "model": "eleven_flash_v2_5",
+  "format": "mp3_22050_32",
+  "plannedCharacters": 143,
+  "estimatedFlashCredits": 71.5,
+  "keyCapCredits": 100,
+  "keyCapChanged": false,
+  "retries": 0,
+  "clips": [
+    {
+      "name": "positive-1",
+      "text": "Strong work. Stay controlled.",
+      "characters": 29,
+      "attempts": 1,
+      "requestedAt": "2026-10-25T08:47:42.809Z",
+      "status": 200,
+      "mimeType": "audio/mpeg",
+      "requestID": "5vIdwK4KYjHP9Xd63eCP",
+      "characterCost": "6",
+      "bytes": 8063,
+      "sha256": "9fac938d680dc88424d5522612cfdace105ecefb6365713267b7f2a1f362b986",
+      "accepted": true,
+      "decode": {
+        "tool": "ffmpeg / ffprobe",
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 1.904036,
+        "audiblePlayback": false
+      }
+    },
+    {
+      "name": "positive-2",
+      "text": "Good rhythm. Keep control.",
+      "characters": 26,
+      "attempts": 1,
+      "requestedAt": "2026-10-25T08:47:44.030Z",
+      "status": 200,
+      "mimeType": "audio/mpeg",
+      "requestID": "TEssZ8Pbl7DdarLEinmo",
+      "characterCost": "6",
+      "bytes": 6809,
+      "sha256": "a77ffa94f6ef09a664604351402eab68c40d8b2eae48179b95d1f5c2e9e8886c",
+      "accepted": true,
+      "decode": {
+        "tool": "ffmpeg / ffprobe",
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 1.578957,
+        "audiblePlayback": false
+      }
+    },
+    {
+      "name": "slower-1",
+      "text": "Steady. Rest if you need.",
+      "characters": 25,
+      "attempts": 1,
+      "requestedAt": "2026-10-25T08:47:44.220Z",
+      "status": 200,
+      "mimeType": "audio/mpeg",
+      "requestID": "ofj1ukZML7cxF8cv5G8N",
+      "characterCost": "6",
+      "bytes": 7018,
+      "sha256": "2aec4644209fbf7ae89eb1714a4d697c2f7697a285afdeea276018ea8f5abbe9",
+      "accepted": true,
+      "decode": {
+        "tool": "ffmpeg / ffprobe",
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 1.625397,
+        "audiblePlayback": false
+      }
+    },
+    {
+      "name": "slower-2",
+      "text": "Take your time. Stay controlled.",
+      "characters": 32,
+      "attempts": 1,
+      "requestedAt": "2026-10-25T08:47:44.413Z",
+      "status": 200,
+      "mimeType": "audio/mpeg",
+      "requestID": "4SczEJdXRRwwIwqJphZj",
+      "characterCost": "7",
+      "bytes": 7958,
+      "sha256": "0042a3b8591265bc1795ede9c02a0895c74ede429f1fa40d7ae0e861a7ab5fdb",
+      "accepted": true,
+      "decode": {
+        "tool": "ffmpeg / ffprobe",
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 1.857596,
+        "audiblePlayback": false
+      }
+    },
+    {
+      "name": "recovery",
+      "text": "Good effort. Rest, then return.",
+      "characters": 31,
+      "attempts": 1,
+      "requestedAt": "2026-10-25T08:47:44.655Z",
+      "status": 200,
+      "mimeType": "audio/mpeg",
+      "requestID": "IjHhLhbBKjszL3qOXzNh",
+      "characterCost": "7",
+      "bytes": 7122,
+      "sha256": "a52e0c8ff75b2de32ac6ee9d04961d383a7bb898e21df978edc80f79c95a0ed5",
+      "accepted": true,
+      "decode": {
+        "tool": "ffmpeg / ffprobe",
+        "success": true,
+        "sampleRate": 22050,
+        "durationSeconds": 1.671837,
+        "audiblePlayback": false
+      }
+    }
+  ],
+  "usageBefore": 4046,
+  "usageAfter": {
+    "status": 200,
+    "character_count": 4046,
+    "observedAccountDelta": 0
+  },
+  "nativePlaybackAcceptance": "pending parent native fake-output tests and physical-device audible acceptance",
+  "billingNote": "Response character-cost headers are retained verbatim. Immediate account-wide usage delta is not proof of final billing; no per-request price claim."
+}

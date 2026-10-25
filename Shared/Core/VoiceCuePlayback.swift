@@ -7,13 +7,14 @@ public struct VoiceCue: Sendable, Equatable {
     public let generation: UUID
     public let text: String
     public let kind: Kind
+    public let reason: CoachingReason?
     public let issuedAt: Double
     public let expiresAt: Double?
 
     public init(id: UUID, sessionID: UUID, generation: UUID, text: String, kind: Kind,
-                issuedAt: Double, expiresAt: Double?) {
+                issuedAt: Double, expiresAt: Double?, reason: CoachingReason? = nil) {
         self.id = id; self.sessionID = sessionID; self.generation = generation
-        self.text = text; self.kind = kind; self.issuedAt = issuedAt; self.expiresAt = expiresAt
+        self.text = text; self.kind = kind; self.reason = reason; self.issuedAt = issuedAt; self.expiresAt = expiresAt
     }
 }
 
