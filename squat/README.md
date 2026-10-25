@@ -23,6 +23,13 @@ warns and skips the knee metrics.
 per clip; use it after changing any threshold. `main.py --record raw.mp4` saves the raw camera
 feed so a failing session can be replayed with `--source raw.mp4`.
 
+**Guided demo** (what to show judges): title screen, the example set with the coach's voice, a
+countdown, your own set against a target, then a results screen. Session logs land in `sessions/`.
+
+```bash
+cd squat && ../.venv/bin/python app.py              # --target 8, --voice elevenlabs|say|off
+```
+
 ```bash
 python -m venv .venv && .venv/bin/pip install -r requirements.txt
 curl -sSLo squat/models/pose_landmarker_lite.task https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task
