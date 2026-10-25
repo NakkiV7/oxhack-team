@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spottr Coach</title>
+<style>
+  :root { --bg:#f5f5f7; --fg:#1d1d1f; --card:#fff; --line:#e5e5ea; --mut:#6e6e73; --acc:#0a84ff; --ok:#30d158; --warn:#ff9f0a; --soft:#f2f2f7; }
+  :root[data-theme="dark"] { --bg:#000; --fg:#f5f5f7; --card:#1c1c1e; --line:#2c2c2e; --mut:#a1a1a6; --soft:#2c2c2e; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#000; --fg:#f5f5f7; --card:#1c1c1e; --line:#2c2c2e; --mut:#a1a1a6; --soft:#2c2c2e; } }
+  * { box-sizing:border-box; } body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui, sans-serif; }
+  header { display:flex; align-items:center; gap:14px; padding:14px 20px; border-bottom:1px solid var(--line); background:var(--card); position:sticky; top:0; z-index:2; }
+  header h1 { font-size:20px; margin:0 14px 0 0; letter-spacing:-.02em; } header .sub { color:var(--mut); font-size:13px; } header .grow { flex:1; }
+  nav button { background:transparent; border:0; color:var(--mut); font:inherit; padding:6px 10px; border-radius:8px; cursor:pointer; } nav button[aria-current="page"] { color:var(--fg); background:var(--soft); }
+  main { max-width:960px; margin:0 auto; padding:18px 16px 60px; } section[hidden] { display:none; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px; margin:12px 0; } .card h2 { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--mut); margin:0 0 8px; } .card h3 { margin:0 0 6px; font-size:17px; letter-spacing:-.01em; }
+  button, .btn { font:inherit; font-size:14px; padding:8px 14px; border-radius:10px; border:1px solid var(--line); background:var(--soft); color:var(--fg); cursor:pointer; } button.primary { background:var(--acc); color:#fff; border-color:var(--acc); } button:disabled { opacity:.5; cursor:default; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; } .sub { color:var(--mut); font-size:13px; } .pill { font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid var(--line); color:var(--mut); } .pill.ok { color:var(--ok); border-color:var(--ok); } .pill.warn { color:var(--warn); border-color:var(--warn); } .pill.acc { color:var(--acc); border-color:var(--acc); }
+  .tree { display:flex; flex-direction:column; gap:0; } .node { position:relative; padding-left:34px; margin:0; } .node::before { content:""; position:absolute; left:11px; top:0; bottom:0; width:2px; background:var(--line); } .node .dot { position:absolute; left:4px; top:26px; width:16px; height:16px; border-radius:50%; background:var(--card); border:2px solid var(--line); } .node.current .dot { border-color:var(--acc); background:var(--acc); } .node.verified .dot { border-color:var(--ok); background:var(--ok); } .node.locked { opacity:.7; } .node.notreq .dot { border-style:dashed; }
+  details > summary { cursor:pointer; } .facts li { margin:4px 0; } .facts small { color:var(--mut); } ul { padding-left:20px; margin:6px 0; } .timeline li { list-style:none; border-left:2px solid var(--line); padding:2px 0 2px 12px; margin:0; }
+  input, select, textarea { font:inherit; padding:7px 9px; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--fg); } label.f { display:flex; flex-direction:column; gap:4px; font-size:13px; color:var(--mut); } label.f > * { font-size:14px; color:var(--fg); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px; } .goal { border:1px solid var(--line); border-radius:12px; padding:10px 12px; } .goal input { width:100%; } .unlock { animation:pop .6s ease; display:inline-block; } @keyframes pop { 0% { transform:scale(.6); opacity:0 } 60% { transform:scale(1.15) } 100% { transform:scale(1); opacity:1 } }
+  .bar { height:8px; background:var(--soft); border-radius:4px; overflow:hidden; } .bar i { display:block; height:100%; background:var(--acc); } .cmp { display:grid; grid-template-columns:1fr 1fr; gap:12px; } .num { font-size:26px; font-weight:600; letter-spacing:-.02em; }
+  .label { display:inline-block; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--mut); margin-right:6px; }
+</style>
+<script>try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch {}</script>
+</head>
+<body>
+<header>
+  <h1>Spottr Coach</h1>
+  <nav><button data-tab="tree" aria-current="page">Programme</button><button data-tab="reports">Reports</button><button data-tab="weekly">Weekly review</button><button data-tab="research">Research</button><button data-tab="profile">Profile</button></nav>
+  <span class="grow"></span>
+  <span class="sub">user <select id="userSel"><option value="nakki">nakki</option><option value="demo">demo (sample history)</option></select></span>
+  <a class="btn" href="/">Squat page</a>
+  <button id="themeBtn">Dark</button>
+</header>
+<main>
+  <section id="tab-tree">
+    <div class="card" id="programmeCard"><h2>Programme</h2><div class="sub">Loading…</div></div>
+    <div class="tree" id="tree"></div>
+  </section>
+  <section id="tab-reports" hidden>
+    <div class="card"><h2>Session reports</h2><div class="sub">Each recorded set: calculated facts, the timeline, coaching attempts, stored forecasts. Gemini narrative on request, never regenerated.</div><ul id="workouts"></ul></div>
+    <div id="reportView"></div>
+  </section>
+  <section id="tab-weekly" hidden>
+    <div class="card"><h2>Weekly review</h2><div class="row"><button class="primary" id="genWeekly">Generate weekly review</button><button id="genCurrent">Review this week so far</button><span class="sub">Most recently completed week against the one before, in your timezone. Same inputs, same report; late uploads produce a new version.</span></div><ul id="weeklyList"></ul></div>
+    <div id="weeklyView"></div>
+  </section>
+  <section id="tab-research" hidden>
+    <div class="card"><h2>Find research</h2><form class="row" id="searchForm"><input id="searchQ" style="flex:1;min-width:240px" maxlength="300" placeholder="e.g. does tempo-controlled lowering change squat strength outcomes?"><button class="primary">Search</button></form><div class="sub" id="searchNote">Gemini with search grounding; only sources that the search actually returned are kept. No personal data goes into the query.</div></div>
+    <div class="card"><h2>Add a paper</h2><div class="row"><input type="file" id="pdfFile" accept="application/pdf,text/plain"><button id="pdfBtn">Analyse</button><span class="sub" id="pdfNote">Read once and cached by its hash. The document is treated as evidence, not instructions.</span></div></div>
+    <div class="card"><h2>Saved sources</h2><ul id="researchList"></ul></div>
+    <div id="sourceView"></div>
+  </section>
+  <section id="tab-profile" hidden>
+    <div class="card"><h2>Profile and goals</h2>
+      <form id="survey" class="grid">
+        <label class="f">Main goal<select name="goal"><option value="squat">Squat progression</option><option value="pushup">Push-up progression</option></select></label>
+        <label class="f">Current ability<select name="ability"><option value="beginner">Beginner</option><option value="intermediate">Some experience</option><option value="advanced">Experienced</option></select></label>
+        <label class="f">Equipment (comma separated)<input name="equipment" placeholder="wall, raised surface, stable support"></label>
+        <label class="f">Minutes available per session<input name="minutes" type="number" min="5" max="120" value="20"></label>
+        <label class="f">Sessions per week<input name="daysPerWeek" type="number" min="1" max="7" value="3"></label>
+        <label class="f">Coaching style<select name="coaching"><option value="direct">Direct and brief</option><option value="encouraging">Encouraging</option></select></label>
+        <label class="f" style="grid-column:1/-1">Movement limitations you want respected (optional)<input name="limitations" placeholder="e.g. no deep knee flexion"></label>
+        <div class="row" style="grid-column:1/-1"><button class="primary">Save profile</button><button type="button" id="genProg">Generate my programme</button><span class="sub" id="profileNote"></span></div>
+      </form>
+    </div>
+    <div class="card"><h2>Accepted goals</h2><ul id="goalsList"></ul></div>
+  </section>
+</main>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+const user = () => $('userSel').value;
+const api = async (path, body) => { const url = path + (path.includes('?') ? '&' : '?') + 'user=' + encodeURIComponent(user()); const r = await fetch(url, body ? { method: 'POST', body: JSON.stringify(body) } : {}); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error ?? r.statusText); return j; };
+try { $('userSel').value = new URL(location.href).searchParams.get('user') ?? localStorage.getItem('coachUser') ?? 'nakki'; } catch {}
+$('userSel').onchange = () => { try { localStorage.setItem('coachUser', user()); } catch {} loadAll(); };
+// theme
+const themeBtn = $('themeBtn'), isDark = () => document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
+const showTheme = () => { themeBtn.textContent = isDark() ? 'Light' : 'Dark'; }; themeBtn.onclick = () => { const n = isDark() ? 'light' : 'dark'; document.documentElement.dataset.theme = n; try { localStorage.setItem('theme', n); } catch {} showTheme(); }; showTheme();
+// tabs
+for (const b of document.querySelectorAll('nav button')) b.onclick = () => { for (const x of document.querySelectorAll('nav button')) x.removeAttribute('aria-current'); b.setAttribute('aria-current', 'page'); for (const s of document.querySelectorAll('main > section')) s.hidden = s.id !== 'tab-' + b.dataset.tab; };
+
+let me = null;
+async function loadAll() { try { me = await api('/coach/me'); } catch (e) { $('programmeCard').innerHTML = `<h2>Programme</h2><div class="sub">${esc(e.message)}</div>`; return; } renderProgramme(); renderProfile(); loadWorkouts(); loadWeekly(); loadResearch(); }
+
+// ---------- skill tree ----------
+const CAP = (c) => c === 'assessable' ? '<span class="pill ok">Camera assessment</span>' : '<span class="pill warn">AI assessment coming soon · practice logging</span>';
+function renderProgramme() {
+  const p = me.programme, card = $('programmeCard');
+  if (!p) { card.innerHTML = `<h2>Programme</h2><h3>No programme yet</h3><div class="sub">Fill in the profile and generate one. Without a programme the squat page still coaches, but nothing is tied to a skill node.</div><div class="row" style="margin-top:8px"><button class="primary" id="goProfile">Set up profile</button></div>`; $('goProfile').onclick = () => document.querySelector('[data-tab=profile]').click(); $('tree').innerHTML = ''; return; }
+  const g = p.graph, prog = Object.fromEntries(p.progress.map((n) => [n.node_id, n]));
+  const current = g.nodes.find((n) => prog[n.id]?.availability === 'current') ?? g.nodes.find((n) => n.id === g.start);
+  const totalXp = p.progress.reduce((t, n) => t + (n.xp ?? 0), 0);
+  card.innerHTML = `<h2>Programme v${p.version} · ${esc(p.goal)} progression · ${p.provenance === 'gemini' ? 'personalised by Gemini' : 'catalogue fallback'}</h2>
+    <div class="row" style="justify-content:space-between"><div><h3>Goal: ${esc(me.catalogue.find((e) => e.id === g.nodes.find((n) => n.id === g.goalNode)?.exerciseId)?.name ?? g.goalNode)}</h3><div class="sub">Current step: <b>${esc(current?.id)}</b> · ${totalXp} XP · ${p.progress.filter((n) => n.verification !== 'none').length} verified milestones</div></div>
+    <div class="row"><a class="btn" href="/?node=${encodeURIComponent(current?.id ?? '')}&programme=${p.programme_id}&user=${encodeURIComponent(user())}">Train the current step</a><button id="regen">Regenerate</button></div></div>
+    <div class="sub" style="margin-top:8px">${esc(p.rationale?.text ?? '')}</div>`;
+  $('regen').onclick = async () => { $('regen').disabled = true; try { await api('/coach/programme', {}); await loadAll(); } catch (e) { alert(e.message); } };
+  // topological order: by prerequisites depth, optional last
+  const depth = (id, seen = new Set()) => { const n = g.nodes.find((x) => x.id === id); if (!n || seen.has(id)) return 0; seen.add(id); return (n.prerequisites ?? []).reduce((m, pid) => Math.max(m, depth(pid, seen) + 1), 0); };
+  const ordered = [...g.nodes].sort((a, b) => (a.optional - b.optional) || (depth(a.id) - depth(b.id)));
+  $('tree').innerHTML = ordered.map((n) => {
+    const e = me.catalogue.find((x) => x.id === n.exerciseId), s = prog[n.id] ?? {}, cls = ['node', s.availability === 'current' ? 'current' : '', s.verification !== 'none' && s.verification ? 'verified' : '', s.availability === 'locked' ? 'locked' : '', s.availability === 'not_required' ? 'notreq' : ''].join(' ');
+    const state = { current: 'Current step', available: 'Available', locked: 'Locked', not_required: 'Not required for your starting point' }[s.availability] ?? '';
+    const practised = e?.capability !== 'assessable' && (s.practice_count ?? 0) >= 3 ? '<span class="pill">Practice complete (not AI-verified)</span>' : '';
+    const ver = s.verification === 'consistent' ? '<span class="pill ok">Verified on two days</span>' : s.verification === 'first_completion' ? '<span class="pill ok">First completion verified</span>' : practised;
+    return `<div class="${cls}"><span class="dot"></span><div class="card"><div class="row" style="justify-content:space-between"><div><h3>${esc(e?.name ?? n.id)} <span class="pill">${esc(e?.family)} ${e?.level}</span>${n.optional ? ' <span class="pill">optional branch</span>' : ''}</h3><div class="sub">${esc(state)} · ${s.practice_count ?? 0} practice sets · ${s.xp ?? 0} XP ${ver}${(s.badges ?? []).map((b) => `<span class="pill acc unlock">${esc(b)}</span>`).join(' ')}</div></div><div>${CAP(e?.capability)}</div></div>
+      <details><summary class="sub">Why this step? What do I do?</summary>
+        <p><b>Why.</b> ${esc(n.why)}</p><p><b>What to do.</b> ${esc(e?.instruction)} Target ${e?.goal} ${e?.unit}.${e?.support ? ` Needs: ${esc(e.support)}.` : ''}</p>
+        <p><b>How progress is recorded.</b> ${e?.capability === 'assessable' ? `Camera assessment of ${esc(me.contracts[e.id]?.label)}: ${esc(me.contracts[e.id]?.pass)}. Unable to assess when ${esc(me.contracts[e.id]?.unableWhen)}. First completion verifies the step; the same on a second day marks it consistent.` : 'Practice is logged by you and shown as practice. Automated assessment for this movement is not available yet, so it is never marked AI-verified.'}</p>
+        <p><b>Prerequisites.</b> ${(n.prerequisites ?? []).map(esc).join(', ') || 'none'} · <b>Unlocks.</b> ${g.nodes.filter((x) => (x.prerequisites ?? []).includes(n.id)).map((x) => esc(x.id)).join(', ') || 'end of this programme'}</p>
+        ${(s.evidence ?? []).length ? `<p><b>Evidence.</b> ${s.evidence.map((ev) => `<a href="#" data-report="${ev.workoutId}">attempt ${esc(ev.attemptId.slice(0, 8))} (${esc(ev.kind)})</a>`).join(', ')}</p>` : ''}
+      </details>
+      <div class="row" style="margin-top:8px">${e?.capability === 'assessable' ? `<a class="btn primary" style="background:var(--acc);color:#fff;border-color:var(--acc)" href="/?node=${encodeURIComponent(n.id)}&programme=${p.programme_id}&user=${encodeURIComponent(user())}">Assess with camera</a>` : ''}<button data-practice="${n.id}" ${s.availability === 'locked' ? 'disabled' : ''}>Log a practice set</button></div></div></div>`;
+  }).join('');
+  for (const b of $('tree').querySelectorAll('[data-practice]')) b.onclick = async () => { b.disabled = true; try { await api('/coach/practice', { programmeId: p.programme_id, nodeId: b.dataset.practice, workoutId: crypto.randomUUID() }); await loadAll(); } catch (e) { alert(e.message); b.disabled = false; } };
+  for (const a of $('tree').querySelectorAll('[data-report]')) a.onclick = (ev) => { ev.preventDefault(); document.querySelector('[data-tab=reports]').click(); showReport(a.dataset.report); };
+}
+
+// ---------- profile ----------
+function renderProfile() {
+  const sv = me.profile?.survey ?? {}, f = $('survey');
+  for (const [k, v] of Object.entries(sv)) if (f.elements[k]) f.elements[k].value = Array.isArray(v) ? v.join(', ') : v;
+  $('goalsList').innerHTML = (me.profile?.goals ?? []).map((g) => `<li>${esc(g.text)} <span class="sub">(${esc(g.kind)}, target ${g.target}, accepted ${esc((g.acceptedAt ?? '').slice(0, 10))})</span></li>`).join('') || '<li class="sub">No accepted goals yet. They come from a weekly review.</li>';
+}
+$('survey').onsubmit = async (ev) => { ev.preventDefault(); const f = ev.target, list = (s) => s.split(',').map((x) => x.trim()).filter(Boolean);
+  const survey = { goal: f.goal.value, ability: f.ability.value, equipment: list(f.equipment.value), minutes: +f.minutes.value, daysPerWeek: +f.daysPerWeek.value, coaching: f.coaching.value, limitations: list(f.limitations.value) };
+  try { await api('/coach/profile', { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, survey }); $('profileNote').textContent = 'Saved.'; await loadAll(); } catch (e) { $('profileNote').textContent = e.message; } };
+$('genProg').onclick = async () => { $('genProg').disabled = true; $('profileNote').textContent = 'Generating…'; try { const r = await api('/coach/programme', {}); $('profileNote').textContent = r.provenance === 'gemini' ? 'Programme generated by Gemini and validated.' : 'Gemini output failed validation twice; a catalogue programme was used.'; await loadAll(); document.querySelector('[data-tab=tree]').click(); } catch (e) { $('profileNote').textContent = e.message; } $('genProg').disabled = false; };
+
+// ---------- session reports ----------
+async function loadWorkouts() { try { const rows = await api('/coach/workouts'); $('workouts').innerHTML = rows.map((w) => `<li><a href="#" data-w="${w.workout_id}">${esc(new Date(w.started_at).toLocaleString())}</a> · ${w.counted} reps · ${esc(w.source)}${w.note ? ` · ${esc(w.note)}` : ''} · ${w.attempts} coaching attempt(s) · ${w.forecasts} forecasts</li>`).join('') || '<li class="sub">No recorded sets yet.</li>'; for (const a of $('workouts').querySelectorAll('[data-w]')) a.onclick = (ev) => { ev.preventDefault(); showReport(a.dataset.w); }; } catch (e) { $('workouts').innerHTML = `<li class="sub">${esc(e.message)}</li>`; } }
+async function showReport(workoutId, narrate = false) {
+  const v = $('reportView'); v.innerHTML = '<div class="card sub">Loading…</div>';
+  try {
+    const r = await api(`/coach/report?workout=${workoutId}${narrate ? '&narrate=1' : ''}`);
+    const fact = (id) => r.facts.find((f) => f.id === id);
+    v.innerHTML = `<div class="card"><h2>Session report · ${esc(r.workout.source)} · ${esc(new Date(r.workout.started_at).toLocaleString())}</h2>
+      <div class="grid"><div><div class="label">Duration</div><div class="num">${esc(fact('duration')?.text.replace('Recorded workout duration ', ''))}</div></div><div><div class="label">Counted reps</div><div class="num">${fact('reps')?.value ?? '–'}</div></div><div><div class="label">Median lowering</div><div class="num">${fact('lowering') ? fact('lowering').value + ' s' : '–'}</div></div><div><div class="label">Clean form</div><div class="num">${fact('form')?.value ?? '–'}</div></div></div>
+      <h2 style="margin-top:12px">Calculated facts</h2><ul class="facts">${r.facts.map((f) => `<li>${esc(f.text)} <small>[${esc(f.id)}]</small></li>`).join('')}</ul>
+      <h2>Coaching attempts</h2>${r.attempts.length ? r.attempts.map((a) => `<div class="goal"><b>${esc(a.status)}</b> · cue: ${esc(a.cue?.text ?? 'none')} (${esc(a.cue?.provenance ?? '')})<br>${a.outcome ? `Result <b>${esc(a.outcome.classification)}</b>: baseline median ${a.outcome.baselineMedian} s, retry median ${a.outcome.retryMedian} s against ${a.outcome.target} s (${a.outcome.baselineN}/${a.outcome.retryN} valid reps)${a.outcome.reason ? `; ${esc(a.outcome.reason)}` : ''}` : 'no result'}<br><span class="sub">${esc(a.explanation?.text ?? '')}</span></div>`).join('') : '<div class="sub">None in this set.</div>'}
+      <h2 style="margin-top:12px">Tempo forecasts (HRT, shadow mode)</h2><div class="sub">${r.predictions.length ? `${r.predictions.length} stored forecasts, ${r.predictions.filter((p) => p.state === 'observed').length} resolved, ${r.predictions.filter((p) => p.outcome === 1).length} with a departure. <a href="/">Evidence panel on the squat page.</a>` : 'None stored for this set.'}</div>
+      <h2 style="margin-top:12px">Biometrics</h2><div class="sub">${esc(fact('biometrics')?.text)}</div>
+      <h2 style="margin-top:12px">Timeline</h2><ul class="timeline">${r.timeline.map((t) => `<li><span class="sub">${esc(new Date(t.at).toLocaleTimeString())}</span> ${esc(t.text)}</li>`).join('')}</ul>
+      <h2 style="margin-top:12px">Narrative</h2>${r.narrative ? `<p><b>${esc(r.narrative.headline?.text)}</b> <small class="sub">[${(r.narrative.headline?.factIDs ?? []).map(esc).join(', ')}]</small></p><ul>${(r.narrative.insights ?? []).map((i) => `<li>${esc(i.text)} <small class="sub">[${(i.factIDs ?? []).map(esc).join(', ')}]</small></li>`).join('')}</ul><div class="sub">Generated once by Gemini from the facts above (${esc(r.narrative.generationId ?? '')}); facts and narrative are stored separately.</div>` : `<div class="row"><button id="narrateBtn">Add Gemini narrative</button><span class="sub">One call, then saved.</span></div>`}</div>`;
+    if ($('narrateBtn')) $('narrateBtn').onclick = () => showReport(workoutId, true);
+  } catch (e) { v.innerHTML = `<div class="card sub">${esc(e.message)}</div>`; }
+}
+
+// ---------- weekly ----------
+async function loadWeekly() { try { const rows = await api('/coach/weekly'); $('weeklyList').innerHTML = rows.map((w) => `<li><a href="#" data-r="${w.report_id}">Week of ${esc(w.period_start)}</a> · v${w.version} · <span class="pill ${w.status === 'ready' ? 'ok' : w.status === 'stale' ? 'warn' : ''}">${esc(w.status)}</span> · ${esc(new Date(w.created_at).toLocaleString())}</li>`).join('') || '<li class="sub">No weekly reviews yet.</li>'; for (const a of $('weeklyList').querySelectorAll('[data-r]')) a.onclick = (ev) => { ev.preventDefault(); showWeekly(a.dataset.r); }; } catch (e) { $('weeklyList').innerHTML = `<li class="sub">${esc(e.message)}</li>`; } }
+const gen = (btn, body) => async () => { btn.disabled = true; try { const r = await api('/coach/weekly', body); await loadWeekly(); showWeekly(r.report.report_id); } catch (e) { alert(e.message); } btn.disabled = false; };
+$('genWeekly').onclick = gen($('genWeekly'), {}); $('genCurrent').onclick = gen($('genCurrent'), { periodStart: 'current' });
+async function showWeekly(id) {
+  const v = $('weeklyView'); v.innerHTML = '<div class="card sub">Loading…</div>';
+  try {
+    const r = await api(`/coach/weekly?id=${id}`), items = r.facts?.items ?? [], s = r.facts?.summary ?? {}, cur = s.current ?? {}, prev = s.previous;
+    const bar = (a, b) => { const m = Math.max(a ?? 0, b ?? 0, 1); return `<div class="cmp"><div><div class="label">This week</div><div class="num">${a ?? 0}</div><div class="bar"><i style="width:${100 * (a ?? 0) / m}%"></i></div></div><div><div class="label">Week before</div><div class="num">${prev ? (b ?? 0) : '–'}</div><div class="bar"><i style="width:${prev ? 100 * (b ?? 0) / m : 0}%;background:var(--mut)"></i></div></div></div>`; };
+    const goals = r.proposed_goals ?? [];
+    v.innerHTML = `<div class="card"><h2>Week of ${esc(r.period_start)} · ${esc(r.status)} · v${r.version} · ${esc(r.timezone)}</h2>
+      <div class="sub">${esc(items.find((f) => f.id === 'coverage')?.text)}</div>
+      <div class="grid" style="margin-top:10px"><div><h3>Workouts</h3>${bar(cur.sessions, prev?.sessions)}</div><div><h3>Counted reps</h3>${bar(cur.reps, prev?.reps)}</div><div><h3>Training days</h3>${bar(cur.days, prev?.days)}</div></div>
+      <h2 style="margin-top:12px">Narrative</h2>${r.narrative?.headline ? `<p><b>${esc(r.narrative.headline.text)}</b></p><ul>${(r.narrative.insights ?? []).map((i) => `<li>${esc(i.text)} <small class="sub">[${(i.factIDs ?? []).map(esc).join(', ')}]</small></li>`).join('')}</ul>` : `<div class="sub">${r.narrative?.error ? esc(r.narrative.error) : 'No Gemini narrative (off or invalid); the facts stand on their own.'}</div>`}
+      <h2 style="margin-top:12px">All calculated facts</h2><ul class="facts">${items.map((f) => `<li>${esc(f.text)} <small>[${esc(f.id)}]</small></li>`).join('')}</ul>
+      <h2 style="margin-top:12px">Research referenced</h2>${(r.research_refs ?? []).length ? `<ul>${r.research_refs.map((x) => `<li><a href="#" data-src="${esc(x.sourceId)}">${esc(x.title)}</a> <span class="pill">${esc(x.access)}</span></li>`).join('')}</ul>` : '<div class="sub">No saved research yet; add a paper or search in the Research tab and regenerate.</div>'}
+      <h2 style="margin-top:12px">Proposed next-week goals</h2><div class="sub">Edit the wording or targets, then accept. Nothing changes in your programme until you do.</div>
+      <div id="goalForm">${goals.map((g, i) => `<div class="goal" data-i="${i}"><div class="row"><span class="pill">${esc(g.kind)}</span>${g.nodeId ? `<span class="pill acc">${esc(g.nodeId)}</span>` : ''}<span class="sub">cites ${(g.factIDs ?? []).map(esc).join(', ')}</span></div><input value="${esc(g.text)}" data-k="text"><div class="row" style="margin-top:6px"><label class="sub">target <input type="number" min="1" max="14" value="${g.target}" data-k="target" style="width:70px"></label><label class="sub"><input type="checkbox" data-k="accept" checked> accept</label><button data-why="${esc(g.id)}">Why this goal?</button></div><div class="sub" data-answer></div></div>`).join('') || '<div class="sub">No goals proposed.</div>'}</div>
+      <div class="row" style="margin-top:8px"><button class="primary" id="acceptGoals" ${goals.length ? '' : 'disabled'}>Accept selected goals</button><span class="sub" id="goalNote"></span></div></div>`;
+    for (const a of v.querySelectorAll('[data-src]')) a.onclick = (ev) => { ev.preventDefault(); document.querySelector('[data-tab=research]').click(); showSource(a.dataset.src); };
+    for (const b of v.querySelectorAll('[data-why]')) b.onclick = async () => { b.disabled = true; const box = b.closest('.goal').querySelector('[data-answer]'); box.textContent = 'Asking…'; try { const a = await api('/coach/ask', { reportId: id, question: `Why did you propose the goal "${b.closest('.goal').querySelector('[data-k=text]').value}"?` }); box.textContent = a.answer.text + (a.answer.factIds?.length ? ` [${a.answer.factIds.join(', ')}]` : ''); } catch (e) { box.textContent = e.message; } b.disabled = false; };
+    $('acceptGoals').onclick = async () => { const chosen = [...v.querySelectorAll('.goal')].filter((g) => g.querySelector('[data-k=accept]').checked).map((g) => ({ ...goals[+g.dataset.i], text: g.querySelector('[data-k=text]').value, target: +g.querySelector('[data-k=target]').value })); try { await api('/coach/goals', { reportId: id, goals: chosen }); $('goalNote').textContent = `${chosen.length} goal(s) accepted and saved to your profile; they feed the next programme generation and the next review.`; await loadAll(); } catch (e) { $('goalNote').textContent = e.message; } };
+  } catch (e) { v.innerHTML = `<div class="card sub">${esc(e.message)}</div>`; }
+}
+
+// ---------- research ----------
+async function loadResearch() { try { const rows = await api('/coach/research'); $('researchList').innerHTML = rows.map((s) => `<li><a href="#" data-src="${esc(s.source_id)}">${esc(s.title)}</a> <span class="pill">${esc(s.origin)}</span> <span class="pill">${esc(s.access === 'full_text' ? 'full text' : s.access)}</span> <span class="sub">${esc(s.authors ?? '')} ${s.year ?? ''}</span></li>`).join('') || '<li class="sub">Nothing saved yet.</li>'; for (const a of $('researchList').querySelectorAll('[data-src]')) a.onclick = (ev) => { ev.preventDefault(); showSource(a.dataset.src); }; } catch (e) { $('researchList').innerHTML = `<li class="sub">${esc(e.message)}</li>`; } }
+async function showSource(id) { const v = $('sourceView'); v.innerHTML = '<div class="card sub">Loading…</div>'; try { const s = await api(`/coach/research?id=${encodeURIComponent(id)}`), f = s.findings ?? {};
+  v.innerHTML = `<div class="card"><h2>${esc(s.origin)} source · ${esc(s.access === 'full_text' ? 'full text analysed' : s.access === 'abstract' ? 'abstract only' : 'metadata only')}</h2><h3>${esc(s.title)}</h3><div class="sub">${esc(s.authors ?? '')} ${s.year ?? ''} ${s.doi ? `· DOI ${esc(s.doi)}` : ''} ${s.url ? `· <a href="${esc(s.url)}" target="_blank" rel="noopener">source</a>` : ''}</div>
+    <ul class="facts">${['question', 'design', 'population', 'intervention', 'outcomes', 'mainFindings', 'limitations', 'relevance'].filter((k) => f[k]).map((k) => `<li><b>${esc(k)}.</b> ${esc(f[k])}</li>`).join('')}</ul>
+    ${(f.evidence ?? []).length ? `<h2>Evidence passages</h2><ul>${f.evidence.map((e) => `<li>p.${e.page}: “${esc(e.quote)}”</li>`).join('')}</ul>` : ''}
+    <div class="sub">“This study found…” is a population finding; it never proves an individual outcome and never changes a pass criterion.</div></div>`; } catch (e) { v.innerHTML = `<div class="card sub">${esc(e.message)}</div>`; } }
+$('searchForm').onsubmit = async (ev) => { ev.preventDefault(); const q = $('searchQ').value.trim(); if (!q) return; $('searchNote').textContent = 'Searching…'; try { const r = await api('/coach/research/search', { question: q }); $('searchNote').textContent = `${r.sources.length} grounded source(s) saved${r.ungrounded ? `, ${r.ungrounded} dropped because the search did not return them` : ''}.`; await loadResearch(); } catch (e) { $('searchNote').textContent = e.message; } };
+$('pdfBtn').onclick = async () => { const f = $('pdfFile').files[0]; if (!f) return; if (f.size > 8e6) { $('pdfNote').textContent = 'Keep documents under 8 MB.'; return; } $('pdfNote').textContent = 'Reading…'; const base64 = await new Promise((res) => { const rd = new FileReader(); rd.onload = () => res(rd.result.split(',')[1]); rd.readAsDataURL(f); });
+  try { const r = await api('/coach/research/pdf', { name: f.name, mime: f.type || 'application/pdf', base64 }); $('pdfNote').textContent = r.cached ? 'Already analysed; showing the saved summary.' : 'Analysed and saved.'; await loadResearch(); showSource(r.source.source_id); } catch (e) { $('pdfNote').textContent = e.message; } };
+
+loadAll();
+</script>
+</body>
+</html>

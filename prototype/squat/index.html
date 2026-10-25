@@ -64,6 +64,7 @@
   .hrt .hrt-state { font-size:17px; font-weight:600; margin:6px 0 2px; letter-spacing:-.01em; }
   .hrt[data-state="cue"] .hrt-state { color:var(--acc); } .hrt[data-state="unavailable"] .hrt-state, .hrt[data-state="ended"] .hrt-state { color:var(--mut); }
   .hrt details summary { cursor:pointer; margin-top:6px; } .hrt select { font:inherit; font-size:12px; }
+  .coachloop .hrt-state { font-size:17px; font-weight:600; margin:6px 0 2px; } .coachloop[data-state="result"] .hrt-state { color:var(--acc); } .coachloop #coachCue { font-weight:500; color:var(--fg); }
   .ev table { width:100%; border-collapse:collapse; font-size:13px; margin:6px 0 10px; } .ev th, .ev td { text-align:left; padding:4px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
   .ev svg { width:100%; max-width:520px; height:auto; display:block; margin:6px 0 4px; color:var(--fg); } .ev code { font-size:12px; }
   input[type=text], input:not([type]) { -webkit-appearance:none; appearance:none; }
@@ -138,6 +139,14 @@
         <div><h2 id="metric3Label">Lean</h2><div class="bar"><i id="metric3Bar"></i></div><div class="sub" id="metric3Txt">–</div></div>
         <div><h2 id="metric4Label">Balance</h2><div class="bar"><i id="metric4Bar"></i></div><div class="sub" id="metric4Txt">–</div></div>
       </div>
+    </div>
+    <div class="card coachloop" id="coachCard" hidden>
+      <div class="row" style="justify-content:space-between;align-items:center;gap:8px;margin:0"><h2 style="margin:0">Coach · retry · verify</h2><a class="sub" id="coachBack" href="/coach">Back to programme</a></div>
+      <div class="hrt-state" id="coachState">Setting up</div>
+      <div class="sub" id="coachSub">Start the camera. Three counted reps make the baseline.</div>
+      <div class="sub" id="coachCue" style="margin-top:6px"></div>
+      <div class="row" style="margin-top:8px"><button class="primary" id="coachRetryBtn" hidden>Start retry</button><button id="coachStopBtn">Stop attempt</button><button id="coachAgainBtn" hidden>Try again</button></div>
+      <div class="sub" id="coachResult" style="margin-top:6px"></div>
     </div>
     <div class="card hrt" id="hrtCard" data-state="baseline">
       <div class="row" style="justify-content:space-between;align-items:center;gap:8px;margin:0">
@@ -273,6 +282,8 @@ import { PoseLandmarker, FilesetResolver } from '/vendor/vision_bundle.mjs';
 import { VARIATIONS, JOINTS, METRICS, RepCounter, GREEN, AMBER, RED } from '/squat.mjs';
 import { Forecaster, TARGETS, DEFAULT_TARGET, MIN_REPS, cueText, bounds } from '/hrt.mjs';
 import { renderEvidence, renderReview } from '/hrt-evidence.mjs';
+import { CoachLoop } from '/coach-loop.mjs';
+import { contractFor as coachContractFor } from '/coach.mjs';
 
 const $ = (id) => document.getElementById(id);
 const video = $('video'), canvas = $('overlay'), ctx = canvas.getContext('2d');
@@ -535,6 +546,7 @@ $('stop').onclick = () => {
   askEnd();
 };
 function stopAll() {
+  if (cl && cl.pause()) coachRender();
   inputGeneration++; cameraStarting = false;
   running = false; setPause(false); clockPause();
   setTimeout(() => publish(null, true), 0);
@@ -553,7 +565,7 @@ function loop() {
     const lm = res.landmarks?.[0];
     if (lm) {
       const rep = counter.update(lm, clock(), video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 1);
-      tgFrame(); if (rep) { tgRep(rep); hrtRep(rep); }
+      tgFrame(); if (rep) { tgRep(rep); hrtRep(rep); coachRep(rep); }
       if (rep) { rep.pace = timeClass(rep) || null; addHistory(rep); voiceRep(rep); }
       render(lm);
       publish(lm, !!rep);
@@ -668,7 +680,7 @@ function hrtRep(rep) {
   const { forecast, outcomes } = fc.onRep(rep, clock());
   if (forecast && tg.id) { tg.forecasts.push({ ...forecast, provenance: video.src ? 'video' : 'live' }); tgFlush(); } // persist before the outcome exists
   for (const o of outcomes) if (tg.id) tg.outcomes.push(o);
-  if (forecast?.action === 'cue') say(cueText(fc.bounds).cue, 1, 'push');
+  if (forecast?.action === 'cue') { say(cueText(fc.bounds).cue, 1, 'push'); if (cl && !['setup', 'result', 'cancelled'].includes(cl.state)) cl.intervention('HRT tempo cue delivered'); }
   if (forecast && $('hrtPause').checked && video.src && !paused) { $('pause').click(); $('status').textContent = `Paused at the forecast made after rep ${forecast.repN}. Resume to reveal the next two reps.`; }
   hrtRender();
 }
@@ -710,6 +722,79 @@ $('evidenceBtn').onclick = async () => {
   } catch (e) { $('evidenceBody').innerHTML = `<p class="sub">Could not load the evaluation artifact: ${e.message}</p>`; }
 };
 $('evClose').onclick = () => $('evidence').close();
+
+// Coach -> retry -> verify. Opened from a skill node (/?node=squat&programme=<id>&user=<id>): three counted baseline reps,
+// one cue (Gemini via the server, deterministic if not), an explicit retry, three retry reps, a computed comparison the
+// server stores with the node progress it earns, then Gemini explains the computed result. The state machine lives in
+// /coach-loop.mjs; the page only feeds it reps and user actions and persists snapshots at each transition.
+const coachParams = new URL(location.href).searchParams;
+const coachNode = coachParams.get('node'), coachProgramme = coachParams.get('programme'), coachUser = coachParams.get('user');
+let cl = null, coachInfo = null;
+const coachApi = async (path, body) => { const url = coachUser ? path + (path.includes('?') ? '&' : '?') + 'user=' + encodeURIComponent(coachUser) : path; const r = await fetch(url, body ? { method: 'POST', body: JSON.stringify(body) } : {}); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error ?? r.statusText); return j; };
+async function coachInit() {
+  if (!coachNode) return;
+  try { coachInfo = await coachApi(`/coach/node?id=${encodeURIComponent(coachNode)}`); } catch (e) { $('coachCard').hidden = false; $('coachState').textContent = 'Node unavailable'; $('coachSub').textContent = e.message; return; }
+  $('coachCard').hidden = false;
+  if (coachInfo.capability !== 'assessable') { $('coachState').textContent = 'AI assessment coming soon'; $('coachSub').textContent = `${coachInfo.entry.name} is practice-only in this version. Log practice from the programme page; the camera assessor is for squats and standard push-ups.`; $('coachStopBtn').hidden = true; return; }
+  coachNew();
+}
+function coachNew() {
+  cl = new CoachLoop({ contract: coachContractFor(coachInfo.node.exerciseId) });
+  $('coachRetryBtn').hidden = true; $('coachAgainBtn').hidden = true; $('coachStopBtn').hidden = false; $('coachCue').textContent = ''; $('coachResult').textContent = '';
+  coachRender();
+}
+function coachRender() {
+  if (!cl) return;
+  const c = cl.contract, b = cl.validCount('baseline'), r = cl.validCount('retry');
+  const lines = {
+    setup: ['Setting up', `Start the camera, side-on, hips and knees in frame. Target: ${c.label} about ${c.target} ${c.unit}.`],
+    baseline: [`Baseline: ${b} of 3 counted reps`, `Squat at your natural pace. ${c.label} is being timed; nothing is judged yet.`],
+    preparing_cue: ['Preparing one cue…', 'The coach is choosing one thing to change.'],
+    cue_ready: ['Your cue', `Target frozen at ${c.target} ${c.unit} (within ${c.tolerance}). Press Start retry when ready, then do three reps.`],
+    ready_to_retry: ['Retry: 0 of 3', 'Go when ready.'],
+    retry: [`Retry: ${r} of 3 counted reps`, 'Same movement, same camera.'],
+    verifying: ['Comparing…', ''],
+    result: ['Result', ''],
+    paused: ['Paused', 'Camera interrupted. Resume to continue the same phase.'],
+    cancelled: ['Attempt cancelled', 'Nothing was scored. Try again when ready.'],
+  }[cl.state] ?? ['', ''];
+  $('coachState').textContent = lines[0]; $('coachSub').textContent = lines[1]; $('coachCard').dataset.state = cl.state;
+}
+async function coachSave(extra = {}) {
+  if (!cl || !tg.id && !tgLast) return null;
+  try { return await coachApi('/coach/attempt', { attempt: cl.snapshot(), workoutId: tg.id ?? tgLast, programmeId: coachProgramme, nodeId: coachNode, ...extra }); } catch (e) { console.error('coach save', e.message); return null; }
+}
+async function coachRep(rep) {
+  if (!cl || !coachInfo || coachInfo.capability !== 'assessable') return;
+  if (cl.state === 'setup' && running && !counter.warn) cl.begin();
+  const ev = cl.onRep(rep);
+  coachRender();
+  if (!ev) return;
+  if (ev.event === 'baseline_complete') {
+    coachSave();
+    let cue;
+    try { ({ cue } = await coachApi('/coach/cue', { attemptId: cl.attemptId, requestId: ev.requestId, exercise: cl.contract.exerciseId, baselineReps: ev.baseline, programmeId: coachProgramme, nodeId: coachNode, quality: { framing: counter.warn ? 'poor' : 'ok', view: counter.view } })); }
+    catch (e) { console.error('coach cue', e.message); }
+    if (!cue || !cl.cueReady(cue, ev.requestId)) cl.cueFailed();
+    $('coachCue').textContent = `“${cl.cue.text}”` + (cl.cue.provenance === 'gemini' ? '' : ' (deterministic cue)');
+    if (typeof say === 'function') say(cl.cue.text, 1, 'push');
+    if (cl.cue.action === 'request_better_view' || cl.cue.action === 'no_assessment') { $('coachSub').textContent = 'Fix the view, then start a new attempt.'; $('coachAgainBtn').hidden = false; }
+    else $('coachRetryBtn').hidden = false;
+    coachRender(); coachSave();
+  } else if (ev.event === 'result') {
+    const o = ev.outcome, label = { closer: 'Closer to the target', similar: 'About the same', further: 'Further from the target', unable: 'Unable to assess' }[o.classification];
+    $('coachResult').innerHTML = `<b>${label}.</b> ${o.classification === 'unable' ? o.reason : `Baseline median ${o.baselineMedian} s, retry median ${o.retryMedian} s against ${o.target} s (${o.baselineN} and ${o.retryN} valid reps; "similar" within ${o.noiseTolerance} s).`}<br><span class="sub">Explaining…</span>`;
+    $('coachRetryBtn').hidden = true; $('coachAgainBtn').hidden = false; $('coachStopBtn').hidden = true; coachRender();
+    const saved = await coachSave();
+    if (saved?.node) { const v = saved.node.verification; $('coachResult').innerHTML += v !== 'none' ? `<br><span class="pill" style="color:var(--acc)">${v === 'consistent' ? 'Milestone: verified on two days' : 'Milestone: first completion verified'} · ${saved.node.xp} XP</span>` : `<br><span class="sub">No milestone this time: ${o.classification === 'unable' ? 'the attempt could not be assessed' : 'the retry median must land within tolerance of the target to count'}.</span>`; }
+    try { const { explanation } = await coachApi('/coach/explain', { attemptId: cl.attemptId }); cl.explained(explanation); $('coachResult').querySelector('.sub').textContent = explanation.text + (explanation.provenance === 'gemini' ? '' : ' (deterministic explanation)'); if (typeof say === 'function') say(explanation.text, 2); }
+    catch (e) { $('coachResult').querySelector('.sub').textContent = 'No explanation available.'; }
+  }
+}
+$('coachRetryBtn').onclick = () => { if (cl?.startRetry()) { $('coachRetryBtn').hidden = true; coachRender(); coachSave(); } };
+$('coachStopBtn').onclick = () => { if (cl?.cancel()) { coachRender(); coachSave(); $('coachAgainBtn').hidden = false; $('coachStopBtn').hidden = true; } };
+$('coachAgainBtn').onclick = () => coachNew();
+coachInit();
 
 // AI coach panel: reads the coach messages the server already generated (no extra Gemini calls) and sends questions to /ask.
 const coachSeen = new Set();
