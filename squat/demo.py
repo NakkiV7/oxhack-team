@@ -40,7 +40,9 @@ def synth(text: str, voice: str, path: str) -> None:
         data=json.dumps({"text": text, "model_id": "eleven_turbo_v2_5"}).encode(),
         headers={"xi-api-key": os.environ["ELEVENLABS_API_KEY"], "Content-Type": "application/json"},
     )
-    Path(path).write_bytes(urllib.request.urlopen(req, timeout=30).read())
+    import certifi, ssl                                   # python.org builds ship without a CA bundle
+    ctx = ssl.create_default_context(cafile=certifi.where())
+    Path(path).write_bytes(urllib.request.urlopen(req, timeout=30, context=ctx).read())
 
 
 def pcm(path: str) -> np.ndarray:
