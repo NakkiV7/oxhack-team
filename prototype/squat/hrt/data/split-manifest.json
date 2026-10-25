@@ -1,0 +1,21 @@
+{
+  "datasetSha256": "c5c7ee36e16a93778bfc0c8b43183c6344d7300ba1e4bb5e46edb497f4d31aad",
+  "groups": {
+    "barbell_squat_powerlifting_comp_01": "dev",
+    "demo_front": "dev",
+    "goblet_squat_kb_01": "dev",
+    "half_squat_home_cdc_01": "dev",
+    "kb_clean_squat_thruster_01": "dev",
+    "kb_complex_ia_01": "dev",
+    "kb_racked_squat_01": "dev",
+    "kb_side": "dev",
+    "overhead_kb_squat_01": "dev",
+    "overhead_kb_squat_single_arm_01": "dev",
+    "overhead_kb_waiters_squat_01": "dev",
+    "screen_cam/team-1": "dev",
+    "screen_cam/team-2": "dev",
+    "screen_cam/team-3": "dev",
+    "squat_frontal_raise_01": "dev",
+    "squat_jump_army_front_01": "dev"
+  }
+}

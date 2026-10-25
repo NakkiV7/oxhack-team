@@ -52,16 +52,30 @@ export function validateBatch(b) {
     .filter((f) => f.measured_at);
   const reps = (Array.isArray(b.reps) ? b.reps : []).slice(-LIMITS.reps)
     .map((r) => ({
-      measured_at: iso(r.at), rep_n: Math.round(num(r.n) ?? -1), counted: !!r.counted, good: !!r.good, secs: num(r.secs), issue: text(r.issue, 200),
+      measured_at: iso(r.at), rep_n: Math.round(num(r.n) ?? -1), counted: !!r.counted, good: !!r.good, secs: num(r.secs), down_secs: num(r.downSecs), up_secs: num(r.upSecs), issue: text(r.issue, 200),
       faults: (Array.isArray(r.faults) ? r.faults : []).filter((x) => typeof x === 'string').map((x) => x.slice(0, 64)).slice(0, 10),
       ...signals(r),
     }))
     .filter((r) => r.measured_at && r.rep_n >= 0);
   const start = b.start && typeof b.start === 'object'
-    ? { variation: text(b.start.variation) ?? 'standard', source: b.start.source === 'video' ? 'video' : 'camera', client: text(b.start.client) ?? 'web', started_at: iso(Date.parse(b.start.startedAt)) ?? new Date().toISOString() }
+    ? { variation: text(b.start.variation) ?? 'standard', source: b.start.source === 'video' ? 'video' : 'camera', client: text(b.start.client) ?? 'web', started_at: iso(Date.parse(b.start.startedAt)) ?? new Date().toISOString(), note: text(b.start.note, 200) }
     : null;
   const end = b.end && typeof b.end === 'object' ? { ended_at: iso(Date.parse(b.end.endedAt)) ?? new Date().toISOString() } : null;
-  return { workoutId: b.workoutId.toLowerCase(), exercise: b.exercise, start, end, frames, reps };
+  // Forecast records from the page's forecaster (see squat/hrt.mjs) and the outcomes that later point at them.
+  const ACTIONS = new Set(['cue', 'silent', 'suppressed']), MODES = new Set(['shadow', 'coaching']), PROV = new Set(['live', 'video', 'synthetic']);
+  const forecasts = (Array.isArray(b.forecasts) ? b.forecasts : []).slice(-LIMITS.reps).map((f) => ({
+    prediction_id: UUID.test(f.predictionId ?? '') ? f.predictionId.toLowerCase() : null, rep_n: Math.round(num(f.repN) ?? 0), model_run: text(f.modelRun, 120), target_id: text(f.targetId),
+    label_version: text(f.labelVersion), feature_version: text(f.featureVersion), policy_version: text(f.policyVersion), horizon: Math.round(num(f.horizon) ?? 0),
+    cutoff_at: iso(Date.parse(f.cutoffAt)), emitted_at: iso(Date.parse(f.emittedAt)), features: f.features && typeof f.features === 'object' ? f.features : {},
+    probability: num(f.probability), threshold: num(f.threshold), action: ACTIONS.has(f.action) ? f.action : null, suppressed_reason: text(f.suppressedReason),
+    delivered_at: f.deliveredAt ? iso(Date.parse(f.deliveredAt)) : null, latency_ms: num(f.latencyMs), mode: MODES.has(f.mode) ? f.mode : null, provenance: PROV.has(f.provenance) ? f.provenance : null,
+  })).filter((f) => f.prediction_id && f.rep_n > 0 && f.model_run && f.target_id && f.label_version && f.feature_version && f.policy_version && f.horizon > 0 && f.cutoff_at && f.emitted_at && f.probability != null && f.probability >= 0 && f.probability <= 1 && f.action && f.mode && f.provenance);
+  const outcomes = (Array.isArray(b.outcomes) ? b.outcomes : []).slice(-LIMITS.reps).map((o) => ({
+    prediction_id: UUID.test(o.predictionId ?? '') ? o.predictionId.toLowerCase() : null, label_version: text(o.labelVersion), state: o.state === 'observed' || o.state === 'excluded' ? o.state : null,
+    outcome: o.outcome === 0 || o.outcome === 1 ? o.outcome : null, exclusion_reason: text(o.exclusionReason), onset_offset: num(o.onsetOffset) == null ? null : Math.round(o.onsetOffset), lead_secs: num(o.leadSecs),
+    future_reps: Array.isArray(o.futureReps) ? o.futureReps.slice(0, 4) : [], observed_at: iso(Date.parse(o.observedAt)), coached: !!o.coached,
+  })).filter((o) => o.prediction_id && o.label_version && o.state && o.observed_at && ((o.state === 'observed') === (o.outcome != null)));
+  return { workoutId: b.workoutId.toLowerCase(), exercise: b.exercise, start, end, frames, reps, forecasts, outcomes };
 }
 
 const cols = (prefix) => SIGNALS.map((s) => prefix + s).join(', ');
@@ -69,19 +83,33 @@ const FRAME_SQL = `INSERT INTO spottr_cv.frame (measured_at, workout_id, exercis
   SELECT f.measured_at, $2::uuid, $3, f.clock_ms, f.state, f.view, ${cols('f.')}
   FROM jsonb_to_recordset($1::jsonb) AS f(measured_at timestamptz, clock_ms integer, state text, view text, ${SIGNALS.map((s) => s + ' real').join(', ')})
   ON CONFLICT DO NOTHING`;
-const REP_SQL = `INSERT INTO spottr_cv.rep (measured_at, workout_id, exercise, rep_n, counted, good, secs, issue, faults, ${cols('')})
-  SELECT r.measured_at, $2::uuid, $3, r.rep_n, r.counted, r.good, r.secs, r.issue, coalesce(r.faults, '{}'), ${cols('r.')}
-  FROM jsonb_to_recordset($1::jsonb) AS r(measured_at timestamptz, rep_n integer, counted boolean, good boolean, secs real, issue text, faults text[], ${SIGNALS.map((s) => s + ' real').join(', ')})
+const REP_SQL = `INSERT INTO spottr_cv.rep (measured_at, workout_id, exercise, rep_n, counted, good, secs, down_secs, up_secs, issue, faults, ${cols('')})
+  SELECT r.measured_at, $2::uuid, $3, r.rep_n, r.counted, r.good, r.secs, r.down_secs, r.up_secs, r.issue, coalesce(r.faults, '{}'), ${cols('r.')}
+  FROM jsonb_to_recordset($1::jsonb) AS r(measured_at timestamptz, rep_n integer, counted boolean, good boolean, secs real, down_secs real, up_secs real, issue text, faults text[], ${SIGNALS.map((s) => s + ' real').join(', ')})
   ON CONFLICT DO NOTHING`;
+const FORECAST_SQL = `INSERT INTO spottr_cv.prediction (prediction_id, workout_id, exercise, rep_n, model_run, target_id, label_version, feature_version, policy_version, horizon, cutoff_at, emitted_at,
+    features, probability, threshold, action, suppressed_reason, delivered_at, latency_ms, mode, provenance)
+  SELECT f.prediction_id, $2::uuid, $3, f.rep_n, f.model_run, f.target_id, f.label_version, f.feature_version, f.policy_version, f.horizon, f.cutoff_at, f.emitted_at,
+    f.features, f.probability, f.threshold, f.action, f.suppressed_reason, f.delivered_at, f.latency_ms, f.mode, f.provenance
+  FROM jsonb_to_recordset($1::jsonb) AS f(prediction_id uuid, rep_n integer, model_run text, target_id text, label_version text, feature_version text, policy_version text, horizon integer,
+    cutoff_at timestamptz, emitted_at timestamptz, features jsonb, probability real, threshold real, action text, suppressed_reason text, delivered_at timestamptz, latency_ms real, mode text, provenance text)
+  ON CONFLICT DO NOTHING`; // a forecast is written once and never updated
+const OUTCOME_SQL = `INSERT INTO spottr_cv.prediction_outcome (prediction_id, label_version, state, outcome, exclusion_reason, onset_offset, lead_secs, future_reps, observed_at, coached)
+  SELECT o.prediction_id, o.label_version, o.state, o.outcome, o.exclusion_reason, o.onset_offset, o.lead_secs, o.future_reps, o.observed_at, o.coached
+  FROM jsonb_to_recordset($1::jsonb) AS o(prediction_id uuid, label_version text, state text, outcome smallint, exclusion_reason text, onset_offset smallint, lead_secs real, future_reps jsonb, observed_at timestamptz, coached boolean)
+  WHERE EXISTS (SELECT 1 FROM spottr_cv.prediction p WHERE p.prediction_id = o.prediction_id AND p.workout_id = $2::uuid)
+  ON CONFLICT DO NOTHING`; // an outcome is added once; a later model never rewrites an earlier forecast's outcome
 
 // One batch = at most four statements. Replays are harmless: every row has a natural key.
 export async function ingest(pool, raw) {
   const b = validateBatch(raw);
-  const out = { frames: 0, reps: 0 };
-  if (b.start) await pool.query('INSERT INTO spottr_cv.workout (workout_id, exercise, variation, source, client, started_at) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (workout_id) DO NOTHING',
-    [b.workoutId, b.exercise, b.start.variation, b.start.source, b.start.client, b.start.started_at]);
+  const out = { frames: 0, reps: 0, forecasts: 0, outcomes: 0 };
+  if (b.start) await pool.query('INSERT INTO spottr_cv.workout (workout_id, exercise, variation, source, client, started_at, note) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (workout_id) DO NOTHING',
+    [b.workoutId, b.exercise, b.start.variation, b.start.source, b.start.client, b.start.started_at, b.start.note]);
   if (b.frames.length) out.frames = (await pool.query(FRAME_SQL, [JSON.stringify(b.frames), b.workoutId, b.exercise])).rowCount;
   if (b.reps.length) out.reps = (await pool.query(REP_SQL, [JSON.stringify(b.reps), b.workoutId, b.exercise])).rowCount;
+  if (b.forecasts.length) out.forecasts = (await pool.query(FORECAST_SQL, [JSON.stringify(b.forecasts), b.workoutId, b.exercise])).rowCount;
+  if (b.outcomes.length) out.outcomes = (await pool.query(OUTCOME_SQL, [JSON.stringify(b.outcomes), b.workoutId])).rowCount;
   if (b.end) await pool.query('UPDATE spottr_cv.workout SET ended_at = $2 WHERE workout_id = $1 AND ended_at IS NULL', [b.workoutId, b.end.ended_at]);
   return out;
 }
@@ -106,6 +134,27 @@ export async function status(pool, workoutId) {
     ratio: before && after ? Math.round((1 - after / before) * 1000) / 10 : null, // percent saved on the compressed chunks
     rollupMs: series.ms, tempoMs: tempo.ms, series: series.rows, tempo: tempo.rows,
   };
+}
+
+// Every forecast of a workout with its outcome, for the post-set review and the evidence timeline. Values come from the
+// stored rows, never from the page's memory.
+export async function review(pool, workoutId) {
+  if (!UUID.test(workoutId ?? '')) return [];
+  const { rows } = await pool.query(`SELECT p.prediction_id, p.rep_n, p.model_run, p.target_id, p.horizon, p.probability, p.threshold, p.action, p.suppressed_reason, p.mode, p.provenance,
+      p.cutoff_at, p.emitted_at, p.delivered_at, p.latency_ms, p.features, o.state, o.outcome, o.exclusion_reason, o.onset_offset, o.lead_secs, o.future_reps, o.observed_at, o.coached
+    FROM spottr_cv.prediction p LEFT JOIN spottr_cv.prediction_outcome o USING (prediction_id) WHERE p.workout_id = $1 ORDER BY p.rep_n`, [workoutId.toLowerCase()]);
+  return rows;
+}
+
+// Register the deployed model once (the artifact and the evaluation summary it shipped with). Replays are ignored.
+export async function registerModel(pool, artifact, results = null) {
+  if (!artifact?.modelRun) return 0;
+  const metrics = results?.dev ? { status: results.status, dev: results.dev.ablations?.full ?? null, policy: results.dev.policies?.full ?? null, test: results.test?.probability?.full ?? null } : null;
+  const r = await pool.query(`INSERT INTO spottr_cv.model_run (model_run, git_commit, dataset_sha256, label_version, feature_version, policy_version, hyperparameters, metrics, artifact, status)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) ON CONFLICT (model_run) DO NOTHING`,
+    [artifact.modelRun, results?.gitCommit ?? null, artifact.trainedOn?.datasetSha256 ?? null, artifact.labelVersion, artifact.featureVersion, artifact.policyVersion,
+      JSON.stringify({ lambda: artifact.lambda, threshold: artifact.threshold, horizon: artifact.horizon, minReps: artifact.minReps }), metrics ? JSON.stringify(metrics) : null, JSON.stringify(artifact), artifact.status]);
+  return r.rowCount;
 }
 
 // Convert every closed frame chunk to columnstore now; the policy does the same a minute after a chunk closes.

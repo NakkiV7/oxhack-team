@@ -1,0 +1,1621 @@
+{
+  "generatedAt": "2026-10-25T04:22:48.594Z",
+  "gitCommit": "92b02fb1ff5fb94d748b26311406138333623134",
+  "datasetSha256": "c5c7ee36e16a93778bfc0c8b43183c6344d7300ba1e4bb5e46edb497f4d31aad",
+  "target": {
+    "id": "controlled-v1",
+    "label": "Controlled lowering, 0.6 to 1.5 s",
+    "L": 0.6,
+    "U": 1.5
+  },
+  "horizon": 2,
+  "minReps": 3,
+  "labelVersion": "tempo-v1",
+  "featureVersion": "f1",
+  "policyVersion": "budget-v1",
+  "budget": 0.5,
+  "seed": 7,
+  "datasetCard": {
+    "recordings": 16,
+    "people": 10,
+    "attempts": 85,
+    "countedReps": 78,
+    "bySplit": {
+      "dev": {
+        "recordings": 16,
+        "eligibleOrigins": 22,
+        "positives": 8
+      },
+      "test": {
+        "recordings": 0,
+        "eligibleOrigins": 0,
+        "positives": 0
+      }
+    },
+    "provenance": {
+      "barbell_squat_powerlifting_comp_01": {
+        "split": "dev",
+        "person": "cc-1",
+        "provenance": "imported",
+        "reps": 2
+      },
+      "demo_front": {
+        "split": "dev",
+        "person": "cc-3",
+        "provenance": "imported",
+        "reps": 2
+      },
+      "goblet_squat_kb_01": {
+        "split": "dev",
+        "person": "cc-4",
+        "provenance": "imported",
+        "reps": 2
+      },
+      "half_squat_home_cdc_01": {
+        "split": "dev",
+        "person": "cc-5",
+        "provenance": "imported",
+        "reps": 6
+      },
+      "kb_clean_squat_thruster_01": {
+        "split": "dev",
+        "person": "cc-4",
+        "provenance": "imported",
+        "reps": 3
+      },
+      "kb_complex_ia_01": {
+        "split": "dev",
+        "person": "cc-6",
+        "provenance": "imported",
+        "reps": 2
+      },
+      "kb_racked_squat_01": {
+        "split": "dev",
+        "person": "cc-4",
+        "provenance": "imported",
+        "reps": 5
+      },
+      "kb_side": {
+        "split": "dev",
+        "person": "cc-4",
+        "provenance": "imported",
+        "reps": 6
+      },
+      "overhead_kb_squat_01": {
+        "split": "dev",
+        "person": "cc-4",
+        "provenance": "imported",
+        "reps": 1
+      },
+      "overhead_kb_squat_single_arm_01": {
+        "split": "dev",
+        "person": "cc-4",
+        "provenance": "imported",
+        "reps": 16
+      },
+      "overhead_kb_waiters_squat_01": {
+        "split": "dev",
+        "person": "cc-4",
+        "provenance": "imported",
+        "reps": 1
+      },
+      "screen_cam/team-1": {
+        "split": "dev",
+        "person": "team-1",
+        "provenance": "live-recorded",
+        "reps": 7
+      },
+      "screen_cam/team-2": {
+        "split": "dev",
+        "person": "team-2",
+        "provenance": "live-recorded",
+        "reps": 8
+      },
+      "screen_cam/team-3": {
+        "split": "dev",
+        "person": "team-3",
+        "provenance": "live-recorded",
+        "reps": 6
+      },
+      "squat_frontal_raise_01": {
+        "split": "dev",
+        "person": "cc-8",
+        "provenance": "imported",
+        "reps": 6
+      },
+      "squat_jump_army_front_01": {
+        "split": "dev",
+        "person": "cc-9",
+        "provenance": "imported",
+        "reps": 5
+      }
+    },
+    "audit": {
+      "origins": 78,
+      "ineligible": {
+        "baseline": 30,
+        "current_rep_outside_target": 17
+      },
+      "excluded": {
+        "set_ended": 6,
+        "invalid_rep_in_horizon": 3
+      },
+      "observed": 22,
+      "positives": 8
+    },
+    "labelDefinition": "v_t = 1 when the lowering duration of counted rep t is outside [0.6, 1.5] s; Y_t = 1 when v = 1 for rep t+1 or t+2; origins need 3 counted reps and v_t = 0; horizons with an uncounted attempt or fewer than 2 further reps are excluded.",
+    "limitations": [
+      "Labels are produced by the rep counter, not by independent annotation.",
+      "Development clips were used to tune the counter.",
+      "Most recordings are single short sets of different people under different loads and camera angles.",
+      "Test split is empty until the team's held-out recordings are added."
+    ]
+  },
+  "status": "dev-cv",
+  "dev": {
+    "protocol": "leave-one-recording-out; lambda by nested leave-one-recording-out log loss",
+    "groups": 8,
+    "lambdas": {
+      "full": 10,
+      "tempo": 10,
+      "position": 10
+    },
+    "probability": {
+      "constant": {
+        "n": 22,
+        "positives": 8,
+        "brier": 0.47882701864368504,
+        "logLoss": 1.1931424641272832,
+        "averagePrecision": 0.2359604517644378
+      },
+      "position": {
+        "n": 22,
+        "positives": 8,
+        "brier": 0.7010747995167976,
+        "logLoss": 6.961894933870547,
+        "averagePrecision": 0.2359604517644378
+      },
+      "tempo": {
+        "n": 22,
+        "positives": 8,
+        "brier": 0.5363375868961799,
+        "logLoss": 1.3590950075723032,
+        "averagePrecision": 0.23778793714455476
+      },
+      "full": {
+        "n": 22,
+        "positives": 8,
+        "brier": 0.5366177313105318,
+        "logLoss": 1.359961850784816,
+        "averagePrecision": 0.23778793714455476
+      }
+    },
+    "prevalence": 0.36363636363636365,
+    "policies": {
+      "constant": {
+        "tau": 0.95,
+        "alerts": 0,
+        "falseAlerts": 0,
+        "events": 6,
+        "matched": 0,
+        "recall": 0,
+        "precision": null,
+        "falseAlertsPerSet": 0,
+        "monitoredSets": 8,
+        "medianLeadSecs": null,
+        "medianLeadReps": null
+      },
+      "position": null,
+      "tempo": {
+        "tau": 0.95,
+        "alerts": 0,
+        "falseAlerts": 0,
+        "events": 6,
+        "matched": 0,
+        "recall": 0,
+        "precision": null,
+        "falseAlertsPerSet": 0,
+        "monitoredSets": 8,
+        "medianLeadSecs": null,
+        "medianLeadReps": null
+      },
+      "full": {
+        "tau": 0.95,
+        "alerts": 0,
+        "falseAlerts": 0,
+        "events": 6,
+        "matched": 0,
+        "recall": 0,
+        "precision": null,
+        "falseAlertsPerSet": 0,
+        "monitoredSets": 8,
+        "medianLeadSecs": null,
+        "medianLeadReps": null
+      },
+      "heuristic": {
+        "tau": null,
+        "alerts": 1,
+        "falseAlerts": 0,
+        "events": 6,
+        "matched": 1,
+        "recall": 0.16666666666666666,
+        "precision": 1,
+        "falseAlertsPerSet": 0,
+        "monitoredSets": 8,
+        "medianLeadSecs": 17.990000000000002,
+        "medianLeadReps": 2
+      },
+      "silent": {
+        "tau": null,
+        "alerts": 0,
+        "falseAlerts": 0,
+        "events": 6,
+        "matched": 0,
+        "recall": 0,
+        "precision": null,
+        "falseAlertsPerSet": 0,
+        "monitoredSets": 8,
+        "medianLeadSecs": null,
+        "medianLeadReps": null
+      }
+    },
+    "frontier": {
+      "constant": [
+        {
+          "tau": 0.05,
+          "alerts": 14,
+          "falseAlerts": 8,
+          "events": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 0.42857142857142855,
+          "falseAlertsPerSet": 1,
+          "monitoredSets": 8,
+          "medianLeadSecs": 7.059999999999999,
+          "medianLeadReps": 2
+        },
+        {
+          "tau": 0.1,
+          "alerts": 14,
+          "falseAlerts": 8,
+          "events": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 0.42857142857142855,
+          "falseAlertsPerSet": 1,
+          "monitoredSets": 8,
+          "medianLeadSecs": 7.059999999999999,
+          "medianLeadReps": 2
+        },
+        {
+          "tau": 0.15,
+          "alerts": 14,
+          "falseAlerts": 8,
+          "events": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 0.42857142857142855,
+          "falseAlertsPerSet": 1,
+          "monitoredSets": 8,
+          "medianLeadSecs": 7.059999999999999,
+          "medianLeadReps": 2
+        },
+        {
+          "tau": 0.2,
+          "alerts": 14,
+          "falseAlerts": 8,
+          "events": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 0.42857142857142855,
+          "falseAlertsPerSet": 1,
+          "monitoredSets": 8,
+          "medianLeadSecs": 7.059999999999999,
+          "medianLeadReps": 2
+        },
+        {
+          "tau": 0.25,
+          "alerts": 14,
+          "falseAlerts": 8,
+          "events": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 0.42857142857142855,
+          "falseAlertsPerSet": 1,
+          "monitoredSets": 8,
+          "medianLeadSecs": 7.059999999999999,
+          "medianLeadReps": 2
+        },
+        {
+          "tau": 0.3,
+          "alerts": 14,
+          "falseAlerts": 8,
+          "events": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 0.42857142857142855,
+          "falseAlertsPerSet": 1,
+          "monitoredSets": 8,
+          "medianLeadSecs": 7.059999999999999,
+          "medianLeadReps": 2
+        },
+        {
+          "tau": 0.35,
+          "alerts": 7,
+          "falseAlerts": 7,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.875,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.4,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.45,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.5,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.55,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.6,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.65,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.7,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.75,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.8,
+          "alerts": 0,
+          "falseAlerts": 0,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": null,
+          "falseAlertsPerSet": 0,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.85,
+          "alerts": 0,
+          "falseAlerts": 0,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": null,
+          "falseAlertsPerSet": 0,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.9,
+          "alerts": 0,
+          "falseAlerts": 0,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": null,
+          "falseAlertsPerSet": 0,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.95,
+          "alerts": 0,
+          "falseAlerts": 0,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": null,
+          "falseAlertsPerSet": 0,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        }
+      ],
+      "position": [
+        {
+          "tau": 0.05,
+          "alerts": 14,
+          "falseAlerts": 8,
+          "events": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 0.42857142857142855,
+          "falseAlertsPerSet": 1,
+          "monitoredSets": 8,
+          "medianLeadSecs": 7.059999999999999,
+          "medianLeadReps": 2
+        },
+        {
+          "tau": 0.1,
+          "alerts": 14,
+          "falseAlerts": 8,
+          "events": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 0.42857142857142855,
+          "falseAlertsPerSet": 1,
+          "monitoredSets": 8,
+          "medianLeadSecs": 7.059999999999999,
+          "medianLeadReps": 2
+        },
+        {
+          "tau": 0.15,
+          "alerts": 14,
+          "falseAlerts": 8,
+          "events": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 0.42857142857142855,
+          "falseAlertsPerSet": 1,
+          "monitoredSets": 8,
+          "medianLeadSecs": 7.059999999999999,
+          "medianLeadReps": 2
+        },
+        {
+          "tau": 0.2,
+          "alerts": 14,
+          "falseAlerts": 8,
+          "events": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 0.42857142857142855,
+          "falseAlertsPerSet": 1,
+          "monitoredSets": 8,
+          "medianLeadSecs": 7.059999999999999,
+          "medianLeadReps": 2
+        },
+        {
+          "tau": 0.25,
+          "alerts": 14,
+          "falseAlerts": 8,
+          "events": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 0.42857142857142855,
+          "falseAlertsPerSet": 1,
+          "monitoredSets": 8,
+          "medianLeadSecs": 7.059999999999999,
+          "medianLeadReps": 2
+        },
+        {
+          "tau": 0.3,
+          "alerts": 14,
+          "falseAlerts": 8,
+          "events": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 0.42857142857142855,
+          "falseAlertsPerSet": 1,
+          "monitoredSets": 8,
+          "medianLeadSecs": 7.059999999999999,
+          "medianLeadReps": 2
+        },
+        {
+          "tau": 0.35,
+          "alerts": 7,
+          "falseAlerts": 7,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.875,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.4,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.45,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.5,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.55,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.6,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.65,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.7,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.75,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.8,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.85,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.9,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.95,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        }
+      ],
+      "tempo": [
+        {
+          "tau": 0.05,
+          "alerts": 14,
+          "falseAlerts": 8,
+          "events": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 0.42857142857142855,
+          "falseAlertsPerSet": 1,
+          "monitoredSets": 8,
+          "medianLeadSecs": 7.059999999999999,
+          "medianLeadReps": 2
+        },
+        {
+          "tau": 0.1,
+          "alerts": 14,
+          "falseAlerts": 8,
+          "events": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 0.42857142857142855,
+          "falseAlertsPerSet": 1,
+          "monitoredSets": 8,
+          "medianLeadSecs": 7.059999999999999,
+          "medianLeadReps": 2
+        },
+        {
+          "tau": 0.15,
+          "alerts": 14,
+          "falseAlerts": 8,
+          "events": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 0.42857142857142855,
+          "falseAlertsPerSet": 1,
+          "monitoredSets": 8,
+          "medianLeadSecs": 7.059999999999999,
+          "medianLeadReps": 2
+        },
+        {
+          "tau": 0.2,
+          "alerts": 14,
+          "falseAlerts": 8,
+          "events": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 0.42857142857142855,
+          "falseAlertsPerSet": 1,
+          "monitoredSets": 8,
+          "medianLeadSecs": 7.059999999999999,
+          "medianLeadReps": 2
+        },
+        {
+          "tau": 0.25,
+          "alerts": 14,
+          "falseAlerts": 8,
+          "events": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 0.42857142857142855,
+          "falseAlertsPerSet": 1,
+          "monitoredSets": 8,
+          "medianLeadSecs": 7.059999999999999,
+          "medianLeadReps": 2
+        },
+        {
+          "tau": 0.3,
+          "alerts": 14,
+          "falseAlerts": 8,
+          "events": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 0.42857142857142855,
+          "falseAlertsPerSet": 1,
+          "monitoredSets": 8,
+          "medianLeadSecs": 7.059999999999999,
+          "medianLeadReps": 2
+        },
+        {
+          "tau": 0.35,
+          "alerts": 7,
+          "falseAlerts": 7,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.875,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.4,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.45,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.5,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.55,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.6,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.65,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.7,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.75,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.8,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.85,
+          "alerts": 0,
+          "falseAlerts": 0,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": null,
+          "falseAlertsPerSet": 0,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.9,
+          "alerts": 0,
+          "falseAlerts": 0,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": null,
+          "falseAlertsPerSet": 0,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.95,
+          "alerts": 0,
+          "falseAlerts": 0,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": null,
+          "falseAlertsPerSet": 0,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        }
+      ],
+      "full": [
+        {
+          "tau": 0.05,
+          "alerts": 14,
+          "falseAlerts": 8,
+          "events": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 0.42857142857142855,
+          "falseAlertsPerSet": 1,
+          "monitoredSets": 8,
+          "medianLeadSecs": 7.059999999999999,
+          "medianLeadReps": 2
+        },
+        {
+          "tau": 0.1,
+          "alerts": 14,
+          "falseAlerts": 8,
+          "events": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 0.42857142857142855,
+          "falseAlertsPerSet": 1,
+          "monitoredSets": 8,
+          "medianLeadSecs": 7.059999999999999,
+          "medianLeadReps": 2
+        },
+        {
+          "tau": 0.15,
+          "alerts": 14,
+          "falseAlerts": 8,
+          "events": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 0.42857142857142855,
+          "falseAlertsPerSet": 1,
+          "monitoredSets": 8,
+          "medianLeadSecs": 7.059999999999999,
+          "medianLeadReps": 2
+        },
+        {
+          "tau": 0.2,
+          "alerts": 14,
+          "falseAlerts": 8,
+          "events": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 0.42857142857142855,
+          "falseAlertsPerSet": 1,
+          "monitoredSets": 8,
+          "medianLeadSecs": 7.059999999999999,
+          "medianLeadReps": 2
+        },
+        {
+          "tau": 0.25,
+          "alerts": 14,
+          "falseAlerts": 8,
+          "events": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 0.42857142857142855,
+          "falseAlertsPerSet": 1,
+          "monitoredSets": 8,
+          "medianLeadSecs": 7.059999999999999,
+          "medianLeadReps": 2
+        },
+        {
+          "tau": 0.3,
+          "alerts": 14,
+          "falseAlerts": 8,
+          "events": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 0.42857142857142855,
+          "falseAlertsPerSet": 1,
+          "monitoredSets": 8,
+          "medianLeadSecs": 7.059999999999999,
+          "medianLeadReps": 2
+        },
+        {
+          "tau": 0.35,
+          "alerts": 7,
+          "falseAlerts": 7,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.875,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.4,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.45,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.5,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.55,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.6,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.65,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.7,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.75,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.8,
+          "alerts": 6,
+          "falseAlerts": 6,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": 0,
+          "falseAlertsPerSet": 0.75,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.85,
+          "alerts": 0,
+          "falseAlerts": 0,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": null,
+          "falseAlertsPerSet": 0,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.9,
+          "alerts": 0,
+          "falseAlerts": 0,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": null,
+          "falseAlertsPerSet": 0,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        },
+        {
+          "tau": 0.95,
+          "alerts": 0,
+          "falseAlerts": 0,
+          "events": 6,
+          "matched": 0,
+          "recall": 0,
+          "precision": null,
+          "falseAlertsPerSet": 0,
+          "monitoredSets": 8,
+          "medianLeadSecs": null,
+          "medianLeadReps": null
+        }
+      ]
+    },
+    "budget": 0.5,
+    "reliability": {
+      "full": [
+        {
+          "lo": 0,
+          "hi": 0.2,
+          "n": 0,
+          "meanP": null,
+          "observed": null
+        },
+        {
+          "lo": 0.2,
+          "hi": 0.4,
+          "n": 10,
+          "meanP": 0.3314866579786992,
+          "observed": 0.8
+        },
+        {
+          "lo": 0.4,
+          "hi": 0.6,
+          "n": 0,
+          "meanP": null,
+          "observed": null
+        },
+        {
+          "lo": 0.6,
+          "hi": 0.8,
+          "n": 1,
+          "meanP": 0.7996898746945772,
+          "observed": 0
+        },
+        {
+          "lo": 0.8,
+          "hi": 1,
+          "n": 11,
+          "meanP": 0.8126068564210772,
+          "observed": 0
+        }
+      ],
+      "status": "preliminary: too few events per class to assess or fit calibration"
+    },
+    "bootstrap": {
+      "resamples": 1000,
+      "unit": "recording",
+      "seed": 7,
+      "intervals": {
+        "brierFullMinusConstant": {
+          "low": 0.0065405555544254534,
+          "high": 0.08458894496809277,
+          "mean": 0.04759190624087385
+        },
+        "recallFullMinusHeuristic": {
+          "low": -0.5,
+          "high": 0,
+          "mean": -0.16146904761904696
+        },
+        "falseAlertsFullMinusHeuristic": {
+          "low": 0,
+          "high": 0,
+          "mean": 0
+        },
+        "brierFullMinusPosition": {
+          "low": -0.2575162187993273,
+          "high": 0.002250372796318012,
+          "mean": -0.12760000864134036
+        }
+      },
+      "note": "Fixed out-of-fold predictions resampled by recording; does not include model-selection uncertainty."
+    },
+    "ablations": {
+      "constant": {
+        "n": 22,
+        "positives": 8,
+        "brier": 0.47882701864368504,
+        "logLoss": 1.1931424641272832,
+        "averagePrecision": 0.2359604517644378,
+        "recallAtBudget": 0,
+        "falseAlertsPerSet": 0,
+        "tau": 0.95
+      },
+      "position": {
+        "n": 22,
+        "positives": 8,
+        "brier": 0.7010747995167976,
+        "logLoss": 6.961894933870547,
+        "averagePrecision": 0.2359604517644378,
+        "recallAtBudget": null,
+        "falseAlertsPerSet": null,
+        "tau": null
+      },
+      "tempo": {
+        "n": 22,
+        "positives": 8,
+        "brier": 0.5363375868961799,
+        "logLoss": 1.3590950075723032,
+        "averagePrecision": 0.23778793714455476,
+        "recallAtBudget": 0,
+        "falseAlertsPerSet": 0,
+        "tau": 0.95
+      },
+      "full": {
+        "n": 22,
+        "positives": 8,
+        "brier": 0.5366177313105318,
+        "logLoss": 1.359961850784816,
+        "averagePrecision": 0.23778793714455476,
+        "recallAtBudget": 0,
+        "falseAlertsPerSet": 0,
+        "tau": 0.95
+      }
+    },
+    "perGroup": [
+      {
+        "group": "kb_racked_squat_01",
+        "n": 1,
+        "positives": 0,
+        "brierFull": 0.14711807860109938,
+        "brierConstant": 0.15311909262759926
+      },
+      {
+        "group": "kb_side",
+        "n": 2,
+        "positives": 2,
+        "brierFull": 0.4895374988271025,
+        "brierConstant": 0.4648760330578513
+      },
+      {
+        "group": "overhead_kb_squat_single_arm_01",
+        "n": 12,
+        "positives": 0,
+        "brierFull": 0.6586444127896446,
+        "brierConstant": 0.5625
+      },
+      {
+        "group": "screen_cam/team-1",
+        "n": 3,
+        "positives": 2,
+        "brierFull": 0.3378304983380609,
+        "brierConstant": 0.3333333333333333
+      },
+      {
+        "group": "screen_cam/team-2",
+        "n": 1,
+        "positives": 1,
+        "brierFull": 0.4452333737374414,
+        "brierConstant": 0.42533081285444235
+      },
+      {
+        "group": "screen_cam/team-3",
+        "n": 1,
+        "positives": 1,
+        "brierFull": 0.4351943532496169,
+        "brierConstant": 0.42533081285444235
+      },
+      {
+        "group": "squat_frontal_raise_01",
+        "n": 1,
+        "positives": 1,
+        "brierFull": 0.43796521480245965,
+        "brierConstant": 0.42533081285444235
+      },
+      {
+        "group": "squat_jump_army_front_01",
+        "n": 1,
+        "positives": 1,
+        "brierFull": 0.44377962229696055,
+        "brierConstant": 0.42533081285444235
+      }
+    ],
+    "primaryComparison": "Brier score of the full logistic model against the constant baseline (bootstrap interval of the difference); policy: event recall of the full model at the selected threshold against the existing slow-ascent rule, both under the false-alert budget."
+  },
+  "test": null,
+  "regression": {
+    "target": "lowering duration of rep t+1 (s)",
+    "n": 22,
+    "mae": {
+      "ridgeTempo": 0.865541687458056,
+      "lastValue": 0.25454545454545463,
+      "rollingMedian": 0.25909090909090904
+    },
+    "oof": [
+      {
+        "group": "kb_racked_squat_01",
+        "t": 3,
+        "actual": 0.8,
+        "ridge": 0.945,
+        "last": 0.8,
+        "median": 0.8
+      },
+      {
+        "group": "kb_side",
+        "t": 3,
+        "actual": 1.3,
+        "ridge": 1.802,
+        "last": 1.4,
+        "median": 1.4
+      },
+      {
+        "group": "kb_side",
+        "t": 4,
+        "actual": 1.7,
+        "ridge": 1.665,
+        "last": 1.3,
+        "median": 1.4
+      },
+      {
+        "group": "overhead_kb_squat_single_arm_01",
+        "t": 3,
+        "actual": 0.9,
+        "ridge": 1.266,
+        "last": 1.1,
+        "median": 1.2
+      },
+      {
+        "group": "overhead_kb_squat_single_arm_01",
+        "t": 4,
+        "actual": 0.8,
+        "ridge": 1.299,
+        "last": 0.9,
+        "median": 1.1
+      },
+      {
+        "group": "overhead_kb_squat_single_arm_01",
+        "t": 5,
+        "actual": 0.8,
+        "ridge": 1.294,
+        "last": 0.8,
+        "median": 0.9
+      },
+      {
+        "group": "overhead_kb_squat_single_arm_01",
+        "t": 6,
+        "actual": 0.9,
+        "ridge": 1.584,
+        "last": 0.8,
+        "median": 0.8
+      },
+      {
+        "group": "overhead_kb_squat_single_arm_01",
+        "t": 7,
+        "actual": 0.8,
+        "ridge": 1.868,
+        "last": 0.9,
+        "median": 0.8
+      },
+      {
+        "group": "overhead_kb_squat_single_arm_01",
+        "t": 8,
+        "actual": 1,
+        "ridge": 1.91,
+        "last": 0.8,
+        "median": 0.8
+      },
+      {
+        "group": "overhead_kb_squat_single_arm_01",
+        "t": 9,
+        "actual": 0.9,
+        "ridge": 2.36,
+        "last": 1,
+        "median": 0.9
+      },
+      {
+        "group": "overhead_kb_squat_single_arm_01",
+        "t": 10,
+        "actual": 0.9,
+        "ridge": 2.391,
+        "last": 0.9,
+        "median": 0.9
+      },
+      {
+        "group": "overhead_kb_squat_single_arm_01",
+        "t": 11,
+        "actual": 0.8,
+        "ridge": 2.718,
+        "last": 0.9,
+        "median": 0.9
+      },
+      {
+        "group": "overhead_kb_squat_single_arm_01",
+        "t": 12,
+        "actual": 0.9,
+        "ridge": 2.781,
+        "last": 0.8,
+        "median": 0.9
+      },
+      {
+        "group": "overhead_kb_squat_single_arm_01",
+        "t": 13,
+        "actual": 0.9,
+        "ridge": 3.051,
+        "last": 0.9,
+        "median": 0.9
+      },
+      {
+        "group": "overhead_kb_squat_single_arm_01",
+        "t": 14,
+        "actual": 0.8,
+        "ridge": 3.243,
+        "last": 0.9,
+        "median": 0.9
+      },
+      {
+        "group": "screen_cam/team-1",
+        "t": 3,
+        "actual": 0.6,
+        "ridge": 0.619,
+        "last": 1,
+        "median": 0.4
+      },
+      {
+        "group": "screen_cam/team-1",
+        "t": 4,
+        "actual": 1.3,
+        "ridge": 1.294,
+        "last": 0.6,
+        "median": 0.6
+      },
+      {
+        "group": "screen_cam/team-1",
+        "t": 5,
+        "actual": 2.2,
+        "ridge": 1.22,
+        "last": 1.3,
+        "median": 1
+      },
+      {
+        "group": "screen_cam/team-2",
+        "t": 3,
+        "actual": 0.2,
+        "ridge": 0.95,
+        "last": 0.9,
+        "median": 0.9
+      },
+      {
+        "group": "screen_cam/team-3",
+        "t": 4,
+        "actual": 1,
+        "ridge": 0.926,
+        "last": 0.8,
+        "median": 0.8
+      },
+      {
+        "group": "squat_frontal_raise_01",
+        "t": 3,
+        "actual": 2.2,
+        "ridge": 1.083,
+        "last": 1.2,
+        "median": 1.2
+      },
+      {
+        "group": "squat_jump_army_front_01",
+        "t": 3,
+        "actual": 0.8,
+        "ridge": 0.85,
+        "last": 0.7,
+        "median": 0.7
+      }
+    ],
+    "note": "Separate fallback experiment; not the primary question."
+  },
+  "modelRun": "hrt-tempo-v1-c5c7ee36-3b66ec"
+}

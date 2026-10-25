@@ -4,3 +4,5 @@ models/*.task
 .DS_Store
 .control-token
 voice_cache/
+# local raw clips for replay demos, never committed
+assets/_*

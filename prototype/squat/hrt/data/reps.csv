@@ -1,0 +1,86 @@
+recording,split,person,provenance,variation,rep_n,counted,good,t_end,down,up,secs,travel,depth,lean,view,faults
+barbell_squat_powerlifting_comp_01,dev,cc-1,imported,standard,,false,false,17.02,,,0.2,0.31811892090846094,,,front,shallow
+barbell_squat_powerlifting_comp_01,dev,cc-1,imported,standard,1,true,false,20.72,1.5,0.1,1.6,0.62,-0.11,16,front,shallow
+barbell_squat_powerlifting_comp_01,dev,cc-1,imported,standard,2,true,true,22.99,1.2,0.6,1.8,0.58,-0.06,59,front,
+demo_front,dev,cc-3,imported,standard,1,true,true,3.37,0.9,0.8,1.7,0.79,0.33,12,front,
+demo_front,dev,cc-3,imported,standard,2,true,true,6.43,0.9,0.8,1.7,0.76,0.29,16,front,
+goblet_squat_kb_01,dev,cc-4,imported,standard,1,true,true,12.68,1.5,1.6,3,0.68,0.09,20,front,
+goblet_squat_kb_01,dev,cc-4,imported,standard,2,true,true,20.88,1.6,1.6,3.2,0.69,0.09,8,front,
+half_squat_home_cdc_01,dev,cc-5,imported,half,1,true,false,14.11,0.7,1.4,2.1,0.4,-0.54,41,front,shallow|uneven
+half_squat_home_cdc_01,dev,cc-5,imported,half,2,true,false,22.79,2.2,0.7,3,0.39,-0.52,33,front,shallow
+half_squat_home_cdc_01,dev,cc-5,imported,half,3,true,false,29.83,2.5,0.8,3.4,0.44,-0.44,32,front,shallow
+half_squat_home_cdc_01,dev,cc-5,imported,half,4,true,false,41.78,0.5,0.7,1.3,0.38,-0.52,32,front,shallow
+half_squat_home_cdc_01,dev,cc-5,imported,half,5,true,false,48.75,2.6,0.8,3.3,0.44,-0.45,32,front,shallow
+half_squat_home_cdc_01,dev,cc-5,imported,half,6,true,false,73.61,1.7,0.5,2.2,0.36,-0.51,12,front,shallow
+kb_clean_squat_thruster_01,dev,cc-4,imported,standard,1,true,true,3.42,0.4,0.5,0.9,0.73,0.45,25,front,fast descent
+kb_clean_squat_thruster_01,dev,cc-4,imported,standard,2,true,false,11.64,0.4,1.3,1.7,0.41,0.07,54,front,uneven|fast descent
+kb_clean_squat_thruster_01,dev,cc-4,imported,standard,3,true,true,14.3,0.5,0.5,1,0.7,0.32,28,front,
+kb_complex_ia_01,dev,cc-6,imported,standard,1,true,false,2.5,0.4,0.8,1.1,0.35,-0.53,37,front,shallow|fast descent
+kb_complex_ia_01,dev,cc-6,imported,standard,2,true,true,22,1,0.6,1.6,0.66,-0.03,13,front,
+kb_racked_squat_01,dev,cc-4,imported,standard,,false,false,0.17,,,0.1,0.15919811320754718,,,front,shallow
+kb_racked_squat_01,dev,cc-4,imported,standard,1,true,true,4.33,0.8,0.6,1.4,0.73,0.27,14,side,
+kb_racked_squat_01,dev,cc-4,imported,standard,2,true,true,6.43,0.8,0.5,1.3,0.7,0.21,13,side,
+kb_racked_squat_01,dev,cc-4,imported,standard,3,true,true,8.6,0.8,0.5,1.3,0.72,0.18,14,side,
+kb_racked_squat_01,dev,cc-4,imported,standard,4,true,true,10.77,0.8,0.5,1.3,0.73,0.24,14,side,
+kb_racked_squat_01,dev,cc-4,imported,standard,5,true,true,13.07,0.7,0.6,1.3,0.74,0.25,13,side,
+kb_side,dev,cc-4,imported,standard,1,true,true,6.77,1.3,0.8,2.2,0.77,0.6,22,side,
+kb_side,dev,cc-4,imported,standard,2,true,true,14.1,1.4,0.8,2.2,0.81,0.65,22,side,
+kb_side,dev,cc-4,imported,standard,3,true,true,22.37,1.4,0.8,2.3,0.82,0.56,21,side,
+kb_side,dev,cc-4,imported,standard,4,true,true,30.23,1.3,0.9,2.1,0.82,0.6,20,side,
+kb_side,dev,cc-4,imported,standard,5,true,true,38.7,1.7,0.9,2.5,0.83,0.6,23,side,
+kb_side,dev,cc-4,imported,standard,6,true,true,46.53,1.6,0.9,2.4,0.83,0.62,21,side,
+overhead_kb_squat_01,dev,cc-4,imported,standard,1,true,true,14.8,4.9,0.8,5.8,0.65,0.17,20,front,
+overhead_kb_squat_single_arm_01,dev,cc-4,imported,standard,1,true,true,9.14,1.4,0.6,2,0.67,0.31,15,side,
+overhead_kb_squat_single_arm_01,dev,cc-4,imported,standard,2,true,true,13.35,1.2,0.6,1.8,0.62,0.21,13,side,
+overhead_kb_squat_single_arm_01,dev,cc-4,imported,standard,3,true,true,16.82,1.1,0.6,1.7,0.64,0.22,12,side,
+overhead_kb_squat_single_arm_01,dev,cc-4,imported,standard,4,true,true,19.52,0.9,0.6,1.4,0.63,0.21,9,side,
+overhead_kb_squat_single_arm_01,dev,cc-4,imported,standard,5,true,true,22.19,0.8,0.5,1.4,0.64,0.26,7,side,
+overhead_kb_squat_single_arm_01,dev,cc-4,imported,standard,6,true,true,25.03,0.8,0.6,1.4,0.63,0.21,12,side,
+overhead_kb_squat_single_arm_01,dev,cc-4,imported,standard,7,true,true,27.83,0.9,0.6,1.5,0.64,0.23,7,side,
+overhead_kb_squat_single_arm_01,dev,cc-4,imported,standard,8,true,true,30.53,0.8,0.5,1.3,0.64,0.24,11,side,
+overhead_kb_squat_single_arm_01,dev,cc-4,imported,standard,9,true,true,37.67,1,0.6,1.6,0.63,0.19,13,side,
+overhead_kb_squat_single_arm_01,dev,cc-4,imported,standard,10,true,false,41.37,0.9,0.5,1.4,0.61,-0.15,14,side,shallow
+overhead_kb_squat_single_arm_01,dev,cc-4,imported,standard,11,true,true,44.88,0.9,0.6,1.6,0.67,0.3,13,side,
+overhead_kb_squat_single_arm_01,dev,cc-4,imported,standard,12,true,true,48.28,0.8,0.6,1.4,0.64,0.19,12,side,
+overhead_kb_squat_single_arm_01,dev,cc-4,imported,standard,13,true,true,51.32,0.9,0.6,1.5,0.64,0.24,12,side,
+overhead_kb_squat_single_arm_01,dev,cc-4,imported,standard,14,true,true,54.79,0.9,0.6,1.5,0.65,0.22,10,side,
+overhead_kb_squat_single_arm_01,dev,cc-4,imported,standard,15,true,true,58.06,0.8,0.7,1.5,0.66,0.26,10,side,
+overhead_kb_squat_single_arm_01,dev,cc-4,imported,standard,16,true,true,61.36,0.8,0.6,1.5,0.66,0.25,10,side,
+overhead_kb_waiters_squat_01,dev,cc-4,imported,standard,1,true,true,13.68,4.7,0.8,5.5,0.57,-0.1,19,front,
+overhead_kb_waiters_squat_01,dev,cc-4,imported,standard,,false,false,18.36,,,0.3,0.1610215700226284,,,front,shallow
+screen_cam/team-1,dev,team-1,live-recorded,standard,1,true,false,14.22,0.3,0.3,0.6,0.59,-0.32,30,front,shallow|fast descent
+screen_cam/team-1,dev,team-1,live-recorded,standard,2,true,false,16.15,0.4,0.3,0.7,0.61,-0.25,22,front,shallow|fast descent
+screen_cam/team-1,dev,team-1,live-recorded,standard,3,true,true,19.59,1,0.1,1.1,0.7,0,27,front,
+screen_cam/team-1,dev,team-1,live-recorded,standard,4,true,true,24.33,0.6,0.9,1.6,0.71,-0.03,31,front,slow ascent
+screen_cam/team-1,dev,team-1,live-recorded,standard,5,true,false,31.49,1.3,0.4,1.7,0.58,-0.21,65,side,shallow|forward lean
+screen_cam/team-1,dev,team-1,live-recorded,standard,6,true,false,42.32,2.2,2.4,4.6,0.25,0.07,52,front,uneven|slow ascent
+screen_cam/team-1,dev,team-1,live-recorded,standard,7,true,false,47.91,2.1,1.7,3.8,0.23,-0.05,57,side,forward lean|slow ascent
+screen_cam/team-2,dev,team-2,live-recorded,standard,8,true,true,73.27,1.2,0.1,1.3,0.58,-0.05,17,front,
+screen_cam/team-2,dev,team-2,live-recorded,standard,9,true,true,76.09,0.3,0.9,1.3,0.74,-0.17,19,front,fast descent|slow ascent
+screen_cam/team-2,dev,team-2,live-recorded,standard,10,true,true,77.29,0.9,0.1,1,0.54,-0.01,16,front,
+screen_cam/team-2,dev,team-2,live-recorded,standard,11,true,false,81.14,0.2,1.7,1.9,0.67,-0.21,15,front,shallow|fast descent|slow ascent
+screen_cam/team-2,dev,team-2,live-recorded,standard,12,true,true,86.24,0.4,2.5,3,0.61,0.11,19,front,fast descent|slow ascent
+screen_cam/team-2,dev,team-2,live-recorded,standard,13,true,true,95.1,0.7,0.6,1.3,0.81,0.09,17,front,
+screen_cam/team-2,dev,team-2,live-recorded,standard,14,true,true,99.44,1.4,0.4,1.8,0.78,0.11,21,front,
+screen_cam/team-2,dev,team-2,live-recorded,standard,,false,false,102.39,,,0.4,0.6906675989467776,,,front,shallow
+screen_cam/team-2,dev,team-2,live-recorded,standard,15,true,true,106.46,0.8,0.5,1.3,0.72,-0.09,30,front,
+screen_cam/team-3,dev,team-3,live-recorded,standard,16,true,false,120.77,0.6,0.5,1.1,0.6,-0.04,70,side,forward lean
+screen_cam/team-3,dev,team-3,live-recorded,standard,17,true,false,124.13,0.7,0.5,1.3,0.81,0.15,54,side,forward lean
+screen_cam/team-3,dev,team-3,live-recorded,standard,18,true,false,130.12,1.6,0.8,2.4,0.78,0.12,63,side,forward lean|slow ascent
+screen_cam/team-3,dev,team-3,live-recorded,standard,19,true,false,133.34,0.8,0.5,1.4,0.77,-0.01,49,side,forward lean
+screen_cam/team-3,dev,team-3,live-recorded,standard,20,true,true,137.73,1,0.5,1.5,0.74,-0.06,18,front,
+screen_cam/team-3,dev,team-3,live-recorded,standard,21,true,true,139.83,0.4,0.5,0.9,0.81,0.01,23,front,fast descent
+squat_frontal_raise_01,dev,cc-8,imported,standard,1,true,true,3.4,1.1,0.5,1.6,0.74,0.46,24,side,
+squat_frontal_raise_01,dev,cc-8,imported,standard,2,true,true,6.37,1.3,0.5,1.8,0.74,0.45,24,side,
+squat_frontal_raise_01,dev,cc-8,imported,standard,3,true,true,9.07,1.2,0.5,1.8,0.75,0.46,25,side,
+squat_frontal_raise_01,dev,cc-8,imported,standard,4,true,true,16.13,2.2,1.1,3.2,0.73,0.47,24,side,slow ascent
+squat_frontal_raise_01,dev,cc-8,imported,standard,5,true,true,22.03,2.6,1.1,3.6,0.74,0.46,25,side,slow ascent
+squat_frontal_raise_01,dev,cc-8,imported,standard,6,true,true,27.5,2.5,1.1,3.6,0.75,0.45,25,side,slow ascent
+squat_jump_army_front_01,dev,cc-9,imported,standard,,false,false,17.32,,,3.4,0.19896719616982617,,,front,shallow
+squat_jump_army_front_01,dev,cc-9,imported,standard,,false,false,27.83,,,1,0.1614572394355358,,,front,shallow
+squat_jump_army_front_01,dev,cc-9,imported,standard,1,true,false,35.8,0.7,0.2,0.9,0.44,0,46,front,uneven
+squat_jump_army_front_01,dev,cc-9,imported,standard,2,true,true,39.71,0.6,0.3,0.9,0.85,0.17,20,front,
+squat_jump_army_front_01,dev,cc-9,imported,standard,3,true,true,42.38,0.7,0.2,0.9,0.48,0.08,40,front,
+squat_jump_army_front_01,dev,cc-9,imported,standard,4,true,false,45.01,0.8,0.4,1.2,0.57,0.23,35,front,knees in|slow ascent
+squat_jump_army_front_01,dev,cc-9,imported,standard,5,true,false,47.65,0.4,0.2,0.6,0.57,0.1,19,front,knees in|fast descent
+squat_jump_army_front_01,dev,cc-9,imported,standard,,false,false,50.02,,,0.5,0.2704271370530148,,,front,shallow

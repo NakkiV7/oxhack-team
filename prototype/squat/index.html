@@ -61,6 +61,11 @@
   .tiger .tile { background:var(--bg); border:1px solid var(--line); padding:10px 4px; }
   .tiger .tile b { font-size:20px; } .tiger .tile span { color:var(--mut); }
   .tiger svg { width:100%; height:40px; display:block; margin:4px 0 8px; }
+  .hrt .hrt-state { font-size:17px; font-weight:600; margin:6px 0 2px; letter-spacing:-.01em; }
+  .hrt[data-state="cue"] .hrt-state { color:var(--acc); } .hrt[data-state="unavailable"] .hrt-state, .hrt[data-state="ended"] .hrt-state { color:var(--mut); }
+  .hrt details summary { cursor:pointer; margin-top:6px; } .hrt select { font:inherit; font-size:12px; }
+  .ev table { width:100%; border-collapse:collapse; font-size:13px; margin:6px 0 10px; } .ev th, .ev td { text-align:left; padding:4px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .ev svg { width:100%; max-width:520px; height:auto; display:block; margin:6px 0 4px; color:var(--fg); } .ev code { font-size:12px; }
   input[type=text], input:not([type]) { -webkit-appearance:none; appearance:none; }
   #askQ { border-radius:980px !important; padding:9px 16px !important; border:1px solid var(--line) !important; background:var(--fill) !important; }
   dialog { padding:0; border:0; border-radius:22px; background:var(--card); color:var(--fg); box-shadow:0 30px 80px rgba(0,0,0,.35); }
@@ -112,6 +117,7 @@
       <button id="reset">Reset reps</button>
       <button id="tutorialBtn" title="How to do the exercise, with example videos">Tutorial</button>
       <button id="refsBtn" title="How reps are judged, squat types and sources">References</button>
+      <button id="evidenceBtn" title="How the tempo forecasts perform: baselines, calibration, dataset">Evidence</button>
     </div>
     <div class="tip" id="status">Loading pose model…</div>
   </div>
@@ -132,6 +138,15 @@
         <div><h2 id="metric3Label">Lean</h2><div class="bar"><i id="metric3Bar"></i></div><div class="sub" id="metric3Txt">–</div></div>
         <div><h2 id="metric4Label">Balance</h2><div class="bar"><i id="metric4Bar"></i></div><div class="sub" id="metric4Txt">–</div></div>
       </div>
+    </div>
+    <div class="card hrt" id="hrtCard" data-state="baseline">
+      <div class="row" style="justify-content:space-between;align-items:center;gap:8px;margin:0">
+        <h2 style="margin:0">Tempo forecast</h2>
+        <span class="sub"><select id="hrtTarget" title="Programme tempo target for the lowering phase"></select> <label title="Deliver a cue when the forecast crosses the threshold (otherwise shadow mode: forecasts are only recorded)"><input type="checkbox" id="hrtCoach"> cue me</label> <label title="Replay demo: pause the video at each forecast before the next reps are revealed"><input type="checkbox" id="hrtPause"> pause at forecast</label></span>
+      </div>
+      <div class="hrt-state" id="hrtState">Learning your pace</div>
+      <div class="sub" id="hrtSub">Forecasts start after three counted reps.</div>
+      <details id="hrtWhy"><summary class="sub">Why this?</summary><div class="sub" id="hrtWhyBody">No forecast yet.</div></details>
     </div>
     <div class="split">
       <div class="card">
@@ -202,6 +217,10 @@
     </ul>
   </div>
 </dialog>
+<dialog id="evidence" aria-labelledby="evTitle">
+  <div class="refs-head"><h1 id="evTitle">How the tempo forecasts perform</h1><button id="evClose" aria-label="Close">Close</button></div>
+  <div class="refs-body ev" id="evidenceBody"><p class="sub">Loading…</p></div>
+</dialog>
 <dialog id="refs" aria-labelledby="refsTitle">
   <div class="refs-head"><h1 id="refsTitle">How it works and references</h1><button id="refsClose" aria-label="Close">Close</button></div>
   <div class="refs-body">
@@ -252,6 +271,8 @@
 <script type="module">
 import { PoseLandmarker, FilesetResolver } from '/vendor/vision_bundle.mjs';
 import { VARIATIONS, JOINTS, METRICS, RepCounter, GREEN, AMBER, RED } from '/squat.mjs';
+import { Forecaster, TARGETS, DEFAULT_TARGET, MIN_REPS, cueText } from '/hrt.mjs';
+import { renderEvidence, renderReview } from '/hrt-evidence.mjs';
 
 const $ = (id) => document.getElementById(id);
 const video = $('video'), canvas = $('overlay'), ctx = canvas.getContext('2d');
@@ -378,7 +399,7 @@ setInterval(showClock, 250);
 const panel = $('panel');
 const hidePanel = () => { const was = !panel.hidden && workoutEnded; panel.hidden = true; panel.innerHTML = ''; if (was) publish(null, true); };
 function newWorkout() {
-  tgEnd();
+  hrtNew(); tgEnd(); // the forecaster closes the old set (its outcomes join that set's batch) and opens a fresh one
   hidePanel(); workoutEnded = false; counter.reset(); $('history').innerHTML = ''; clockReset();
 }
 
@@ -409,7 +430,7 @@ function summaryStats() {
 let inputGeneration = 0, cameraStarting = false;
 
 function endWorkout() {
-  clockPause(); stopAll(); showClock(); workoutEnded = true; tgEnd();
+  clockPause(); stopAll(); showClock(); workoutEnded = true; hrtEnd(); tgEnd();
   if (typeof say === 'function' && typeof CLOSING !== 'undefined') say(CLOSING[counter.count % CLOSING.length], 3); // voice is optional
   const st = summaryStats();
   const tile = (v, l) => `<div class="tile"><b>${v}</b><span>${l}</span></div>`;
@@ -420,9 +441,11 @@ function endWorkout() {
       ${tile(s1(st.avg), 'Avg / rep')}${tile(s1(st.fastest), 'Fastest')}${tile(s1(st.slowest), 'Slowest')}
     </div>
     <div class="note">${st.label}${st.notCounted ? ` · ${st.notCounted} not counted` : ''}${st.topIssue ? `<br>Most common issue: ${st.topIssue} (×${st.topIssueCount})` : st.reps ? '<br>Clean form all the way. Nice.' : ''}</div>
+    <div class="note" id="hrtReview">Loading what we anticipated…</div>
     <div class="row"><button class="primary" id="closeSummary">Start again</button></div></div>`;
   panel.hidden = false;
   $('closeSummary').onclick = hidePanel;
+  hrtReview(tgLast);
   $('status').textContent = 'Workout finished. Start the camera or upload a video to begin a new one.';
 }
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hidePanel(); });
@@ -440,7 +463,7 @@ async function begin(generation = inputGeneration) {
 }
 
 $('startCam').onclick = async () => {
-  stopAll();
+  tgNote = null; stopAll();
   const generation = inputGeneration;
   try {
     cameraStarting = true;
@@ -461,17 +484,20 @@ $('startCam').onclick = async () => {
 $('file').onchange = async (e) => {
   const f = e.target.files[0]; if (!f) return;
   console.log('[video] picked', { name: f.name, type: f.type, size: f.size, landmarkerReady: !!landmarker, canPlay: video.canPlayType(f.type) || '(no)' });
-  stopAll(); newWorkout();
+  tgNote = f.name; stopAll(); newWorkout();
   const generation = inputGeneration;
   if (!landmarker) { console.warn('[video] model not loaded yet'); $('status').textContent = 'Model is still loading, pick the video again in a moment.'; return; }
   $('status').textContent = 'Loading video…';
   video.onerror = () => { if (generation !== inputGeneration) return; console.error('[video] element error', video.error); running = false; clockPause(); $('status').textContent = 'Cannot play this video (codec not supported by the browser). Try an .mp4 (H.264).'; };
-  video.onended = null; // looping, so it never ends
+  // Normally the clip loops. A held-out replay (pause at forecast) plays once and ends the set itself, so the review and the
+  // stored outcomes describe one pass of one recording.
+  const replayOnce = $('hrtPause').checked;
+  video.onended = replayOnce ? () => { if (generation === inputGeneration) endWorkout(); } : null;
   video.onloadedmetadata = () => console.log('[video] metadata', { w: video.videoWidth, h: video.videoHeight, duration: video.duration });
-  video.src = URL.createObjectURL(f); video.loop = true; // replays until the user pauses or stops
+  video.src = URL.createObjectURL(f); video.loop = !replayOnce; // replays until the user pauses or stops, unless a held-out replay
   try {
     if (!await begin(generation)) return;
-    $('status').textContent = 'Analysing video (looping). Press Pause to stop.'; setPause(true);
+    $('status').textContent = replayOnce ? 'Held-out replay: plays once and pauses at each forecast.' : 'Analysing video (looping). Press Pause to stop.'; setPause(true);
   } catch (err) {
     if (generation !== inputGeneration) return;
     console.error('[video] play failed', err);
@@ -527,7 +553,7 @@ function loop() {
     const lm = res.landmarks?.[0];
     if (lm) {
       const rep = counter.update(lm, clock(), video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 1);
-      tgFrame(); if (rep) tgRep(rep);
+      tgFrame(); if (rep) { tgRep(rep); hrtRep(rep); }
       if (rep) { rep.pace = timeClass(rep) || null; addHistory(rep); voiceRep(rep); }
       render(lm);
       publish(lm, !!rep);
@@ -577,21 +603,21 @@ function publishFrame() {
 
 // Tiger Data stream: every analysed frame and every rep are queued here and posted to the server once a second, which
 // writes them to the database. The card polls the server's rollups, so its numbers and the line come from Tiger, not the page.
-let tg = { id: null, start: null, end: null, frames: [], reps: [] }, tgLast = null;
+let tg = { id: null, start: null, end: null, frames: [], reps: [], forecasts: [], outcomes: [] }, tgLast = null, tgNote = null;
 const tgNum = (v) => (Number.isFinite(v) ? Math.round(v * 1000) / 1000 : null);
 function tgStart(source) {
-  tg = { id: crypto.randomUUID(), start: { variation: counter.variation, source, client: 'squat-web', startedAt: new Date().toISOString() }, end: null, frames: [], reps: [] };
+  tg = { id: crypto.randomUUID(), start: { variation: counter.variation, source, client: 'squat-web', startedAt: new Date().toISOString(), note: tgNote }, end: null, frames: [], reps: [], forecasts: [], outcomes: [] };
   tgLast = tg.id;
 }
 function tgFrame() { // the first analysed frame opens the workout, so page start order does not matter
   if (!tg.id) tgStart(video.src ? 'video' : 'camera');
   tg.frames.push({ at: Date.now(), ms: Math.round(clockMs()), state: counter.state, view: counter.view, travel: tgNum(counter.drop), depth: tgNum(counter.live.depth), lean: tgNum(counter.live.lean), knees: tgNum(counter.live.knees), balance: tgNum(counter.live.balance) }); }
-function tgRep(rep) { if (tg.id) tg.reps.push({ at: Date.now(), n: rep.n, counted: rep.counted, good: rep.good, secs: tgNum(rep.secs), travel: tgNum(rep.travel), depth: tgNum(rep.depth), lean: tgNum(rep.lean), knees: tgNum(rep.knees), balance: tgNum(rep.balance), issue: rep.issue ?? null, faults: rep.faults ?? [] }); }
+function tgRep(rep) { if (tg.id) tg.reps.push({ at: Date.now(), n: rep.n, counted: rep.counted, good: rep.good, secs: tgNum(rep.secs), downSecs: tgNum(rep.tDown), upSecs: tgNum(rep.tUp), travel: tgNum(rep.travel), depth: tgNum(rep.depth), lean: tgNum(rep.lean), knees: tgNum(rep.knees), balance: tgNum(rep.balance), issue: rep.issue ?? null, faults: rep.faults ?? [] }); }
 function tgEnd() { if (!tg.id) return; tg.end = { endedAt: new Date().toISOString() }; tgFlush(); }
 async function tgFlush() {
-  if (!tg.id || !(tg.start || tg.end || tg.frames.length || tg.reps.length)) return;
-  const batch = { workoutId: tg.id, exercise: 'squat', start: tg.start, end: tg.end, frames: tg.frames, reps: tg.reps };
-  tg = tg.end ? { id: null, start: null, end: null, frames: [], reps: [] } : { ...tg, start: null, frames: [], reps: [] };
+  if (!tg.id || !(tg.start || tg.end || tg.frames.length || tg.reps.length || tg.forecasts.length || tg.outcomes.length)) return;
+  const batch = { workoutId: tg.id, exercise: 'squat', start: tg.start, end: tg.end, frames: tg.frames, reps: tg.reps, forecasts: tg.forecasts, outcomes: tg.outcomes };
+  tg = tg.end ? { id: null, start: null, end: null, frames: [], reps: [], forecasts: [], outcomes: [] } : { ...tg, start: null, frames: [], reps: [], forecasts: [], outcomes: [] };
   try { await fetch('/telemetry', { method: 'POST', body: JSON.stringify(batch) }); } catch { /* the next batch carries on */ }
 }
 setInterval(tgFlush, 1000);
@@ -617,6 +643,68 @@ $('tgCompress').onclick = async () => {
   catch { $('tgNote').textContent = 'Compression call failed.'; }
   b.disabled = false; tgStatus();
 };
+
+// Tempo forecast (HRT). After each counted rep the forecaster (/hrt.mjs, the same code the offline experiment used)
+// estimates whether the lowering tempo will leave the programme range within the next two reps. Shadow mode only records
+// the forecast; "cue me" routes a cue through the voice queue. The model comes from /hrt/model.json, fitted offline by
+// hrt/train.mjs; the page never fits anything. Forecasts are persisted before their outcome can be known.
+let hrtModel = null, fc = null, hrtResultsCache = null;
+for (const [k, t] of Object.entries(TARGETS)) $('hrtTarget').add(new Option(t.label, k));
+$('hrtTarget').value = DEFAULT_TARGET;
+const hrtTarget = () => TARGETS[$('hrtTarget').value] ?? TARGETS[DEFAULT_TARGET];
+fetch('/hrt/model.json').then((r) => (r.ok ? r.json() : null)).then((m) => { hrtModel = m; hrtNew(); }).catch(() => hrtNew());
+function hrtNew() {
+  if (fc && !fc.ended) hrtEnd();
+  fc = new Forecaster({ artifact: hrtModel, target: hrtTarget(), mode: $('hrtCoach').checked ? 'coaching' : 'shadow' });
+  hrtRender();
+}
+$('hrtTarget').onchange = () => { newWorkout(); render(null); };           // a target change starts a new set (newWorkout calls hrtNew): labels stay frozen within a set
+$('hrtCoach').onchange = () => { if (fc && !fc.ended) fc.mode = $('hrtCoach').checked ? 'coaching' : 'shadow'; hrtRender(); };
+function hrtRep(rep) {
+  if (!fc || fc.ended) return;
+  const { forecast, outcomes } = fc.onRep(rep, clock());
+  if (forecast && tg.id) { tg.forecasts.push({ ...forecast, provenance: video.src ? 'video' : 'live' }); tgFlush(); } // persist before the outcome exists
+  for (const o of outcomes) if (tg.id) tg.outcomes.push(o);
+  if (forecast?.action === 'cue') say(cueText(fc.target).cue, 1, 'push');
+  if (forecast && $('hrtPause').checked && video.src && !paused) { $('pause').click(); $('status').textContent = `Paused at the forecast made after rep ${forecast.repN}. Resume to reveal the next two reps.`; }
+  hrtRender();
+}
+function hrtEnd() { if (!fc || fc.ended) return; for (const o of fc.end()) if (tg.id) tg.outcomes.push(o); hrtRender(); }
+function hrtRender() {
+  const T = fc?.target ?? hrtTarget(), st = fc?.state ?? { kind: 'unavailable' }, why = cueText(T);
+  const lines = {
+    baseline: [`Learning your pace, ${st.have ?? 0} of ${st.need ?? MIN_REPS} counted reps`, 'Forecasts start after three counted reps.'],
+    monitoring: st.note === 'current_rep_outside_target' ? ['Last rep was outside the tempo range', 'Forecasting resumes when a rep is back in range.'] : ['Tracking your next reps', `Lowering target ${T.L} to ${T.U} s. Quiet unless a cue is due${fc?.mode === 'shadow' ? ' (shadow mode: forecasts are recorded, not spoken)' : ''}.`],
+    cue: [why.cue, 'Cue delivered through the coach voice.'],
+    unavailable: ['Prediction unavailable', 'No forecast model is loaded. Tracking continues as normal.'],
+    ended: ['Set finished', 'See “What we anticipated” in the summary.'],
+  };
+  const framing = running && counter.warn && /hips|knees|step back/i.test(counter.warn) ? [counter.warn, 'Forecasts pause until the hips and knees are tracked.'] : null;
+  const [a, b] = framing ?? lines[st.kind] ?? lines.unavailable;
+  $('hrtState').textContent = a; $('hrtSub').textContent = b; $('hrtCard').dataset.state = framing ? 'insufficient' : st.kind;
+  const f = st.forecast;
+  $('hrtWhyBody').innerHTML = f
+    ? `<b>Forecast after rep ${f.repN}.</b> ${why.why}<br>Recent lowering: ${fc.reps.filter((r) => r.counted).slice(-3).map((r) => r.tDown.toFixed(1) + ' s').join(', ')} against ${T.L} to ${T.U} s; trend ${f.features.down_trend >= 0 ? '+' : ''}${f.features.down_trend.toFixed(2)} s versus the previous reps${f.features.depth_missing ? '; depth not judged' : ''}.<br>Model ${f.modelRun}: preliminary out-of-fold probability ${(f.probability * 100).toFixed(0)}%, not calibrated (see Evidence); threshold ${(f.threshold * 100).toFixed(0)}%; ${f.mode} mode; ${f.latencyMs} ms after the rep.<br>These are observations the model associates with a tempo miss, not causes.`
+    : 'No forecast yet.';
+}
+async function hrtReview(workoutId) {
+  const el = $('hrtReview'); if (!el) return;
+  const T = fc?.target ?? hrtTarget(), reps = fc?.reps ?? [];
+  const fetchReview = async () => { try { return await (await fetch('/hrt/review?workout=' + (workoutId ?? ''))).json(); } catch { return { persisted: false, rows: [] }; } };
+  await new Promise((r) => setTimeout(r, 1500)); // the end-of-set batch is still being written
+  let review = await fetchReview();
+  if (review.persisted && !review.rows.length && fc?.forecasts.length) { await new Promise((r) => setTimeout(r, 1500)); review = await fetchReview(); }
+  if ($('hrtReview')) $('hrtReview').innerHTML = renderReview(review, T, reps);
+}
+$('evidenceBtn').onclick = async () => {
+  $('evidence').showModal();
+  try {
+    hrtResultsCache ??= await (await fetch('/hrt/results.json')).json();
+    const review = tgLast ? await (await fetch('/hrt/review?workout=' + tgLast)).json() : { persisted: false, rows: [] };
+    $('evidenceBody').innerHTML = renderEvidence(hrtResultsCache, review);
+  } catch (e) { $('evidenceBody').innerHTML = `<p class="sub">Could not load the evaluation artifact: ${e.message}</p>`; }
+};
+$('evClose').onclick = () => $('evidence').close();
 
 // AI coach panel: reads the coach messages the server already generated (no extra Gemini calls) and sends questions to /ask.
 const coachSeen = new Set();

@@ -4,10 +4,11 @@ What is checked automatically, what was checked by hand, and how to re-check aft
 
 ## Automated
 
-`npm test` runs 22 node checks with no network and no model download:
+`npm test` runs 39 node checks with no network and no model download:
 
 - `test/ask.test.mjs`: the coach Q&A guardrails (shared with the push-up prototype).
-- `test/tiger-stream.test.mjs`: the Tiger batch validation, the four-statement ingest against a fake pool, the strict-TLS pool guard and the migration files (see [TIGER.md](TIGER.md)).
+- `test/tiger-stream.test.mjs`: the Tiger batch validation, the ingest against a fake pool (frames, reps, forecasts, outcomes), the strict-TLS pool guard and the migration files (see [TIGER.md](TIGER.md)).
+- `test/hrt.test.mjs`: the tempo forecaster (target boundaries, past-only features, two-rep horizons and exclusions, shadow and coaching actions, cooldown, outcome linkage, immutability, parity with the offline definition); see [HRT.md](HRT.md).
 - `test/squat.test.mjs`:
   - angle and grade helpers;
   - a synthetic side-on figure whose hip drops along a sine profile: three full squats count three and are clean; a shallow dip is listed but not counted; a tiny wobble is ignored; a rep under half a second does not count; bending at the hips with the torso folded is a hinge, not a squat; hallucinated hips below the frame are rejected; standing closer to the camera re-baselines instead of counting; the half-squat variation grades a shallow rep good while the standard one does not;
