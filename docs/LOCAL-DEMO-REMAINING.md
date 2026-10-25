@@ -9,6 +9,7 @@ Checkpoint: **25 October 2026, after local phone installation, 10:30 UTC**. This
 - **Pi:** the Mac relay passed a fresh check at 10:23 UTC; private pairing configuration is included in the local demo setup. Still verify the phone receives the intended live side-camera stream, stops it reliably, rejects stale frames and supports explicit manual fallback. Do not publish pairing secrets.
 - **Watch:** the registered Watch is included in the development profile and companion bundle, but it is not currently discoverable to the Mac. Actual sync/install, permissions, fresh readings, controls and saved reports remain unverified. Simulator checks do not establish these; missing sensor values must remain missing.
 - **Exercise scope:** live automatic counting supports the base **push-up and squat** only. **Pull-ups are unsupported.** Other catalogue exercises use manual repetitions or hold timing.
+- **Infrastructure:** the existing Vultr VM continues billing until destroyed; retain the planned cleanup deadline of 26 October 06:47 UTC. No new hosting work is authorized here.
 - **Release:** the new local source has not been uploaded to TestFlight. The earlier reported **0.1 (5)** post-onboarding crash remains unreproduced and unresolved; passing frozen-source simulator cases did not identify its cause.
 
 ## Provider integrations still needing acceptance
