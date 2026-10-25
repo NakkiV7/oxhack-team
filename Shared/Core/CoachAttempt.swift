@@ -15,8 +15,18 @@ public struct TempoContract: Codable, Equatable, Sendable {
     public static let squat = TempoContract(exerciseID: "squat", version: "squat-tempo-v1", metric: .lowering, label: "lowering time",
                                             target: 1.5, tolerance: 0.15,
                                             pass: "median lowering time within 0.15 s of the 1.5 s target over three counted reps")
-    /// Only squats have a contract. Push-ups are counted but not assessed.
-    public static func contract(for exerciseID: String) -> TempoContract? { exerciseID == squat.exerciseID ? squat : nil }
+    public static let pushup = TempoContract(exerciseID: "pushup", version: "pushup-cadence-v1", metric: .repTime, label: "rep time",
+                                             target: 2.0, tolerance: 0.25,
+                                             pass: "median rep time within 0.25 s of the 2.0 s target over three counted reps")
+    /// Every movement the camera can assess. A catalogue exercise becomes assessable when it has a camera tracker and a
+    /// contract here; every other exercise stays a practice log until its tracker is trained and validated.
+    public static let all: [TempoContract] = [squat, pushup]
+    public static func contract(for exerciseID: String) -> TempoContract? {
+        guard ExerciseCatalog.find(exerciseID)?.tracking != nil else { return nil }
+        return all.first { $0.exerciseID == exerciseID }
+    }
+    /// The plural movement name used in cues and attributes, for example "squats".
+    public var movement: String { ExerciseCatalog.find(exerciseID)?.name.lowercased() ?? exerciseID }
 
     func value(of rep: AttemptRep) -> Double? {
         let value = metric == .lowering ? rep.lowering : rep.total
@@ -153,9 +163,14 @@ public struct AttemptCue: Codable, Equatable, Sendable {
         if abs(middle - contract.target) <= contract.tolerance {
             return .init(action: .maintainTarget, text: "Your \(contract.label) is already about \(target) s. Keep exactly that rhythm for three more.", provenance: .deterministic)
         }
-        let text = middle < contract.target
-            ? "Take longer on the way \(contract.metric == .lowering ? "down" : "through each rep"): count to \(Int(contract.target.rounded())) as you lower, aiming for about \(target) s."
-            : "Lower a little quicker and more evenly, aiming for about \(target) s instead of \(String(format: "%.1f", middle)) s."
+        let now = String(format: "%.1f", middle), count = Int(contract.target.rounded())
+        let text: String
+        switch (contract.metric, middle < contract.target) {
+        case (.lowering, true): text = "Take longer on the way down: count to \(count) as you lower, aiming for about \(target) s."
+        case (.lowering, false): text = "Lower a little quicker and more evenly, aiming for about \(target) s instead of \(now) s."
+        case (.repTime, true): text = "Slow each rep down: count to \(count) from the top, down and back up, aiming for about \(target) s."
+        case (.repTime, false): text = "Move a little quicker and more evenly, aiming for about \(target) s per rep instead of \(now) s."
+        }
         return .init(action: .cueTarget, text: text, provenance: .deterministic)
     }
 }

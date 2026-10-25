@@ -2,11 +2,11 @@ import Foundation
 
 /// What the app can measure for a movement. Capability is shown separately from progress and never mixed into it.
 public enum PathCapability: String, Codable, Sendable {
-    /// The camera times a phase against a fixed contract and can verify the step (squats).
+    /// The camera times reps against a fixed contract and can verify the step (squats and push-ups today).
     case cameraAssessment
-    /// The camera counts reps, but there is no contract that can verify the step (push-ups).
+    /// The camera counts reps, but no contract can verify the step yet.
     case cameraCounting
-    /// Self-reported practice only.
+    /// Self-reported practice: no camera tracker has been trained and validated for this movement yet.
     case practiceLog
 
     public static func of(_ exerciseID: String) -> PathCapability {
@@ -18,6 +18,13 @@ public enum PathCapability: String, Codable, Sendable {
         case .cameraAssessment: return "Camera assessment"
         case .cameraCounting: return "Camera rep counting"
         case .practiceLog: return "Practice log"
+        }
+    }
+    public var detail: String {
+        switch self {
+        case .cameraAssessment: return "The camera times your reps, gives one coaching change and checks a retry against a fixed target. Passing it marks this step AI-verified."
+        case .cameraCounting: return "The camera counts your reps. There is no fixed target to check against yet, so it cannot verify this step."
+        case .practiceLog: return "Camera tracking is not trained for this movement yet. Log your practice; it counts towards earning the step but is never shown as AI-verified."
         }
     }
 }

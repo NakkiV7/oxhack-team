@@ -94,16 +94,29 @@ private func logged(_ id: String, count: Int, sets: Int, day: Int, source: Input
     let calendar = londonCalendar(), now = monday.addingTimeInterval(3 * 86_400 + 43_200)
     let empty = MeasuredAttributes.evaluate(attempts: [], history: [], plannedSessions: nil, now: now, calendar: calendar)
     #expect(empty.map(\.value) == [nil, nil, nil])
-    #expect(empty[0].detail == "Needs 3 timed squats from a camera assessment (0 so far)")
+    #expect(empty[0].detail == "Needs 3 timed reps from a camera assessment (0 so far)")
     #expect(empty[2].detail == "Set sessions per week in your path to track this")
 
     let attempt = completedAttempt(baseline: [0.9, 1.0, 1.4], retry: [1.4, 1.5, 1.6], at: monday.addingTimeInterval(36_000))
     let history = [try logged("gluteBridge", count: 12, sets: 1, day: 1), try logged("squat", count: 12, sets: 1, day: 1, source: .video),
                    try logged("plank", count: 20, sets: 1, day: -2)]
     let measured = MeasuredAttributes.evaluate(attempts: [attempt], history: history, plannedSessions: 3, now: now, calendar: calendar)
-    #expect(measured[0].value == 67 && measured[0].detail == "4 of 6 timed squats were within 0.15 s of the 1.5 s lowering target")
-    #expect(measured[1].value == 50 && measured[1].detail.hasSuffix("(1.4 s)"))
+    #expect(measured[0].value == 67 && measured[0].detail == "4 of 6 timed squats were within 0.15 s of the 1.5 s lowering time target")
+    #expect(measured[1].value == 50 && measured[1].detail == "3 of 6 timed squats were within 10% of your own median lowering time (1.4 s)")
     #expect(measured[2].value == 67 && measured[2].detail == "2 of 3 planned sessions this week")   // the video replay and last week's plank do not count
     let old = MeasuredAttributes.evaluate(attempts: [attempt], history: [], plannedSessions: 3, now: now.addingTimeInterval(40 * 86_400), calendar: calendar)
     #expect(old[0].value == nil && old[0].evidence == 0)
+}
+
+@Test func attributesJudgeEachMovementAgainstItsOwnContract() {
+    let calendar = londonCalendar(), now = monday.addingTimeInterval(3 * 86_400 + 43_200)
+    let squats = completedAttempt(baseline: [1.4, 1.5, 1.6], retry: [1.5, 1.5, 1.4], at: monday.addingTimeInterval(36_000))
+    let pushups = completedAttempt(.pushup, baseline: [2.0, 2.1, 1.9], retry: [3.0, 2.0, 2.0], at: monday.addingTimeInterval(40_000))
+    let measured = MeasuredAttributes.evaluate(attempts: [squats, pushups], history: [], plannedSessions: nil, now: now, calendar: calendar)
+    // Squats: all six within 0.15 s of 1.5 s. Push-ups: five of six within 0.25 s of 2.0 s.
+    #expect(measured[0].value == 92 && measured[0].detail == "11 of 12 timed reps were within the tolerance of their movement's target")
+    // Each rep is compared with its own movement's median (1.5 s and 2.0 s), never a pooled one.
+    #expect(measured[1].value == 92 && measured[1].evidence == 12)
+    let pushupsOnly = MeasuredAttributes.evaluate(attempts: [pushups], history: [], plannedSessions: nil, now: now, calendar: calendar)
+    #expect(pushupsOnly[0].detail == "5 of 6 timed push-ups were within 0.25 s of the 2 s rep time target")
 }

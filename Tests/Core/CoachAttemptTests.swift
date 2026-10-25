@@ -6,21 +6,26 @@ private let t0 = Date(timeIntervalSince1970: 1_790_000_000)
 private func rep(_ lowering: Double?, counted: Bool = true, flexion: Double? = 80, total: Double = 3) -> LoopRep {
     LoopRep(counted: counted, lowering: lowering, rising: 1, total: total, flexion: flexion)
 }
-private func reps(_ values: [Double], role: AttemptRep.Role, flexion: Double = 80) -> [AttemptRep] {
-    values.map { AttemptRep(number: nil, at: t0, lowering: $0, rising: 1, total: 3, flexion: flexion, counted: true, valid: true, reason: nil, role: role) }
+private func reps(_ values: [Double], role: AttemptRep.Role, flexion: Double = 80, metric: TempoContract.Metric = .lowering) -> [AttemptRep] {
+    values.map { AttemptRep(number: nil, at: t0, lowering: metric == .lowering ? $0 : nil, rising: 1, total: metric == .repTime ? $0 : 3,
+                            flexion: flexion, counted: true, valid: true, reason: nil, role: role) }
+}
+/// A counted rep timed on the contract's metric.
+private func timedRep(_ value: Double, _ contract: TempoContract) -> LoopRep {
+    contract.metric == .lowering ? rep(value) : LoopRep(counted: true, lowering: nil, rising: nil, total: value, flexion: 80)
 }
 
 /// Runs a whole attempt through the state machine and returns its saved record.
-func completedAttempt(baseline: [Double], retry: [Double], at start: Date) -> CoachAttemptRecord {
-    var loop = CoachAttemptLoop(contract: .squat, startedAt: start)
+func completedAttempt(_ contract: TempoContract = .squat, baseline: [Double], retry: [Double], at start: Date) -> CoachAttemptRecord {
+    var loop = CoachAttemptLoop(contract: contract, startedAt: start)
     loop.begin(at: start)
     var request: UUID?
     for (i, value) in baseline.enumerated() {
-        if case .baselineComplete(let id) = loop.onRep(rep(value), at: start.addingTimeInterval(Double(i + 1) * 4)) { request = id }
+        if case .baselineComplete(let id) = loop.onRep(timedRep(value, contract), at: start.addingTimeInterval(Double(i + 1) * 4)) { request = id }
     }
     loop.cueReady(AttemptCue(action: .cueTarget, text: "Count to two on the way down.", provenance: .gemini), requestID: request!, at: start.addingTimeInterval(20))
     loop.startRetry(at: start.addingTimeInterval(25))
-    for (i, value) in retry.enumerated() { _ = loop.onRep(rep(value), at: start.addingTimeInterval(30 + Double(i) * 4)) }
+    for (i, value) in retry.enumerated() { _ = loop.onRep(timedRep(value, contract), at: start.addingTimeInterval(30 + Double(i) * 4)) }
     return loop.record
 }
 
@@ -125,4 +130,22 @@ func completedAttempt(baseline: [Double], retry: [Double], at start: Date) -> Co
     let looped = LoopRep(counter: counter)
     #expect(looped.number == 1 && looped.total == 1.8 && looped.flexion == 90)
     #expect(abs((looped.lowering ?? 0) - 0.4) < 1e-9 && abs((looped.rising ?? 0) - 0.8) < 1e-9)
+}
+
+@Test func pushUpsAreAssessedOnRepTimeThroughTheSameLoop() {
+    var calendar = Calendar(identifier: .gregorian); calendar.timeZone = TimeZone(identifier: "Europe/London")!
+    let record = completedAttempt(.pushup, baseline: [1.4, 1.5, 1.3], retry: [1.9, 2.0, 2.1], at: t0)
+    #expect(record.exerciseID == "pushup" && record.contractVersion == "pushup-cadence-v1")
+    #expect(record.outcome?.classification == .closer && record.outcome?.retryMeets == true && record.outcome?.retryMedian == 2.0)
+    #expect(NodeVerification.evaluate(attempts: [record], exerciseID: "pushup", calendar: calendar).verification == .firstCompletion)
+    #expect(NodeVerification.evaluate(attempts: [record], exerciseID: "squat", calendar: calendar).verification == .none)
+    #expect(AttemptCue.deterministic(contract: .pushup, baseline: reps([1.4, 1.5, 1.3], role: .baseline, metric: .repTime)).text
+            == "Slow each rep down: count to 2 from the top, down and back up, aiming for about 2.0 s.")
+    #expect(AttemptCue.deterministic(contract: .pushup, baseline: reps([2.6, 2.8, 2.7], role: .baseline, metric: .repTime)).text
+            == "Move a little quicker and more evenly, aiming for about 2.0 s per rep instead of 2.7 s.")
+    // A push-up rep without a measured duration is kept but cannot count.
+    var loop = CoachAttemptLoop(contract: .pushup, startedAt: t0)
+    loop.begin(at: t0)
+    _ = loop.onRep(LoopRep(counted: true), at: t0.addingTimeInterval(3))
+    #expect(loop.baseline.count == 1 && loop.validCount(.baseline) == 0 && loop.baseline[0].reason == "metric not measured")
 }

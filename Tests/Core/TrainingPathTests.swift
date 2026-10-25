@@ -92,7 +92,11 @@ func validationRejectsEachRuleAGeneratedPathCouldBreak(rule: String) {
 
 @Test func capabilitiesSeparateAssessmentCountingAndPractice() {
     #expect(PathCapability.of("squat") == .cameraAssessment)
-    #expect(PathCapability.of("pushup") == .cameraCounting)
+    #expect(PathCapability.of("pushup") == .cameraAssessment)
+    #expect(TempoContract.contract(for: "pushup")?.metric == .repTime)
+    // Every other catalogue movement stays a practice log until a tracker is trained and given a contract.
+    #expect(ExerciseCatalog.all.filter { PathCapability.of($0.id) == .cameraAssessment }.map(\.id).sorted() == ["pushup", "squat"])
+    #expect(PathCapability.of("plank").detail.contains("not trained"))
     #expect(PathCapability.of("gluteBridge") == .practiceLog)
     #expect(PathSurvey.equipmentChoices == ["Stable sofa or counter", "Stable support", "Wall"])
 }

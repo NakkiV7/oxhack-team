@@ -166,23 +166,33 @@ public struct MeasuredAttribute: Equatable, Sendable {
 public enum MeasuredAttributes {
     public static func evaluate(attempts: [CoachAttemptRecord], history: [SessionRecord], plannedSessions: Int?, now: Date,
                                 calendar: Calendar = .current) -> [MeasuredAttribute] {
-        let contract = TempoContract.squat
-        let recent = attempts.filter { $0.contractVersion == contract.version && $0.startedAt <= now && $0.startedAt >= now.addingTimeInterval(-30 * 86_400) }
-        let timed = recent.flatMap { $0.baselineReps + $0.retryReps }.filter(\.valid).compactMap(\.lowering)
-        let inRange = timed.filter { abs($0 - contract.target) <= contract.tolerance }.count
+        // Timed reps from camera assessments in the last 30 days, each judged against its own movement's contract.
+        let timed: [(value: Double, contract: TempoContract)] = attempts.flatMap { attempt -> [(value: Double, contract: TempoContract)] in
+            guard let contract = TempoContract.contract(for: attempt.exerciseID), contract.version == attempt.contractVersion,
+                  attempt.startedAt <= now, attempt.startedAt >= now.addingTimeInterval(-30 * 86_400) else { return [] }
+            return (attempt.baselineReps + attempt.retryReps).filter(\.valid).compactMap { rep in contract.value(of: rep).map { ($0, contract) } }
+        }
+        let movements = timed.reduce(into: [TempoContract]()) { if !$0.contains($1.contract) { $0.append($1.contract) } }
+        let single = movements.count == 1 ? movements[0] : nil
+        let noun = single.map { "timed \($0.movement)" } ?? "timed reps"
+        let inRange = timed.filter { abs($0.value - $0.contract.target) <= $0.contract.tolerance }.count
         let tempo = MeasuredAttribute(
             key: .tempo, value: timed.count >= 3 ? percent(inRange, of: timed.count) : nil, evidence: timed.count,
-            detail: timed.count >= 3 ? "\(inRange) of \(timed.count) timed squats were within \(plain(contract.tolerance)) s of the \(plain(contract.target)) s lowering target"
-                : "Needs 3 timed squats from a camera assessment (\(timed.count) so far)",
-            method: "Share of squats timed in camera assessments over the last 30 days whose lowering phase was within the target tolerance. Baseline and retry reps both count; uncounted reps do not.",
+            detail: timed.count < 3 ? "Needs 3 timed reps from a camera assessment (\(timed.count) so far)"
+                : single.map { "\(inRange) of \(timed.count) \(noun) were within \(plain($0.tolerance)) s of the \(plain($0.target)) s \($0.label) target" }
+                ?? "\(inRange) of \(timed.count) timed reps were within the tolerance of their movement's target",
+            method: "Share of reps timed in camera assessments over the last 30 days that landed within their movement's target tolerance (squats: lowering time; push-ups: rep time). Baseline and retry reps both count; uncounted reps do not.",
             scope: "last 30 days")
-        let middle = AttemptComparison.median(timed) ?? 0
-        let steady = timed.filter { middle > 0 && abs($0 - middle) <= 0.1 * middle }.count
+        // Repeatability: each rep against the median of its own movement, so squat and push-up timings never mix.
+        let medians = Dictionary(uniqueKeysWithValues: movements.map { contract in
+            (contract.exerciseID, AttemptComparison.median(timed.filter { $0.contract == contract }.map(\.value)) ?? 0) })
+        let steady = timed.filter { let middle = medians[$0.contract.exerciseID] ?? 0; return middle > 0 && abs($0.value - middle) <= 0.1 * middle }.count
         let consistency = MeasuredAttribute(
             key: .consistency, value: timed.count >= 5 ? percent(steady, of: timed.count) : nil, evidence: timed.count,
-            detail: timed.count >= 5 ? "\(steady) of \(timed.count) timed squats were within 10% of your own median lowering time (\(plain(middle)) s)"
-                : "Needs 5 timed squats (\(timed.count) so far)",
-            method: "Share of timed squats over the last 30 days within 10% of your own median lowering time. It measures repeatability, not speed.",
+            detail: timed.count < 5 ? "Needs 5 timed reps (\(timed.count) so far)"
+                : single.map { "\(steady) of \(timed.count) \(noun) were within 10% of your own median \($0.label) (\(plain(medians[$0.exerciseID] ?? 0)) s)" }
+                ?? "\(steady) of \(timed.count) timed reps were within 10% of your own median for that movement",
+            method: "Share of timed reps over the last 30 days within 10% of your own median for the same movement. It measures repeatability, not speed.",
             scope: "last 30 days")
         let week = calendar.dateInterval(of: .weekOfYear, for: now)
         let trainedDates = history.filter { session in session.sets.contains { $0.source != .video } || session.loggedSets.contains { $0.source != .video } }.map(\.date)
