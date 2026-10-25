@@ -174,7 +174,7 @@ private struct ConfiguredLiveSetView: View {
     }
 }
 
-private struct ConfiguredRecoveryView: View {
+struct ConfiguredRecoveryView: View {
     @Bindable var store: TrainingStore
     @State private var reserve: Int?
     @State private var reason: StopReason = .voluntary
@@ -211,12 +211,16 @@ private struct ConfiguredRecoveryView: View {
                     }.onChange(of: reason) { _, _ in feedback() }
                     PrimaryButton(title: isLast ? "Review session" : "Ready for next set", symbol: "arrow.right", action: store.next)
                         .accessibilityIdentifier("configured-next")
-                    Text("The next set starts only when you choose Start. Rest timing never starts a set automatically.")
+                    Text(continuationGuidance)
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Button("Finish session", action: store.finish).font(.subheadline.weight(.medium)).frame(maxWidth: .infinity)
             }.padding(24)
         }.onAppear { reason = store.configured?.completed.last?.reason ?? .voluntary }
+    }
+    var continuationGuidance: String {
+        isLast ? "All planned sets are ended. Review your session to save the work you completed."
+            : "The next set starts only when you choose Start. Rest timing never starts a set automatically."
     }
     private var isLast: Bool { store.configured.map { $0.index + 1 == $0.steps.count } ?? false }
     private func feedback() { store.feedback(reserve: reserve, reason: reason) }
