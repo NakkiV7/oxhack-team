@@ -7,7 +7,7 @@ public struct StreakSummary: Sendable {
     public let totalTrainingDays: Int
     public let trainedToday: Bool
 
-    public init(history: [SessionRecord], now: Date = Date(), calendar: Calendar = .current) {
+    public static func activityDays(history: [SessionRecord], now: Date = Date(), calendar: Calendar = .current) -> Set<Date> {
         var sessionIDs = Set<UUID>(), setIDs = Set<UUID>()
         let dates = history.filter { $0.date.timeIntervalSince1970.isFinite && $0.date <= now }
             .sorted { $0.date < $1.date }
@@ -20,7 +20,11 @@ public struct StreakSummary: Sendable {
                 let distinct = (tracked + logged).filter { setIDs.insert($0).inserted }
                 return distinct.isEmpty ? nil : calendar.startOfDay(for: session.date)
             }
-        let days = Set(dates)
+        return Set(dates)
+    }
+
+    public init(history: [SessionRecord], now: Date = Date(), calendar: Calendar = .current) {
+        let days = Self.activityDays(history: history, now: now, calendar: calendar)
         let today = calendar.startOfDay(for: now)
         let yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
         trainedToday = days.contains(today)

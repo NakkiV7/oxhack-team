@@ -115,6 +115,7 @@ public struct CoachSavedWeek: Codable, Sendable {
     public let weekStart: String
     public let timeZone: String
     public let days: [Day]
+    public let restDates: [String]?
     public let guidanceIDs: [String]
     public let approvedAt: Date
     public init(proposal: CoachWeekProposal, selectedDates: Set<String>, movedDates: [String: String], context: CoachValidationContext, request: CoachWeekRequest, guidance: CoachGuidanceRegistry, approvedAt: Date = Date()) throws {
@@ -128,6 +129,8 @@ public struct CoachSavedWeek: Codable, Sendable {
             return Day(date: date, plan: try CoachSavedPlan(proposal: workout, selectedExerciseIDs: Set(workout.items.map(\.exerciseID)), context: context, approvedAt: approvedAt))
         }
         guard Set(days.map(\.date)).count == days.count else { throw CoachContractError.invalidProposal }
+        let occupiedDates = Set(days.map(\.date))
+        restDates = proposal.days.filter { $0.kind == .rest && !occupiedDates.contains($0.date) }.map(\.date).sorted()
         version = 1; weekStart = request.startDate; timeZone = request.timeZone; self.days = days.sorted { $0.date < $1.date }; guidanceIDs = proposal.guidanceIDs; self.approvedAt = approvedAt
     }
     public static func decode(_ data: Data) throws -> CoachSavedWeek {
@@ -137,10 +140,29 @@ public struct CoachSavedWeek: Codable, Sendable {
         let dates = try request.dates()
         guard Set(saved.days.map(\.date)).count == saved.days.count, saved.days.map(\.date) == saved.days.map(\.date).sorted(),
               saved.days.allSatisfy({ dates.contains($0.date) && $0.plan.items.count <= 3 }) else { throw CoachContractError.invalidProposal }
+        if let rests = saved.restDates {
+            let occupiedDates = Set(saved.days.map(\.date))
+            guard rests == rests.sorted(), Set(rests).count == rests.count,
+                  rests.allSatisfy({ dates.contains($0) && !occupiedDates.contains($0) }) else { throw CoachContractError.invalidProposal }
+        }
         _ = try CoachGuidanceRegistry.bundled().sources(for: saved.guidanceIDs)
         let supports = Set(ExerciseCatalog.all.compactMap(\.support))
         for day in saved.days { _ = try ConfigurableSession(plan: day.plan, availableSupport: supports) }
         return saved
+    }
+
+    public func plannedRestDays(calendar: Calendar, at date: Date) -> [Date] {
+        guard calendar.timeZone.identifier == timeZone, date.timeIntervalSince1970.isFinite,
+              approvedAt.timeIntervalSince1970.isFinite, date >= approvedAt else { return [] }
+        let today = calendar.startOfDay(for: date), approvalDay = calendar.startOfDay(for: approvedAt)
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX"); formatter.calendar = calendar
+        formatter.timeZone = calendar.timeZone; formatter.dateFormat = "yyyy-MM-dd"; formatter.isLenient = false
+        return (restDates ?? []).compactMap { value in
+            guard value.count == 10, let day = formatter.date(from: value), formatter.string(from: day) == value,
+                  day >= approvalDay, day < today else { return nil }
+            return calendar.startOfDay(for: day)
+        }
     }
 }
 

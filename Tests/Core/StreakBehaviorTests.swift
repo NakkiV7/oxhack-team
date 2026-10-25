@@ -18,6 +18,15 @@ private func streakSession(_ date: String, id: UUID = UUID(), setID: UUID = UUID
     ])
 }
 
+@Test func publicActivityDaysExposeTheSameLocalEvidenceWithoutInventingCompletionTimes() {
+    let history = [streakSession("2026-10-23T23:30:00Z"), streakSession("2026-10-24T10:00:00Z"),
+                   streakSession("2026-10-25T12:00:00Z"), streakSession("2026-10-26T08:00:00Z", source: .video)]
+    let now = streakDate("2026-10-26T12:00:00Z"), calendar = streakCalendar()
+    let days = StreakSummary.activityDays(history: history, now: now, calendar: calendar)
+    #expect(days == Set([streakDate("2026-10-23T23:00:00Z"), streakDate("2026-10-24T23:00:00Z")]))
+    #expect(StreakSummary(history: history, now: now, calendar: calendar).totalTrainingDays == days.count)
+}
+
 @Test func streakCountsDistinctRealTrainingDaysAndAllowsTodayToRemainUnfinished() {
     let history = [streakSession("2026-10-22T12:00:00Z"), streakSession("2026-10-23T12:00:00Z"),
                    streakSession("2026-10-23T14:00:00Z")]
