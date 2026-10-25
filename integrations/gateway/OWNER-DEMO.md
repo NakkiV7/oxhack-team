@@ -1,6 +1,6 @@
 # Bounded owner demo
 
-This optional gateway mode prepares a temporary synthetic coaching demo from the owner's phone through an HTTPS relay to the Mac. It is implemented and tested offline. No relay, phone request or hosted service was started by this change. The Mac remains the compute host; this is separate from Vultr deployment and continuous service availability.
+This optional gateway mode bounds synthetic owner coaching requests on a loopback or deliberately configured HTTPS gateway. The owner selected Vultr hosting; the historical Quick Tunnel commands below are not authorization to start a relay. It is implemented and tested offline. No relay, phone request or hosted service was started by this change. The Mac remains the compute host; this is separate from Vultr deployment and continuous service availability.
 
 ## Guard contract
 
@@ -13,11 +13,11 @@ Set **both** variables to enable the mode. With neither set, existing local gate
 
 Demo mode also refuses startup with a nonempty `TIGER_DATABASE_URL`. Only synthetic owner coaching is in scope; workout database access cannot be enabled in this mode.
 
-One gateway instance shares one attempt budget and one active-generation slot across `/v1/chat`, `/v1/summary` and `/v1/proposal`. Authentication/input/configuration failures spend no attempt. A valid admitted generation consumes one attempt before contacting the provider, including unsuccessful, timed-out or canceled outcomes. Busy/exhausted requests return HTTP 429 immediately and are not queued or retried. Every valid coaching route returns HTTP 503 `demo_expired` at the absolute deadline; active generation is aborted at that deadline. Health remains available without provider calls, and unknown routes remain unavailable.
+One gateway instance shares one attempt budget and one active-generation slot across `/v1/chat`, `/v1/summary`, `/v1/proposal` and `/v1/week-proposal`. Authentication/input/configuration failures spend no attempt. A valid admitted generation consumes one attempt before contacting the provider, including unsuccessful, timed-out or canceled outcomes. Busy/exhausted requests return HTTP 429 immediately and are not queued or retried. Every valid coaching route returns HTTP 503 `demo_expired` at the absolute deadline; active generation is aborted at that deadline. Health remains available without provider calls, and unknown routes remain unavailable.
 
 The budget is in memory. Restarting the gateway resets its count; the absolute expiry is unchanged. Do not use a watchdog or automatic process restart to replenish it. A new session/budget is an explicit operator decision. The attempt count is not an exact monetary cap, and cancellation cannot undo charges already incurred upstream.
 
-Demo-only HTTP limits are five seconds for headers, ten seconds for receiving a complete request (checked at one-second intervals), 8 KiB of headers, 16 connections, 20 requests per socket and one-second idle keepalive. These read limits finish before provider generation begins. Existing 64 KiB coach input/output, 256 KiB provider-envelope, 2,048 output-token and configured provider-timeout limits still apply.
+Demo-only HTTP limits are five seconds for headers, ten seconds for receiving a complete request (checked at one-second intervals), 8 KiB of headers, 16 connections, 20 requests per socket and one-second idle keepalive. These read limits finish before provider generation begins. Existing 64 KiB coach input/output, 256 KiB provider-envelope, 2,048 output-token limit for existing routes, 4,096 for weekly proposals, and configured provider-timeout limits still apply.
 
 ## Operator commands, prepared only
 

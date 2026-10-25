@@ -1,6 +1,6 @@
 # Team handoff
 
-Canonical repository: [NakkiV7/oxhack-team](https://github.com/NakkiV7/oxhack-team). Native integration is merged through PR #36. Uncommitted packaging, evaluation and release preparation remain distinct from those merges; inspect the actual branch/diff before editing. The [current ledger](integration-readiness.md) records the exercised paths and remaining gates.
+Canonical repository: [NakkiV7/oxhack-team](https://github.com/NakkiV7/oxhack-team). Use [the issue work map](ISSUES.md) for current merged PRs and active branches. Inspect the actual branch/diff before editing; parallel lanes may have staged or uncommitted work. The [current ledger](integration-readiness.md) records the exercised paths and remaining gates.
 
 | Owner | Scope | First useful contribution |
 |---|---|---|
@@ -39,3 +39,5 @@ There is no CI/CD. Authors attach local checks and a short smoke-test result to 
 ## Python camera-demo contributions
 
 Nakki’s `42043df` standalone source is integrated under [`squat/`](../squat/README.md), with timing, save and voice-default regressions corrected. Rebase future `nakki-squat-model` work on main or carry these focused fixes before opening another PR; coordinate shared native geometry separately. Binary example footage was omitted pending provenance. The demo JSON is diagnostic output, not a native/Tiger workout contract. Run its documented standard-library checks before proposing changes; physical count/cue validation remains [#4](https://github.com/NakkiV7/oxhack-team/issues/4).
+
+The latest teammate browser/CV head is reviewed separately in [the integration review](teammate-cv-integration-review.md). Coordinate its voice picker with Misha and preserve the merged native audio owner; automatic synthesis prewarming is not part of the accepted app path.
