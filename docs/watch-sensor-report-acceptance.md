@@ -67,7 +67,7 @@ requests by the existing contract checks.
   disconnected live-send suppression, stale retained context, missing HR,
   stale measurement in a fresh envelope, report gaps and cumulative energy.
 
-No native compiler, simulator or physical device used in this lane. The report UI
+No iPhone/Watch app builds, simulators or physical devices used in this lane. The report UI
 changes have **not** yet had native compilation or rendered inspection. Primary owns
 that queue. No changes to project membership are needed because existing source
 files contain the components. Prepared selector:

@@ -101,8 +101,9 @@ public struct WorkoutReport: Identifiable, Sendable {
         heartRate = ReportSignal(record: record, keyPath: \.heartRate, validRange: 1...300)
         acceleration = ReportSignal(record: record, keyPath: \.accelerationG, validRange: 0...Double.greatestFiniteMagnitude)
         rotation = ReportSignal(record: record, keyPath: \.rotationRadiansPerSecond, validRange: 0...Double.greatestFiniteMagnitude)
-        energyTimeline = Self.activeEnergyTimeline(in: record)
-        activeEnergy = Self.latestActiveEnergy(in: record)
+        let energy = Self.activeEnergyTimeline(in: record)
+        energyTimeline = energy
+        activeEnergy = Self.latestActiveEnergy(in: energy)
         let projectedSets = record.sets.map { set in
             let entry = ExerciseCatalog.find(set.exercise.rawValue)
             return ReportSet(id: set.id, exerciseID: set.exercise.rawValue,
@@ -140,17 +141,9 @@ public struct WorkoutReport: Identifiable, Sendable {
         }
     }
 
-    private static func latestActiveEnergy(in record: SessionRecord) -> [ActiveEnergy] {
-        guard record.date.timeIntervalSince1970.isFinite else { return [] }
-        let observations = record.telemetry.compactMap { sample -> (energy: ActiveEnergy, sentAt: Date)? in
-            guard sample.sessionID == record.id, let energy = sample.activeEnergy,
-                  energy.isValid(at: sample.sentAt), energy.asOf >= record.date.addingTimeInterval(-2) else { return nil }
-            return (energy, sample.sentAt)
-        }.sorted {
-            $0.energy.asOf == $1.energy.asOf ? $0.sentAt < $1.sentAt : $0.energy.asOf < $1.energy.asOf
-        }
-        let latest = observations.reduce(into: [UUID: ActiveEnergy]()) { runs, observation in
-            runs[observation.energy.recordingID] = observation.energy
+    private static func latestActiveEnergy(in timeline: [ActiveEnergy]) -> [ActiveEnergy] {
+        let latest = timeline.reduce(into: [UUID: ActiveEnergy]()) { runs, energy in
+            runs[energy.recordingID] = energy
         }
         return latest.values.sorted {
             $0.asOf == $1.asOf ? $0.recordingID.uuidString < $1.recordingID.uuidString : $0.asOf < $1.asOf
