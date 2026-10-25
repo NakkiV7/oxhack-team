@@ -16,7 +16,6 @@ final class DemoProgressFlowTests: XCTestCase {
         for _ in 0..<8 where !preview.isHittable { app.swipeUp() }
         XCTAssertTrue(preview.waitForExistence(timeout: 5))
         preview.tap()
-        app.navigationBars.buttons["Done"].tap()
         app.tabBars.buttons["Progress"].tap()
 
         XCTAssertTrue(app.staticTexts["Sample progress"].waitForExistence(timeout: 5))
@@ -44,7 +43,6 @@ final class DemoProgressFlowTests: XCTestCase {
         for _ in 0..<8 where !preview.isHittable { app.swipeUp() }
         XCTAssertTrue(preview.waitForExistence(timeout: 5))
         preview.tap()
-        app.navigationBars.buttons["Done"].tap()
         app.tabBars.buttons["Progress"].tap()
         XCTAssertTrue(app.staticTexts["Your first session starts here."].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["Sample progress"].exists)
