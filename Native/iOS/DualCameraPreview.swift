@@ -6,7 +6,7 @@ struct DualCameraPreview: View {
     let exercise: Exercise
     var body: some View {
         HStack(spacing: 8) {
-            ZStack(alignment: .topLeading) {
+            ZStack {
                 Palette.surface
                 if case .camera = store.frontPreviewState, store.sessionPhase == .active {
                     CameraPreview(session: store.vision.capture)
@@ -16,9 +16,9 @@ struct DualCameraPreview: View {
                         Text(frontMessage).font(.caption).multilineTextAlignment(.center)
                     }.foregroundStyle(.secondary).padding(16).frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                cameraLabel("Front", symbol: "camera")
-            }.accessibilityIdentifier("front-camera-preview")
-            ZStack(alignment: .topLeading) {
+            }.overlay(alignment: .topLeading) { cameraLabel("Front", symbol: "camera") }
+                .accessibilityIdentifier("front-camera-preview")
+            ZStack {
                 Palette.surface
                 if let image = store.image {
                     Image(uiImage: image).resizable().scaledToFit()
@@ -30,8 +30,8 @@ struct DualCameraPreview: View {
                     }.foregroundStyle(.secondary).padding(16).frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 if let frame = store.frame { PoseOverlay(frame: frame, exercise: exercise) }
-                cameraLabel("Side", symbol: "figure.strengthtraining.traditional")
-            }.accessibilityIdentifier("side-camera-preview")
+            }.overlay(alignment: .topLeading) { cameraLabel("Side", symbol: "figure.strengthtraining.traditional") }
+                .accessibilityIdentifier("side-camera-preview")
         }.frame(height: 270)
             .clipShape(RoundedRectangle(cornerRadius: 20))
             .accessibilityElement(children: .contain)

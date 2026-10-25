@@ -51,6 +51,9 @@ final class TrainingStore {
     private var coachingPolicy = CoachingPolicy()
     private var activeCoachingEvent: CoachingEvent?
     private var configuredDiscomfortCueSessionID: UUID?
+    private var previewRepContext: VoiceCueContext?
+    private var previewObservedReps = 0
+    private var previewRepTime: Double?
     private(set) var voiceFeedbackEnabled = false
     private var appActive = true
     let remoteVoice: RemoteVoicePlayback?
@@ -114,6 +117,8 @@ final class TrainingStore {
         let context = feedbackContext
         defer { coachingVoice.update(context: context, event: coachingEvent, enabled: voiceFeedbackEnabled, now: time) }
         guard time.isFinite else { return }
+        let reps = configured?.actualReps ?? session.actualReps ?? 0
+        let milestone = consumePreviewRep(context: context, reps: reps, time: time)
         if context.phase == .finished {
             if coachingEvent?.expiresAt.map({ time >= $0 }) == true { cancelCoaching() }
             return
@@ -142,8 +147,8 @@ final class TrainingStore {
             || (event.decision.reason == .tracking && cue != .tracking) {
             activeCoachingEvent = nil
         }
-        guard let exercise = trackingExercise,
-              let decision = coachingPolicy.evaluate(.init(
+        guard let exercise = trackingExercise else { return }
+        let decision = coachingPolicy.evaluate(.init(
             sessionID: context.sessionID, generation: context.generation, phase: context.phase,
             now: time, exercise: exercise, repCount: configured?.actualReps ?? session.actualReps ?? 0,
             lastRepDuration: configured == nil ? session.counter.lastRepDuration : configured?.counter?.lastRepDuration, cue: cue,
@@ -151,11 +156,34 @@ final class TrainingStore {
             restElapsed: restElapsed,
             target: configured?.current.target ?? session.exercise.target,
             stopReason: stopReason, source: configured?.source ?? source,
-            encouragementEnabled: voiceFeedbackEnabled && (remoteVoice?.preference == .david || remoteVoice?.preference == .arnold)
-        )) else { return }
+            encouragementEnabled: !previewMode && voiceFeedbackEnabled && (remoteVoice?.preference == .david || remoteVoice?.preference == .arnold)
+        ))
+        if let decision {
+            activeCoachingEvent = CoachingEvent(sessionID: context.sessionID, generation: context.generation,
+                                               decision: decision, issuedAt: time,
+                                               expiresAt: decision.priority == .stop ? nil : time + 6)
+            return
+        }
+        guard previewMode, milestone, voiceFeedbackEnabled, remoteVoice?.preference == .arnold,
+              context.phase == .active, acceptsTracking, (configured?.source ?? source) == .camera,
+              cue == .controlled, stopReason == nil, !reportedDiscomfort,
+              coachingEvent?.decision.priority != .stop, coachingEvent?.decision.priority != .form,
+              coachingEvent?.decision.reason != .slowerRep else { return }
         activeCoachingEvent = CoachingEvent(sessionID: context.sessionID, generation: context.generation,
-                                           decision: decision, issuedAt: time,
-                                           expiresAt: decision.priority == .stop ? nil : time + 6)
+            decision: .init(text: "Keep a steady rhythm.", priority: .pacing, reason: .steadyRhythm,
+                            facts: ["\(reps) camera reps recorded in this set."], elapsed: nil),
+            issuedAt: time, expiresAt: time + 6)
+    }
+
+    private func consumePreviewRep(context: VoiceCueContext, reps: Int, time: Double) -> Bool {
+        let sameSession = previewRepContext?.sessionID == context.sessionID
+        let sameGeneration = sameSession && previewRepContext?.generation == context.generation
+        let previous = sameGeneration ? previewObservedReps : (sameSession ? reps : 0)
+        let freshTime = !sameGeneration || time >= (previewRepTime ?? -.infinity)
+        previewRepContext = context
+        previewObservedReps = sameGeneration ? max(previewObservedReps, reps) : reps
+        previewRepTime = sameGeneration ? max(previewRepTime ?? time, time) : time
+        return freshTime && reps == previous + 1 && reps > 0 && reps.isMultiple(of: 2)
     }
 
     private func recentHeartRate(at date: Date) -> [SensorReading] {
@@ -224,7 +252,7 @@ final class TrainingStore {
                   self.feedbackContext.generation == generation else { return }
             switch state {
             case .idle: break
-            case .starting: self.visionState = .idle
+            case .starting: self.visionState = .idle; self.frame = nil; self.image = nil
             case .tracking: self.visionState = .camera
             case .failed(let message): self.visionState = .failed(message); self.pause()
             }

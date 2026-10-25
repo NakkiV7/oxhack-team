@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A56D7A30947E4358BADC1001 /* PreviewRepCueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A56D7A30947E4358BADC1002 /* PreviewRepCueTests.swift */; };
 		0097D9AB8A6881464CE8757C /* Exercise.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07C8459912D282A9C6A9D64A /* Exercise.swift */; };
 		00CE172F8A11828169A8FBA2 /* DemoCoachView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5010DE080B30490A0DD03211 /* DemoCoachView.swift */; };
 		01C52FCE9F17B9930D629169 /* DemoCoachTranscript.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8ECF48A6A125C213B5B5711 /* DemoCoachTranscript.swift */; };
@@ -219,6 +220,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		A56D7A30947E4358BADC1002 /* PreviewRepCueTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests/iOS/PreviewRepCueTests.swift; sourceTree = "<group>"; };
 		017FAA0E38AF0A6788CFA078 /* SecondaryCameraVisionWorkerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SecondaryCameraVisionWorkerTests.swift; path = Tests/iOS/SecondaryCameraVisionWorkerTests.swift; sourceTree = "<group>"; };
 		027E28F9785DF9550F665110 /* HomeViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HomeViews.swift; path = Native/iOS/HomeViews.swift; sourceTree = "<group>"; };
 		02DAC1B2A0B29886AB733B5E /* ExerciseDemonstrationGuide.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExerciseDemonstrationGuide.swift; path = Shared/Core/ExerciseDemonstrationGuide.swift; sourceTree = "<group>"; };
@@ -597,6 +599,7 @@
 				12D1B149ADFDD6633DD3D39A /* DemoVoice */,
 				8F94079B1F210940DE458E62 /* PreviewVoiceIntegrationTests.swift */,
 				EAFD316860F8EEF25D3E4C89 /* WorkoutCompletionVoiceTests.swift */,
+				A56D7A30947E4358BADC1002 /* PreviewRepCueTests.swift */,
 				32A7076F0B71E31F1E4B5A15 /* DemoCameraSettingsTests.swift */,
 				24276BE91B9638B4A86090A1 /* SpottrDemoCamera.json */,
 			);
@@ -840,6 +843,7 @@
 				94C4A52E077440945A929422 /* PhoneCameraLifecycleTests.swift in Sources */,
 				73F678DBDA175883C09469E7 /* PreviewVoiceIntegrationTests.swift in Sources */,
 				684BD7DFC0CA72466FB4E231 /* WorkoutCompletionVoiceTests.swift in Sources */,
+				A56D7A30947E4358BADC1001 /* PreviewRepCueTests.swift in Sources */,
 				078BFCA7067E7BFCC0EBBF19 /* DemoCameraSettingsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

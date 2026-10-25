@@ -126,24 +126,36 @@ final class SecondaryCameraClientTests: XCTestCase {
         await fulfillment(of: [stopped], timeout: 2)
     }
 
-    func testPreviewExpiresWithoutAnotherRequestAndCaptureIsStopped() async throws {
+    func testExpiredPreviewClearsWithoutEndingLeaseAndNextFreshFrameRecovers() async throws {
         let now = Date(timeIntervalSince1970: 1792864800.3)
-        let expired = expectation(description: "Expiry stops the camera")
+        var fetches = 0
+        var stops = 0
         let client = try SecondaryCameraClient(configuration: configuration(), token: "private-fixture", now: { now }, transport: { request in
             if request.url?.path == "/camera/start" { return self.reply(request, body: "{\"capture_id\":\"\(self.captureID)\",\"lease_seconds\":60}") }
-            if request.url?.path == "/camera/stop" { expired.fulfill(); return self.reply(request, body: #"{"camera":"stopped"}"#) }
+            if request.url?.path == "/camera/stop" { stops += 1; return self.reply(request, body: #"{"camera":"stopped"}"#) }
+            fetches += 1
             return (Data([0xff, 0xd8, 0xff, 0xd9]), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: [
-                "Content-Type": "image/jpeg", "X-Frame-ID": self.captureID + ":1", "X-Captured-At": "2026-10-24T18:00:00.000+00:00", "X-Frame-Age-Ms": "1950"
+                "Content-Type": "image/jpeg", "X-Frame-ID": self.captureID + ":\(fetches)", "X-Captured-At": "2026-10-24T18:00:00.000+00:00", "X-Frame-Age-Ms": fetches == 1 ? "1950" : "0"
             ])!)
         })
         try await client.start()
-        _ = try await client.fetchLatestFrame()
-        XCTAssertNotNil(client.frame)
-        await fulfillment(of: [expired], timeout: 2)
+        let firstFetch = try await client.fetchLatestFrame()
+        let first = try XCTUnwrap(firstFetch)
+        try await Task.sleep(for: .milliseconds(120))
         XCTAssertNil(client.frame)
-        XCTAssertNil(client.captureID)
-        XCTAssertEqual(client.status, .unavailable)
-        XCTAssertNotNil(client.errorMessage)
+        XCTAssertFalse(client.isCurrent(first))
+        XCTAssertEqual(client.captureID, captureID)
+        XCTAssertEqual(client.status, .streaming)
+        XCTAssertNil(client.errorMessage)
+        XCTAssertEqual(stops, 0)
+        guard client.status == .streaming else { await client.stop(); return }
+        let recoveredFetch = try await client.fetchLatestFrame()
+        let recovered = try XCTUnwrap(recoveredFetch)
+        XCTAssertEqual(recovered.metadata.sequence, 2)
+        XCTAssertTrue(client.isCurrent(recovered))
+        XCTAssertFalse(client.isCurrent(first))
+        await client.stop()
+        XCTAssertEqual(stops, 1)
     }
 
     func testRenewUsesCurrentCaptureAndRejectsChangedLeaseIdentity() async throws {

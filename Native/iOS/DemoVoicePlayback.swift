@@ -9,11 +9,14 @@ final class DemoVoicePlayback: VoicePlayback {
     private let local: VoicePlayback
     private let makeAudio: @MainActor (String) throws -> VoiceAudioOutput
     private let recoveryReason: @MainActor (VoiceCue) -> DemoVoiceRecoveryReason?
+    private let prepareAudioSession: @MainActor () throws -> Void
+    private let releaseAudioSession: @MainActor () -> Void
     private let uptime: () -> Double
     private var output: VoiceAudioOutput?
     private var active: (id: UUID, token: UUID)?
     private var localCueID: UUID?
     private var variants: [String: Int] = [:]
+    private var audioSessionActive = false
 
     static func isAvailable(preview: Bool, coach: VoiceCoachPreference) -> Bool {
         preview && coach == .arnold
@@ -40,10 +43,20 @@ final class DemoVoicePlayback: VoicePlayback {
 
     init(local: VoicePlayback? = nil, makeAudio: (@MainActor (String) throws -> VoiceAudioOutput)? = nil,
          recoveryReason: @escaping @MainActor (VoiceCue) -> DemoVoiceRecoveryReason? = { _ in nil },
+         prepareAudioSession: (@MainActor () throws -> Void)? = nil,
+         releaseAudioSession: (@MainActor () -> Void)? = nil,
          uptime: @escaping () -> Double = { ProcessInfo.processInfo.systemUptime }) {
         self.local = local ?? LocalVoicePlayback()
         self.makeAudio = makeAudio ?? { try DemoBundledAudioOutput(name: $0) }
         self.recoveryReason = recoveryReason
+        self.prepareAudioSession = prepareAudioSession ?? {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playback, mode: .spokenAudio, options: .duckOthers)
+            try session.setActive(true)
+        }
+        self.releaseAudioSession = releaseAudioSession ?? {
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
         self.uptime = uptime
         self.local.onFinish = { [weak self] id in
             guard let self, self.localCueID == id, let active = self.active else { return }
@@ -82,6 +95,9 @@ final class DemoVoicePlayback: VoicePlayback {
         do {
             let player = try makeAudio(name)
             guard uptime().isFinite, uptime() < deadline else { complete(token: token); return }
+            try prepareAudioSession()
+            audioSessionActive = true
+            guard uptime().isFinite, uptime() < deadline else { complete(token: token); return }
             player.onFinish = { [weak self] in self?.complete(token: token) }
             output = player
             guard player.play() else { complete(token: token); return }
@@ -93,6 +109,10 @@ final class DemoVoicePlayback: VoicePlayback {
         output?.onFinish = nil
         output?.stop()
         output = nil
+        if audioSessionActive {
+            audioSessionActive = false
+            releaseAudioSession()
+        }
         if localCueID != nil {
             localCueID = nil
             local.stop()
@@ -121,7 +141,7 @@ private final class DemoBundledAudioOutput: NSObject, VoiceAudioOutput, AVAudioP
         guard player.format.sampleRate == 22_050, player.duration.isFinite,
               player.duration > 0, player.duration <= 10 else { throw CocoaError(.fileReadCorruptFile) }
         player.delegate = self
-        player.prepareToPlay()
+        player.volume = 1
     }
 
     func play() -> Bool { player.play() }

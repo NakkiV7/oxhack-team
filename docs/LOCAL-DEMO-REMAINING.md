@@ -1,13 +1,15 @@
 # Local demo: what remains
 
-Checkpoint: **25 October 2026, after local phone installation, 10:30 UTC**. This is a remaining-work list, not a claim of physical acceptance or a new TestFlight release. Stop after the requested phone installation and acceptance; the items below do not authorize extra work.
+Checkpoint: **25 October 2026, physical-feedback fixes checked, 10:48 UTC**. This is a remaining-work list, not a claim of physical acceptance or a new TestFlight release. Stop after the requested phone installation and acceptance; the items below do not authorize extra work.
 
 ## Immediate acceptance
 
-- **Phone:** local 0.1 (6) is installed over USB and launched; its process was confirmed running. Human audible Arnold feedback and the phone’s actual Pi stream still await confirmation.
+- **Phone:** local 0.1 (7) is installed over USB and launched; its process was confirmed running. Physical testing found that the camera stopped after a few seconds and cached audio was not audible. Camera expiry recovery, image/overlay alignment, explicit audio-session activation and preview encouragement every two completed camera reps now pass software checks. Replacement local 0.1 (7) is built, installed over USB and launched; audible playback and sustained live capture still need a phone retry.
+- **Physical-feedback regression checks:** 53 native voice/store/lifecycle cases and 22 camera client/worker cases passed after observed RED failures. These include a delayed inference result being discarded while the next fresh frame recovers on the same lease, and a sustained outage stopping capture.
 - **Current software checks:** the focused 39-case native run and separate 22-case native run plus Rewards UI passed. Core passed 104 XCTest and 141 Swift Testing cases. Scripted Coach, Skills preview and Progress UI checks passed. These are software/simulator results, not exercise-accuracy or physical Watch acceptance.
 - **Pi:** the Mac relay passed a fresh check at 10:23 UTC; private pairing configuration is included in the local demo setup. Still verify the phone receives the intended live side-camera stream, stops it reliably, rejects stale frames and supports explicit manual fallback. Do not publish pairing secrets.
 - **Watch:** the registered Watch is included in the development profile and companion bundle, but it is not currently discoverable to the Mac. Actual sync/install, permissions, fresh readings, controls and saved reports remain unverified. Simulator checks do not establish these; missing sensor values must remain missing.
+- **Push-up acceptance:** the reported failure to recognize push-ups is still unconfirmed. The native path uses correct elbow landmarks, but needs a complete side view and accepted frame intervals below 0.75 seconds. Retest after the camera recovery fix; do not claim accuracy from synthetic tests.
 - **Exercise scope:** live automatic counting supports the base **push-up and squat** only. **Pull-ups are unsupported.** Other catalogue exercises use manual repetitions or hold timing.
 - **Infrastructure:** the existing Vultr VM continues billing until destroyed; retain the planned cleanup deadline of 26 October 06:47 UTC. No new hosting work is authorized here.
 - **Release:** the new local source has not been uploaded to TestFlight. The earlier reported **0.1 (5)** post-onboarding crash remains unreproduced and unresolved; passing frozen-source simulator cases did not identify its cause.
