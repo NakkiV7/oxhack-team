@@ -1,0 +1,120 @@
+{
+  "verifiedUTC": "2026-10-25T03:35:10.292361+00:00",
+  "sourceCommit": "7868d1dc6f26a4d50a93288b5fd7b48924774431",
+  "runtimePathsDifferentFromCommit": [],
+  "scope": "Local Linux/arm64 only; no providers or public ports.",
+  "image": {
+    "id": "sha256:0b0de0f87cd4ed5677daf45b98031c7fa964fef2838ad210d3ba797ede55d1f1",
+    "architecture": "arm64",
+    "os": "linux",
+    "sizeBytes": 82645880,
+    "user": "node"
+  },
+  "build": {
+    "exitCode": 0,
+    "contextBytesReported": "24.96kB",
+    "platform": "linux/arm64",
+    "dependencyLayer": "cached"
+  },
+  "runtime": {
+    "user": 1000,
+    "network": "none",
+    "readOnly": true,
+    "publishedPorts": {},
+    "mounts": [],
+    "capDrop": [
+      "ALL"
+    ],
+    "securityOpt": [
+      "no-new-privileges:true"
+    ],
+    "pidsLimit": 64,
+    "memoryBytes": 134217728,
+    "nanoCPUs": 1000000000,
+    "readOnlyWriteFailure": "EROFS",
+    "dockerHealth": "healthy",
+    "imageFilesMatch": 23
+  },
+  "httpStatuses": {
+    "health": 200,
+    "unauthenticated": 401,
+    "wrongToken": 401,
+    "unknownRoute": 404,
+    "missingChatProvider": 503,
+    "missingWeekProvider": 503,
+    "malformedWithoutProvider": 503
+  },
+  "fakeProviderBoundary": {
+    "validWeekly": 200,
+    "unknownGuidance": 502,
+    "fakeCalls": 2
+  },
+  "externalProviderCalls": 0,
+  "sourceSHA256": {
+    "server/Dockerfile": "2a21082740b4da57807b52bef7686bdfa411c2435e5349341466f3fcab47dd5d",
+    "server/Dockerfile.dockerignore": "761e34872c64345d67c80418007577210546268f548a6d60de483276c1f4c0c2",
+    "server/package.json": "1ff4399653c5fe71e61d569a029e968d62600f5c1de17d62583e9ae9ab89a769",
+    "server/package-lock.json": "6ee16005a25ae87723c0c92f5dd9cc85cf267ec484dfec2e6e700d821dc15fc3",
+    "Shared/Core/ExerciseCatalog.swift": "e979c2a0d1b800ccc82d29aadafd93eaf30a629df810d5e31de1c439c09c3f1d",
+    "Shared/Core/Resources/coach-guidance.json": "72347cb0b1e2edcefc2fc386e7531c4a23c079d9048fac69808f5910ff2589b8",
+    "server/src/coach-guidance.mjs": "75abc01cb5eb9a92fcea75668d06f417154b7bb952d2e4e72150cfe296a3436c",
+    "server/src/coach-scope.mjs": "d1d68dba108beed7aee3e38845268faa6a4cbc2bf6e636448695e2030e110222",
+    "server/src/contracts.mjs": "3d7813a2c3e5a21051e528271ae79a093da38888a903aceb7741ce8ad2683e57",
+    "server/src/errors.mjs": "fa3940f3f24d73c9e2093134f3b42712677d2394109ff6d95b985db8714c0a73",
+    "server/src/gateway.mjs": "089f0eb5196251059e43d08d531c6498551689c84d1cfbfade54ee58e0d8d8fe",
+    "server/src/migrate.mjs": "04ea9abc70908d8a3d09c459b9e343f4ae67c37d05f1d553ee06826c8b8363b1",
+    "server/src/snowflake-benchmark-cli.mjs": "4c58da6940d290f7180cb4352eb7bba242f1d6fb49e1d9339f214fab19530e90",
+    "server/src/snowflake-benchmark-client.mjs": "11686856f8e32b3f31f8f4af6591b0a4f17b3281e20fe14507affb4f079ea6e0",
+    "server/src/snowflake-benchmark.mjs": "544c9862e9b806785b88103ee78e3894a298e12ed64d998ea09a3047d46add72",
+    "server/src/snowflake-check.mjs": "c5fff27a781afe46dbd665542b4a5671df584c037638619b84074a2edd344f93",
+    "server/src/snowflake-transport.mjs": "a7981fa1d7547b4056c4125ae7a6f352a4494ea972f477e42dd98d2cbcf58337",
+    "server/src/snowflake.mjs": "eb3575f14d0b7a1467e1a488f8d2a83cc0fb71a450cde047bf0bbbc22491dd2d",
+    "server/src/start.mjs": "148ef7a089bd32ace0752890b2b2a0c62af675c75f3911e7bc77eb5d7d4bdaa0",
+    "server/src/tiger-contracts.mjs": "1cb2f4454b19dcdeb66c880458721dacd0dca99382977a29ffabbc58ba2e2122",
+    "server/src/tiger-smoke-cli.mjs": "136e5fdebbcc76dd99514743204d55c3b2f83b86086b9d8a455657bc1296de93",
+    "server/src/tiger-smoke.mjs": "ae49a84a3dca12b4dc8701bbebb077c05fceee9c58f36976a4754f5bf75cb5a1",
+    "server/src/tiger.mjs": "b97e8831bb695de3ec87aecec8d7d72f1bd8f3edaa774e4396003c39352681ee",
+    "server/src/week-contracts.mjs": "03cecc436ec266c780c62bd5a734db915040c4d12aa39a5c1d46a0b85195f4ac",
+    "server/migrations/001_workouts.sql": "229c3e7ff228e7ea07224496b20840ca2f8d40100c84a97a26572b1aae07f18a"
+  },
+  "imageFileSHA256": {
+    "server/package.json": "1ff4399653c5fe71e61d569a029e968d62600f5c1de17d62583e9ae9ab89a769",
+    "server/package-lock.json": "6ee16005a25ae87723c0c92f5dd9cc85cf267ec484dfec2e6e700d821dc15fc3",
+    "Shared/Core/ExerciseCatalog.swift": "e979c2a0d1b800ccc82d29aadafd93eaf30a629df810d5e31de1c439c09c3f1d",
+    "Shared/Core/Resources/coach-guidance.json": "72347cb0b1e2edcefc2fc386e7531c4a23c079d9048fac69808f5910ff2589b8",
+    "server/src/coach-guidance.mjs": "75abc01cb5eb9a92fcea75668d06f417154b7bb952d2e4e72150cfe296a3436c",
+    "server/src/coach-scope.mjs": "d1d68dba108beed7aee3e38845268faa6a4cbc2bf6e636448695e2030e110222",
+    "server/src/contracts.mjs": "3d7813a2c3e5a21051e528271ae79a093da38888a903aceb7741ce8ad2683e57",
+    "server/src/errors.mjs": "fa3940f3f24d73c9e2093134f3b42712677d2394109ff6d95b985db8714c0a73",
+    "server/src/gateway.mjs": "089f0eb5196251059e43d08d531c6498551689c84d1cfbfade54ee58e0d8d8fe",
+    "server/src/migrate.mjs": "04ea9abc70908d8a3d09c459b9e343f4ae67c37d05f1d553ee06826c8b8363b1",
+    "server/src/snowflake-benchmark-cli.mjs": "4c58da6940d290f7180cb4352eb7bba242f1d6fb49e1d9339f214fab19530e90",
+    "server/src/snowflake-benchmark-client.mjs": "11686856f8e32b3f31f8f4af6591b0a4f17b3281e20fe14507affb4f079ea6e0",
+    "server/src/snowflake-benchmark.mjs": "544c9862e9b806785b88103ee78e3894a298e12ed64d998ea09a3047d46add72",
+    "server/src/snowflake-check.mjs": "c5fff27a781afe46dbd665542b4a5671df584c037638619b84074a2edd344f93",
+    "server/src/snowflake-transport.mjs": "a7981fa1d7547b4056c4125ae7a6f352a4494ea972f477e42dd98d2cbcf58337",
+    "server/src/snowflake.mjs": "eb3575f14d0b7a1467e1a488f8d2a83cc0fb71a450cde047bf0bbbc22491dd2d",
+    "server/src/start.mjs": "148ef7a089bd32ace0752890b2b2a0c62af675c75f3911e7bc77eb5d7d4bdaa0",
+    "server/src/tiger-contracts.mjs": "1cb2f4454b19dcdeb66c880458721dacd0dca99382977a29ffabbc58ba2e2122",
+    "server/src/tiger-smoke-cli.mjs": "136e5fdebbcc76dd99514743204d55c3b2f83b86086b9d8a455657bc1296de93",
+    "server/src/tiger-smoke.mjs": "ae49a84a3dca12b4dc8701bbebb077c05fceee9c58f36976a4754f5bf75cb5a1",
+    "server/src/tiger.mjs": "b97e8831bb695de3ec87aecec8d7d72f1bd8f3edaa774e4396003c39352681ee",
+    "server/src/week-contracts.mjs": "03cecc436ec266c780c62bd5a734db915040c4d12aa39a5c1d46a0b85195f4ac",
+    "server/migrations/001_workouts.sql": "229c3e7ff228e7ea07224496b20840ca2f8d40100c84a97a26572b1aae07f18a"
+  },
+  "cleanup": {
+    "remainingTaskContainers": [],
+    "taskVMStopped": true,
+    "defaultDockerContextPreserved": "desktop-linux",
+    "contextNote": "Colima startup created exact task context before our create command; attempted creation reported already exists; no context use/default change.",
+    "stoppedUTC": "2026-10-25T03:34:43Z",
+    "stopCheck": "colima status --profile spottr-verify reports not running"
+  },
+  "unverified": [
+    "Linux/amd64 image build",
+    "Hosted HTTPS/ACME/firewall/deployment",
+    "Live Gemini weekly generation",
+    "Live Tiger or Snowflake",
+    "Physical phone/Watch access"
+  ]
+}

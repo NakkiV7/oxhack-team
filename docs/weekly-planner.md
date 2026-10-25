@@ -1,6 +1,6 @@
 # Weekly Coach planner
 
-This local implementation adds an explicit weekly proposal alongside the existing saved workout. It has offline contract and focused native behavior tests; simulator interaction, live weekly Gemini output and physical exercise acceptance are separate gates. No live provider requests were made while implementing this slice.
+This local implementation adds an explicit weekly proposal alongside the existing saved workout. Offline contract/native behavior tests, actual simulator approval interaction and an ARM64 container check passed; live weekly Gemini output and physical exercise acceptance are separate gates. No live provider requests were made while implementing this slice.
 
 Tap **Propose my week** to send the current draft, up to 20 recent conversation turns, recorded training facts, selected goals/weekly target and available support through the configured authenticated gateway. The optional profile name is not added automatically. Editing availability or a draft makes no request. The screen reports the operation actually running and offers Cancel; it does not show invented progress stages, private reasoning or a percentage. A retry repeats the failed operation and its captured instructions, rather than sending an earlier chat message.
 
@@ -34,5 +34,7 @@ RED receipts are retained privately under `.local/`: the new route returned 404,
 
 - Server: `cd server && npm test`: 74/74 passed; weekly route/source checks (5) and scope scenarios (6) use mocked provider transport and no database.
 - Shared: `swift test --scratch-path .local/weekly-core-build --filter CoachWeekPlanTests`: 4/4 passed after the strict decoder fixes. Full-suite verification is coordinated with the concurrent report changes before publication.
-- Native: root ran focused `CoachFlowTests` (19) and `DemoGuardTests` (7): 26/26 passed without warnings; receipt `test_sim_2026-10-25T02-44-21-170Z_pid4129_343964c7.log`. This uses fake transport, not a live weekly request. A later visual-only toolbar Cancel addition awaits the next app build; the unrelated settings sheet keeps its own dismissal action.
-- Visual, live weekly Gemini, physical/device and clinical acceptance: pending; not claimed by these tests.
+- Native: the later coordinated run passed 19 Coach, 11 configured-session and 7 lesson behavior tests without warnings (`test_sim_2026-10-25T02-57-43-566Z_pid4129_ad484f6a.log`). The subsequent actual app build succeeded at 03:23. These use fake transport, not a live weekly request.
+- [Actual simulator approval receipt](evidence/coach-week-approval-ui-2026-10-25.md): one explicit fixture request, no days selected by default, one selected day moved and approved, separate Start action, no workout started. Preferences restored and fixture stopped; zero provider calls. Prior-conversation and saved-day Start interaction were not exercised in this pass.
+- [Fresh ARM64 container receipt](evidence/container-weekly-verification-2026-10-25.md): 23 runtime hashes matched, including guidance; restricted runtime and HTTP boundaries passed. Fake weekly output accepted, invented guidance rejected, zero external calls. AMD64/hosted HTTPS remain unverified.
+- Live weekly Gemini, physical/device and clinical acceptance remain pending; not claimed by these tests.
