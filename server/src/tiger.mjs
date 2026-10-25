@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { GatewayError } from './errors.mjs';
-import { workoutRequest, workoutIDContract, telemetryQuery } from './tiger-contracts.mjs';
+import { workoutRequest, workoutIDContract, telemetryQuery, rollupQuery } from './tiger-contracts.mjs';
 
 function canonical(value) {
   if (Array.isArray(value)) return value.map(canonical);
@@ -57,6 +57,20 @@ export function createTigerStore({ pool, installationID }) {
       } finally { client.release(discardError); }
     },
     read,
+    async rollups(input) {
+      const parsed = rollupQuery.safeParse(input);
+      if (!parsed.success) throw new GatewayError(422, 'invalid_request', 'Rollups require a workout UUID, a 5- or 60-second bucket and an increasing ISO8601 interval of at most 24 hours.');
+      const { workoutID, from, to, bucketSeconds } = parsed.data;
+      await read(workoutID);
+      const result = await pool.query(`SELECT date_bin($5::integer * INTERVAL '1 second', measured_at, TIMESTAMPTZ '2000-01-01 00:00:00+00') AS bucket,
+        kind, unit, source, count(*)::integer AS "observedSamples",
+        avg(value) AS mean, min(value) AS min, max(value) AS max,
+        min(measured_at) AS "firstMeasuredAt", max(measured_at) AS "lastMeasuredAt"
+        FROM spottr_gateway.scalar_sample
+        WHERE installation_id = $1 AND workout_id = $2 AND measured_at >= $3 AND measured_at < $4
+        GROUP BY bucket, kind, unit, source ORDER BY bucket, kind`, [owner, workoutID.toLowerCase(), from, to, bucketSeconds]);
+      return { workoutID: workoutID.toLowerCase(), from, to, bucketSeconds, buckets: result.rows };
+    },
     async telemetry(input) {
       const parsed = telemetryQuery.safeParse(input);
       if (!parsed.success) throw new GatewayError(422, 'invalid_request', 'Telemetry requires a workout UUID and an increasing ISO8601 interval of at most 24 hours.');

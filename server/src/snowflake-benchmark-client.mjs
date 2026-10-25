@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { z } from 'zod';
 import { GatewayError } from './errors.mjs';
-import { createSnowflakeTransport } from './snowflake-transport.mjs';
+import { createSnowflakeTransport, snowflakeConfiguration } from './snowflake-transport.mjs';
 
 export const BENCHMARK_SQL = Object.freeze({
   lookup: `SELECT COUNT(*)::VARCHAR, COALESCE(MIN(PAYLOAD_SHA256), '')
@@ -37,7 +37,19 @@ SELECT TO_JSON(ARRAY_AGG(OBJECT_CONSTRUCT_KEEP_NULL('subject',SUBJECT,'horizon',
  'mae',MAE,'rmse',RMSE,'bias',BIAS,'contributingParticipants',CONTRIBUTING))) FROM U`
 });
 
-const context = z.object(Object.fromEntries(['SNOWFLAKE_DATABASE', 'SNOWFLAKE_SCHEMA', 'SNOWFLAKE_WAREHOUSE'].map(key => [key, z.string().min(1).max(128).regex(/^[a-zA-Z_][a-zA-Z0-9_$]*$/)])));
+const identifier = z.string().min(1).max(128).regex(/^[a-zA-Z_][a-zA-Z0-9_$]*$/);
+const configuration = snowflakeConfiguration.extend({
+  SNOWFLAKE_DATABASE: identifier, SNOWFLAKE_SCHEMA: identifier, SNOWFLAKE_WAREHOUSE: identifier, SNOWFLAKE_ROLE: identifier.optional()
+});
+
+export function snowflakeBenchmarkConfiguration({ env = process.env } = {}) {
+  const missing = [], invalid = [];
+  for (const [key, schema] of Object.entries(configuration.shape)) {
+    if (!schema.safeParse(env[key]).success) (env[key] === undefined || env[key] === '' ? missing : invalid).push(key);
+  }
+  if (env.NODE_TLS_REJECT_UNAUTHORIZED === '0' || process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0') invalid.push('NODE_TLS_REJECT_UNAUTHORIZED');
+  return { mode: 'configuration', ready: missing.length === 0 && invalid.length === 0, missing, invalid };
+}
 const timeout = () => new GatewayError(504, 'provider_timeout', 'Snowflake exceeded the bounded benchmark deadline.');
 const conflict = () => new GatewayError(409, 'immutable_run_conflict', 'The public benchmark run conflicts with an existing or duplicate run.');
 const textBinding = value => ({ type: 'TEXT', value });
@@ -74,7 +86,7 @@ export async function runSnowflakeBenchmark({ plan, allowLivePublicData = false,
   maxPolls = 10, pollMs = 1000, totalTimeoutMs = 90000, waitImpl = sleep, now = Date.now } = {}) {
   const summary = { runID: plan.runID, payloadSha256: plan.payloadSha256, sourceRows: plan.sourceRows, metrics: plan.metrics };
   if (allowLivePublicData !== true) return { mode: 'dry-run', ...summary };
-  if (!context.safeParse(env).success) throw new GatewayError(503, 'missing_configuration', 'Existing Snowflake database, schema and warehouse must be configured.');
+  if (!snowflakeBenchmarkConfiguration({ env }).ready) throw new GatewayError(503, 'missing_configuration', 'Existing Snowflake authorization, database, schema, warehouse and strict TLS must be configured.');
   if (!Number.isInteger(maxPolls) || maxPolls < 1 || maxPolls > 10 || !Number.isInteger(pollMs) || pollMs < 1 || pollMs > 1000
     || !Number.isInteger(totalTimeoutMs) || totalTimeoutMs < 1 || totalTimeoutMs > 90000) throw new GatewayError(422, 'invalid_request', 'The benchmark deadline configuration is invalid.');
   const transport = createSnowflakeTransport({ env, fetchImpl });
@@ -90,7 +102,8 @@ export async function runSnowflakeBenchmark({ plan, allowLivePublicData = false,
     try {
       let result = await request({ path: `?requestId=${randomUUID()}&async=true`, method: 'POST', body: {
         statement, bindings: Object.fromEntries(values.map((value, index) => [String(index + 1), textBinding(value)])), timeout: 60,
-        database: env.SNOWFLAKE_DATABASE, schema: env.SNOWFLAKE_SCHEMA, warehouse: env.SNOWFLAKE_WAREHOUSE
+        database: env.SNOWFLAKE_DATABASE, schema: env.SNOWFLAKE_SCHEMA, warehouse: env.SNOWFLAKE_WAREHOUSE,
+        ...(env.SNOWFLAKE_ROLE ? { role: env.SNOWFLAKE_ROLE } : {})
       } });
       if (result.pending) handle = result.handle;
       while (result.pending) {

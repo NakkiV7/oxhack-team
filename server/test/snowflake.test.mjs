@@ -38,7 +38,7 @@ test('Snowflake handles asynchronous statements without automatic polling or ree
 test('Snowflake rejects invalid account configuration and statement handles before network access', async () => {
   let calls = 0;
   const fetchImpl = async () => { calls += 1; return Response.json({ data: [['9.30.0']] }); };
-  for (const config of [{}, { ...env, SNOWFLAKE_ACCOUNT: 'https://attacker.invalid/path' }, { ...env, SNOWFLAKE_TOKEN_TYPE: 'invalid' }]) {
+  for (const config of [{}, { ...env, SNOWFLAKE_ACCOUNT: 'https://attacker.invalid/path' }, { ...env, SNOWFLAKE_TOKEN_TYPE: 'invalid' }, { ...env, NODE_TLS_REJECT_UNAUTHORIZED: '0' }]) {
     await assert.rejects(createSnowflakeAdapter({ env: config, fetchImpl }).check(), error => error.code === 'missing_configuration');
   }
   await assert.rejects(createSnowflakeAdapter({ env, fetchImpl }).status('../other-account'), error => error.status === 422);

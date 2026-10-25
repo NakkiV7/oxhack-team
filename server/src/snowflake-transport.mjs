@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { GatewayError } from './errors.mjs';
 
-const configuration = z.object({
+export const snowflakeConfiguration = z.object({
   SNOWFLAKE_ACCOUNT: z.string().max(200).regex(/^[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)*$/),
   SNOWFLAKE_TOKEN: z.string().min(1).max(16384),
   SNOWFLAKE_TOKEN_TYPE: z.enum(['PROGRAMMATIC_ACCESS_TOKEN', 'KEYPAIR_JWT', 'OAUTH']).optional()
@@ -10,7 +10,8 @@ export const snowflakeHandle = z.string().regex(/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}
 
 export function createSnowflakeTransport({ env = process.env, fetchImpl = fetch, timeoutMs = 10000 } = {}) {
   return async ({ path, method, body, requestTimeoutMs = timeoutMs }) => {
-    if (!configuration.safeParse(env).success || !Number.isInteger(requestTimeoutMs) || requestTimeoutMs < 1 || requestTimeoutMs > 60000) throw new GatewayError(503, 'missing_configuration', 'Snowflake account, server authorization and token type must be configured.');
+    if (!snowflakeConfiguration.safeParse(env).success || env.NODE_TLS_REJECT_UNAUTHORIZED === '0' || process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0'
+      || !Number.isInteger(requestTimeoutMs) || requestTimeoutMs < 1 || requestTimeoutMs > 60000) throw new GatewayError(503, 'missing_configuration', 'Snowflake account, server authorization, token type and strict TLS must be configured.');
     const encoded = body === undefined ? undefined : JSON.stringify(body);
     if (encoded && Buffer.byteLength(encoded) > 2_097_152) throw new GatewayError(422, 'invalid_public_artifact', 'The public benchmark exceeds the request limit.');
     const signal = AbortSignal.timeout(requestTimeoutMs);

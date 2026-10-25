@@ -49,3 +49,5 @@ export const workoutRequest = z.strictObject({ installationID: z.uuid(), record:
 export const workoutIDContract = z.uuid();
 export const telemetryQuery = z.strictObject({ workoutID: z.uuid(), from: date, to: date })
   .refine(query => Date.parse(query.to) > Date.parse(query.from) && Date.parse(query.to) - Date.parse(query.from) <= 86_400_000);
+export const rollupQuery = z.strictObject({ workoutID: z.uuid(), from: date, to: date, bucketSeconds: z.union([z.literal(5), z.literal(60)]) })
+  .refine(query => Date.parse(query.to) > Date.parse(query.from) && Date.parse(query.to) - Date.parse(query.from) <= 86_400_000);

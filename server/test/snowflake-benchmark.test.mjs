@@ -45,6 +45,38 @@ test('Snowflake benchmark CLI defaults to a useful dry run without configuration
   assert.match(invalid.stderr, /invalid_request/);
 });
 
+test('Snowflake configuration check lists exact missing or invalid names without loading artifacts, connecting or revealing values', () => {
+  const run = config => spawnSync(process.execPath, ['src/snowflake-benchmark-cli.mjs', '--check-configuration'], {
+    cwd: new URL('../', import.meta.url), env: { PATH: process.env.PATH, ...config }, encoding: 'utf8'
+  });
+  const missing = run({ SNOWFLAKE_ACCOUNT: env.SNOWFLAKE_ACCOUNT, SNOWFLAKE_WAREHOUSE: env.SNOWFLAKE_WAREHOUSE });
+  assert.equal(missing.status, 1);
+  assert.equal(missing.stderr, '');
+  assert.deepEqual(JSON.parse(missing.stdout), { mode: 'configuration', ready: false, missing: ['SNOWFLAKE_TOKEN', 'SNOWFLAKE_DATABASE', 'SNOWFLAKE_SCHEMA'], invalid: [] });
+  const ready = run(env);
+  assert.equal(ready.status, 0, ready.stderr);
+  assert.deepEqual(JSON.parse(ready.stdout), { mode: 'configuration', ready: true, missing: [], invalid: [] });
+  const invalid = run({ ...env, SNOWFLAKE_TOKEN_TYPE: 'bad-private-type', SNOWFLAKE_SCHEMA: 'private schema name' });
+  assert.equal(invalid.status, 1);
+  assert.deepEqual(JSON.parse(invalid.stdout), { mode: 'configuration', ready: false, missing: [], invalid: ['SNOWFLAKE_TOKEN_TYPE', 'SNOWFLAKE_SCHEMA'] });
+  for (const result of [ready, missing, invalid]) assert.equal(/private-token|organization-account|EXISTING_WH|private schema name|bad-private-type/.test(result.stdout + result.stderr), false);
+});
+
+test('Snowflake benchmark uses an explicitly selected existing role and rejects malformed role context before requests', async () => {
+  const plan = await loadPublicBenchmark();
+  const roles = [];
+  const result = await runSnowflakeBenchmark({ plan, allowLivePublicData: true, env: { ...env, SNOWFLAKE_ROLE: 'PUBLIC_DATA_IMPORTER' }, fetchImpl: async (_url, options) => {
+    const body = JSON.parse(options.body);
+    roles.push(body.role);
+    return body.statement === BENCHMARK_SQL.lookup ? ready([['1', plan.payloadSha256]]) : metricsReply(plan);
+  } });
+  assert.equal(result.replayed, true);
+  assert.deepEqual(roles, ['PUBLIC_DATA_IMPORTER', 'PUBLIC_DATA_IMPORTER']);
+  let calls = 0;
+  await assert.rejects(runSnowflakeBenchmark({ plan, allowLivePublicData: true, env: { ...env, SNOWFLAKE_ROLE: 'ROLE;DROP TABLE X' }, fetchImpl: async () => { calls++; } }), error => error.code === 'missing_configuration');
+  assert.equal(calls, 0);
+});
+
 test('Pinned public artifact preserves original prediction text, immutable lineage and zero-coverage people', async () => {
   const plan = await loadPublicBenchmark();
   const again = await loadPublicBenchmark();
