@@ -54,26 +54,99 @@ final class SkillsFlowTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Manual: 0 sets"].waitForExistence(timeout: 3))
     }
 
-    @MainActor func testExpandedGridPreviewNeverClaimsEarnedProgress() {
+    @MainActor func testAccountPreviewControlsGridAndLinearWithoutEarningChallenges() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
+        app.launch()
+        app.buttons["profile-settings"].tap()
+        let preview = app.switches["testflight-preview-toggle"]
+        revealSkillControl(preview, in: app)
+        XCTAssertEqual(preview.value as? String, "0", "Global preview must require an explicit choice.")
+        app.navigationBars["Profile & settings"].buttons["Done"].tap()
+        app.tabBars.buttons["Skills"].tap()
+        XCTAssertFalse(app.switches["skill-preview-access"].exists, "Account owns the single preview preference.")
+        XCTAssertTrue(app.staticTexts["0 of 19 challenges earned"].waitForExistence(timeout: 3))
+        app.segmentedControls.buttons["Linear"].tap()
+        let incline = app.buttons["skill-inclinePushup"]
+        revealSkillControl(incline, in: app)
+        XCTAssertTrue(incline.label.contains("Locked"))
+        XCTAssertTrue(incline.label.contains("Wall push-ups"))
+        XCTAssertTrue(incline.label.contains("0/3 sets"))
+
+        setAccountPreview(in: app)
+        app.tabBars.buttons["Skills"].tap()
+        XCTAssertFalse(app.switches["skill-preview-access"].exists)
+        app.segmentedControls.buttons["Linear"].tap()
+        revealSkillControl(incline, in: app)
+        XCTAssertTrue(incline.label.contains("Available"))
+        XCTAssertFalse(incline.label.contains("Earned"))
+        XCTAssertFalse(incline.label.localizedCaseInsensitiveContains("preview"))
+        XCTAssertTrue(incline.label.contains("0/3 sets"))
+        incline.tap()
+        XCTAssertTrue(app.staticTexts["Manual: 0 sets"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Camera: 0 sets"].exists)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        let grid = app.segmentedControls.buttons["Grid"]
+        revealSkillControl(grid, in: app, scrollUp: false)
+        grid.tap()
+        let expand = app.buttons["skill-grid-expand"]
+        revealSkillControl(expand, in: app)
+        expand.tap()
+        XCTAssertEqual(expand.label, "Collapse skill tree")
+        let wall = app.buttons["skill-wallPushup"]
+        revealSkillControl(wall, in: app)
+        XCTAssertTrue(wall.label.contains("Available"))
+        XCTAssertFalse(wall.label.contains("Earned"))
+        wall.tap()
+        XCTAssertTrue(app.staticTexts["Manual: 3 sets"].waitForExistence(timeout: 3), "Preview history stays in its own sample workspace.")
+
+        setAccountPreview(in: app)
+        app.tabBars.buttons["Skills"].tap()
+        XCTAssertTrue(app.staticTexts["0 of 19 challenges earned"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.switches["skill-preview-access"].exists)
+        app.terminate(); app.launch()
+        app.tabBars.buttons["Skills"].tap()
+        XCTAssertTrue(app.staticTexts["0 of 19 challenges earned"].waitForExistence(timeout: 3))
+    }
+
+    @MainActor func testAccessibilityTextUsesLinearTreeWithoutChangingSavedLayout() {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
         app.launch()
         app.tabBars.buttons["Skills"].tap()
         app.segmentedControls.buttons["Grid"].tap()
-        let expand = app.buttons["skill-grid-expand"]
-        XCTAssertTrue(expand.waitForExistence(timeout: 5))
-        expand.tap()
-        XCTAssertEqual(expand.label, "Collapse skill tree")
-        let preview = app.switches["skill-preview-access"]
-        XCTAssertTrue(preview.exists)
-        XCTAssertEqual(preview.value as? String, "0")
-        preview.tap()
-        XCTAssertTrue(app.staticTexts["Preview access · no achievements earned"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["0 of 19 challenges earned"].exists)
-        app.buttons["skill-wallPushup"].tap()
-        XCTAssertTrue(app.staticTexts["Manual: 0 sets"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["Camera: 0 sets"].exists)
+        app.terminate()
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        app.tabBars.buttons["Skills"].tap()
+        XCTAssertTrue(app.staticTexts["skill-accessible-layout-note"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.scrollViews["skill-graph"].exists)
+        XCTAssertTrue(app.buttons["skill-wallPushup"].exists)
+        app.terminate()
+        app.launchArguments = []
+        app.launch()
+        app.tabBars.buttons["Skills"].tap()
+        XCTAssertTrue(app.segmentedControls.buttons["Grid"].isSelected)
+    }
+
+    @MainActor private func setAccountPreview(in app: XCUIApplication) {
+        app.tabBars.buttons["Today"].tap()
+        app.buttons["profile-settings"].tap()
+        let preview = app.switches["testflight-preview-toggle"]
+        revealSkillControl(preview, in: app)
+        preview.switches.firstMatch.tap()
+        let done = app.navigationBars["Profile & settings"].buttons["Done"]
+        if done.exists { done.tap() }
+    }
+
+    @MainActor private func revealSkillControl(_ element: XCUIElement, in app: XCUIApplication, scrollUp: Bool = true) {
+        for _ in 0..<8 where !element.isHittable {
+            if scrollUp { app.swipeUp() } else { app.swipeDown() }
+        }
+        XCTAssertTrue(element.waitForExistence(timeout: 3))
+        XCTAssertTrue(element.isHittable)
     }
 
     @MainActor func testOptionalOnboardingBaselineSuggestsPracticeWithoutLoggingSets() {

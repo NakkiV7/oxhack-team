@@ -113,4 +113,79 @@ final class ProfileFlowTests: XCTestCase {
         XCTAssertTrue(app.buttons["profile-settings"].waitForExistence(timeout: 3))
     }
 
+    @MainActor func testMeasurementsAutosavePreserveProfileAndSurviveRestartedIntroduction() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
+        app.launch()
+        app.buttons["profile-settings"].tap()
+        let name = app.textFields["Your name (optional)"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap(); name.typeText("Synthetic Guest")
+        app.staticTexts["Saved on this iPhone. No account or sign-in is needed."].tap()
+        reveal(app.buttons["profile-measurements"], in: app)
+        app.buttons["profile-measurements"].tap()
+        let height = app.textFields["measurements-height"]
+        let weight = app.textFields["measurements-weight"]
+        XCTAssertTrue(height.waitForExistence(timeout: 5))
+        height.tap(); height.typeText("170")
+        weight.tap(); weight.typeText("70")
+        app.buttons["measurements-keyboard-done"].tap()
+        XCTAssertFalse(app.staticTexts["measurements-bmi"].exists)
+        let eligibility = app.switches["measurements-eligible"]
+        reveal(eligibility, in: app)
+        let eligibilityThumb = eligibility.switches.firstMatch
+        XCTAssertTrue(eligibilityThumb.exists)
+        eligibilityThumb.tap()
+        XCTAssertEqual(eligibility.value as? String, "1")
+        let bmi = app.staticTexts["measurements-bmi"]
+        XCTAssertTrue(bmi.waitForExistence(timeout: 3))
+        XCTAssertEqual(bmi.value as? String, "24.2")
+        app.navigationBars["Measurements"].buttons["Done"].tap()
+        reveal(app.buttons["Restart introduction"], in: app)
+        app.buttons["Restart introduction"].tap()
+        app.buttons["onboarding-continue"].tap()
+        app.buttons["onboarding-continue"].tap()
+        app.buttons["onboarding-continue"].tap()
+        reveal(name, in: app, scrollUp: false)
+        XCTAssertEqual(name.value as? String, "Synthetic Guest")
+        reveal(app.buttons["profile-measurements"], in: app)
+        app.buttons["profile-measurements"].tap()
+        XCTAssertTrue(height.waitForExistence(timeout: 5))
+        XCTAssertEqual(height.value as? String, "170")
+        XCTAssertEqual(weight.value as? String, "70")
+        XCTAssertEqual(bmi.value as? String, "24.2")
+        app.navigationBars["Measurements"].buttons["Done"].tap()
+        app.navigationBars["Profile & settings"].buttons["Done"].tap()
+        app.terminate(); app.launch()
+        app.buttons["profile-settings"].tap()
+        reveal(name, in: app, scrollUp: false)
+        XCTAssertEqual(name.value as? String, "Synthetic Guest")
+        reveal(app.buttons["profile-measurements"], in: app)
+        app.buttons["profile-measurements"].tap()
+        XCTAssertTrue(height.waitForExistence(timeout: 5))
+        XCTAssertEqual(height.value as? String, "170")
+        XCTAssertEqual(weight.value as? String, "70")
+        reveal(app.buttons["measurements-clear"], in: app)
+        app.buttons["measurements-clear"].tap()
+        app.navigationBars["Measurements"].buttons["Done"].tap()
+        app.navigationBars["Profile & settings"].buttons["Done"].tap()
+        app.buttons["profile-settings"].tap()
+        reveal(name, in: app, scrollUp: false)
+        XCTAssertEqual(name.value as? String, "Synthetic Guest")
+        reveal(app.buttons["profile-measurements"], in: app)
+        app.buttons["profile-measurements"].tap()
+        XCTAssertTrue(height.waitForExistence(timeout: 5))
+        XCTAssertTrue(["", "cm"].contains(height.value as? String ?? "missing"))
+        XCTAssertTrue(["", "kg"].contains(weight.value as? String ?? "missing"))
+        XCTAssertFalse(bmi.exists)
+    }
+
+    @MainActor private func reveal(_ element: XCUIElement, in app: XCUIApplication, scrollUp: Bool = true) {
+        for _ in 0..<6 where !element.isHittable {
+            if scrollUp { app.swipeUp() } else { app.swipeDown() }
+        }
+        XCTAssertTrue(element.waitForExistence(timeout: 3))
+        XCTAssertTrue(element.isHittable)
+    }
 }

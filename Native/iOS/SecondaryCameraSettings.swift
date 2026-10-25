@@ -52,8 +52,14 @@ enum SecondaryCameraSettings {
         let certificateSHA256: String
         let token: String
     }
-    static func connection(store: (any SecondaryCameraSecretStore)? = nil) throws -> Connection? {
-        guard let data = try (store ?? SecondaryCameraKeychainStore()).read() else { return nil }
+    static func connection(store: (any SecondaryCameraSecretStore)? = nil, previewData: Data? = nil) throws -> Connection? {
+        let data: Data
+        if let previewData {
+            data = previewData
+        } else {
+            guard let savedData = try (store ?? SecondaryCameraKeychainStore()).read() else { return nil }
+            data = savedData
+        }
         guard let pairing = try? JSONDecoder().decode(Pairing.self, from: data) else { throw SecondaryCameraError.configuration }
         let configuration = try SecondaryCameraConfig(url: pairing.url, certificateSHA256: pairing.certificateSHA256)
         try SecondaryCameraConfig.validateAccessToken(pairing.token)
@@ -69,8 +75,12 @@ enum SecondaryCameraSettings {
     static func forget(store: (any SecondaryCameraSecretStore)? = nil) throws {
         try (store ?? SecondaryCameraKeychainStore()).remove()
     }
-    static func client(store: (any SecondaryCameraSecretStore)? = nil) throws -> SecondaryCameraClient {
-        guard let connection = try connection(store: store) else { throw SecondaryCameraError.configuration }
+    static func client(store: (any SecondaryCameraSecretStore)? = nil, previewData: Data? = nil) throws -> SecondaryCameraClient {
+        guard let connection = try connection(store: store, previewData: previewData) else { throw SecondaryCameraError.configuration }
         return try SecondaryCameraClient(configuration: connection.configuration, token: connection.token)
+    }
+    static func includedPreviewData() -> Data? {
+        guard let url = Bundle.main.url(forResource: "SpottrDemoCamera", withExtension: "json") else { return nil }
+        return try? Data(contentsOf: url)
     }
 }

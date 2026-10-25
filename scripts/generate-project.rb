@@ -2,6 +2,12 @@ require 'xcodeproj'
 require 'fileutils'
 
 Dir.chdir(File.expand_path('..', __dir__))
+presage_mode = ENV.fetch('SPOTTR_EXPERIMENTAL_PRESAGE', '0')
+abort 'SPOTTR_EXPERIMENTAL_PRESAGE must be 0 or 1.' unless ['0', '1'].include?(presage_mode)
+presage_enabled = presage_mode == '1'
+if presage_enabled && !File.directory?('Native/Vendor/SmartSpectra.xcframework')
+  abort 'Experimental Presage SDK missing. Run SPOTTR_EXPERIMENTAL_PRESAGE=1 bash scripts/fetch-presage.sh first.'
+end
 project = Xcodeproj::Project.new('Spottr.xcodeproj')
 project.root_object.attributes['LastUpgradeCheck'] = '2700'
 project.build_configurations.each do |config|
@@ -25,6 +31,12 @@ sources(project, unit, Dir['Tests/iOS/*.swift'])
 sources(project, ui, Dir['Tests/UI/*.swift'])
 resource(project, app, 'Native/Resources/pose_landmarker_lite.task')
 resource(project, app, 'Native/Resources/MediaPipe-LICENSE.txt')
+if File.directory?('Native/Resources/DemoVoice')
+  voice_folder = project.main_group.new_file('Native/Resources/DemoVoice')
+  voice_folder.last_known_file_type = 'folder'
+  app.resources_build_phase.add_file_reference(voice_folder)
+end
+resource(project, app, '.local/SpottrDemoCamera.json') if File.file?('.local/SpottrDemoCamera.json')
 resource(project, app, 'Native/iOS/PrivacyInfo.xcprivacy')
 resource(project, app, 'Shared/Core/Resources/coach-guidance.json')
 resource(project, app, 'Native/Resources/Assets.xcassets') if File.directory?('Native/Resources/Assets.xcassets')
@@ -64,8 +76,24 @@ unit.build_configurations.each do |config|
 end
 ui.build_configurations.each { |config| config.build_settings['TEST_TARGET_NAME'] = 'Spottr' }
 
+if presage_enabled
+  [app, unit].each do |target|
+    target.build_configurations.each do |config|
+      existing = config.build_settings['SWIFT_ACTIVE_COMPILATION_CONDITIONS'] || '$(inherited)'
+      config.build_settings['SWIFT_ACTIVE_COMPILATION_CONDITIONS'] = Array(existing) + ['SPOTTR_EXPERIMENTAL_PRESAGE']
+    end
+  end
+end
 Dir['Native/Vendor/*.xcframework'].sort.each do |path|
-  app.frameworks_build_phase.add_file_reference(project.main_group.new_file(path))
+  next if File.basename(path) == 'SmartSpectra.xcframework' && !presage_enabled
+  framework = project.main_group.new_file(path)
+  app.frameworks_build_phase.add_file_reference(framework)
+  if File.basename(path) == 'SmartSpectra.xcframework'
+    embed_frameworks = app.new_copy_files_build_phase('Embed Frameworks')
+    embed_frameworks.dst_subfolder_spec = '10'
+    embedded = embed_frameworks.add_file_reference(framework)
+    embedded.settings = { 'ATTRIBUTES' => ['CodeSignOnCopy', 'RemoveHeadersOnCopy'] }
+  end
 end
 %w[Accelerate AVFoundation CoreMedia AudioToolbox CoreGraphics CoreImage CoreVideo QuartzCore].each do |name|
   app.add_system_framework(name)

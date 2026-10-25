@@ -8,10 +8,10 @@ final class SecondaryCameraPairingForm {
     var token = ""
     private(set) var errorMessage: String?
     @ObservationIgnored private let store: any SecondaryCameraSecretStore
-    init(store: (any SecondaryCameraSecretStore)? = nil) {
+    init(store: (any SecondaryCameraSecretStore)? = nil, previewData: Data? = nil) {
         self.store = store ?? SecondaryCameraKeychainStore()
         do {
-            if let saved = try SecondaryCameraSettings.connection(store: self.store) {
+            if let saved = try SecondaryCameraSettings.connection(store: self.store, previewData: previewData) {
                 url = saved.configuration.baseURL.absoluteString
                 certificateSHA256 = saved.configuration.certificateSHA256
                 token = saved.token
@@ -40,11 +40,20 @@ final class SecondaryCameraPairingForm {
 struct SecondaryCameraSettingsView: View {
     private enum Field: Hashable { case url, fingerprint, token }
     @Environment(\.dismiss) private var dismiss
-    @State private var form = SecondaryCameraPairingForm()
+    let preview: Bool
+    @State private var form: SecondaryCameraPairingForm
+    init(preview: Bool = false) {
+        self.preview = preview
+        _form = State(initialValue: SecondaryCameraPairingForm(previewData: preview ? SecondaryCameraSettings.includedPreviewData() : nil))
+    }
     @FocusState private var focusedField: Field?
     var body: some View {
         NavigationStack {
             Form {
+                if preview {
+                    Text("Preview camera pairing is included in this build. Connect your phone to the same local network as the camera.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 Section("Private camera pairing") {
                     TextField("HTTPS address", text: $form.url)
                         .focused($focusedField, equals: .url)
@@ -60,13 +69,14 @@ struct SecondaryCameraSettingsView: View {
                         .font(.caption).foregroundStyle(.secondary)
                         .contentShape(Rectangle()).onTapGesture { focusedField = nil }
                 }
+                .disabled(preview)
                 if let error = form.errorMessage {
                     Text(error).foregroundStyle(.red).accessibilityIdentifier("secondary-camera-pairing-error")
                 }
                 Section {
-                    Button("Save pairing") { focusedField = nil; if form.save() { dismiss() } }
+                    Button("Save pairing") { focusedField = nil; if !preview && form.save() { dismiss() } }
                         .accessibilityIdentifier("secondary-camera-save")
-                    Button("Forget camera", role: .destructive) { focusedField = nil; if form.forget() { dismiss() } }
+                    Button("Forget camera", role: .destructive) { focusedField = nil; if !preview && form.forget() { dismiss() } }
                         .accessibilityIdentifier("secondary-camera-forget")
                 }
             }.scrollDismissesKeyboard(.immediately).accessibilityIdentifier("secondary-camera-settings-form")

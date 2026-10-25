@@ -24,6 +24,17 @@ final class NativeProfileStore {
         loadError = nil
     }
 
+    func saveMeasurements(_ measurements: LocalBodyMeasurements?) throws {
+        guard loadError == nil else {
+            throw NSError(domain: "Spottr.LocalProfile", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "Save or reset the unreadable profile before changing measurements."])
+        }
+        if measurements == nil && profile == nil { return }
+        let current = try profile ?? LocalProfile()
+        try save(LocalProfile(name: current.name, weeklyTarget: current.weeklyTarget, goals: current.goals,
+                              baselineAbility: current.baselineAbility, bodyMeasurements: measurements))
+    }
+
     func shouldShowIntroduction(environment: [String: String] = ProcessInfo.processInfo.environment) -> Bool {
         if environment["SPOTTR_FORCE_ONBOARDING"] == "1" { return true }
         if environment["SPOTTR_DATA_NAMESPACE"].flatMap(UUID.init(uuidString:)) != nil { return false }

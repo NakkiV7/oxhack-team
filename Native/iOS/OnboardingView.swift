@@ -9,6 +9,8 @@ struct OnboardingView: View {
     @State private var weeklyTarget: Int
     @State private var goals: Set<TrainingAttribute>
     @State private var baselineAbility: LocalProfile.BaselineAbility?
+    @State private var bodyMeasurements: LocalBodyMeasurements?
+    @State private var measurementsPresented = false
     @State private var error: String?
 
     init(profileStore: NativeProfileStore, onComplete: @escaping () -> Void = {}) {
@@ -18,6 +20,7 @@ struct OnboardingView: View {
         _weeklyTarget = State(initialValue: profileStore.profile?.weeklyTarget ?? 3)
         _goals = State(initialValue: profileStore.profile?.goals ?? [.strength])
         _baselineAbility = State(initialValue: profileStore.profile?.baselineAbility)
+        _bodyMeasurements = State(initialValue: profileStore.profile?.bodyMeasurements)
     }
 
     var body: some View {
@@ -46,6 +49,9 @@ struct OnboardingView: View {
                     .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
             }.padding(.horizontal, 25).padding(.vertical, 18)
         }.background(.white).foregroundStyle(Palette.ink).preferredColorScheme(.light)
+            .sheet(isPresented: $measurementsPresented) {
+                MeasurementsSettingsView(measurements: bodyMeasurements, isIntroduction: true) { bodyMeasurements = $0 }
+            }
     }
 
     private var introduction: some View {
@@ -94,13 +100,19 @@ struct OnboardingView: View {
                 Text("Your first session can be a few controlled reps. Take breaks and tell your coach how the work feels.")
                     .font(.subheadline).foregroundStyle(.secondary)
             }.padding(18).frame(maxWidth: .infinity, alignment: .leading).background(Palette.surface, in: RoundedRectangle(cornerRadius: 17))
+            Button { measurementsPresented = true } label: {
+                Label("Height, weight & BMI (optional)", systemImage: "scalemass")
+            }.accessibilityIdentifier("onboarding-measurements")
+            Text("Skip this or add measurements later in Profile & settings. They stay on this iPhone.")
+                .font(.caption).foregroundStyle(.secondary)
         }.padding(.top, 20)
     }
 
     private func advance() {
         guard step == 2 else { step += 1; return }
         do {
-            try profileStore.save(LocalProfile(name: name, weeklyTarget: weeklyTarget, goals: goals, baselineAbility: baselineAbility))
+            try profileStore.save(LocalProfile(name: name, weeklyTarget: weeklyTarget, goals: goals,
+                                               baselineAbility: baselineAbility, bodyMeasurements: bodyMeasurements))
             onComplete()
             dismiss()
         } catch { self.error = error.localizedDescription }

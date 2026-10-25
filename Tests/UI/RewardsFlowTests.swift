@@ -1,6 +1,22 @@
 import XCTest
 
 final class RewardsFlowTests: XCTestCase {
+    @MainActor func testTodaySeparatesWeeklyTargetAndExplainsTheMissingStreakWithoutColour() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
+        app.launch()
+        let weekly = app.staticTexts["today-weekly-target"]
+        XCTAssertTrue(weekly.waitForExistence(timeout: 5))
+        XCTAssertEqual(weekly.label, "Weekly target")
+        XCTAssertEqual(weekly.value as? String, "0 of 3 training days this week")
+        let streak = app.staticTexts["today-streak-status"]
+        XCTAssertTrue(streak.exists)
+        XCTAssertEqual(streak.value as? String, "No active streak. No training logged today.")
+        XCTAssertFalse(app.staticTexts["This week · your target"].exists)
+        XCTAssertTrue(app.buttons["manage-training-rewards"].isHittable)
+    }
+
     @MainActor func testTomorrowBonusWindowRequiresExplicitSaveAndNeverChangesToday() {
         continueAfterFailure = false
         let app = XCUIApplication()
