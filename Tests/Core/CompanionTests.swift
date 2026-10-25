@@ -56,3 +56,44 @@ import Testing
     let reopened = HistoryStore(url: folder.appendingPathComponent("history.json"))
     #expect(try reopened.load() == [session.record])
 }
+
+@Test func legacyManualCompanionCountUsesOnlyExplicitlyEnteredReps() {
+    var session = TrainingSession()
+    session.start(at: 0)
+    session.restartSet(source: .manual, at: 1)
+    #expect(CompanionSnapshot(session: session).reps == 0)
+    session.setManualReps(7)
+    #expect(CompanionSnapshot(session: session).reps == 7)
+}
+
+@Test func manualLegacyWatchPromptIdentifiesSelfReportAcrossActivePausedAndRest() throws {
+    var session = TrainingSession()
+    session.start(at: 0)
+    session.restartSet(source: .manual, at: 1)
+    let active = CompanionSnapshot(session: session)
+    let decoded = try JSONDecoder().decode(CompanionSnapshot.self, from: JSONEncoder().encode(active))
+    #expect(decoded.source == .manual)
+    #expect(decoded.manualRepInstruction == "Manual · iPhone")
+    session.pause(at: 2)
+    #expect(CompanionSnapshot(session: session).manualRepInstruction == "Manual · Paused")
+    session.setManualReps(3)
+    session.endSet(at: 3)
+    #expect(CompanionSnapshot(session: session).manualRepInstruction == "Manual · Rest")
+    session.nextSet(at: 4)
+    #expect(CompanionSnapshot(session: session).source == .camera)
+    #expect(CompanionSnapshot(session: session).manualRepInstruction == nil)
+}
+
+@Test func snapshotsWithoutLegacySourceMetadataStillDecodeAndKeepExistingGuidance() throws {
+    let data = Data("""
+    {"sessionID":"00000000-0000-0000-0000-000000000001",
+     "generation":"00000000-0000-0000-0000-000000000002",
+     "exercise":"squat","phase":"active","reps":2,"target":12,
+     "setNumber":1,"cue":"lower","sentAt":1000}
+    """.utf8)
+    let decoded = try JSONDecoder().decode(CompanionSnapshot.self, from: data)
+    #expect(decoded.source == nil)
+    #expect(decoded.manualRepInstruction == nil)
+    #expect(decoded.reps == 2)
+    #expect(decoded.cue == .lower)
+}

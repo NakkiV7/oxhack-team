@@ -161,3 +161,90 @@ func immediateOrBackwardsSetTransitionsRecordZeroRest(nextStart: Double) {
     #expect(session.sets.first?.source == .video)
     #expect(session.sets.first?.activeSeconds == 1)
 }
+
+@Test func confirmedManualFallbackKeepsEndedSetsButDiscardsUnfinishedCameraWork() {
+    var session = TrainingSession()
+    session.start(at: 0)
+    session.endSet(at: 2)
+    session.nextSet(at: 13)
+    let ended = session.sets
+    let identity = session.id
+    for (time, angle) in [(13.0, 170.0), (13.2, 170), (13.6, 90), (13.8, 90), (14.2, 170), (14.4, 170)] {
+        session.consume(.init(time: time, angle: angle), generation: session.generation)
+    }
+    #expect(session.counter.reps == 1)
+    session.pause(at: 15)
+    let previousGeneration = session.generation
+
+    session.restartSet(source: .manual, at: 40)
+
+    #expect(session.id == identity)
+    #expect(session.sets == ended)
+    #expect(session.generation != previousGeneration)
+    #expect(session.counter.reps == 0)
+    #expect(session.actualReps == nil)
+    session.endSet(at: 41)
+    #expect(session.sets == ended)
+    #expect(session.phase == .active)
+    session.setManualReps(4)
+    session.endSet(at: 43)
+    #expect(session.sets.count == 2)
+    #expect(session.sets.last?.source == .manual)
+    #expect(session.sets.last?.reps == 4)
+    #expect(session.sets.last?.activeSeconds == 3)
+    #expect(session.sets.last?.restSecondsBefore == 11)
+    #expect(session.sets.last?.repDurations == nil)
+}
+
+@Test func manualSetsIgnoreEvenCurrentGenerationCameraSamplesAndRequireAnEnteredQuantity() {
+    var session = TrainingSession()
+    session.start(at: 0)
+    session.restartSet(source: .manual, at: 1)
+    for (time, angle) in [(1.0, 170.0), (1.2, 170), (1.6, 90), (1.8, 90), (2.2, 170), (2.4, 170)] {
+        session.consume(.init(time: time, angle: angle), generation: session.generation)
+    }
+    #expect(session.counter.reps == 0)
+    #expect(session.actualReps == nil)
+    session.finish(at: 3)
+    #expect(session.phase == .finished)
+    #expect(session.sets.isEmpty)
+}
+
+@Test func manualEntryRequiresTheCurrentDraftToBeValidWithoutEndingAtTarget() {
+    var session = TrainingSession()
+    session.start(at: 0)
+    session.setManualReps(3)
+    #expect(session.actualReps == 0)
+    session.restartSet(source: .manual, at: 1)
+    session.setManualReps(3)
+    for invalid in [-1, 0, 201, Int.max] {
+        session.setManualReps(3)
+        session.setManualReps(invalid)
+        #expect(session.actualReps == nil)
+        session.endSet(at: 2)
+        #expect(session.sets.isEmpty)
+        #expect(session.phase == .active)
+    }
+    session.setManualReps(200)
+    #expect(session.actualReps == 200)
+    #expect(session.phase == .active)
+    #expect(session.sets.isEmpty)
+    session.endSet(at: 4)
+    #expect(session.sets.last?.reps == 200)
+}
+
+
+@Test(arguments: [CompanionCommand.Action.endSet, .finish])
+func invalidManualDraftCannotSaveThePreviousQuantityThroughWatchCommands(action: CompanionCommand.Action) {
+    var session = TrainingSession()
+    session.start(at: 0)
+    session.endSet(at: 1)
+    let ended = session.sets
+    session.nextSet(at: 2)
+    session.restartSet(source: .manual, at: 3)
+    session.setManualReps(4)
+    session.setManualReps(201)
+    session.apply(.init(sessionID: session.id, generation: session.generation, action: action), at: 5)
+    #expect(session.sets == ended)
+    #expect(session.actualReps == nil)
+}

@@ -60,7 +60,7 @@ final class TrainingStore {
     private var trackingExercise: Exercise? { configured?.trackingExercise ?? (configured == nil ? session.exercise : nil) }
     private var acceptsTracking: Bool {
         if let run = configured { return run.source == .camera && run.hasStarted && run.phase == .active && run.trackingExercise != nil }
-        return session.phase == .active
+        return session.phase == .active && source != .manual
     }
 
     var coachingEvent: CoachingEvent? {
@@ -127,7 +127,7 @@ final class TrainingStore {
         guard let exercise = trackingExercise,
               let decision = coachingPolicy.evaluate(.init(
             sessionID: context.sessionID, generation: context.generation, phase: context.phase,
-            now: time, exercise: exercise, repCount: configured?.actualReps ?? session.counter.reps,
+            now: time, exercise: exercise, repCount: configured?.actualReps ?? session.actualReps ?? 0,
             lastRepDuration: configured == nil ? session.counter.lastRepDuration : configured?.counter?.lastRepDuration, cue: cue,
             heartRate: recentHeartRate(at: wallTime), wallTime: wallTime,
             restElapsed: restElapsed,
@@ -173,10 +173,8 @@ final class TrainingStore {
                 self.visionState = state
                 if case .finished = state { self.pause() }
                 if case .failed = state { self.pause() }
-                if self.configured != nil {
-                    if case .denied = state { self.pause() }
-                    if case .unavailable = state { self.pause() }
-                }
+                if case .denied = state { self.pause() }
+                if case .unavailable = state { self.pause() }
             }
         }
         self.secondaryVision.onFrame = { [weak self] frame, image, generation in
@@ -275,6 +273,18 @@ final class TrainingStore {
         vision.stop(); secondaryVision.stop(); frame = nil; image = nil; cancelCoaching()
         coachingTick(); publish()
     }
+    func switchToManualReps() {
+        guard configured == nil, session.phase == .active || session.phase == .paused else { return }
+        session.restartSet(source: .manual, at: now)
+        vision.stop(); secondaryVision.stop(); clearInput()
+        source = .manual
+        publish()
+    }
+    func setManualReps(_ reps: Int?) {
+        guard configured == nil else { return }
+        session.setManualReps(reps)
+        publish()
+    }
     func camera() {
         guard configured == nil else { return }
         defer { publish() }
@@ -347,9 +357,9 @@ final class TrainingStore {
             vision.stop(); secondaryVision.stop(); frame = nil; image = nil; preferredSide = nil
             cancelCoaching(); publish(); return
         }
-        guard session.phase == .active || session.phase == .paused else { return }
+        guard session.phase == .active || session.phase == .paused, let reps = session.actualReps else { return }
         let time = now
-        session.endSet(at: time, reason: session.counter.reps >= session.exercise.target ? .target : .voluntary)
+        session.endSet(at: time, reason: reps >= session.exercise.target ? .target : .voluntary)
         vision.stop(); secondaryVision.stop(); frame = nil; image = nil; restStartedAt = time
         restGeneration = session.generation
         cancelCoaching()

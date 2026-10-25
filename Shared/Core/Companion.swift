@@ -60,11 +60,21 @@ public struct CompanionSnapshot: Codable, Sendable {
     public let cue: Cue
     public let sentAt: Date
     public let configured: ConfiguredCompanionSnapshot?
+    public let source: InputSource?
+    public var manualRepInstruction: String? {
+        guard configured == nil, source == .manual else { return nil }
+        switch phase {
+        case .active: return "Manual · iPhone"
+        case .paused: return "Manual · Paused"
+        case .rest: return "Manual · Rest"
+        default: return nil
+        }
+    }
     public init(session: TrainingSession, sentAt: Date = Date()) {
         sessionID = session.id; generation = session.generation; exercise = session.exercise
-        phase = session.phase; reps = session.counter.reps; target = session.exercise.target
+        phase = session.phase; reps = session.actualReps ?? 0; target = session.exercise.target
         setNumber = session.setNumber; cue = session.cue; self.sentAt = sentAt
-        configured = nil
+        configured = nil; source = session.source
     }
     public init(session: ConfigurableSession, at time: Double, sentAt: Date = Date()) {
         let ended = session.completed.last.flatMap {
@@ -72,6 +82,7 @@ public struct CompanionSnapshot: Codable, Sendable {
         }
         let activeSeconds = session.phase == .rest || session.phase == .finished
             ? (ended?.activeSeconds ?? ended?.seconds ?? 0) : session.elapsed(at: time)
+        source = nil
         sessionID = session.id; generation = session.generation; exercise = nil
         phase = session.phase; reps = session.actualReps ?? 0; target = session.current.target
         setNumber = session.current.number; cue = session.cue

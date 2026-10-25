@@ -48,7 +48,7 @@ struct WatchTrainingView: View {
                                 Button(snapshot.phase == .paused ? "Resume" : "Pause") { store.command(snapshot.phase == .paused ? .resume : .pause) }
                                     .buttonStyle(.borderedProminent).foregroundStyle(.white)
                                 Button("End set") { store.command(.endSet) }.buttonStyle(.bordered)
-                                    .disabled(snapshot.configured?.canEndSet == false)
+                                    .disabled(snapshot.configured?.canEndSet == false || (snapshot.configured == nil && snapshot.source == .manual && snapshot.reps == 0))
                             }
                         }.font(.caption2).disabled(!store.reachable).padding(.horizontal, 6).padding(.vertical, 4).background(.white)
                     }
@@ -87,12 +87,15 @@ struct WatchTrainingView: View {
         }
     }
     private func quantity(_ snapshot: CompanionSnapshot) -> String {
-        guard let configured = snapshot.configured else { return "\(snapshot.reps)" }
+        guard let configured = snapshot.configured else {
+            return snapshot.source == .manual && snapshot.reps == 0 ? "—" : "\(snapshot.reps)"
+        }
         if configured.unit == .seconds { return "\(Int(configured.activeSeconds))" }
         if configured.source == .camera { return "\(snapshot.reps)" }
         return configured.enteredReps.map(String.init) ?? "—"
     }
     private func instruction(_ snapshot: CompanionSnapshot) -> String {
+        if let manual = snapshot.manualRepInstruction { return manual }
         guard let configured = snapshot.configured else {
             if snapshot.phase == .rest { return "Take a breather." }
             return shortCue(snapshot.cue)

@@ -145,4 +145,103 @@ final class SecondaryCameraTrainingStoreTests: XCTestCase {
         try await waitUntil { store.image != nil }
         store.finish()
     }
+
+    func testConfirmedManualFallbackAfterPiFailurePreservesHistoryAndRejectsOldAndManualSourceCallbacks() async throws {
+        var reject = false
+        let client = try client(rejectFrames: { reject })
+        let worker = SecondaryCameraVisionWorker(infer: { _, time in
+            (PoseFrame(time: time, width: 640, height: 480, points: []), UIImage())
+        })
+        defer { worker.stop() }
+        let store = TrainingStore(historyURL: historyURL(), secondaryVision: worker, secondaryCameraClient: { client })
+        store.start(); store.endSet(); store.next(); store.secondaryCamera()
+        try await waitUntil { store.image != nil }
+        let identity = store.session.id
+        let ended = store.session.sets
+        let oldGeneration = store.session.generation
+        let lateFrame = worker.onFrame
+        let lateState = worker.onState
+        for (time, angle) in [(0.0, 170.0), (0.2, 170), (0.6, 90), (0.8, 90), (1.2, 170), (1.4, 170)] {
+            store.session.consume(.init(time: time, angle: angle), generation: oldGeneration)
+        }
+        XCTAssertEqual(store.session.counter.reps, 1)
+        reject = true
+        try await waitUntil { store.session.phase == .paused }
+        let pausedGeneration = store.session.generation
+
+        store.switchToManualReps()
+
+        XCTAssertEqual(store.session.id, identity)
+        XCTAssertEqual(store.session.sets, ended)
+        XCTAssertNotEqual(store.session.generation, pausedGeneration)
+        XCTAssertEqual(store.source, .manual)
+        XCTAssertFalse(store.hasInput)
+        XCTAssertFalse(store.usingSecondaryCamera)
+        XCTAssertNil(store.session.actualReps)
+        XCTAssertEqual(client.status, .stopped)
+        XCTAssertEqual(worker.state, .idle)
+        lateFrame?(PoseFrame(time: 2, width: 1, height: 1, points: []), UIImage(), oldGeneration)
+        lateState?(.failed("Late camera failure"), oldGeneration)
+        store.vision.onFrame?(PoseFrame(time: 3, width: 1, height: 1, points: []), UIImage(), store.session.generation)
+        store.vision.onState?(.failed("Wrong source failure"), store.session.generation)
+        await Task.yield()
+        XCTAssertNil(store.image)
+        XCTAssertNil(store.frame)
+        XCTAssertEqual(store.session.phase, .active)
+        store.endSet()
+        XCTAssertEqual(store.session.sets, ended)
+        store.setManualReps(4)
+        store.endSet()
+        store.finish()
+        XCTAssertEqual(store.history.first?.id, identity)
+        XCTAssertEqual(store.history.first?.sets.map(\.source), [.camera, .manual])
+        XCTAssertEqual(store.history.first?.sets.last?.reps, 4)
+        XCTAssertNil(store.history.first?.sets.last?.repDurations)
+    }
+
+    func testUnavailablePhonePausesLegacyAndWaitingForConfirmationPreservesObservedCount() async throws {
+        let vision = VisionWorker(cameraAvailable: { false }, requestAccess: { _ in XCTFail("Unavailable camera must not request access") })
+        let store = TrainingStore(historyURL: historyURL(), vision: vision)
+        store.start(); store.camera()
+        try await waitUntil { store.session.phase == .paused }
+        let identity = store.session.id
+        store.resume()
+        for (time, angle) in [(0.0, 170.0), (0.2, 170), (0.6, 90), (0.8, 90), (1.2, 170), (1.4, 170)] {
+            store.session.consume(.init(time: time, angle: angle), generation: store.session.generation)
+        }
+        store.pause()
+        let pausedGeneration = store.session.generation
+        await Task.yield()
+        XCTAssertEqual(store.session.id, identity)
+        XCTAssertEqual(store.session.phase, .paused)
+        XCTAssertEqual(store.session.counter.reps, 1)
+        XCTAssertEqual(store.session.generation, pausedGeneration)
+        XCTAssertTrue(store.session.sets.isEmpty)
+        store.switchToManualReps()
+        XCTAssertNil(store.session.actualReps)
+        XCTAssertEqual(store.session.counter.reps, 0)
+        store.setManualReps(2)
+        store.endSet()
+        XCTAssertEqual(store.session.sets.last?.source, .manual)
+        XCTAssertEqual(store.session.sets.last?.reps, 2)
+    }
+
+
+    func testClearingManualQuantityThenFinishingFromWatchKeepsOnlyPriorEndedSets() async throws {
+        let store = TrainingStore(historyURL: historyURL())
+        store.start(); store.endSet(); store.next(); store.switchToManualReps()
+        let identity = store.session.id
+        let ended = store.session.sets
+        store.setManualReps(4)
+        store.setManualReps(nil)
+        store.endSet()
+        XCTAssertEqual(store.session.phase, .active)
+        XCTAssertEqual(store.session.sets, ended)
+        store.companion.onCommand?(.init(sessionID: identity, generation: store.session.generation, action: .finish))
+        try await waitUntil { store.session.phase == .finished }
+        XCTAssertEqual(store.session.sets, ended)
+        XCTAssertEqual(store.history.first?.id, identity)
+        XCTAssertEqual(store.history.first?.sets, ended)
+    }
+
 }

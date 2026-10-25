@@ -38,6 +38,25 @@ final class VoiceFeedbackTests: XCTestCase {
         }
     }
 
+    func testManualFallbackStopsSpeechAndCannotGenerateOrReplayCameraCoaching() {
+        let playback = FakeVoicePlayback()
+        let store = TrainingStore(voicePlayback: playback)
+        store.session.start(at: 0)
+        store.setVoiceFeedback(true)
+        store.session.cue = .alignment
+        store.coachingTick(at: 10)
+        XCTAssertEqual(playback.spoken.count, 1)
+
+        store.switchToManualReps()
+
+        XCTAssertEqual(playback.stops, 1)
+        XCTAssertNil(store.coachingEvent)
+        store.session.cue = .tracking
+        store.coachingTick(at: 11)
+        XCTAssertNil(store.coachingEvent)
+        XCTAssertEqual(playback.spoken.count, 1)
+    }
+
     func testStartingAnotherWorkoutResetsVoiceAndVideoDoesNotSpeakPersonalCues() {
         let playback = FakeVoicePlayback()
         let store = TrainingStore(voicePlayback: playback)
