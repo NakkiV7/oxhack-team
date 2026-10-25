@@ -88,6 +88,6 @@ if dev:
     lines.append("\\newcommand{\\" + PREFIX + "ReliabilityRows}{" + "\n".join(rel) + "}")
 prov = [f"{k.replace('_', '\\_')} & {v['split']} & {v['person'].replace('_', '\\_')} & {v['provenance']} & {v['reps']} \\\\" for k, v in card["provenance"].items()]
 lines.append("\\newcommand{\\" + PREFIX + "ProvenanceRows}{" + "\n".join(prov) + "}")
-lines.append("\\newcommand{\\" + PREFIX + "LabelDefinition}{" + card["labelDefinition"].replace("_", "\\_") + "}")
+lines.append("\\newcommand{\\" + PREFIX + "LabelDefinition}{" + tex(card["labelDefinition"].replace("_", "\\_")) + "}")
 (HERE / f"results-{KEY}.tex").write_text("\n".join(lines) + "\n")
 print(f"wrote results-{KEY}.tex with {len(macros)} macros; status {R['status']}; test {'present' if test else 'absent'}")
