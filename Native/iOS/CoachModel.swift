@@ -49,11 +49,18 @@ final class CoachModel {
         } catch { finish(error, token: token) }
     }
 
-    func propose(history: [SessionRecord], support: Set<String>) async {
-        guard !isLoading else { return }
+    func propose(message: String = "", history: [SessionRecord], support: Set<String>) async {
+        guard !isLoading, !Task.isCancelled else { return }
+        let text = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard text.count <= 4000 else {
+            error = "Keep your workout instructions to 4,000 characters, then tap Propose again."
+            return
+        }
         proposal = nil; proposalContext = nil
         let token = begin()
-        let input = CoachRequest(generationID: token.uuidString, facts: CoachGrounding.facts(history: history, profile: profile), availableSupport: support.sorted())
+        let input = CoachRequest(generationID: token.uuidString, message: text.isEmpty ? nil : text,
+                                 history: Array(turns.suffix(20)), facts: CoachGrounding.facts(history: history, profile: profile),
+                                 availableSupport: support.sorted())
         do {
             let response = try await configuration().proposal(input)
             guard generation == token, !Task.isCancelled else { return }
