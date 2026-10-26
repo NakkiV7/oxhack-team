@@ -1,0 +1,18 @@
+[{
+  "id": "D1D18816-A623-4B45-9BA7-77DDC30684E4",
+  "date": 814604400.0,
+  "sets": [{"id":"06D15BE9-13DC-4AF7-B9E4-AD16434797ED","exercise":"squat","number":1,"reps":3,"target":12,"activeSeconds":30,"source":"manual","reserve":1,"reason":"voluntary"}],
+  "loggedSets": [],
+  "skippedSets": [],
+  "telemetry": [
+    {"sessionID":"D1D18816-A623-4B45-9BA7-77DDC30684E4","sentAt":814604400.0,"heartRate":{"value":118,"date":814604400.0},"accelerationG":{"value":0.05,"date":814604400.0},"rotationRadiansPerSecond":{"value":0.15,"date":814604400.0},"activeEnergy":{"recordingID":"A2E15D82-9C92-4DAC-8C6E-15508917E927","kilocalories":0,"asOf":814604400.0}},
+    {"sessionID":"D1D18816-A623-4B45-9BA7-77DDC30684E4","sentAt":814604401.0,"heartRate":{"value":118,"date":814604400.0},"accelerationG":{"value":0.05,"date":814604400.0},"rotationRadiansPerSecond":{"value":0.15,"date":814604400.0},"activeEnergy":{"recordingID":"A2E15D82-9C92-4DAC-8C6E-15508917E927","kilocalories":0,"asOf":814604400.0}},
+    {"sessionID":"D1D18816-A623-4B45-9BA7-77DDC30684E4","sentAt":814604405.0,"heartRate":{"value":122,"date":814604405.0},"accelerationG":{"value":0.5,"date":814604405.0},"rotationRadiansPerSecond":{"value":1.25,"date":814604405.0},"activeEnergy":{"recordingID":"A2E15D82-9C92-4DAC-8C6E-15508917E927","kilocalories":1.25,"asOf":814604405.0}},
+    {"sessionID":"D1D18816-A623-4B45-9BA7-77DDC30684E4","sentAt":814604406.0,"heartRate":{"value":121,"date":814604405.0},"accelerationG":{"value":0.5,"date":814604405.0},"rotationRadiansPerSecond":{"value":1.25,"date":814604405.0},"activeEnergy":{"recordingID":"A2E15D82-9C92-4DAC-8C6E-15508917E927","kilocalories":1.25,"asOf":814604405.0}},
+    {"sessionID":"D1D18816-A623-4B45-9BA7-77DDC30684E4","sentAt":814604435.0,"heartRate":{"value":120,"date":814604435.0},"accelerationG":{"value":0.1,"date":814604435.0},"rotationRadiansPerSecond":{"value":0.2,"date":814604435.0},"activeEnergy":{"recordingID":"A2E15D82-9C92-4DAC-8C6E-15508917E927","kilocalories":2.5,"asOf":814604435.0}},
+    {"sessionID":"D1D18816-A623-4B45-9BA7-77DDC30684E4","sentAt":814604445.0,"activeEnergy":{"recordingID":"E077A3D0-FE47-4994-8D36-CC11F61CEED7","kilocalories":0.4,"asOf":814604445.0}},
+    {"sessionID":"D1D18816-A623-4B45-9BA7-77DDC30684E4","sentAt":814604446.0,"activeEnergy":{"recordingID":"E077A3D0-FE47-4994-8D36-CC11F61CEED7","kilocalories":0.4,"asOf":814604445.0}},
+    {"sessionID":"D1D18816-A623-4B45-9BA7-77DDC30684E4","sentAt":814604401.0,"heartRate":{"value":99,"date":814604397.0}},
+    {"sessionID":"D83E30A7-A08D-4633-8B8D-03659698799B","sentAt":814604448.0,"heartRate":{"value":299,"date":814604448.0}}
+  ]
+}]

@@ -1,0 +1,11 @@
+[{
+  "id": "D1D18816-A623-4B45-9BA7-77DDC30684E4",
+  "date": 814604400.0,
+  "sets": [{"id":"06D15BE9-13DC-4AF7-B9E4-AD16434797ED","exercise":"squat","number":1,"reps":3,"target":12,"activeSeconds":30,"source":"manual","reserve":1,"reason":"voluntary"}],
+  "loggedSets": [],
+  "skippedSets": [],
+  "telemetry": [
+    {"sessionID":"D1D18816-A623-4B45-9BA7-77DDC30684E4","sentAt":814604430.0,"heartRate":{"value":130,"date":814604400.0},"rotationRadiansPerSecond":{"value":4,"date":814604400.0}},
+    {"sessionID":"D1D18816-A623-4B45-9BA7-77DDC30684E4","sentAt":814604431.0,"accelerationG":{"value":0.3,"date":814604431.0}}
+  ]
+}]

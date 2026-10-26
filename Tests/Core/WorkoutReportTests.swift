@@ -320,3 +320,26 @@ func reportRejectsInvalidOrIncompleteRecordedTempo(durations: [Double]) {
     #expect(report.activeEnergy.map(\.kilocalories) == [4.5, 1])
     #expect(WorkoutReport(record: .init(id: id, date: start, sets: [])).energyTimeline.isEmpty)
 }
+
+@Test func nativeWatchReportFixturesKeepCorrectionsSeparateTotalsAndMissingSignalsExplicit() throws {
+    let fixtures = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        .appendingPathComponent("UI/Fixtures")
+    func report(_ name: String) throws -> WorkoutReport {
+        let records = try JSONDecoder().decode([SessionRecord].self,
+            from: Data(contentsOf: fixtures.appendingPathComponent(name + ".json")))
+        #expect(records.count == 1)
+        return WorkoutReport(record: try #require(records.first))
+    }
+    let populated = try report("watch-populated")
+    #expect(populated.heartRate.samples.map(\.value) == [118, 121, 120])
+    #expect(populated.heartRate.gapCount == 1)
+    #expect(populated.acceleration.samples.map(\.value) == [0.05, 0.5, 0.1])
+    #expect(populated.rotation.samples.map(\.value) == [0.15, 1.25, 0.2])
+    #expect(populated.activeEnergy.map(\.kilocalories) == [2.5, 0.4])
+    #expect(populated.energyTimeline.map(\.kilocalories) == [0, 1.25, 2.5, 0.4])
+    let partial = try report("watch-partial")
+    #expect(partial.heartRate.samples.isEmpty)
+    #expect(partial.acceleration.samples.map(\.value) == [0.3])
+    #expect(partial.rotation.samples.isEmpty)
+    #expect(partial.activeEnergy.isEmpty)
+}
