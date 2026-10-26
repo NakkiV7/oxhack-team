@@ -1,5 +1,7 @@
 # TestFlight build 5
 
+The reported physical onboarding crash remains unresolved. See the [crash investigation and evidence gates](build5-onboarding-crash-2026-10-25.md); successful delivery and simulator checks do not establish a physical fix.
+
 Frozen source **`f3eae89ced8547e283bd93abe6c560c9e1ce8e2c`**, iPhone and embedded Watch **0.1 (5)**. This release includes weekly Coach planning, local profile/skills polish, explicit skip/one-rep check-ins, report polish, Coach keyboard/loading presentation and the compact Watch pager.
 
 [PR #114](https://github.com/NakkiV7/oxhack-team/pull/114) closed simulator navigation #110 after repeated compact page/large-text/recording-status/skipped-Cancel/finished checks; [physical Watch #7](https://github.com/NakkiV7/oxhack-team/issues/7) remains open. [PR #115](https://github.com/NakkiV7/oxhack-team/pull/115) records one synthetic chat’s visible loading spinner/text/Cancel with zero external providers. Explicit UI cancellation, late-output suppression and loading with the weekly panel fully offscreen were not exercised by that run. [Watch receipt](watch-compact-navigation-2026-10-25.md), [Coach receipt](coach-loading-ui-2026-10-25.md).
