@@ -4,11 +4,15 @@ Tiger's implemented adapter is intended to store operational workout snapshots a
 
 ## Current status and dry run
 
+**Account setup follow-up, 25 October:** the account lane confirmed creation of the approved schema/table in standard database `SNOWFLAKE_LEARNING_DB`, schema `SPOTTR_PUBLIC`, and role `SPOTTR_PUBLIC_FORECAST_IMPORTER` assigned to `OMAR`. A separate grant check verified warehouse/database/schema USAGE and forecast-table SELECT/INSERT. The approved one-day token is being handled privately in that lane. Remaining funded credits have not been verified, so this lane has sent no SQL API import. The user accepts tested code and staged preview while that gate is unresolved. See the [local demo and activation handoff](data-integration-demo-handoff.md) for exact remaining steps; the earlier configuration-only receipt below is a historical checkpoint.
+
 On **25 October 2026**, a local configuration-only check of the primary environment found exactly **`SNOWFLAKE_TOKEN`, `SNOWFLAKE_DATABASE`, `SNOWFLAKE_SCHEMA` missing**, with no invalid configured fields. Account and warehouse settings are present; their availability/privileges have not been revalidated by SQL. No Snowflake request was sent. The local dry run validated **1,622** forecast rows and **18** expected metric rows, with run ID `5b0bf1d168c094f5e45aa799e77a9723431e04d79b3c3b8bffe8d7e374865024` and payload SHA-256 `d52c503e2face2f95d84e1784a894c71cb20bc4070e0400864e13bccbdc6e12d`. Private receipts are in `server/.local/data-integrations-20261025/` in the data-integrations worktree.
 
 From `server/`, `npm run snowflake:configuration` loads the local `.env` and prints **only** readiness plus missing/invalid environment names. It reads no artifacts, opens no network connection, runs no SQL and consumes no warehouse credits. Exit 0 means syntactically complete configuration; exit 1 lists the configuration gate. Neither proves authentication, privileges, table existence or sufficient credits. The normal `snowflake:benchmark` dry run still does not load or inspect credentials.
 
-Implementation and fake-network tests are complete. No Snowflake query, table creation, import or warehouse execution has been performed by this task. The existing fixed connection-check command remains available; configured credentials alone do not establish a successful analytics import.
+The importer and configuration check reject `USER$` personal-database names before network access. Snowflake [personal databases cannot store table data](https://docs.snowflake.com/en/user-guide/personal-databases); an existing writable **standard database** is required. The 25 October account inspection initially selected a personal namespace; that plan was stopped before execution and corrected to the standard namespace above.
+
+Implementation and fake-network tests are complete. Account-console setup is separate from this lane's importer, which has made no live requests. The existing fixed connection-check command remains available; configured credentials alone do not establish a successful analytics import.
 
 From `server/`:
 

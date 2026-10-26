@@ -3,6 +3,8 @@ import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 import { createTigerStore } from '../src/tiger.mjs';
+import { createGateway } from '../src/gateway.mjs';
+import { once } from 'node:events';
 
 const installationID = 'f17e0000-0000-4000-8000-000000000101';
 const workoutID = 'f17e0000-0000-4000-8000-000000000102';
@@ -79,4 +81,34 @@ test('rollups validate finite bounds before database access and enforce workout 
   await db.store.ingest({ installationID, record });
   const foreign = createTigerStore({ installationID: workoutID, pool: db.pool });
   await assert.rejects(foreign.rollups(query), error => error.status === 404);
+});
+
+test('local HTTP workout ingestion, replay, conflicts and scoped reads use real PostgreSQL rows for rollups', async t => {
+  const { pool, store } = await database(t);
+  const server = createGateway({ pool, env: { SPOTTR_GATEWAY_TOKEN: 'local-test-token', SPOTTR_INSTALLATION_ID: installationID, TIGER_DATABASE_URL: 'local-test-injected-pool' },
+    fetchImpl: async () => { throw Error('Local data checks must not call providers'); } });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const headers = { authorization: 'Bearer local-test-token', 'content-type': 'application/json' };
+  const send = candidate => fetch(`${origin}/v1/workouts`, { method: 'POST', headers, body: JSON.stringify(candidate), signal: AbortSignal.timeout(5000) });
+  assert.equal((await fetch(`${origin}/v1/workouts/${workoutID}`)).status, 401);
+  const first = await send({ installationID, record });
+  assert.equal(first.status, 201);
+  const receipt = await first.json();
+  assert.equal(receipt.replayed, false);
+  const replay = await send({ installationID, record });
+  assert.equal(replay.status, 200);
+  assert.deepEqual(await replay.json(), { ...receipt, replayed: true });
+  assert.equal((await send({ installationID, record: { ...record, date: date('01') } })).status, 409);
+  assert.equal((await send({ installationID: workoutID, record })).status, 403);
+  const read = await fetch(`${origin}/v1/workouts/${workoutID}`, { headers });
+  assert.equal(read.status, 200);
+  assert.deepEqual((await read.json()).record, record);
+  const raw = await fetch(`${origin}/v1/workouts/${workoutID}/telemetry?from=${date('00')}&to=${date('16')}`, { headers });
+  assert.equal(raw.status, 200);
+  assert.equal((await raw.json()).samples.length, 7);
+  const rollups = await store.rollups({ workoutID, from: date('00'), to: date('16'), bucketSeconds: 60 });
+  assert.deepEqual(compact(rollups).find(row => row[1] === 'heartRate'), [date('00.000'), 'heartRate', 4, 4, 1, 7, date('00.500'), date('15.000'), 'bpm', 'apple_watch']);
 });
