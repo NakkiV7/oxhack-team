@@ -276,6 +276,7 @@
   </div>
 </dialog>
 <script type="module">
+import { createSpeechQueue } from "/speech-queue.mjs";
 import { PoseLandmarker, FilesetResolver } from '/vendor/vision_bundle.mjs';
 import { VARIATIONS, JOINTS, METRICS, RepCounter, GREEN, AMBER, RED } from '/squat.mjs';
 import { Forecaster, TARGETS, DEFAULT_TARGET, MIN_REPS, cueText, bounds } from '/hrt.mjs';
@@ -312,7 +313,7 @@ showTheme();
 
 // Spoken coach: ElevenLabs through the local server (/say, cached on disk). One line at a time, never cut off;
 // a more urgent cue waits its turn, repeats are rate-limited. The chosen voice also sets the Gemini coach's persona.
-const MOTIVATION = [{ text: 'Nobody is coming to do this for you. Keep moving.', tone: 'push' }, { text: "That's it. Earn every rep.", tone: 'push' }, { text: 'Pain is just information. Keep going.', tone: 'push' }, { text: 'Stay with it. The last reps are the ones that count.', tone: 'push' }, { text: 'Good. Strong. Again.', tone: 'calm' }, { text: 'You are not tired, you are warming up. Push.', tone: 'push' }, { text: "Finish it. Don't leave reps on the table.", tone: 'push' }, { text: 'Clean rep. Make the next one better.', tone: 'calm' }];  // tone: calm = praise, push = shouting voice
+const MOTIVATION = [{ text: 'Nobody is coming to do this for you. Keep moving.', tone: 'push' }, { text: "That's it. Earn every rep.", tone: 'push' }, { text: 'Stay with it. The last reps are the ones that count.', tone: 'push' }, { text: 'Good. Strong. Again.', tone: 'calm' }, { text: 'You are not tired, you are warming up. Push.', tone: 'push' }, { text: "Finish it. Don't leave reps on the table.", tone: 'push' }, { text: 'Clean rep. Make the next one better.', tone: 'calm' }];  // tone: calm = praise, push = shouting voice
 const CLOSING = ['Set done. That is how you build it.', 'Done. Come back and beat it next time.', 'Good work. Rest, then go again.'];
 const CUES = ['Deeper: hips to knee height', 'Chest up', 'Knees out', 'Even weight on both feet', 'Not low enough: hips to knee height', 'Control the way down', "You're slowing down", 'Go lower', "Let's go. Stand tall."];
 const PREWARM = [...Array.from({ length: 30 }, (_, i) => ({ text: String(i + 1), tone: 'calm' })), ...CUES.map((text) => ({ text, tone: 'push' })), ...MOTIVATION, ...CLOSING.map((text) => ({ text, tone: 'calm' }))];
@@ -324,44 +325,37 @@ const personaFor = (n = '') => /arnold/i.test(n) ? 'larger-than-life bodybuildin
 async function loadVoices() {
   try { voices = await (await fetch('/voices')).json(); } catch { voices = []; }
   for (const v of voices) voiceSel.add(new Option(v.name, v.id));
-  if (!voiceId || (voiceId !== 'off' && !voices.some((v) => v.id === voiceId))) voiceId = voices[0]?.id ?? 'off';
+  if (!voiceId || (voiceId !== 'off' && !voices.some((v) => v.id === voiceId))) voiceId = 'off';
   voiceSel.value = voiceId;
   if (!voices.length) voiceSel.hidden = true;
   prewarm();
 }
-voiceSel.onchange = () => { voiceId = voiceSel.value; try { localStorage.setItem('voice', voiceId); } catch {} prewarm(); publish(null, true); };
+voiceSel.onchange = () => { speech.cancel(); voiceId = voiceSel.value; try { localStorage.setItem('voice', voiceId); } catch {} prewarm(); publish(null, true); };
 const toneId = (tone) => { const v = voices.find((x) => x.id === voiceId); return tone === 'push' && v?.loud ? v.loud : voiceId; };
 const sayUrl = (text, tone = 'calm') => `/say?text=${encodeURIComponent(text)}&voice=${encodeURIComponent(toneId(tone))}`;
-const speech = { queue: [], current: null, said: new Map() };
-window.coachVoice = speech; // debugging aid
-function say(text, prio = 2, tone = 'calm') {
-  if (voiceId === 'off' || !voices.length || !text) return;
-  text = String(text).slice(0, 240);
-  const now = performance.now();
-  if (!/^\d+$/.test(text) && now - (speech.said.get(text) ?? -1e9) < 8000) return;   // same cue too recently
-  if (speech.queue.some((q) => q.text === text)) return;
-  speech.said.set(text, now);
-  speech.queue.push({ text, prio, tone, t: now });
-  pump();
+const speech = createSpeechQueue({
+  play(text, done, tone) {
+    const voice = voices.find((item) => item.id === voiceId);
+    if (voice?.offline && !voice.clips.some((clip) => clip.text === text)) {
+      if (!('speechSynthesis' in window)) { queueMicrotask(done); return () => {}; }
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.onend = done; utterance.onerror = done;
+      speechSynthesis.speak(utterance);
+      return () => { utterance.onend = null; utterance.onerror = null; speechSynthesis.cancel(); };
+    }
+    const audio = new Audio(sayUrl(text, tone));
+    audio.onended = done; audio.onerror = done;
+    audio.play().catch(done);
+    return () => { audio.onended = null; audio.onerror = null; audio.pause(); audio.removeAttribute('src'); };
+  },
+});
+window.coachVoice = speech;
+function say(text, priority = 2, tone = 'calm') {
+  if (voiceId !== 'off' && voices.length && text) speech.say(String(text).slice(0, 240), priority, tone);
 }
-function pump() {
-  if (speech.current) return;
-  const now = performance.now();
-  speech.queue = speech.queue.filter((q) => q.prio >= 3 || now - q.t < 4000);        // stale low-priority cues expire
-  if (!speech.queue.length) return;
-  const next = speech.queue.reduce((a, b) => (b.prio > a.prio || (b.prio === a.prio && b.t < a.t) ? b : a));
-  speech.queue.splice(speech.queue.indexOf(next), 1);
-  const a = new Audio(sayUrl(next.text, next.tone));
-  speech.current = a;
-  const done = () => { speech.current = null; pump(); };
-  a.onended = done; a.onerror = done;
-  a.play().catch(done);
-}
-async function prewarm() {   // synthesise the fixed lines once per voice, in the background, so playback is instant
-  if (voiceId === 'off' || !voices.length) return;
-  const id = voiceId;
-  for (const { text, tone } of PREWARM) { if (voiceId !== id) return; try { await fetch(sayUrl(text, tone)); } catch { return; } }
-}
+function prewarm() {}
+window.addEventListener('pagehide', () => speech.cancel());
+document.addEventListener('visibilitychange', () => { if (document.hidden) speech.cancel(); });
 let motivationN = 0;
 function voiceRep(rep) {
   if (!rep.counted) { say(rep.issue, 2, 'push'); return; }
@@ -455,7 +449,7 @@ function endWorkout() {
   panel.hidden = false;
   $('closeSummary').onclick = hidePanel;
   hrtReview(tgLast);
-  $('status').textContent = 'Workout finished. Start the camera or upload a video to begin a new one.';
+  $('status').textContent = 'Session finished. Video replays are demonstrations, not live workouts.';
 }
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hidePanel(); });
 
@@ -500,15 +494,13 @@ $('file').onchange = async (e) => {
   if (!landmarker) { console.warn('[video] model not loaded yet'); $('status').textContent = 'Model is still loading, pick the video again in a moment.'; return; }
   $('status').textContent = 'Loading video…';
   video.onerror = () => { if (generation !== inputGeneration) return; console.error('[video] element error', video.error); running = false; clockPause(); $('status').textContent = 'Cannot play this video (codec not supported by the browser). Try an .mp4 (H.264).'; };
-  // Normally the clip loops. A held-out replay (pause at forecast) plays once and ends the set itself, so the review and the
-  // stored outcomes describe one pass of one recording.
   const replayOnce = $('hrtPause').checked;
-  video.onended = replayOnce ? () => { if (generation === inputGeneration) endWorkout(); } : null;
+  video.onended = () => { if (generation === inputGeneration) endWorkout(); };
   video.onloadedmetadata = () => console.log('[video] metadata', { w: video.videoWidth, h: video.videoHeight, duration: video.duration });
-  video.src = URL.createObjectURL(f); video.loop = !replayOnce; // replays until the user pauses or stops, unless a held-out replay
+  video.src = URL.createObjectURL(f); video.loop = false;
   try {
     if (!await begin(generation)) return;
-    $('status').textContent = replayOnce ? 'Held-out replay: plays once and pauses at each forecast.' : 'Analysing video (looping). Press Pause to stop.'; setPause(true); coachAfterInput();
+    $('status').textContent = replayOnce ? 'Held-out replay: plays once and pauses at each forecast.' : 'Video replay · one pass. Pause or stop at any time.'; setPause(true); coachAfterInput();
   } catch (err) {
     if (generation !== inputGeneration) return;
     console.error('[video] play failed', err);
@@ -531,12 +523,12 @@ $('pause').onclick = async () => {
   const generation = inputGeneration;
   if (!video.src) return;
   if (!paused) {
-    paused = true; running = false; video.pause(); clockPause();
+    paused = true; running = false; video.pause(); clockPause(); speech.cancel();
     setTimeout(() => publish(null, true), 0);
     $('pause').textContent = 'Resume'; $('status').textContent = 'Paused.';
   } else {
     paused = false; $('pause').textContent = 'Pause';
-    try { if (await begin(generation)) $('status').textContent = 'Analysing video (looping). Press Pause to stop.'; }
+    try { if (await begin(generation)) $('status').textContent = 'Video replay · one pass. Pause or stop at any time.'; }
     catch (err) { if (generation === inputGeneration) $('status').textContent = 'Video error: ' + err.message; }
   }
 };
@@ -546,6 +538,7 @@ $('stop').onclick = () => {
   askEnd();
 };
 function stopAll() {
+  speech.cancel();
   if (cl && cl.pause()) coachRender();
   inputGeneration++; cameraStarting = false;
   running = false; setPause(false); clockPause();

@@ -289,16 +289,18 @@ test('an older discard review cannot replace the new workout status after identi
 test('Stop cancels an opened camera while its video playback is still pending', async () => {
   const nodes = new Map();
   const $ = id => { if (!nodes.has(id)) nodes.set(id, { textContent: '' }); return nodes.get(id); };
-  let resolvePlay, stopped = 0;
+  let resolvePlay, stopped = 0, speechCancelled = 0;
   const state = vm.createContext({ $, video: { pause() {}, removeAttribute() {} }, console: { log() {} },
     navigator: { mediaDevices: { getUserMedia: async () => ({ getTracks: () => [{ stop() { stopped++; } }] }) } },
     readCloudContext: async () => context(), newWorkout() {}, begin: () => new Promise(resolve => { resolvePlay = resolve; }),
-    clockPause() {}, setTimeout() {}, askEnd() {} });
+    clockPause() {}, setTimeout() {}, askEnd() {}, speech: { cancel() { speechCancelled++; } } });
   vm.runInContext('let inputGeneration=0,cameraStarting=false,stream=null,running=false;' + section("$('startCam').onclick", 'function loop()'), state);
   const pending = $('startCam').onclick();
   await new Promise(resolve => setImmediate(resolve));
+  const cancelledBeforeStop = speechCancelled;
   $('stop').onclick();
   assert.equal(stopped, 1);
+  assert.equal(speechCancelled, cancelledBeforeStop + 1);
   assert.equal(vm.runInContext('inputGeneration', state), 2);
   resolvePlay(false); await pending;
   assert.equal($('status').textContent, 'Camera start cancelled.');

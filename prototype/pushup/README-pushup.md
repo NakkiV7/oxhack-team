@@ -1,3 +1,9 @@
+# November demo update
+
+Arnold and Goggins now use the recordings bundled with native Spottr, without paid speech synthesis. Choose a voice explicitly; it starts off. Form cues without a matching recording use browser speech. Pausing, muting, changing input or leaving the page cancels audio. Uploaded videos play once, then show a replay summary.
+
+For a provider-free local run from the repository root, use `env -u GEMINI_API_KEY -u ELEVENLABS_API_KEY -u TIGER_DATABASE_URL -u TIGER_DB_ADDRESS PORT=3001 node prototype/pushup/server.mjs`. The shared audio assets require this repository's `Native/Resources/DemoVoice` folder. The older optional-provider instructions below are historical configuration, not a requirement for camera counting or offline audio.
+
 # Push-up Coach (prototype)
 
 Counts push-up reps and checks posture from a webcam or a video, in the browser, with no training: Google's MediaPipe Pose Landmarker finds 33 body landmarks and simple angle rules do the rest. Easier variations (wall, incline, knee, standard) are included.

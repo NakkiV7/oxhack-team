@@ -1,7 +1,7 @@
 import http from 'node:http';
 import os from 'node:os';
 import { readFile, writeFile, rename, rm, mkdir } from 'node:fs/promises';
-import { randomBytes, timingSafeEqual, createHash } from 'node:crypto';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { createAsker } from './ask.mjs';
 import { parseCsv } from './profile.mjs';
 import { createProfileService } from './profile-service.mjs';
@@ -80,59 +80,10 @@ async function callGemini(body) {
   }
   return null;
 }
-// Spoken coach: ElevenLabs text-to-speech, synthesised once per line and cached on disk (voice_cache/, gitignored),
-// so the live loop never waits on the API. The key stays on the Mac (.env). No key: the page keeps text only.
-const ELEVEN_KEY = process.env.ELEVENLABS_API_KEY;
-const ELEVEN_VOICE = process.env.ELEVENLABS_VOICE_ID ?? '2EiwWnXFnvU5JabPnv8n'; // "Clyde": gravelly, intense; a stock voice, not a clone
-const VOICE_DIR = new URL('./voice_cache/', import.meta.url);
-const voiceJobs = new Map(); // text -> in-flight promise, so a burst of requests makes one API call
-let voiceList = null;        // [{ id, name }] from the account: custom voices first, then the default
-async function listVoices() {
-  if (voiceList) return voiceList;
-  if (process.env.ELEVENLABS_VOICES) {   // "Name:voiceId,Name:voiceId" for keys without the voices_read permission
-    // "Name:voiceId" or "Name:calmId+loudId": a second id is used for form cues and push lines (shouting), the first for counts and praise.
-    voiceList = process.env.ELEVENLABS_VOICES.split(',').map((e) => e.trim()).filter(Boolean).map((e) => {
-      const i = e.lastIndexOf(':'), [id, loud] = e.slice(i + 1).split('+').map((x) => x.trim());
-      return { name: e.slice(0, i).trim(), id, ...(loud ? { loud } : {}) };
-    });
-    return voiceList;
-  }
-  const r = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': ELEVEN_KEY }, signal: AbortSignal.timeout(10000) }).catch(() => null);
-  if (!r?.ok) {   // key without the voices_read permission: offer the configured default and remember that
-    console.error(`voices: cannot list (${r ? r.status : 'network'}); using ELEVENLABS_VOICE_ID`);
-    voiceList = [{ id: ELEVEN_VOICE, name: 'Coach' }];
-    return voiceList;
-  }
-  const all = (await r.json()).voices ?? [];
-  const mine = all.filter((v) => !['premade'].includes(v.category)).map((v) => ({ id: v.voice_id, name: v.name }));
-  const def = all.find((v) => v.voice_id === ELEVEN_VOICE);
-  voiceList = [...mine, ...(def && !mine.some((v) => v.id === def.voice_id) ? [{ id: def.voice_id, name: def.name }] : [])];
-  return voiceList;
-}
-async function sayFile(text, voice = ELEVEN_VOICE) {
-  const file = new URL(`${createHash('sha1').update(voice + '|' + text).digest('hex')}.mp3`, VOICE_DIR);
-  try { return await readFile(file); } catch { /* not cached yet */ }
-  const key = voice + '|' + text;
-  if (!voiceJobs.has(key)) {
-    voiceJobs.set(key, (async () => {
-      const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=mp3_22050_32`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'xi-api-key': ELEVEN_KEY },
-        body: JSON.stringify({ text, model_id: 'eleven_turbo_v2_5', voice_settings: { stability: 0.4, similarity_boost: 0.8, style: 0.6 } }),
-        signal: AbortSignal.timeout(20000),
-      });
-      if (!r.ok) throw new Error(`elevenlabs ${r.status}`);
-      const buf = Buffer.from(await r.arrayBuffer());
-      await mkdir(VOICE_DIR, { recursive: true });
-      await writeFile(file, buf);
-      return buf;
-    })().finally(() => voiceJobs.delete(key)));
-  }
-  return voiceJobs.get(key);
-}
 
 
-const ask = createAsker({ callGemini, secrets: [GEMINI_KEY, ELEVEN_KEY] });
+
+const ask = createAsker({ callGemini, secrets: [GEMINI_KEY] });
 
 const sendCoach = (msg) => {
   for (const res of [...clients, ...watchers]) res.write(`event: coach\ndata: ${JSON.stringify(msg)}\n\n`);
@@ -370,30 +321,32 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'GET' && path === '/control-code') return res.writeHead(200, { 'Content-Type': 'text/plain' }).end(controlToken);
 
+    if (req.method === 'GET' && path === '/speech-queue.mjs') {
+      const source = await readFile(new URL('../shared/speech-queue.mjs', import.meta.url));
+      return res.writeHead(200, { 'Content-Type': 'text/javascript' }).end(source);
+    }
+
     if (req.method === 'GET' && path === '/voices') {
-      if (!ELEVEN_KEY) return res.writeHead(200, { 'Content-Type': 'application/json' }).end('[]');
-      try { return res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(await listVoices())); }
-      catch (e) { console.error('voices:', e.message); return res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify([{ id: ELEVEN_VOICE, name: 'Coach' }])); }
+      const { bundledVoices } = await import('../shared/offline-voice.mjs');
+      return res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(await bundledVoices()));
+
     }
     if (req.method === 'GET' && path === '/say') {
       const q = new URL(req.url, 'http://x').searchParams;
       const text = (q.get('text') ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 240);
-      if (!ELEVEN_KEY) return res.writeHead(503).end();
-      if (!text) return res.writeHead(400).end();
-      try {
-        const wanted = q.get('voice');
-        const voices = await listVoices().catch(() => [{ id: ELEVEN_VOICE, name: 'Coach' }]);
-        const voice = voices.some((v) => v.id === wanted || v.loud === wanted) || /^[A-Za-z0-9]{10,}$/.test(wanted ?? '') ? wanted : voices[0]?.id ?? ELEVEN_VOICE;
-        const buf = await sayFile(text, voice);
-        res.writeHead(200, { 'Content-Type': 'audio/mpeg', 'Content-Length': buf.length, 'Cache-Control': 'max-age=86400' });
-        return res.end(buf);
-      } catch (e) { console.error('voice:', e.message); return res.writeHead(502).end(); }
+      if ((q.get('voice') ?? '').startsWith('offline-')) {
+        const { bundledSpeech } = await import('../shared/offline-voice.mjs');
+        const audio = await bundledSpeech(q.get('voice'), text);
+        return audio ? res.writeHead(200, { 'Content-Type': 'audio/mpeg', 'Content-Length': audio.length }).end(audio)
+          : res.writeHead(204).end();
+      }
+      return res.writeHead(404).end();
     }
 
     if (req.method === 'GET' && path === '/coach-events') {
       res.useChunkedEncodingByDefault = false;
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'close' });
-      res.write(`event: status\ndata: ${JSON.stringify({ on: !!GEMINI_KEY, voice: !!ELEVEN_KEY })}\n\n`);
+      res.write(`event: status\ndata: ${JSON.stringify({ on: !!GEMINI_KEY, voice: true })}\n\n`);
       for (const m of coachLog) res.write(`event: coach\ndata: ${JSON.stringify(m)}\n\n`);
       for (const q of qaLog) res.write(`event: qa\ndata: ${JSON.stringify(q)}\n\n`);
       watchers.add(res);
@@ -460,7 +413,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(GEMINI_KEY ? `AI coach: on (${GEMINI_MODEL})` : 'AI coach: off (set GEMINI_API_KEY in .env)');
-  console.log(ELEVEN_KEY ? `Voice: on (ElevenLabs voice ${ELEVEN_VOICE})` : 'Voice: off (set ELEVENLABS_API_KEY in .env)');
+  console.log('Voice: bundled Arnold and Goggins (offline)');
   console.log(hasTiger() ? `Tiger Data: on (${tigerHost(process.env.TIGER_DATABASE_URL || process.env.TIGER_DB_ADDRESS)})` : 'Tiger Data: off (set TIGER_DATABASE_URL in .env)');
   console.log(`Mac:    http://localhost:${PORT}`);
   console.log(`Phone control code: ${controlToken} (enter it in the pushup-ios settings to pause/stop from the phone)`);
