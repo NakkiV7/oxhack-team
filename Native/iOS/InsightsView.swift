@@ -25,7 +25,7 @@ struct InsightsView: View {
                         ForEach(Section.allCases) { Text($0.rawValue).tag($0.rawValue) }
                     }.pickerStyle(.segmented).accessibilityIdentifier("insights-section")
                     switch Section(rawValue: section) ?? .calendar {
-                    case .calendar: CalendarSection(store: store, profile: profile)
+                    case .calendar: CalendarSection(store: store, profile: profile, previewMode: previewMode)
                     case .reports: ReportsSection(store: store, profile: profile)
                     case .weekly: WeeklySection(store: store, profile: profile, previewMode: previewMode)
                     case .research: ResearchSection()
@@ -42,18 +42,24 @@ struct InsightsView: View {
 private struct CalendarSection: View {
     @Bindable var store: TrainingStore
     let profile: LocalProfile?
+    let previewMode: Bool
     @State private var month = Date.now
     @State private var selected: Date? = Calendar.current.startOfDay(for: .now)
     /// Sample days keep the calendar full for presentations; real training always shows as itself.
-    @AppStorage("insights.sampleCalendar") private var sampleDays = true
+    @AppStorage("insights.sampleCalendar") private var sampleDays = false
     private let calendar = Calendar.current
 
     var body: some View {
-        let history = sampleDays ? store.history + TrainingCalendar.sampleHistory(now: .now, excluding: store.history, calendar: calendar) : store.history
+        let showingSamples = previewMode && sampleDays
+        let history = showingSamples ? store.history + TrainingCalendar.sampleHistory(now: .now, excluding: store.history, calendar: calendar) : store.history
         let days = TrainingCalendar.days(history: history, calendar: calendar)
         let streaks = TrainingCalendar.streaks(trainingDays: Set(days.keys), today: .now, calendar: calendar)
         let monthDays = days.values.filter { calendar.isDate($0.date, equalTo: month, toGranularity: .month) }
         VStack(alignment: .leading, spacing: 18) {
+            if previewMode {
+                Label("Preview · example training history", systemImage: "play.rectangle")
+                    .font(.caption.weight(.semibold)).foregroundStyle(Palette.blue)
+            }
             VStack(spacing: 14) {
                 HStack {
                     Button { shift(-1) } label: { Image(systemName: "chevron.left").padding(10).foregroundStyle(Palette.blue) }.accessibilityLabel("Previous month")
@@ -79,12 +85,12 @@ private struct CalendarSection: View {
                 HStack(spacing: 14) {
                     legend(Palette.blue, "Camera tracked"); legend(Palette.green, "Logged"); legend(nil, "Today")
                 }.font(.caption).foregroundStyle(.secondary)
-                HStack(spacing: 6) {
+                if previewMode { HStack(spacing: 6) {
                     if sampleDays { Text("Faded days are sample training, not recorded on this phone.") }
                     Spacer(minLength: 4)
                     Button(sampleDays ? "Hide samples" : "Show samples") { sampleDays.toggle() }.fontWeight(.semibold).foregroundStyle(Palette.blue)
                         .accessibilityIdentifier("calendar-samples")
-                }.font(.caption).foregroundStyle(.secondary).buttonStyle(.plain)
+                }.font(.caption).foregroundStyle(.secondary).buttonStyle(.plain) }
             }.padding(18).background(Palette.surface, in: RoundedRectangle(cornerRadius: 25))
 
             if let selected { DayDetail(date: selected, records: history.filter { calendar.isDate($0.date, inSameDayAs: selected) }, profile: profile, history: history) }
@@ -284,7 +290,7 @@ private struct WeeklySection: View {
                         .padding(14).background(Palette.surface, in: RoundedRectangle(cornerRadius: 15))
                 }
             }
-        }
+        }.onAppear { pathStore.reload() }
     }
 
     /// Concrete quests from the training path and the weekly target. Nothing here is generated.

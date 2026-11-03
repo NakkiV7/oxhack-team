@@ -241,7 +241,7 @@ final class PreviewRepCueTests: XCTestCase {
 final class RepCounterVoiceTests: XCTestCase {
     private func store(preview: Bool, coach: RepVoicePlan.Coach?, clips: RepClipRecorder) -> (TrainingStore, RepRecordingVoice, RepCueClock) {
         let clock = RepCueClock(), cached = RepRecordingVoice()
-        let remote = RemoteVoicePlayback(local: RepRecordingVoice(), previewPlayback: preview ? cached : nil, client: {
+        let remote = RemoteVoicePlayback(local: RepRecordingVoice(), previewPlayback: preview ? cached : nil, arnoldPlayback: cached, client: {
             throw RemoteVoiceError.configuration
         }, uptime: { clock.now })
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("history.json")
@@ -273,6 +273,22 @@ final class RepCounterVoiceTests: XCTestCase {
         XCTAssertEqual(clips.made.map(\.clip), ["start", "count-01", "count-02", "count-03", "motivate-1"])
         XCTAssertTrue(clips.made.allSatisfy { $0.folder == "DemoVoice/goggins-reps" })
         XCTAssertTrue(store.history.isEmpty, "Spoken counts never create completed work")
+    }
+
+    func testTargetCueKeepsPriorityOverSubsequentRepCountsUntilItExpires() {
+        let clips = RepClipRecorder()
+        let (store, cached, clock) = store(preview: false, coach: .goggins, clips: clips)
+        defer { store.cancelCoaching() }
+        clips.finish()
+        for index in 0..<store.session.exercise.target { rep(index, store, clock); clips.finish() }
+        XCTAssertEqual(store.coachingEvent?.decision.reason, .targetReached)
+        XCTAssertTrue(cached.spoken.contains { $0.reason == .targetReached })
+        let before = clips.made.count
+        rep(store.session.exercise.target, store, clock)
+        XCTAssertEqual(clips.made.count, before, "A rep must not overlap the active target cue")
+        clock.now += 7
+        rep(store.session.exercise.target + 4, store, clock)
+        XCTAssertGreaterThan(clips.made.count, before)
     }
 
     func testStaysSilentWhenOffForVideoAndWhenVoiceFeedbackIsOff() {

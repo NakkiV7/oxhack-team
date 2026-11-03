@@ -153,7 +153,7 @@ final class TrainingStore {
         guard time.isFinite else { return }
         let reps = configured?.actualReps ?? session.actualReps ?? 0
         let milestone = consumePreviewRep(context: context, reps: reps, time: time)
-        repVoiceTick(context: context, reps: reps, clean: (configured?.cue ?? session.cue) == .controlled)
+        repVoiceTick(context: context, reps: reps, clean: (configured?.cue ?? session.cue) == .controlled, at: time)
         if context.phase == .finished {
             if coachingEvent?.expiresAt.map({ time >= $0 }) == true { cancelCoaching() }
             return
@@ -220,10 +220,15 @@ final class TrainingStore {
 
     /// Speaks the count on each camera-counted rep (a line every third clean rep), a start line when a camera set begins
     /// and a closing line when it ends. Stop, form and pacing cues still take over through `repVoice.yield()`.
-    private func repVoiceTick(context: VoiceCueContext, reps: Int, clean: Bool) {
+    private func repVoiceTick(context: VoiceCueContext, reps: Int, clean: Bool, at time: Double) {
         let previous = repVoiceState
         repVoiceState = (context.sessionID, context.generation, context.phase, reps)
         guard repVoiceEnabled, appActive else { return }
+        if let event = coachingEvent, event.decision.priority != .rest,
+           event.expiresAt.map({ time < $0 }) ?? true {
+            repVoice.yield()
+            return
+        }
         let sameSession = previous?.sessionID == context.sessionID
         let sameSet = sameSession && previous?.generation == context.generation
         if context.phase == .active, acceptsTracking {

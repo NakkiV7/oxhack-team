@@ -33,6 +33,7 @@ struct PathSkillsView: View {
         .fullScreenCover(isPresented: $surveyPresented) {
             PathSurveyView(store: store, pathStore: pathStore, profile: profile, startAtReview: surveyAtReview)
         }
+        .onAppear { pathStore.reload() }
     }
 }
 
@@ -476,17 +477,22 @@ private struct PathStepSheet: View {
                         let unlocks = path.nodes.filter { $0.prerequisites.contains(stepID) }.compactMap { $0.entry?.name }
                         if !unlocks.isEmpty { Text("Unlocks \(unlocks.joined(separator: ", ")).").font(.subheadline).foregroundStyle(.secondary) }
                     }
-                    if step.state == .locked, let blocking {
-                        PrimaryButton(title: "Go to \(ExerciseCatalog.find(blocking)?.name ?? blocking)", symbol: "arrow.turn.up.left") { select(blocking) }
-                            .accessibilityIdentifier("path-step-goto")
-                    } else {
-                        PrimaryButton(title: "Start workout", symbol: "play") { startWorkout(stepID) }.accessibilityIdentifier("path-step-start")
-                    }
                     Button { manualPresented = true } label: {
                         Label("Log manually", systemImage: "plus").font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity).padding(16)
                     }.buttonStyle(.plain).foregroundStyle(Palette.blue).accessibilityIdentifier("path-step-log")
                     Label("Stop if you feel pain or discomfort.", systemImage: "hand.raised").font(.caption).foregroundStyle(Palette.red)
                 }.padding(24)
+            }
+            .safeAreaInset(edge: .bottom) {
+                Group {
+                    if step.state == .locked, let blocking {
+                        PrimaryButton(title: "Go to \(ExerciseCatalog.find(blocking)?.name ?? blocking)", symbol: "arrow.turn.up.left") { select(blocking) }
+                            .accessibilityIdentifier("path-step-goto")
+                    } else {
+                        PrimaryButton(title: "Start workout", symbol: "play") { startWorkout(stepID) }
+                            .accessibilityIdentifier("path-step-start")
+                    }
+                }.padding(.horizontal, 24).padding(.vertical, 12).background(.regularMaterial)
             }
             .sheet(isPresented: $manualPresented) { ManualWorkoutView(store: store, entry: entry, initialCount: entry.goal, initialSets: 3) }
         }

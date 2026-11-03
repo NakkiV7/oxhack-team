@@ -15,6 +15,7 @@ final class TrainingPathStore {
     private(set) var attempts: [CoachAttemptRecord] = []
     private(set) var loadError: String?
     private let url: URL
+    private var unreadFile = false
 
     init(url: URL? = nil, preview: Bool = false) {
         let root = URL.applicationSupportDirectory.appendingPathComponent("Spottr")
@@ -22,27 +23,43 @@ final class TrainingPathStore {
         let base = namespace.map { root.appendingPathComponent($0.uuidString) } ?? root
         let folder = preview ? base.appendingPathComponent("Preview") : base   // same folder the preview workspace uses
         self.url = url ?? folder.appendingPathComponent("training-path.json")
-        guard FileManager.default.fileExists(atPath: self.url.path) else { return }
+        reload()
+    }
+
+    func reload() {
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
         do {
             let saved = try JSONDecoder().decode(Saved.self, from: Data(contentsOf: self.url))
             survey = saved.survey; history = saved.history; attempts = saved.attempts
-        } catch { loadError = "Your saved training path couldn’t be read. It hasn’t been changed. Building a new path replaces it." }
+            loadError = nil; unreadFile = false
+        } catch {
+            unreadFile = true
+            loadError = "Your saved training path couldn’t be read. It hasn’t been changed. Building a new path replaces it."
+        }
     }
 
     var active: PathHistory.Version? { history.active }
 
     /// Answers are saved as they are given, so closing the survey keeps them.
     func saveSurvey(_ answers: PathSurvey) {
-        survey = answers
-        try? write()
+        guard !unreadFile else { return }
+        do {
+            try write(Saved(survey: answers, history: history, attempts: attempts))
+            survey = answers
+            loadError = nil
+        } catch { loadError = "Your answers couldn’t be saved. Your last saved answers are still available. Try again." }
     }
 
     /// Validates again and keeps every earlier version.
     @discardableResult func accept(_ path: TrainingPath, survey answers: PathSurvey, at date: Date = .now) throws -> PathHistory.Version {
         var candidate = history
         let version = try candidate.save(path, survey: answers, at: date)
-        history = candidate; survey = answers; loadError = nil
-        try write()
+        do { try write(Saved(survey: answers, history: candidate, attempts: attempts)) }
+        catch {
+            loadError = "Your path couldn’t be saved. Your previous path is unchanged. Try again."
+            throw error
+        }
+        history = candidate; survey = answers; loadError = nil; unreadFile = false
         return version
     }
 
@@ -52,8 +69,8 @@ final class TrainingPathStore {
         try? write()
     }
 
-    private func write() throws {
+    private func write(_ saved: Saved? = nil) throws {
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try JSONEncoder().encode(Saved(survey: survey, history: history, attempts: attempts)).write(to: url, options: .atomic)
+        try JSONEncoder().encode(saved ?? Saved(survey: survey, history: history, attempts: attempts)).write(to: url, options: .atomic)
     }
 }

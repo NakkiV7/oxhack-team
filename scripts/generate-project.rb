@@ -31,6 +31,8 @@ sources(project, unit, Dir['Tests/iOS/*.swift'])
 sources(project, ui, Dir['Tests/UI/*.swift'])
 resource(project, app, 'Native/Resources/pose_landmarker_full.task')
 resource(project, app, 'Native/Resources/MediaPipe-LICENSE.txt')
+resource(project, app, 'prototype/squat/assets/squat_side.mp4')
+resource(project, app, 'prototype/pushup/assets/pushup_side.mp4')
 if File.directory?('Native/Resources/DemoVoice')
   voice_folder = project.main_group.new_file('Native/Resources/DemoVoice')
   voice_folder.last_known_file_type = 'folder'

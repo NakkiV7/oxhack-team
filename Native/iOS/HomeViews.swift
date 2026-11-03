@@ -6,6 +6,7 @@ struct SpottrRoot: View {
     let workspace: PreviewWorkspace?
     @State private var introductionPresented: Bool
     @State private var settingsPresented = false
+    @State private var selectedTab = "today"
 
     init(store: TrainingStore, profileStore: NativeProfileStore, workspace: PreviewWorkspace? = nil) {
         self.store = store
@@ -19,19 +20,20 @@ struct SpottrRoot: View {
             if introductionPresented {
                 OnboardingView(profileStore: profileStore) { introductionPresented = false }
             } else {
-                TabView {
-                    TodayView(store: store, profileStore: profileStore) { settingsPresented = true }
-                        .tabItem { Label("Today", systemImage: "house") }
+                TabView(selection: $selectedTab) {
+                    TodayView(store: store, profileStore: profileStore, showSettings: { settingsPresented = true },
+                              openPath: { selectedTab = "skills" })
+                        .tabItem { Label("Today", systemImage: "house") }.tag("today")
                     Group {
                         if workspace?.isPreview == true { DemoProgressView(store: store, profile: profileStore.profile) }
                         else { WeeklyProgressView(store: store, profile: profileStore.profile) }
-                    }.tabItem { Label("Progress", systemImage: "chart.bar.xaxis") }
-                    PathSkillsView(store: store, profile: profileStore.profile, previewMode: workspace?.isPreview == true).tabItem { Label("Skills", systemImage: "point.3.connected.trianglepath.dotted") }
-                    InsightsView(store: store, profile: profileStore.profile, previewMode: workspace?.isPreview == true).tabItem { Label("Insights", systemImage: "doc.text.magnifyingglass") }
+                    }.tabItem { Label("Progress", systemImage: "chart.bar.xaxis") }.tag("progress")
+                    PathSkillsView(store: store, profile: profileStore.profile, previewMode: workspace?.isPreview == true).tabItem { Label("Skills", systemImage: "point.3.connected.trianglepath.dotted") }.tag("skills")
+                    InsightsView(store: store, profile: profileStore.profile, previewMode: workspace?.isPreview == true).tabItem { Label("Insights", systemImage: "doc.text.magnifyingglass") }.tag("insights")
                     Group {
                         if workspace?.isPreview == true { DemoCoachView(store: store, profile: profileStore.profile) }
                         else { CoachView(store: store, profile: profileStore.profile) }
-                    }.tabItem { Label("Coach", systemImage: "bubble") }
+                    }.tabItem { Label("Coach", systemImage: "bubble") }.tag("coach")
                 }
             }
         }
@@ -51,8 +53,10 @@ struct TodayView: View {
     @Bindable var store: TrainingStore
     let profileStore: NativeProfileStore
     let showSettings: () -> Void
+    var openPath: () -> Void = {}
     @State private var libraryPresented = false
     @State private var rewardsPresented = false
+    @State private var demoPresented = false
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 25) {
@@ -68,6 +72,19 @@ struct TodayView: View {
                     Text(greeting).font(.system(size: 32, weight: .bold)).tracking(-1)
                 }
                 trainingRhythm
+                Button(action: openPath) {
+                    HStack(spacing: 16) {
+                        Image(systemName: "point.3.connected.trianglepath.dotted")
+                            .font(.title2).foregroundStyle(Palette.blue)
+                            .frame(width: 48, height: 48).background(Palette.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(store.history.isEmpty ? "Start where you are." : "Your next step.").font(.headline)
+                            Text("A personal path, from a few simple questions.").font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right").font(.caption).foregroundStyle(Palette.blue)
+                    }.padding(.vertical, 8).contentShape(Rectangle())
+                }.buttonStyle(.plain).accessibilityIdentifier("first-session-path")
                 VStack(alignment: .leading, spacing: 18) {
                     HStack {
                         Image("strength").resizable().scaledToFit().frame(width: 27, height: 27)
@@ -107,11 +124,17 @@ struct TodayView: View {
                     Label("Exercise library", systemImage: "square.grid.2x2").font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity).padding(16).background(Palette.surface, in: RoundedRectangle(cornerRadius: 14))
                 }.buttonStyle(.plain)
+                Button { demoPresented = true } label: {
+                    Label("Demo studio", systemImage: "play.rectangle")
+                        .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity).padding(16)
+                        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 14))
+                }.buttonStyle(.plain).accessibilityIdentifier("demo-studio")
                 Label("Keep your rhythm.", systemImage: "applewatch").font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity)
                 if let error = store.error { Text(error).font(.caption).foregroundStyle(Palette.red) }
             }.padding(24)
         }.background(.white).sheet(isPresented: $libraryPresented) { ExerciseLibraryView(store: store) }
             .sheet(isPresented: $rewardsPresented) { TrainingRewardsSettingsView(store: store.rewards) }
+            .sheet(isPresented: $demoPresented) { DemoStudioView(store: store) }
     }
 
     private var greeting: String {

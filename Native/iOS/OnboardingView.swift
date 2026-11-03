@@ -41,7 +41,7 @@ struct OnboardingView: View {
                 }.padding(.horizontal, 25).padding(.bottom, 20)
             }.scrollDismissesKeyboard(.interactively)
             VStack(spacing: 12) {
-                PrimaryButton(title: step == 2 ? "Let’s train" : "Continue") { advance() }
+                PrimaryButton(title: step == 2 ? "Find my first step" : "Continue") { advance() }
                     .disabled(step == 1 && goals.isEmpty)
                     .opacity(step == 1 && goals.isEmpty ? 0.4 : 1)
                     .accessibilityIdentifier("onboarding-continue")
@@ -58,10 +58,10 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 22) {
             Text("spottr").font(.title3.weight(.bold)).tracking(-0.6)
             Image("onboarding-skills").resizable().scaledToFit().frame(maxWidth: .infinity).frame(height: 260).accessibilityHidden(true)
-            Text("Train. Level up.\nRepeat.").font(.largeTitle.bold()).tracking(-1)
-            Text("Build a routine around real training. Earn XP, explore new skills and get clear cues while you move.")
+            Text("Move a little.\nBuild from there.").font(.largeTitle.bold()).tracking(-1)
+            Text("Find a comfortable starting point, practise with clear feedback and see your progress over time.")
                 .font(.body).foregroundStyle(.secondary)
-            Label("Your pace. Your next challenge.", systemImage: "figure.strengthtraining.traditional").font(.subheadline.weight(.medium))
+            Label("Your pace. One achievable step at a time.", systemImage: "figure.walk").font(.subheadline.weight(.medium))
         }
     }
 

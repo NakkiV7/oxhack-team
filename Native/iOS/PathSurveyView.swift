@@ -48,6 +48,10 @@ struct PathSurveyView: View {
             progress.padding(.horizontal, 24).padding(.top, 8)
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
+                    if let error = pathStore.loadError {
+                        Label(error, systemImage: "exclamationmark.circle")
+                            .font(.caption).foregroundStyle(Palette.red).accessibilityIdentifier("path-save-error")
+                    }
                     switch step {
                     case .goal: goalStep
                     case .start: startStep
