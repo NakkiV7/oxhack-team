@@ -21,6 +21,12 @@
 ![Tiger Data](https://img.shields.io/badge/Tiger_Data-adapter-FDB515)
 ![Status](https://img.shields.io/badge/status-hackathon_prototype-orange)
 
+## November patient-demo build
+
+The consolidated native demo includes personalised training paths, Insights, offline Arnold/Goggins rep audio, gentler guest onboarding and an in-app Demo studio with both exercise examples. Local iPhone build **0.1 (16)** was built, installed and launched on 3 November. Software verification and the remaining physical rehearsal are recorded in [the delivery note](docs/demo-consolidation-2026-11-03.md).
+
+For the proposed OneMedicalGroup pitch, see the [patient/practice storyboard](presentation/one-medical-group-storyboard.md) and [current native captures](presentation/captures/2026-11-03/README.md). The historical hackathon presentation is preserved separately.
+
 ## Inside Spottr
 
 From your first session to your next training plan. Select any screenshot to view it at full size.
