@@ -166,7 +166,35 @@ func rejectsBrokenMovementContinuity(reason: String) {
 
 @Test func phaseTimingIsClearedWhenTrackingOutageExceedsReacquisitionWindow() {
     var counter = loweredCounter(.squat)
-    _ = counter.consume(.init(time: 3.0, angle: 90, confidence: 0.1))
-    finish(&counter, at: 3.2)
+    _ = counter.consume(.init(time: 3.4, angle: 90, confidence: 0.1))
+    finish(&counter, at: 3.6)
     #expect(counter.reps == 0 && counter.lastRepPhases == nil)
+}
+
+@Test func squatKeepsObservedDepthAcrossABriefBottomOcclusion() {
+    var counter = loweredCounter(.squat)
+    _ = counter.consume(.init(time: 1.4, angle: .nan, confidence: 0))
+    _ = counter.consume(.init(time: 2.0, angle: .nan, confidence: 0))
+    finish(&counter, at: 2.85)
+    #expect(counter.reps == 1 && counter.lastRepPhases == nil)
+}
+
+@Test func squatCanConfirmDepthOnBothSidesOfAShortMissingFrameRun() {
+    var counter = RepCounter(exercise: .squat)
+    for (time, angle) in [(0.0, 170.0), (0.2, 170), (0.6, 130), (0.8, 90)] {
+        _ = counter.consume(.init(time: time, angle: angle))
+    }
+    _ = counter.consume(.init(time: 0.9, angle: .nan, confidence: 0))
+    _ = counter.consume(.init(time: 1.2, angle: 90))
+    finish(&counter, at: 1.7)
+    #expect(counter.reps == 1)
+}
+
+@Test func aLongSquatOutageAndAPushupOutageDoNotInheritExtendedSquatContinuity() {
+    for exercise in Exercise.allCases {
+        var counter = loweredCounter(exercise)
+        _ = counter.consume(.init(time: 1.4, angle: .nan, confidence: 0))
+        finish(&counter, at: exercise == .squat ? 3.4 : 2.85)
+        #expect(counter.reps == 0)
+    }
 }

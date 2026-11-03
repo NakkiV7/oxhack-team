@@ -3,6 +3,8 @@ import Foundation
 @MainActor
 final class CoachingVoiceBridge {
     private let controller: VoiceCuePlaybackController
+    var isTrackingPromptPlaying: Bool { controller.isTrackingPromptPlaying }
+    var completedTrackingPrompt: VoiceCue? { controller.completedTrackingPrompt }
 
     init(playback: VoicePlayback) {
         controller = VoiceCuePlaybackController(playback: playback)

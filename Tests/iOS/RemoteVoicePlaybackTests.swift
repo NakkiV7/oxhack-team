@@ -350,6 +350,23 @@ final class RemoteVoicePlaybackTests: XCTestCase {
         XCTAssertFalse(playback.isPreview)
     }
 
+    func testStartedArnoldVisibilityClipFinishesBeyondItsStartDeadline() async throws {
+        let cached = SilentLocalVoice()
+        let playback = RemoteVoicePlayback(local: SilentLocalVoice(), arnoldPlayback: cached, client: {
+            XCTFail("Visibility audio stays offline")
+            throw TestFailure.invalid
+        }, uptime: { 1.99 })
+        defer { playback.stop() }
+        let event = VoiceCue(id: UUID(), sessionID: UUID(), generation: UUID(), text: "Keep your whole body visible.",
+            kind: .coaching(.form), issuedAt: 0, expiresAt: 2, reason: .tracking)
+        playback.speak(event)
+        try await Task.sleep(for: .milliseconds(60))
+        XCTAssertEqual(cached.spoken, [event])
+        XCTAssertEqual(cached.stops, 0, "The deadline governs starting, not cutting off a playing visibility clip")
+        cached.onFinish?(event.id)
+        XCTAssertEqual(cached.stops, 1)
+    }
+
     private var audio: Data { Data([0xff, 0xf3, 0x40, 0xc0] + Array(repeating: 0, count: 100)) }
     private func timestamp(_ date: Date) -> String {
         let formatter = ISO8601DateFormatter(); formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]

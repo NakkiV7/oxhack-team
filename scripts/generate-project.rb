@@ -38,7 +38,6 @@ if File.directory?('Native/Resources/DemoVoice')
   voice_folder.last_known_file_type = 'folder'
   app.resources_build_phase.add_file_reference(voice_folder)
 end
-resource(project, app, '.local/SpottrDemoCamera.json') if File.file?('.local/SpottrDemoCamera.json')
 resource(project, app, '.local/SpottrPresage.json') if presage_enabled && File.file?('.local/SpottrPresage.json')
 resource(project, app, 'Native/iOS/PrivacyInfo.xcprivacy')
 resource(project, app, 'Shared/Core/Resources/coach-guidance.json')

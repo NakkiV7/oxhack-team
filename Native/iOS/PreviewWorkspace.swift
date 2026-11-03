@@ -43,7 +43,7 @@ final class PreviewWorkspace {
             try Self.prepare(folder, seed: enabled, referenceDate: now())
             let nextProfile = NativeProfileStore(url: folder.appendingPathComponent("profile.json"))
             store.setVoiceFeedback(false); store.cancelCoaching()
-            store.vision.stop(); store.secondaryVision.stop()
+            store.vision.stop()
             store.companion.onCommand = nil; store.companion.onTelemetry = nil
             store.companion.onRequest = nil; store.companion.onReachability = nil; store.companion.onSnapshot = nil
             store = TrainingStore(historyURL: folder.appendingPathComponent("history.json"), defaults: defaults, previewMode: enabled)

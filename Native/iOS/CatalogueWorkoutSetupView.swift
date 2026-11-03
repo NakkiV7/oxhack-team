@@ -40,7 +40,7 @@ struct CatalogueWorkoutSetupView: View {
                 Text("Start and end each set when you’re ready. Log the reps you complete; hold time runs only while your set is active.")
                     .font(.caption).foregroundStyle(.secondary)
                 if entry.tracking != nil {
-                    Text("You can choose iPhone camera or Pi side camera before starting a set.")
+                    Text("You can choose the iPhone camera before starting a set.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 if let error { Text(error).font(.caption).foregroundStyle(Palette.red) }

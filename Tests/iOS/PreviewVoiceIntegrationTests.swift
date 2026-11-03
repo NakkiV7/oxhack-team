@@ -7,7 +7,7 @@ final class PreviewVoiceIntegrationTests: XCTestCase {
         FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("history.json")
     }
 
-    func testPreviewStoreOwnsArnoldCacheButFeedbackStaysOffUntilAFreshFormCue() throws {
+    func testPreviewStoreOwnsArnoldCacheButFeedbackStaysOffUntilAFreshFormCue() async throws {
         let cached = PreviewRecordingVoice()
         let store = TrainingStore(historyURL: historyURL(), previewMode: true, previewPlayback: cached)
         defer { store.cancelCoaching() }
@@ -26,6 +26,9 @@ final class PreviewVoiceIntegrationTests: XCTestCase {
         store.session.cue = .lower
         store.coachingTick()
         store.session.cue = .tracking
+        store.coachingTick()
+        XCTAssertTrue(cached.spoken.isEmpty, "Brief tracking flicker must stay silent")
+        try await Task.sleep(for: .milliseconds(800))
         store.coachingTick()
         let spoken = try XCTUnwrap(cached.spoken.last)
         XCTAssertEqual(cached.spoken.count, 1)

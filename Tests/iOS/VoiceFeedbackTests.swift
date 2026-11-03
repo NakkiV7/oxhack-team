@@ -3,6 +3,48 @@ import XCTest
 
 @MainActor
 final class VoiceFeedbackTests: XCTestCase {
+    func testVisibilityPromptFinishesThenRepeatsOnlyIfBodyIsStillMissing() throws {
+        let playback = FakeVoicePlayback()
+        let store = TrainingStore(voicePlayback: playback)
+        store.repVoice.coach = nil
+        store.session.start(at: 0)
+        store.setVoiceFeedback(true)
+        store.session.cue = .tracking
+        store.coachingTick(at: 10)
+        XCTAssertTrue(playback.spoken.isEmpty, "Brief pose flicker must not immediately speak")
+        store.coachingTick(at: 10.8)
+        let first = try XCTUnwrap(playback.spoken.first)
+        store.session.cue = .lower
+        store.coachingTick(at: 11)
+        XCTAssertEqual(playback.stops, 0)
+        store.session.cue = .tracking
+        store.coachingTick(at: 11.2)
+        store.coachingTick(at: 12.2)
+        XCTAssertEqual(playback.spoken.count, 1)
+        playback.onFinish?(first.id)
+        store.coachingTick(at: 13)
+        XCTAssertEqual(playback.spoken.count, 2, "Reassess current tracking after the recording finishes")
+        store.session.cue = .lower
+        store.coachingTick(at: 13.2)
+        XCTAssertEqual(playback.stops, 0)
+        playback.onFinish?(playback.spoken[1].id)
+        store.coachingTick(at: 14)
+        XCTAssertEqual(playback.spoken.count, 2, "Recovery must prevent another visibility prompt")
+    }
+
+    func testSubsecondTrackingFlickerDoesNotSpeak() {
+        let playback = FakeVoicePlayback()
+        let store = TrainingStore(voicePlayback: playback)
+        store.repVoice.coach = nil
+        store.session.start(at: 0)
+        store.setVoiceFeedback(true)
+        for start in [10.0, 11, 12] {
+            store.session.cue = .tracking; store.coachingTick(at: start)
+            store.session.cue = .lower; store.coachingTick(at: start + 0.3)
+        }
+        XCTAssertTrue(playback.spoken.isEmpty)
+    }
+
     func testAppOwnsOfflineArnoldAndPreservesInjectedPlayback() {
         let store = TrainingStore()
         XCTAssertEqual(store.remoteVoice?.preference, .arnold)
@@ -39,6 +81,7 @@ final class VoiceFeedbackTests: XCTestCase {
         store.coachingTick(at: 11)
         store.session.cue = .tracking
         store.coachingTick(at: 12)
+        store.coachingTick(at: 12.8)
         XCTAssertEqual(playback.spoken.map(\.text), [Cue.tracking.text])
     }
 

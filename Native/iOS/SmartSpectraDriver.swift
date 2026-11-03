@@ -4,7 +4,7 @@ import Foundation
 import Observation
 import SmartSpectra
 
-/// Caller owns the front camera and preview; Pi side-view frames never enter this adapter.
+/// Caller owns the front camera and preview for a stationary check.
 @MainActor
 final class SmartSpectraDriver: PresageDriving {
     static let isAvailable = true

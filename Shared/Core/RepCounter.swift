@@ -23,11 +23,20 @@ public struct RepCounter: Sendable {
     private var lastTime: Double?
     private var lastReliableTime: Double?
     private var side: Int?
+    private var interruptedPhases = false
+    private var continuityWindow: Double { exercise == .squat ? 2 : 1.5 }
+    /// Hold the observed leg through a short squat occlusion; never combine two legs into one movement.
+    public func continuitySide(at time: Double) -> Int? {
+        guard exercise == .squat, armedAt != nil, time.isFinite, let lastReliableTime,
+              time >= (lastTime ?? lastReliableTime), time - lastReliableTime <= continuityWindow else { return nil }
+        return side
+    }
     public init(exercise: Exercise) { self.exercise = exercise }
     public mutating func resetMovement() {
         armedAt = nil; reachedBottom = false; candidateAt = nil; candidate = 0
         lastTime = nil; lastReliableTime = nil; side = nil
         descentStartedAt = nil; deepest = nil
+        interruptedPhases = false
     }
     public mutating func consume(_ sample: MovementSample) -> Cue {
         guard sample.time.isFinite else { resetMovement(); return .tracking }
@@ -37,15 +46,19 @@ public struct RepCounter: Sendable {
         if let previousTime, sample.time < previousTime { resetMovement(); return .tracking }
         guard sample.confidence.isFinite else { resetMovement(); return .tracking }
         guard sample.confidence >= 0.6 else {
-            candidate = 0; candidateAt = nil
-            if lastReliableTime.map({ sample.time - $0 > 1.5 }) ?? true { resetMovement() }
+            interruptedPhases = true
+            if exercise != .squat || candidate != -1 { candidate = 0; candidateAt = nil }
+            if lastReliableTime.map({ sample.time - $0 > continuityWindow }) ?? true { resetMovement() }
             return .tracking
         }
         guard sample.angle.isFinite, (0...180).contains(sample.angle) else {
             resetMovement(); return .tracking
         }
-        if let lastReliableTime, sample.time - lastReliableTime > 1.5 { resetMovement() }
-        else if let previousTime, sample.time - previousTime > 0.75 { candidate = 0; candidateAt = nil }
+        if let lastReliableTime, sample.time - lastReliableTime > continuityWindow { resetMovement() }
+        else if let previousTime, sample.time - previousTime > 0.75 {
+            interruptedPhases = true
+            if exercise != .squat || candidate != -1 { candidate = 0; candidateAt = nil }
+        }
         if let side, side != sample.side { resetMovement() }
         guard sample.bodyLine != .reset else { resetMovement(); return .alignment }
         defer { lastReliableTime = sample.time; side = sample.side }
@@ -63,7 +76,7 @@ public struct RepCounter: Sendable {
             resetMovement(); armedAt = sample.time; return .lower
         }
         reps += 1; lastRepDuration = sample.time - start
-        if let began = descentStartedAt, let deepest, let top = candidateAt, deepest.time > began, top > deepest.time {
+        if !interruptedPhases, let began = descentStartedAt, let deepest, let top = candidateAt, deepest.time > began, top > deepest.time {
             lastRepPhases = RepPhases(lowering: deepest.time - began, rising: top - deepest.time, minimumAngle: deepest.angle)
         } else { lastRepPhases = nil }
         resetMovement(); armedAt = sample.time

@@ -148,6 +148,11 @@ final class PreviewRepCueTests: XCTestCase {
             completeRep(1, store: store, clock: clock, tick: false)
             store.session.cue = cue
             store.coachingTick(at: clock.now)
+            if cue == .tracking {
+                XCTAssertTrue(cached.spoken.isEmpty, "Brief tracking flicker must stay silent")
+                clock.now += 0.8
+                store.coachingTick(at: clock.now)
+            }
             XCTAssertEqual(store.coachingEvent?.decision.priority, .form)
             XCTAssertEqual(cached.spoken.last?.kind, .coaching(.form))
             XCTAssertFalse(cached.spoken.contains { $0.reason == .steadyRhythm })

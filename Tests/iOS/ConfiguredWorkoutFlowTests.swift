@@ -4,6 +4,9 @@ import UIKit
 
 @MainActor
 final class ConfiguredWorkoutFlowTests: XCTestCase {
+    func testWorkoutInputChoicesUseOnlyThisIPhoneOrManualEntry() {
+        XCTAssertEqual(TrainingStore.ConfiguredInput.allCases.map(\.title), ["Manual reps", "iPhone camera"])
+    }
     func testExplicitZeroWorkSkipSavesOnlySkipMetadataAfterFinish() throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -195,12 +198,9 @@ extension ConfiguredWorkoutFlowTests {
         XCTAssertFalse(SkillProgress.evaluate(history: [run.record]).node(exerciseID: "plank")?.isComplete ?? true)
     }
 
-    func testConfiguredPhoneCameraStartsOnlyOnBeginAndRejectsOtherOrStaleFrames() async throws {
+    func testConfiguredPhoneCameraStartsOnlyOnBeginAndRejectsStaleFrames() async throws {
         let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { _ in })
-        let side = SecondaryCameraVisionWorker(infer: { _, time in
-            (PoseFrame(time: time, width: 1, height: 1, points: []), UIImage())
-        })
-        let store = TrainingStore(historyURL: cameraHistoryURL(), secondaryVision: side, vision: vision)
+        let store = TrainingStore(historyURL: cameraHistoryURL(), vision: vision)
         store.startPlan(try cameraPlan(), availableSupport: [])
         XCTAssertEqual(store.configured?.source, .manual)
         XCTAssertTrue(store.selectConfiguredInput(.phoneCamera))
@@ -209,8 +209,6 @@ extension ConfiguredWorkoutFlowTests {
         store.beginConfiguredSet()
         let generation = try XCTUnwrap(store.configured?.generation)
         XCTAssertTrue(store.hasInput)
-        side.onFrame?(PoseFrame(time: 0, width: 1, height: 1, points: []), UIImage(), generation)
-        XCTAssertNil(store.frame)
         vision.onFrame?(PoseFrame(time: 1, width: 1, height: 1, points: []), UIImage(), generation)
         for _ in 0..<10 where store.frame == nil { await Task.yield() }
         XCTAssertNotNil(store.frame)
@@ -224,23 +222,18 @@ extension ConfiguredWorkoutFlowTests {
         store.finish()
     }
 
-    func testConfiguredPiFailureRequiresExplicitManualFallbackAndUnsupportedExercisesNeverCapture() throws {
-        var starts = 0
-        let store = TrainingStore(historyURL: cameraHistoryURL(), secondaryCameraClient: {
-            starts += 1
-            throw SecondaryCameraError.staleFrame
-        })
+    func testUnsupportedExerciseCannotCaptureAndPhoneFailureAllowsExplicitManualFallback() async throws {
+        let vision = VisionWorker(cameraAvailable: { false }, requestAccess: { _ in XCTFail("Unavailable camera must not request access") })
+        let store = TrainingStore(historyURL: cameraHistoryURL(), vision: vision)
         store.startPlan(try cameraPlan(exerciseID: "wallPushup"), availableSupport: ["Wall"])
-        XCTAssertFalse(store.selectConfiguredInput(.secondaryCamera))
-        store.beginConfiguredSet()
-        XCTAssertEqual(starts, 0)
+        XCTAssertFalse(store.selectConfiguredInput(.phoneCamera))
         store.finish()
         store.startPlan(try cameraPlan(), availableSupport: [])
-        XCTAssertTrue(store.selectConfiguredInput(.secondaryCamera))
-        XCTAssertEqual(starts, 0)
+        XCTAssertTrue(store.selectConfiguredInput(.phoneCamera))
+        XCTAssertFalse(store.hasInput)
         store.beginConfiguredSet()
-        XCTAssertEqual(starts, 1)
-        XCTAssertEqual(store.configured?.phase, .paused)
+        for _ in 0..<100 where store.sessionPhase != .paused { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertEqual(store.sessionPhase, .paused)
         XCTAssertNil(store.frame)
         XCTAssertTrue(store.selectConfiguredInput(.manual))
         XCTAssertFalse(store.configured?.hasStarted ?? true)
@@ -258,7 +251,8 @@ extension ConfiguredWorkoutFlowTests {
         store.selectConfiguredInput(.phoneCamera); store.beginConfiguredSet(); store.setVoiceFeedback(true)
         let run = try XCTUnwrap(store.configured)
         vision.onFrame?(PoseFrame(time: 1, width: 1, height: 1, points: []), UIImage(), run.generation)
-        for _ in 0..<10 where voice.spoken.isEmpty { await Task.yield() }
+        for _ in 0..<100 where store.configured?.cue != .tracking { try await Task.sleep(for: .milliseconds(1)) }
+        store.coachingTick(at: store.now + 1)
         XCTAssertEqual(voice.spoken.first?.sessionID, run.id)
         XCTAssertEqual(voice.spoken.first?.generation, run.generation)
         store.pause()

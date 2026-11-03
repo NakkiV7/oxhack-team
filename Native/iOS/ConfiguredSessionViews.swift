@@ -47,7 +47,6 @@ private struct ConfiguredLiveSetView: View {
     @Bindable var store: TrainingStore
     @State private var quantity = ""
     @State private var pendingInput: TrainingStore.ConfiguredInput?
-    @State private var pairingPresented = false
     @FocusState private var enteringReps: Bool
     var body: some View {
         TimelineView(.periodic(from: .now, by: 0.5)) { context in
@@ -133,18 +132,10 @@ private struct ConfiguredLiveSetView: View {
             }
             Button("Cancel", role: .cancel) { pendingInput = nil }
         } message: { Text("This set’s unsaved reps and active time will be discarded. Ended sets stay saved. Start the new input when you’re ready.") }
-        .sheet(isPresented: $pairingPresented) { SecondaryCameraSettingsView(preview: store.previewMode) }
     }
     @ViewBuilder private func inputControl(_ run: ConfigurableSession) -> some View {
         if run.trackingExercise != nil {
             Menu {
-                if store.configuredInput == .secondaryCamera {
-                    Toggle("Show front camera", isOn: Binding(get: { store.frontCameraEnabled }, set: store.setFrontCameraEnabled))
-                        .accessibilityIdentifier("front-camera-toggle")
-                    if run.hasStarted {
-                        Button("Reconnect side camera", systemImage: "arrow.clockwise") { store.pause(); store.resume() }
-                    }
-                }
                 ForEach(TrainingStore.ConfiguredInput.allCases, id: \.self) { input in
                     Button(input.title) {
                         guard input != store.configuredInput else { return }
@@ -153,8 +144,6 @@ private struct ConfiguredLiveSetView: View {
                         else { store.selectConfiguredInput(input) }
                     }.accessibilityIdentifier("configured-input-\(input.rawValue)")
                 }
-                Divider()
-                Button("Pair side camera", systemImage: "link") { store.pause(); pairingPresented = true }
             } label: {
                 Label(store.configuredInput.title, systemImage: run.source == .camera ? "camera" : "hand.tap")
                     .font(.subheadline.weight(.medium))
@@ -162,14 +151,10 @@ private struct ConfiguredLiveSetView: View {
         }
     }
     private func preview(_ run: ConfigurableSession) -> some View {
-        Group {
-            if store.usingSecondaryCamera, let exercise = run.trackingExercise {
-                DualCameraPreview(store: store, exercise: exercise)
-            } else {
         ZStack {
             Palette.surface
             if run.source == .camera, run.hasStarted, run.phase == .active,
-               case .camera = store.visionState, !store.usingSecondaryCamera {
+               case .camera = store.visionState {
                 CameraPreview(session: store.vision.capture)
             } else if let image = store.image, run.source == .camera {
                 Image(uiImage: image).resizable().scaledToFit()
@@ -183,8 +168,6 @@ private struct ConfiguredLiveSetView: View {
             }
         }.frame(maxWidth: .infinity).frame(height: 250).clipShape(RoundedRectangle(cornerRadius: 23))
             .accessibilityLabel(run.current.entry.name)
-            }
-        }
     }
 
     private func status(_ run: ConfigurableSession) -> String {

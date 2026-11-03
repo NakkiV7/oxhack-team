@@ -1,6 +1,20 @@
 import XCTest
 
 final class PatientOnboardingFlowTests: XCTestCase {
+    @MainActor func testWorkoutUsesOnlyThePhoneCameraWithoutPairingControls() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
+        app.launch()
+        app.buttons["Start session"].tap()
+        XCTAssertTrue(app.buttons["Use camera"].waitForExistence(timeout: 5))
+        for _ in 0..<3 { app.swipeUp() }
+        XCTAssertFalse(app.buttons["secondary-camera-menu"].exists)
+        XCTAssertFalse(app.buttons["Pair side camera"].exists)
+        XCTAssertFalse(app.buttons["front-camera-toggle"].exists)
+        XCTAssertTrue(app.buttons["Use manual reps"].exists)
+    }
+
     @MainActor func testPitchExamplesAreAvailableInsideTheAppWithoutConnectingServices() {
         continueAfterFailure = false
         let app = XCUIApplication()

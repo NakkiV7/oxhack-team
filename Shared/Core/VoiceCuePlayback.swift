@@ -41,12 +41,15 @@ public final class VoiceCuePlaybackController {
     private var active: VoiceCue?
     private var seen: Set<UUID> = []
     private var context: VoiceCueContext?
+    public var isTrackingPromptPlaying: Bool { active?.reason == .tracking && active?.kind == .coaching(.form) }
+    public private(set) var completedTrackingPrompt: VoiceCue?
 
     public init(playback: VoicePlayback) {
         self.playback = playback
         playback.onFinish = { [weak self] id in
-            guard self?.active?.id == id else { return }
-            self?.active = nil
+            guard let self, let finished = self.active, finished.id == id else { return }
+            if self.isTrackingPromptPlaying { self.completedTrackingPrompt = finished }
+            self.active = nil
         }
     }
 
@@ -54,10 +57,11 @@ public final class VoiceCuePlaybackController {
         if self.context?.sessionID != context.sessionID || self.context?.generation != context.generation {
             cancel()
             seen = []
+            completedTrackingPrompt = nil
         }
         self.context = context
         guard now.isFinite else { cancel(); return }
-        if active?.expiresAt.map({ now >= $0 }) == true { cancel() }
+        if !isTrackingPromptPlaying, active?.expiresAt.map({ now >= $0 }) == true { cancel() }
         let completion = event?.reason == .workoutCompleted
         let eligiblePhase = completion
             ? context.phase == .finished && event?.kind == .coaching(.rest)
@@ -65,6 +69,11 @@ public final class VoiceCuePlaybackController {
         guard enabled, eligiblePhase else {
             if let event { seen.insert(event.id) }
             cancel()
+            return
+        }
+        // Once started, finish the visibility sentence. Drop intervening cues rather than queueing stale warnings.
+        if isTrackingPromptPlaying, event?.kind != .coaching(.stop) {
+            if let event, event.sessionID == context.sessionID, event.generation == context.generation { seen.insert(event.id) }
             return
         }
         guard let event else { cancel(); return }
@@ -91,6 +100,7 @@ public final class VoiceCuePlaybackController {
     }
 
     public func cancel() {
+        completedTrackingPrompt = nil
         guard active != nil else { return }
         active = nil
         playback.stop()

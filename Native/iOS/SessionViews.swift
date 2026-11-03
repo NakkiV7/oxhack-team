@@ -53,8 +53,6 @@ struct LiveSetView: View {
     @State private var importing = false
     @State private var pendingImport: URL?
     @State private var replaceCamera = false
-    @State private var replaceSecondaryCamera = false
-    @State private var pairingPresented = false
     @State private var pendingManualFallback: UUID?
     @State private var manualQuantity = ""
     @FocusState private var enteringReps: Bool
@@ -73,12 +71,9 @@ struct LiveSetView: View {
                         }
                     }
                 }
-                if store.usingSecondaryCamera {
-                    DualCameraPreview(store: store, exercise: store.session.exercise)
-                } else {
                 ZStack(alignment: .topLeading) {
                     Palette.surface
-                    if case .camera = store.visionState, store.session.phase == .active, !store.usingSecondaryCamera {
+                    if case .camera = store.visionState, store.session.phase == .active {
                         CameraPreview(session: store.vision.capture)
                     } else if let image = store.image {
                         Image(uiImage: image).resizable().scaledToFit()
@@ -89,7 +84,6 @@ struct LiveSetView: View {
                     Text(store.session.phase == .paused ? "Paused" : (store.source == .manual ? "Manual self-report" : (store.hasInput ? inputStatus : "Movement guide")))
                         .font(.caption.weight(.medium)).padding(8).background(.white.opacity(0.9), in: Capsule()).padding(12)
                 }.frame(height: 295).clipShape(RoundedRectangle(cornerRadius: 23))
-                }
                 if !store.hasInput {
                     Picker("Movement phase", selection: $guide) {
                         Text("Top").tag("top"); Text("Middle").tag("mid"); Text("Bottom").tag("bottom")
@@ -103,21 +97,6 @@ struct LiveSetView: View {
                     Spacer()
                     Button("Import video", systemImage: "film") { importing = true }
                 }.font(.subheadline.weight(.medium)).buttonStyle(.plain)
-                Menu {
-                    Toggle("Show front camera", isOn: Binding(get: { store.frontCameraEnabled }, set: store.setFrontCameraEnabled))
-                        .accessibilityIdentifier("front-camera-toggle")
-                    Button(store.usingSecondaryCamera ? "Reconnect side camera" : "Start side camera", systemImage: "video") {
-                        if store.usingSecondaryCamera { store.secondaryCamera(); return }
-                        if store.hasInput || store.source == .manual || store.session.counter.reps > 0 { replaceSecondaryCamera = true; return }
-                        store.secondaryCamera()
-                    }
-                    Button("Pair side camera", systemImage: "link") {
-                        store.pause()
-                        pairingPresented = true
-                    }
-                } label: {
-                    Label("Side camera", systemImage: "network").font(.subheadline.weight(.medium))
-                }.accessibilityIdentifier("secondary-camera-menu")
                 if case .failed(let message) = store.visionState {
                     Text(message).font(.caption).foregroundStyle(Palette.red)
                         .accessibilityIdentifier("camera-tracking-error")
@@ -200,23 +179,11 @@ struct LiveSetView: View {
         .confirmationDialog("Start a fresh camera set?", isPresented: $replaceCamera) {
             Button("Start fresh set") { store.camera() }
         } message: { Text("The current set’s count will reset.") }
-        .confirmationDialog("Start a fresh side camera set?", isPresented: $replaceSecondaryCamera) {
-            Button("Start fresh set") { store.secondaryCamera() }
-        } message: { Text("The current set’s count will reset.") }
-        .sheet(isPresented: $pairingPresented) { SecondaryCameraSettingsView(preview: store.previewMode) }
     }
     private var validManualQuantity: Int? {
         Int(manualQuantity).flatMap { (1...200).contains($0) ? $0 : nil }
     }
-    private var inputStatus: String {
-        guard store.usingSecondaryCamera else { return store.visionState.message }
-        switch store.secondaryVision.state {
-        case .starting: return "Connecting to side camera…"
-        case .tracking: return "Side camera"
-        case .idle: return store.visionState.message
-        case .failed(let message): return message
-        }
-    }
+    private var inputStatus: String { store.visionState.message }
 }
 
 struct RecoveryView: View {

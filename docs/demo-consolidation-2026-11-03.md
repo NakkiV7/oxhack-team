@@ -1,5 +1,7 @@
 # Spottr demo consolidation — 3 November 2026
 
+Follow-up: [iPhone tracking recovery and complete side-camera removal](tracking-recovery-2026-11-03.md) supersedes the initial delivery's camera options and records the response to physical build-16 feedback.
+
 ## Current delivery branch
 
 `codex/spottr-demo-consolidation` in `/Users/scsoc/dev/AI PT`.

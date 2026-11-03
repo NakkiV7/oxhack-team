@@ -1,6 +1,11 @@
 import XCTest
 
 final class ReleasePackagingTests: XCTestCase {
+    func testRetiredSideCameraPairingIsNotShippedWithTheApp() {
+        XCTAssertNil(Bundle.main.url(forResource: "SpottrDemoCamera", withExtension: "json"))
+        let purpose = Bundle.main.object(forInfoDictionaryKey: "NSLocalNetworkUsageDescription") as? String
+        XCTAssertEqual(purpose, "Spottr connects to your local workout gateway.")
+    }
     func testHostAndWatchDeclareAuditedExemptEncryption() throws {
         XCTAssertEqual(Bundle.main.object(forInfoDictionaryKey: "ITSAppUsesNonExemptEncryption") as? Bool, false)
         let watch = Bundle.main.bundleURL.appendingPathComponent("Watch/SpottrWatch.app/Info.plist")

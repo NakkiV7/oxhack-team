@@ -15,6 +15,55 @@ final class VoiceCuePlaybackTests: XCTestCase {
         .init(sessionID: sessionID ?? self.sessionID, generation: generation ?? self.generation, phase: phase)
     }
 
+    func testStartedVisibilityPromptFinishesDespiteRecoveryReplacementAndExpiry() {
+        let playback = RecordingVoicePlayback()
+        let controller = VoiceCuePlaybackController(playback: playback)
+        let visibility = VoiceCue(id: UUID(), sessionID: sessionID, generation: generation,
+            text: "Keep your whole body visible.", kind: .coaching(.form), issuedAt: 0, expiresAt: 1, reason: .tracking)
+        controller.update(context: context(), event: visibility, enabled: true, now: 0)
+        controller.update(context: context(), event: nil, enabled: true, now: 0.2)
+        controller.update(context: context(), event: cue(issuedAt: 0.3), enabled: true, now: 0.3)
+        controller.update(context: context(), event: nil, enabled: true, now: 2)
+        XCTAssertEqual(playback.events, [.speak(visibility.id)])
+        playback.onFinish?(visibility.id)
+        controller.update(context: context(), event: nil, enabled: true, now: 3)
+        XCTAssertEqual(playback.events, [.speak(visibility.id)])
+    }
+
+    func testVisibilityPromptNeverQueuesFlickeringTrackingWarnings() {
+        let playback = RecordingVoicePlayback()
+        let controller = VoiceCuePlaybackController(playback: playback)
+        func visibility(_ time: Double) -> VoiceCue {
+            .init(id: UUID(), sessionID: sessionID, generation: generation,
+                  text: "Keep your whole body visible.", kind: .coaching(.form), issuedAt: time, expiresAt: time + 6, reason: .tracking)
+        }
+        let first = visibility(0), flicker = visibility(0.5), recheck = visibility(3)
+        controller.update(context: context(), event: first, enabled: true, now: 0)
+        controller.update(context: context(), event: flicker, enabled: true, now: 0.5)
+        XCTAssertEqual(playback.events, [.speak(first.id)])
+        playback.onFinish?(first.id)
+        controller.update(context: context(), event: flicker, enabled: true, now: 2)
+        XCTAssertEqual(playback.events, [.speak(first.id)])
+        controller.update(context: context(), event: recheck, enabled: true, now: 3)
+        XCTAssertEqual(playback.events, [.speak(first.id), .speak(recheck.id)])
+    }
+
+    func testVisibilityPromptStillStopsForMutePauseOrAnImmediateStopWarning() {
+        for interruption in ["mute", "pause", "stop"] {
+            let playback = RecordingVoicePlayback()
+            let controller = VoiceCuePlaybackController(playback: playback)
+            let first = VoiceCue(id: UUID(), sessionID: sessionID, generation: generation,
+                text: "Keep your whole body visible.", kind: .coaching(.form), issuedAt: 0, expiresAt: 6, reason: .tracking)
+            controller.update(context: context(), event: first, enabled: true, now: 0)
+            let stop = cue(.coaching(.stop), issuedAt: 1, expiresAt: nil)
+            controller.update(context: context(interruption == "pause" ? .paused : .active),
+                              event: interruption == "stop" ? stop : nil, enabled: interruption != "mute", now: 1)
+            let expected: [RecordingVoicePlayback.Event] = interruption == "stop"
+                ? [.speak(first.id), .stop, .speak(stop.id)] : [.speak(first.id), .stop]
+            XCTAssertEqual(playback.events, expected)
+        }
+    }
+
     func testStopInterruptsPacingImmediatelyAndDuplicateEventsNeverReplay() {
         let playback = RecordingVoicePlayback()
         let controller = VoiceCuePlaybackController(playback: playback)

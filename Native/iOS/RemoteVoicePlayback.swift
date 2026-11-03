@@ -190,9 +190,12 @@ final class RemoteVoicePlayback: VoicePlayback {
             complete(token: token, error: RemoteVoiceError.invalidResponse); return
         }
         let voice = preference, expiresAt = wall.addingTimeInterval(deadline - now)
-        expiry = Task { [weak self] in
-            do { try await Task.sleep(for: .seconds(deadline - now)) } catch { return }
-            self?.complete(token: token, error: RemoteVoiceError.invalidResponse)
+        // A bundled visibility recording must start while fresh, then finish its sentence naturally.
+        if voice != .arnold || cue.reason != .tracking {
+            expiry = Task { [weak self] in
+                do { try await Task.sleep(for: .seconds(deadline - now)) } catch { return }
+                self?.complete(token: token, error: RemoteVoiceError.invalidResponse)
+            }
         }
         if voice == .arnold {
             previewCueID = cue.id

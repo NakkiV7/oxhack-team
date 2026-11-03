@@ -20,10 +20,11 @@ public struct PoseFrame: Sendable {
 }
 
 public enum PoseGeometry {
-    public static func measure(_ frame: PoseFrame, exercise: Exercise, preferredSide: Int? = nil) -> MovementSample? {
+    public static func measure(_ frame: PoseFrame, exercise: Exercise, preferredSide: Int? = nil, allowSideFallback: Bool = true) -> MovementSample? {
         guard frame.width.isFinite, frame.height.isFinite, frame.width > 0, frame.height > 0,
               frame.points.count == 33 else { return nil }
-        for side in [preferredSide ?? 0, (preferredSide ?? 0) == 0 ? 1 : 0] {
+        let sides = allowSideFallback ? [preferredSide ?? 0, (preferredSide ?? 0) == 0 ? 1 : 0] : [preferredSide ?? 0]
+        for side in sides {
             let indices = exercise == .squat ? [23, 25, 27] : [11, 13, 15, 23]
             var points = indices.map { frame.points[$0 + side] }
             guard points.allSatisfy({ valid($0) }) else { continue }

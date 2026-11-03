@@ -19,15 +19,18 @@ public struct CoachingInput: Sendable, Equatable {
     public let stopReason: StopReason?
     public let source: InputSource
     public let encouragementEnabled: Bool
+    public let trackingPromptFinished: Bool
 
     public init(sessionID: UUID, generation: UUID, phase: SessionPhase, now: Double, exercise: Exercise,
                 repCount: Int, lastRepDuration: Double?, cue: Cue, heartRate: [SensorReading], wallTime: Date,
-                restElapsed: Double?, target: Int, stopReason: StopReason?, source: InputSource = .camera, encouragementEnabled: Bool = false) {
+                restElapsed: Double?, target: Int, stopReason: StopReason?, source: InputSource = .camera, encouragementEnabled: Bool = false,
+                trackingPromptFinished: Bool = false) {
         self.sessionID = sessionID; self.generation = generation; self.phase = phase; self.now = now
         self.exercise = exercise; self.repCount = repCount; self.lastRepDuration = lastRepDuration
         self.cue = cue; self.heartRate = heartRate; self.wallTime = wallTime
         self.restElapsed = restElapsed; self.target = target; self.stopReason = stopReason; self.source = source
         self.encouragementEnabled = encouragementEnabled
+        self.trackingPromptFinished = trackingPromptFinished
     }
 }
 
@@ -112,7 +115,7 @@ public struct CoachingPolicy: Sendable {
         }
         if let duration { repBaseline[input.exercise] = Array((prior + [duration]).suffix(60)) }
         if input.cue == .tracking || input.cue == .alignment {
-            guard input.cue != lastFormCue else { return nil }
+            guard input.cue != lastFormCue || (input.cue == .tracking && input.trackingPromptFinished) else { return nil }
             lastFormCue = input.cue; lastOrdinaryAt = input.now
             return .init(text: input.cue.text, priority: .form,
                          reason: input.cue == .tracking ? .tracking : .alignment,

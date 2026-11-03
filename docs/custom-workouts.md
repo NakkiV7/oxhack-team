@@ -4,7 +4,7 @@ From **Skills** (Grid or Linear) or the exercise library, open an exercise and c
 
 In Coach, approve selected exercises, then choose **Start saved workout**. Keep required household support selected. The queue preserves catalogue IDs, exercise order, set counts, targets, units and rest targets. The existing **Log** action and fixed camera workout remain available.
 
-Every set starts in Manual. Only base **Push-up** (`pushup`) and **Squat** (`squat`) offer **Manual reps**, **iPhone camera** and **Pi side camera**. Other exercises use manual reps or active hold timers. Choosing a camera does not start capture; choose Start when in position. Pair the Pi through the input menu before starting it.
+Every set starts in Manual. Only base **Push-up** (`pushup`) and **Squat** (`squat`) offer **Manual reps** and **iPhone camera**. Other exercises use manual reps or active hold timers. Choosing a camera does not start capture; choose Start when in position. Paired side-camera support was retired on 3 November 2026.
 
 - Manual reps are self-reported. Enter the actual count; targets are never filled in for you.
 - Camera sets reuse the existing pose geometry and full-cycle rep counter. The screen shows observed reps, preview, form cues and an optional Voice feedback toggle. Targets never end sets automatically. Zero observed reps does not establish that no exercise happened.
@@ -30,7 +30,7 @@ Focused native checks passed **23 tests** for configured routing, legacy coachin
 
 The UI fixture is DEBUG-only, requires a valid UUID `SPOTTR_DATA_NAMESPACE`, typed-decodes `SPOTTR_APPROVED_PLAN_FIXTURE`, and never persists or modifies the saved plan. Invalid fixtures use the existing stored-plan path; Release excludes fixture handling. UI tests finish using manual fallback without opening a camera or calling Gemini.
 
-Sustained phone/Pi exercise counting, physical Watch rendering and audible coaching remain separate device acceptance checks. The known Pi USB disconnect remains open; this feature does not fix it.
+Sustained iPhone exercise counting, physical Watch rendering and audible coaching remain separate device acceptance checks. The retired Pi camera is no longer part of the app.
 
 Final reviewed snapshot: **35 focused native tests** passed without warnings, covering configured input, Coach, legacy cues, Pi lifecycle, voice cancellation and built-bundle packaging (`21-14-14…45245804`, `21-14-47…648717a7`). The same snapshot’s Watch simulator build passed without warnings (`build_sim_2026-10-24T21-13-47-813Z_pid4129_6e332d89.log`). The complete gateway suite, including the separate Snowflake additions, passed 50 tests.
 

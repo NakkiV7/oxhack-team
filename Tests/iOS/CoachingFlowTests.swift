@@ -87,6 +87,7 @@ final class CoachingFlowTests: XCTestCase {
         XCTAssertNil(store.coachingEvent)
         store.session.cue = .tracking
         store.coachingTick(at: 13)
+        store.coachingTick(at: 13.8)
         XCTAssertEqual(store.coachingEvent?.decision.reason, .tracking)
         XCTAssertEqual(store.coachingEvent?.generation, store.session.generation)
     }

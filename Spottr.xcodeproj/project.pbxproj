@@ -15,6 +15,7 @@
 		131BFB893C5E37EE6227A8BD /* pose.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 2D0F275580A6DC8427E2F54A /* pose.jpg */; };
 		13B71403FEEF2A833ED78E39 /* CoachViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8816DC1782C197B10CEA724B /* CoachViews.swift */; };
 		17A0E3F9AEBD9397B81C671F /* Exercise.swift in Sources */ = {isa = PBXBuildFile; fileRef = F39FCA9B2C48C1F8DB52D445 /* Exercise.swift */; };
+		18806E8A4EA78A889A2CF7CB /* PhoneCaptureRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FF601ED1277B769D15249BA /* PhoneCaptureRecoveryTests.swift */; };
 		19C7DD3704026971C1B87E15 /* PathMapLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A305C04C32F1B0877C6FEDFD /* PathMapLayout.swift */; };
 		1A5E0EFECB4FB2A894354691 /* NativeRewardsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24EEB86D63B90FE01E2B23E4 /* NativeRewardsStore.swift */; };
 		1A6B4A2443C6722FFE84F5EA /* Exercise.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72647D9892D365F71C07AF31 /* Exercise.swift */; };
@@ -27,7 +28,6 @@
 		2146F51652AC2F208B504807 /* PresageCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F584CC397A48177151CAD323 /* PresageCaptureTests.swift */; };
 		21D6993B7BDB0F05133DD485 /* DemoCoachView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E54A15A180504C047E3918DC /* DemoCoachView.swift */; };
 		24098C24B904FBA689307C7A /* PhoneCameraLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2E3FA1A085BCF5B405AACCC /* PhoneCameraLifecycleTests.swift */; };
-		240A71C731F080F02611C3F0 /* SecondaryCameraClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66F265BEF7D0CD0A30DAA2C2 /* SecondaryCameraClient.swift */; };
 		29F46181ABE3062F3531F192 /* ReportViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4E4DB5F687119DEAE5C440B /* ReportViews.swift */; };
 		2AFD8325073486E1D31BE004 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 504AC0585CE6AC3F8D6659D0 /* Foundation.framework */; };
 		2BEF69C1BB0755DCE54DA9A2 /* Gamification.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7EB7F31CC15DD4E5B5EE210 /* Gamification.swift */; };
@@ -37,7 +37,6 @@
 		2DAF4329EB307E935953F7A5 /* PresagePoseCompatibilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D1E7B25F56EECBEB7AFFE59 /* PresagePoseCompatibilityTests.swift */; };
 		2FF126462EA345F0AA4B6410 /* Vision.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 51BD1B46FDD73733462D7E89 /* Vision.framework */; };
 		306DFBBFEC6736DD03D38605 /* VideoTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BB123468F73C8B90E5FC8F7 /* VideoTests.swift */; };
-		31FBC40D06E9A92407A28130 /* SecondaryCameraConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = D596357D3C300F6962308F26 /* SecondaryCameraConfig.swift */; };
 		32228A40843C00F4F426E1D0 /* CoachWeekPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 010C343074B1A7D48DF53BDC /* CoachWeekPlan.swift */; };
 		324EC27E97F00BA6AEC2959D /* CloudSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09C423CDE8B5F0CE683B2297 /* CloudSyncTests.swift */; };
 		3272DB12DA109294AF4C6336 /* CoachContracts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15BDCE938A216D3AD26BA757 /* CoachContracts.swift */; };
@@ -61,7 +60,6 @@
 		41BB724CFCA2F911D1EBE21D /* WatchStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B2519D47498034EA01B6CB4 /* WatchStore.swift */; };
 		42D4EAFAB6A3E3C4BBDAC951 /* CoachGrounding.swift in Sources */ = {isa = PBXBuildFile; fileRef = A24E7D3EDA71A23136EEB210 /* CoachGrounding.swift */; };
 		459219C0490ED6096314285C /* MediaPipeTaskGraphs_library.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6FAE9DDAF39258E3651C914D /* MediaPipeTaskGraphs_library.xcframework */; };
-		49529138AE2BC1B92C00166C /* DemoCameraSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C8314E54F47FB24CDA6FB53 /* DemoCameraSettingsTests.swift */; };
 		4A6AF643BFE5A1FC717EA941 /* VoiceCuePlayback.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCE031CA4987D57EC265E86A /* VoiceCuePlayback.swift */; };
 		4BE75BF74840A0F9E73A6E25 /* PathGateway.swift in Sources */ = {isa = PBXBuildFile; fileRef = C424E682EFBE6BF45375703C /* PathGateway.swift */; };
 		4DEF90A2FFE67B60DCAA5F58 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 504AC0585CE6AC3F8D6659D0 /* Foundation.framework */; };
@@ -73,7 +71,6 @@
 		55F8DC99E5F0082A2ED92BD1 /* CoachGuidance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1871DDFA42609DA19A1B31F7 /* CoachGuidance.swift */; };
 		57F9ADA31153429790CC9E71 /* SmartSpectraDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3E7B303318D74BEF5F9F173 /* SmartSpectraDriver.swift */; };
 		58D96F453BE9411C31A61B2B /* CoachGateway.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD2B6517853FE10DA5817935 /* CoachGateway.swift */; };
-		5AD28EECD4E14EDC9551B1F3 /* SecondaryCameraVisionWorkerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5647CBE9F372C123B55F4121 /* SecondaryCameraVisionWorkerTests.swift */; };
 		5C71911A9F3B900C91E57AA1 /* DemoVoicePlaybackTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C6AF39B1EC00F38C53BEF46 /* DemoVoicePlaybackTests.swift */; };
 		5E775F43517D1DC77B2A264E /* PathSurveyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0958F7FF5D723C252D2871 /* PathSurveyView.swift */; };
 		5EBAAA5A2590CBAC06906F27 /* LocalVoicePlayback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01607B239A187BD0CCFF0924 /* LocalVoicePlayback.swift */; };
@@ -85,7 +82,6 @@
 		6853836092DD07C7CC8C9720 /* CoachingVoiceBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AF127D3088829F3AEF2304F /* CoachingVoiceBridge.swift */; };
 		69C67CA56DE4CA93E46E1D38 /* CoachAttempt.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3779C8058855CBEEC7A3E51 /* CoachAttempt.swift */; };
 		6A6BD15F65EA457DD5A5B2F6 /* HomeViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C4DCF0DC0E8D6E80CE67CF /* HomeViews.swift */; };
-		6A95CAA6866D548CE83F9847 /* SecondaryCameraClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1AD12B3269C44B71CE50475 /* SecondaryCameraClientTests.swift */; };
 		6B2DA3E475A2FC187B8A6442 /* CoachGuidance.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA469626C25696F6C24087F1 /* CoachGuidance.swift */; };
 		6E9B4EED498EDBF17391921A /* WorkoutReports.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74D88ABEB291F28B664FAE47 /* WorkoutReports.swift */; };
 		6F1AF3A0C42A27B29B10BBBB /* PathProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4319BB6EE76E50DFD814C6B6 /* PathProgress.swift */; };
@@ -104,23 +100,19 @@
 		7C553F1312C45FE14EC83456 /* CoreImage.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 47E5012AA80CD1D1F65BE662 /* CoreImage.framework */; };
 		7C93FE49CEBA4929E0950F7D /* TrainingCalendar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B082940FB4885043E670C933 /* TrainingCalendar.swift */; };
 		7CEE6E8F2B90FFEE56EA04DF /* DemoVoice in Resources */ = {isa = PBXBuildFile; fileRef = 60BD26A88773C109B0439557 /* DemoVoice */; };
-		7E535B01CCDD7C5E0B5CE254 /* SecondaryCameraVisionWorker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A06C98FE802F5909BE56824D /* SecondaryCameraVisionWorker.swift */; };
 		8040E5EBB770C345569C74F6 /* DemoVoicePlayback.swift in Sources */ = {isa = PBXBuildFile; fileRef = C944722180DBE31E14F0350A /* DemoVoicePlayback.swift */; };
 		816A428DE9E26BD08922F2AF /* CoachingFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DC8954725DCB50901F5FF64 /* CoachingFlowTests.swift */; };
 		845BECF39BF7F999F9971E5A /* MeasurementsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45B0EF63B8DDEB455ACA41ED /* MeasurementsSettingsView.swift */; };
 		853B4C4DC3EFA926DE2C65DF /* SkillsFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6DB22EE1BE5795C23835225 /* SkillsFlowTests.swift */; };
 		8929F0BB44BCB246F50EF8C5 /* SkillProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DCD116DF96B9871FC0A02C7 /* SkillProgress.swift */; };
-		8A26448E72233F1BE54239C3 /* SecondaryCameraConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC6F4D067ACF2ABB3F200FB4 /* SecondaryCameraConfig.swift */; };
 		8B25440F3FC7A5D825C5B5FE /* ProfileDataControlsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98DFD6B89C7E606B00B60A57 /* ProfileDataControlsTests.swift */; };
 		8B29BF626589917E1A76AEDD /* TrainingRewardsFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35ED718BDEF5EEDBFF963F00 /* TrainingRewardsFlowTests.swift */; };
 		8B2D39CDF0BFF8D4A6F2E77B /* SpottrWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = FD0067671ED19B542B8EA5FE /* SpottrWatch.app */; };
 		8BE6641FA91D0800F63742A5 /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9CB5D28D70C59C8391599C01 /* CoreVideo.framework */; };
 		8BF97F1670EA45F0BC5F1109 /* CoachAttempt.swift in Sources */ = {isa = PBXBuildFile; fileRef = C786E125692D2D87E517D64A /* CoachAttempt.swift */; };
-		8E11E6BEE8366CCF820247C0 /* SecondaryCameraSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ECFD6D94D63CA91DC4E5C79 /* SecondaryCameraSettings.swift */; };
 		8E6559E13D10CCFB7E488276 /* CompanionLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19A36C2745BE95B9607305BE /* CompanionLink.swift */; };
 		8E6FA7E81F801BB26611B05D /* Companion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65A6ED1AACBC555C25CFB6B0 /* Companion.swift */; };
 		900318FF6CB91557F05E780E /* CoachFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB9B19F63BBAFB5C4CDF10E /* CoachFlowTests.swift */; };
-		907F937BB489B1F2205BFE5E /* SpottrDemoCamera.json in Resources */ = {isa = PBXBuildFile; fileRef = A654BF9EB912AF0EA7EF8AF4 /* SpottrDemoCamera.json */; };
 		90A0342C67001485DC785DE6 /* PreviewVoiceIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A4BA0E8626320A54AF3F2B3 /* PreviewVoiceIntegrationTests.swift */; };
 		911D25762C75EB4338197CC6 /* LocalProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61D95350146815E9EF7002FF /* LocalProfile.swift */; };
 		9175B9F7DCF2E19DE9B171BF /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A575EA90CD07C1AEF7095956 /* AudioToolbox.framework */; };
@@ -128,7 +120,6 @@
 		931E013F9AFA222BD74CB855 /* RepCounter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 351E579088F3B492A4D35F14 /* RepCounter.swift */; };
 		9339455BEB071E4E92876736 /* MediaPipe-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 05681C3611BAB93F6AF35E63 /* MediaPipe-LICENSE.txt */; };
 		933FC726D1A6E5B4ABFB0E43 /* DemonstrationGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1945FEDCF8B25A79BADAAB42 /* DemonstrationGuideView.swift */; };
-		954F2B758692FEBF39858C6A /* SecondaryCameraSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 583F1DFF27F0EA32E7CCABE1 /* SecondaryCameraSettingsTests.swift */; };
 		96B82C5E7BB413D159306ACC /* CameraVitals.swift in Sources */ = {isa = PBXBuildFile; fileRef = B941820A2085B4C554F66AC4 /* CameraVitals.swift */; };
 		98A86A36B64C5E2F806B8605 /* ConfiguredWorkoutFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C23A9347E43A8FA9FD06EEB1 /* ConfiguredWorkoutFlowTests.swift */; };
 		98D6A7B50B15581D308716B5 /* CoachContracts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4694DC8F3B3E04B7471DF36A /* CoachContracts.swift */; };
@@ -137,7 +128,6 @@
 		9ECCDE0A43BB50C2C871D081 /* WorkoutReports.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74ADE570F25180594B206A36 /* WorkoutReports.swift */; };
 		A32B1DEF0A677F4A69AA2F18 /* WorkoutSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2213BF93CD90307A133AACEF /* WorkoutSync.swift */; };
 		A76E7F1F0542AF4A58C445D6 /* PathProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FE65DBCBCEB16F24CFDE38A /* PathProgress.swift */; };
-		A902159D61F5F0054F3C5174 /* SecondaryCameraTrustTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D269A730AD3DE278A31CA3A /* SecondaryCameraTrustTests.swift */; };
 		A9219F1B0AE34A89FFF1E78B /* HistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49B6571A1A9EC82BC689829E /* HistoryStore.swift */; };
 		A9CE20F9A60EA48341D085E2 /* WorkoutCompletionVoiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C16B2D06152C36B7ACD3267C /* WorkoutCompletionVoiceTests.swift */; };
 		AA08251FF6D070D882A97B80 /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 55AC9B0ABC93BA905BD1B3FC /* Accelerate.framework */; };
@@ -145,7 +135,6 @@
 		AADDD46A0908595BEEF17111 /* CompanionLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DE31451AA286A7329127B2E /* CompanionLink.swift */; };
 		AAF982AD4796938018314D1B /* VoiceCoachSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07848DB2F6D8EFE9E9B37EF9 /* VoiceCoachSettingsView.swift */; };
 		AB4461A37936384EC649929B /* VoiceFeedbackTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F4A41EE8EF95DC4983AB6B9 /* VoiceFeedbackTests.swift */; };
-		AF8AF8F47FEB20E9D4236FD0 /* SecondaryCameraTLS.swift in Sources */ = {isa = PBXBuildFile; fileRef = 146D758D1B20BE0401688B75 /* SecondaryCameraTLS.swift */; };
 		B0CF8EEE8C154FAE1BE7F031 /* DemoCoachTranscript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66B598283F690586FB2896A1 /* DemoCoachTranscript.swift */; };
 		B17FF390D97AAA5134542D74 /* RemoteVoicePlayback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6393A2E204EBE289C4E89251 /* RemoteVoicePlayback.swift */; };
 		B36857791EF9F62348BEB4A3 /* VisionPreviewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F74B0E18B8B36A20493C054 /* VisionPreviewTests.swift */; };
@@ -162,13 +151,10 @@
 		BE80E225730D3661F4AF78E1 /* Gamification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18907956FD38621787040D62 /* Gamification.swift */; };
 		C23A4C3A0EA4749744E0601E /* ProfileFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EA21E256000178559F187CC /* ProfileFlowTests.swift */; };
 		C737E133D5CA156E0902E3E1 /* ReportFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B048E8E910D182D86F631AB /* ReportFlowTests.swift */; };
-		CB88F2EA77870FA612443565 /* SecondaryCameraFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 833E95E51BA47FDCA3E8C5C2 /* SecondaryCameraFlowTests.swift */; };
 		CBE725D297E367AECF8AE760 /* StreakSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 578D3A7F6BA4127BA9FB8737 /* StreakSummary.swift */; };
-		CD719F0F5CAAED79CDE9D39A /* SecondaryCameraSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B5B9989F82E75BB725791D7 /* SecondaryCameraSettingsView.swift */; };
 		CE8E997D665CB1DAC5F4F906 /* ExerciseDemonstrationGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = B71DE8E90E522CB630E5541B /* ExerciseDemonstrationGuide.swift */; };
 		CEB90BF46ED7A3AEDC39554E /* SpottrApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32ACC7326E6C8DD55F396A91 /* SpottrApp.swift */; };
 		D116F6E162F39E9134A83C86 /* WeeklyCoachViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3F7DB9013209A7FB46DD73D /* WeeklyCoachViews.swift */; };
-		D190FA1087D792C73F3D4C3F /* SecondaryCameraTrainingStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B47AF6DFC2AF286D840EB9CE /* SecondaryCameraTrainingStoreTests.swift */; };
 		D2AFF75187090892C8DC3BFB /* CoachGateway.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5522AD82479615952DB7B27F /* CoachGateway.swift */; };
 		D3802D63E07A66233BBDDEC7 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 504AC0585CE6AC3F8D6659D0 /* Foundation.framework */; };
 		D4F3F73B5174464BE0EC7A29 /* Telemetry.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDD2186A8E3E4CD3C6C8D639 /* Telemetry.swift */; };
@@ -187,7 +173,6 @@
 		E5290A7857F627BB1B309F3E /* PreviewRepCueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87D5DE80D87CE5A917A92CB3 /* PreviewRepCueTests.swift */; };
 		E616AE6752C49A5F4F90E895 /* GamificationViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F677A092BDD3D41F9949DBBB /* GamificationViews.swift */; };
 		EA5527CC42F75EB1FA853DCF /* TrainingPath.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5E770E532E0F85E27B5A1CB /* TrainingPath.swift */; };
-		EA8F7997AC0EA1A73C906100 /* DualCameraPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42619C2232656BEC10C6EE53 /* DualCameraPreview.swift */; };
 		EAB4171366502D9EADBBE84C /* RemoteVoicePlaybackTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 292AA51EA33C5A06C4A3A4BF /* RemoteVoicePlaybackTests.swift */; };
 		EBD19248337992540CCC4D2B /* PresageCaptureController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA3C8D4E65EDEA5B6F91260 /* PresageCaptureController.swift */; };
 		ED0CBED73DD21B450FBCC008 /* TrainingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A02BDEAFE20D08DFDF4C620 /* TrainingStore.swift */; };
@@ -259,13 +244,10 @@
 		09C423CDE8B5F0CE683B2297 /* CloudSyncTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CloudSyncTests.swift; path = Tests/iOS/CloudSyncTests.swift; sourceTree = "<group>"; };
 		0BB00FC2B2372DD29F37918B /* PatientOnboardingFlowTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PatientOnboardingFlowTests.swift; path = Tests/UI/PatientOnboardingFlowTests.swift; sourceTree = "<group>"; };
 		0C6AF39B1EC00F38C53BEF46 /* DemoVoicePlaybackTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DemoVoicePlaybackTests.swift; path = Tests/iOS/DemoVoicePlaybackTests.swift; sourceTree = "<group>"; };
-		0C8314E54F47FB24CDA6FB53 /* DemoCameraSettingsTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DemoCameraSettingsTests.swift; path = Tests/iOS/DemoCameraSettingsTests.swift; sourceTree = "<group>"; };
-		0D269A730AD3DE278A31CA3A /* SecondaryCameraTrustTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SecondaryCameraTrustTests.swift; path = Tests/iOS/SecondaryCameraTrustTests.swift; sourceTree = "<group>"; };
 		0D6B2F60B1F94583FBB94E57 /* OnboardingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OnboardingView.swift; path = Native/iOS/OnboardingView.swift; sourceTree = "<group>"; };
 		0F74B0E18B8B36A20493C054 /* VisionPreviewTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VisionPreviewTests.swift; path = Tests/iOS/VisionPreviewTests.swift; sourceTree = "<group>"; };
 		10A41811B2EFAC55A0C82A2C /* DemoCoachFlowTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DemoCoachFlowTests.swift; path = Tests/UI/DemoCoachFlowTests.swift; sourceTree = "<group>"; };
 		12540942B965D2961E424EE4 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
-		146D758D1B20BE0401688B75 /* SecondaryCameraTLS.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SecondaryCameraTLS.swift; path = Native/iOS/SecondaryCameraTLS.swift; sourceTree = "<group>"; };
 		15BDCE938A216D3AD26BA757 /* CoachContracts.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CoachContracts.swift; path = Shared/Core/CoachContracts.swift; sourceTree = "<group>"; };
 		15F5FD7A1F52CB0E63E50BC1 /* WatchCaptureLifecycle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WatchCaptureLifecycle.swift; path = Shared/Core/WatchCaptureLifecycle.swift; sourceTree = "<group>"; };
 		16200FD667404FDFB37E30CB /* InsightsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = InsightsView.swift; path = Native/iOS/InsightsView.swift; sourceTree = "<group>"; };
@@ -281,6 +263,7 @@
 		1C4A3641C0063C8035212D8F /* DemoStudioTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DemoStudioTests.swift; path = Tests/iOS/DemoStudioTests.swift; sourceTree = "<group>"; };
 		1E85517947D3F83D8F7055B7 /* MediaPipeTasksVision.xcframework */ = {isa = PBXFileReference; includeInIndex = 1; name = MediaPipeTasksVision.xcframework; path = Native/Vendor/MediaPipeTasksVision.xcframework; sourceTree = "<group>"; };
 		1F9200E62574E5D6E824FF69 /* CatalogueWorkoutSetupView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CatalogueWorkoutSetupView.swift; path = Native/iOS/CatalogueWorkoutSetupView.swift; sourceTree = "<group>"; };
+		1FF601ED1277B769D15249BA /* PhoneCaptureRecoveryTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PhoneCaptureRecoveryTests.swift; path = Tests/iOS/PhoneCaptureRecoveryTests.swift; sourceTree = "<group>"; };
 		2213BF93CD90307A133AACEF /* WorkoutSync.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WorkoutSync.swift; path = Shared/Core/WorkoutSync.swift; sourceTree = "<group>"; };
 		240ADEC8DEBD1CE0D4863267 /* TrainingPath.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TrainingPath.swift; path = Shared/Core/TrainingPath.swift; sourceTree = "<group>"; };
 		24EEB86D63B90FE01E2B23E4 /* NativeRewardsStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NativeRewardsStore.swift; path = Native/iOS/NativeRewardsStore.swift; sourceTree = "<group>"; };
@@ -304,7 +287,6 @@
 		3B5DCF9BF2100F65E1AFE228 /* Companion.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Companion.swift; path = Shared/Core/Companion.swift; sourceTree = "<group>"; };
 		3BA3C8D4E65EDEA5B6F91260 /* PresageCaptureController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PresageCaptureController.swift; path = Native/iOS/PresageCaptureController.swift; sourceTree = "<group>"; };
 		3F4A41EE8EF95DC4983AB6B9 /* VoiceFeedbackTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VoiceFeedbackTests.swift; path = Tests/iOS/VoiceFeedbackTests.swift; sourceTree = "<group>"; };
-		42619C2232656BEC10C6EE53 /* DualCameraPreview.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DualCameraPreview.swift; path = Native/iOS/DualCameraPreview.swift; sourceTree = "<group>"; };
 		4319BB6EE76E50DFD814C6B6 /* PathProgress.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PathProgress.swift; path = Shared/Core/PathProgress.swift; sourceTree = "<group>"; };
 		45B0EF63B8DDEB455ACA41ED /* MeasurementsSettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MeasurementsSettingsView.swift; path = Native/iOS/MeasurementsSettingsView.swift; sourceTree = "<group>"; };
 		4694DC8F3B3E04B7471DF36A /* CoachContracts.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CoachContracts.swift; path = Shared/Core/CoachContracts.swift; sourceTree = "<group>"; };
@@ -322,9 +304,7 @@
 		5522AD82479615952DB7B27F /* CoachGateway.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CoachGateway.swift; path = Shared/Core/CoachGateway.swift; sourceTree = "<group>"; };
 		5536F21C6D693298F85842B8 /* LocalVoicePlaybackTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LocalVoicePlaybackTests.swift; path = Tests/iOS/LocalVoicePlaybackTests.swift; sourceTree = "<group>"; };
 		55AC9B0ABC93BA905BD1B3FC /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Accelerate.framework; sourceTree = DEVELOPER_DIR; };
-		5647CBE9F372C123B55F4121 /* SecondaryCameraVisionWorkerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SecondaryCameraVisionWorkerTests.swift; path = Tests/iOS/SecondaryCameraVisionWorkerTests.swift; sourceTree = "<group>"; };
 		578D3A7F6BA4127BA9FB8737 /* StreakSummary.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StreakSummary.swift; path = Shared/Core/StreakSummary.swift; sourceTree = "<group>"; };
-		583F1DFF27F0EA32E7CCABE1 /* SecondaryCameraSettingsTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SecondaryCameraSettingsTests.swift; path = Tests/iOS/SecondaryCameraSettingsTests.swift; sourceTree = "<group>"; };
 		5A01F575447FD7880107F5D6 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = Native/Watch/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		5B04F0A012FA20B61D58029A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = Native/iOS/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		5B612EA45A837A5CD9B42D1F /* VisionLifecycleTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VisionLifecycleTests.swift; path = Tests/iOS/VisionLifecycleTests.swift; sourceTree = "<group>"; };
@@ -337,7 +317,6 @@
 		65A6ED1AACBC555C25CFB6B0 /* Companion.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Companion.swift; path = Shared/Core/Companion.swift; sourceTree = "<group>"; };
 		66B598283F690586FB2896A1 /* DemoCoachTranscript.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DemoCoachTranscript.swift; path = Shared/Core/DemoCoachTranscript.swift; sourceTree = "<group>"; };
 		66C39F2DCDB2D36E31DD7533 /* PathGateway.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PathGateway.swift; path = Shared/Core/PathGateway.swift; sourceTree = "<group>"; };
-		66F265BEF7D0CD0A30DAA2C2 /* SecondaryCameraClient.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SecondaryCameraClient.swift; path = Native/iOS/SecondaryCameraClient.swift; sourceTree = "<group>"; };
 		6882D5ED6B72FF39B304247F /* ConfigurableSession.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ConfigurableSession.swift; path = Shared/Core/ConfigurableSession.swift; sourceTree = "<group>"; };
 		68BFB0B1FCACCB5BC2D00F2E /* Components.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Components.swift; path = Native/iOS/Components.swift; sourceTree = "<group>"; };
 		6B2519D47498034EA01B6CB4 /* WatchStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WatchStore.swift; path = Native/Watch/WatchStore.swift; sourceTree = "<group>"; };
@@ -353,12 +332,10 @@
 		793A44B8539405F8FB063B3E /* WatchMetricContinuityTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WatchMetricContinuityTests.swift; path = Tests/iOS/WatchMetricContinuityTests.swift; sourceTree = "<group>"; };
 		7B02141A53987B6FFE04E0BE /* ExerciseCatalog.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExerciseCatalog.swift; path = Shared/Core/ExerciseCatalog.swift; sourceTree = "<group>"; };
 		7B048E8E910D182D86F631AB /* ReportFlowTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ReportFlowTests.swift; path = Tests/UI/ReportFlowTests.swift; sourceTree = "<group>"; };
-		7B5B9989F82E75BB725791D7 /* SecondaryCameraSettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SecondaryCameraSettingsView.swift; path = Native/iOS/SecondaryCameraSettingsView.swift; sourceTree = "<group>"; };
 		7C387F0C069A5D838451F0E4 /* DemoPreviewData.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DemoPreviewData.swift; path = Shared/Core/DemoPreviewData.swift; sourceTree = "<group>"; };
 		7DCF72592E6C84D006E832D7 /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = Native/Watch/Assets.xcassets; sourceTree = "<group>"; };
 		80A81C95548DC897022DB760 /* DemoStudioView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DemoStudioView.swift; path = Native/iOS/DemoStudioView.swift; sourceTree = "<group>"; };
 		8288BCC87771C6B0E4D0AC66 /* TrainingPathFlowTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TrainingPathFlowTests.swift; path = Tests/UI/TrainingPathFlowTests.swift; sourceTree = "<group>"; };
-		833E95E51BA47FDCA3E8C5C2 /* SecondaryCameraFlowTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SecondaryCameraFlowTests.swift; path = Tests/UI/SecondaryCameraFlowTests.swift; sourceTree = "<group>"; };
 		84D475FD7126A7A1CCDBB8D6 /* StreakSummary.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StreakSummary.swift; path = Shared/Core/StreakSummary.swift; sourceTree = "<group>"; };
 		85C2606BB4BCC9670ECD73D2 /* TrainingRewardsLoadFailureTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TrainingRewardsLoadFailureTests.swift; path = Tests/iOS/TrainingRewardsLoadFailureTests.swift; sourceTree = "<group>"; };
 		87D5DE80D87CE5A917A92CB3 /* PreviewRepCueTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PreviewRepCueTests.swift; path = Tests/iOS/PreviewRepCueTests.swift; sourceTree = "<group>"; };
@@ -379,30 +356,24 @@
 		9C1DCFC5BCB3E19770BAC54E /* pose_landmarker_full.task */ = {isa = PBXFileReference; includeInIndex = 1; name = pose_landmarker_full.task; path = Native/Resources/pose_landmarker_full.task; sourceTree = "<group>"; };
 		9CB5D28D70C59C8391599C01 /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/CoreVideo.framework; sourceTree = DEVELOPER_DIR; };
 		9DCD116DF96B9871FC0A02C7 /* SkillProgress.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SkillProgress.swift; path = Shared/Core/SkillProgress.swift; sourceTree = "<group>"; };
-		9ECFD6D94D63CA91DC4E5C79 /* SecondaryCameraSettings.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SecondaryCameraSettings.swift; path = Native/iOS/SecondaryCameraSettings.swift; sourceTree = "<group>"; };
-		A06C98FE802F5909BE56824D /* SecondaryCameraVisionWorker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SecondaryCameraVisionWorker.swift; path = Native/iOS/SecondaryCameraVisionWorker.swift; sourceTree = "<group>"; };
 		A24E7D3EDA71A23136EEB210 /* CoachGrounding.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CoachGrounding.swift; path = Shared/Core/CoachGrounding.swift; sourceTree = "<group>"; };
 		A305C04C32F1B0877C6FEDFD /* PathMapLayout.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PathMapLayout.swift; path = Shared/Core/PathMapLayout.swift; sourceTree = "<group>"; };
 		A33F057EF1C827D073919D7C /* SessionViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SessionViews.swift; path = Native/iOS/SessionViews.swift; sourceTree = "<group>"; };
 		A575EA90CD07C1AEF7095956 /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/AudioToolbox.framework; sourceTree = DEVELOPER_DIR; };
 		A5E770E532E0F85E27B5A1CB /* TrainingPath.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TrainingPath.swift; path = Shared/Core/TrainingPath.swift; sourceTree = "<group>"; };
-		A654BF9EB912AF0EA7EF8AF4 /* SpottrDemoCamera.json */ = {isa = PBXFileReference; includeInIndex = 1; name = SpottrDemoCamera.json; path = .local/SpottrDemoCamera.json; sourceTree = "<group>"; };
 		A6BB5293EF083602C7E9C66F /* TrainingSession.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TrainingSession.swift; path = Shared/Core/TrainingSession.swift; sourceTree = "<group>"; };
 		AA0958F7FF5D723C252D2871 /* PathSurveyView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PathSurveyView.swift; path = Native/iOS/PathSurveyView.swift; sourceTree = "<group>"; };
 		AF6BA9E97A982AB2FF1F539C /* TrainingPathSurvey.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TrainingPathSurvey.swift; path = Shared/Core/TrainingPathSurvey.swift; sourceTree = "<group>"; };
 		B082940FB4885043E670C933 /* TrainingCalendar.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TrainingCalendar.swift; path = Shared/Core/TrainingCalendar.swift; sourceTree = "<group>"; };
 		B091BAE36B0960D6C74FCA17 /* squat_side.mp4 */ = {isa = PBXFileReference; includeInIndex = 1; name = squat_side.mp4; path = prototype/squat/assets/squat_side.mp4; sourceTree = "<group>"; };
-		B1AD12B3269C44B71CE50475 /* SecondaryCameraClientTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SecondaryCameraClientTests.swift; path = Tests/iOS/SecondaryCameraClientTests.swift; sourceTree = "<group>"; };
 		B3F7DB9013209A7FB46DD73D /* WeeklyCoachViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WeeklyCoachViews.swift; path = Native/iOS/WeeklyCoachViews.swift; sourceTree = "<group>"; };
 		B4498C95371958B1654E2F13 /* SpottrTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpottrTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B4712D8E74CEA1940FC9C207 /* ExerciseCatalog.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExerciseCatalog.swift; path = Shared/Core/ExerciseCatalog.swift; sourceTree = "<group>"; };
-		B47AF6DFC2AF286D840EB9CE /* SecondaryCameraTrainingStoreTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SecondaryCameraTrainingStoreTests.swift; path = Tests/iOS/SecondaryCameraTrainingStoreTests.swift; sourceTree = "<group>"; };
 		B648B72DB52646EC5F60B932 /* WorkoutRecorder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WorkoutRecorder.swift; path = Native/Watch/WorkoutRecorder.swift; sourceTree = "<group>"; };
 		B663CAF15B90B3C198867FCE /* PoseDetector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PoseDetector.swift; path = Native/iOS/PoseDetector.swift; sourceTree = "<group>"; };
 		B71DE8E90E522CB630E5541B /* ExerciseDemonstrationGuide.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExerciseDemonstrationGuide.swift; path = Shared/Core/ExerciseDemonstrationGuide.swift; sourceTree = "<group>"; };
 		B941820A2085B4C554F66AC4 /* CameraVitals.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CameraVitals.swift; path = Shared/Core/CameraVitals.swift; sourceTree = "<group>"; };
 		BBB9B19F63BBAFB5C4CDF10E /* CoachFlowTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CoachFlowTests.swift; path = Tests/UI/CoachFlowTests.swift; sourceTree = "<group>"; };
-		BC6F4D067ACF2ABB3F200FB4 /* SecondaryCameraConfig.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SecondaryCameraConfig.swift; path = Shared/Core/SecondaryCameraConfig.swift; sourceTree = "<group>"; };
 		BD846E63093978DDFDF1537B /* LoggedWorkout.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LoggedWorkout.swift; path = Shared/Core/LoggedWorkout.swift; sourceTree = "<group>"; };
 		C16B2D06152C36B7ACD3267C /* WorkoutCompletionVoiceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WorkoutCompletionVoiceTests.swift; path = Tests/iOS/WorkoutCompletionVoiceTests.swift; sourceTree = "<group>"; };
 		C1C4DCF0DC0E8D6E80CE67CF /* HomeViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HomeViews.swift; path = Native/iOS/HomeViews.swift; sourceTree = "<group>"; };
@@ -421,7 +392,6 @@
 		D2E3FA1A085BCF5B405AACCC /* PhoneCameraLifecycleTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PhoneCameraLifecycleTests.swift; path = Tests/iOS/PhoneCameraLifecycleTests.swift; sourceTree = "<group>"; };
 		D3779C8058855CBEEC7A3E51 /* CoachAttempt.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CoachAttempt.swift; path = Shared/Core/CoachAttempt.swift; sourceTree = "<group>"; };
 		D4CEBA1339C3965FD38C819A /* SpottrUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpottrUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		D596357D3C300F6962308F26 /* SecondaryCameraConfig.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SecondaryCameraConfig.swift; path = Shared/Core/SecondaryCameraConfig.swift; sourceTree = "<group>"; };
 		D63FC1CEDF5A54925F22E361 /* CoachFlowTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CoachFlowTests.swift; path = Tests/iOS/CoachFlowTests.swift; sourceTree = "<group>"; };
 		D6DB22EE1BE5795C23835225 /* SkillsFlowTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SkillsFlowTests.swift; path = Tests/UI/SkillsFlowTests.swift; sourceTree = "<group>"; };
 		D72B3C17F42C51B632018086 /* SkillProgress.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SkillProgress.swift; path = Shared/Core/SkillProgress.swift; sourceTree = "<group>"; };
@@ -521,7 +491,6 @@
 				C944722180DBE31E14F0350A /* DemoVoicePlayback.swift */,
 				1945FEDCF8B25A79BADAAB42 /* DemonstrationGuideView.swift */,
 				E54F3638554C4CB76B7106DD /* DemonstrationVideoLibrary.swift */,
-				42619C2232656BEC10C6EE53 /* DualCameraPreview.swift */,
 				F677A092BDD3D41F9949DBBB /* GamificationViews.swift */,
 				C1C4DCF0DC0E8D6E80CE67CF /* HomeViews.swift */,
 				16200FD667404FDFB37E30CB /* InsightsView.swift */,
@@ -538,11 +507,6 @@
 				944F4ED968ED615BB7879746 /* ProfileSettingsView.swift */,
 				6393A2E204EBE289C4E89251 /* RemoteVoicePlayback.swift */,
 				E4E4DB5F687119DEAE5C440B /* ReportViews.swift */,
-				66F265BEF7D0CD0A30DAA2C2 /* SecondaryCameraClient.swift */,
-				9ECFD6D94D63CA91DC4E5C79 /* SecondaryCameraSettings.swift */,
-				7B5B9989F82E75BB725791D7 /* SecondaryCameraSettingsView.swift */,
-				146D758D1B20BE0401688B75 /* SecondaryCameraTLS.swift */,
-				A06C98FE802F5909BE56824D /* SecondaryCameraVisionWorker.swift */,
 				A33F057EF1C827D073919D7C /* SessionViews.swift */,
 				D2B367B5FAAC205A98111573 /* SkillsViews.swift */,
 				F3E7B303318D74BEF5F9F173 /* SmartSpectraDriver.swift */,
@@ -578,7 +542,6 @@
 				4319BB6EE76E50DFD814C6B6 /* PathProgress.swift */,
 				054639D8D195543AD7DCBB61 /* PoseGeometry.swift */,
 				351E579088F3B492A4D35F14 /* RepCounter.swift */,
-				D596357D3C300F6962308F26 /* SecondaryCameraConfig.swift */,
 				9DCD116DF96B9871FC0A02C7 /* SkillProgress.swift */,
 				578D3A7F6BA4127BA9FB8737 /* StreakSummary.swift */,
 				FDD2186A8E3E4CD3C6C8D639 /* Telemetry.swift */,
@@ -618,7 +581,6 @@
 				4FE65DBCBCEB16F24CFDE38A /* PathProgress.swift */,
 				E5875BF8CA1F7F8410941E90 /* PoseGeometry.swift */,
 				9B200BC78558ED7A8AEC710D /* RepCounter.swift */,
-				BC6F4D067ACF2ABB3F200FB4 /* SecondaryCameraConfig.swift */,
 				D72B3C17F42C51B632018086 /* SkillProgress.swift */,
 				84D475FD7126A7A1CCDBB8D6 /* StreakSummary.swift */,
 				9672AC0BCAD7C4B871C4962C /* Telemetry.swift */,
@@ -635,7 +597,6 @@
 				2DC8954725DCB50901F5FF64 /* CoachingFlowTests.swift */,
 				C23A9347E43A8FA9FD06EEB1 /* ConfiguredWorkoutFlowTests.swift */,
 				DECF7011E270BF625111C37F /* DefaultPresageAvailabilityTests.swift */,
-				0C8314E54F47FB24CDA6FB53 /* DemoCameraSettingsTests.swift */,
 				1C4A3641C0063C8035212D8F /* DemoStudioTests.swift */,
 				0C6AF39B1EC00F38C53BEF46 /* DemoVoicePlaybackTests.swift */,
 				51CCFE433B4700419666145A /* DemonstrationVideoTests.swift */,
@@ -652,11 +613,6 @@
 				98DFD6B89C7E606B00B60A57 /* ProfileDataControlsTests.swift */,
 				37376ABEEB495DAD4C5CF55C /* ReleasePackagingTests.swift */,
 				292AA51EA33C5A06C4A3A4BF /* RemoteVoicePlaybackTests.swift */,
-				B1AD12B3269C44B71CE50475 /* SecondaryCameraClientTests.swift */,
-				583F1DFF27F0EA32E7CCABE1 /* SecondaryCameraSettingsTests.swift */,
-				B47AF6DFC2AF286D840EB9CE /* SecondaryCameraTrainingStoreTests.swift */,
-				0D269A730AD3DE278A31CA3A /* SecondaryCameraTrustTests.swift */,
-				5647CBE9F372C123B55F4121 /* SecondaryCameraVisionWorkerTests.swift */,
 				EDCA97BA28A661650D197BAC /* TrainingPathPersistenceTests.swift */,
 				18CF07E7043256EAB82EA20F /* TrainingRewardsDataRemovalTests.swift */,
 				35ED718BDEF5EEDBFF963F00 /* TrainingRewardsFlowTests.swift */,
@@ -676,7 +632,6 @@
 				6EA21E256000178559F187CC /* ProfileFlowTests.swift */,
 				7B048E8E910D182D86F631AB /* ReportFlowTests.swift */,
 				DE45CE4C4A19F1A32C8B82F8 /* RewardsFlowTests.swift */,
-				833E95E51BA47FDCA3E8C5C2 /* SecondaryCameraFlowTests.swift */,
 				D6DB22EE1BE5795C23835225 /* SkillsFlowTests.swift */,
 				972AF07A59DA1DC0CCD35336 /* SpottrFlowTests.swift */,
 				8288BCC87771C6B0E4D0AC66 /* TrainingPathFlowTests.swift */,
@@ -685,7 +640,6 @@
 				B091BAE36B0960D6C74FCA17 /* squat_side.mp4 */,
 				9B4DD72196B058CB6D8873FD /* pushup_side.mp4 */,
 				60BD26A88773C109B0439557 /* DemoVoice */,
-				A654BF9EB912AF0EA7EF8AF4 /* SpottrDemoCamera.json */,
 				5B04F0A012FA20B61D58029A /* PrivacyInfo.xcprivacy */,
 				2BE4BD806B96267493CBE4DE /* coach-guidance.json */,
 				73D506D582550A9C2991C004 /* Assets.xcassets */,
@@ -696,6 +650,7 @@
 				6FAE9DDAF39258E3651C914D /* MediaPipeTaskGraphs_library.xcframework */,
 				6468CD0F64E625783B4F17D7 /* MediaPipeTasksCommon.xcframework */,
 				1E85517947D3F83D8F7055B7 /* MediaPipeTasksVision.xcframework */,
+				1FF601ED1277B769D15249BA /* PhoneCaptureRecoveryTests.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -870,7 +825,6 @@
 				78D25342960A8607FC82DB1D /* squat_side.mp4 in Resources */,
 				3CBB7DDB3DE590DE18CED608 /* pushup_side.mp4 in Resources */,
 				7CEE6E8F2B90FFEE56EA04DF /* DemoVoice in Resources */,
-				907F937BB489B1F2205BFE5E /* SpottrDemoCamera.json in Resources */,
 				3EE7FA85E182C4E0D69E1F45 /* PrivacyInfo.xcprivacy in Resources */,
 				102848C9F201455D0E394F1B /* coach-guidance.json in Resources */,
 				BD18C11422F941BCA1FF3F77 /* Assets.xcassets in Resources */,
@@ -928,7 +882,6 @@
 				A76E7F1F0542AF4A58C445D6 /* PathProgress.swift in Sources */,
 				F955BA3965DF0D6E72379DD0 /* PoseGeometry.swift in Sources */,
 				F396DBD2CAB2BAED1DFFBE73 /* RepCounter.swift in Sources */,
-				8A26448E72233F1BE54239C3 /* SecondaryCameraConfig.swift in Sources */,
 				B50C4451760693D5CCB318B6 /* SkillProgress.swift in Sources */,
 				BC331F08923096C492C79A23 /* StreakSummary.swift in Sources */,
 				92743C4692B02BC6AA09A1B5 /* Telemetry.swift in Sources */,
@@ -952,7 +905,6 @@
 				816A428DE9E26BD08922F2AF /* CoachingFlowTests.swift in Sources */,
 				98A86A36B64C5E2F806B8605 /* ConfiguredWorkoutFlowTests.swift in Sources */,
 				775ECBC89713A5326B4BBD78 /* DefaultPresageAvailabilityTests.swift in Sources */,
-				49529138AE2BC1B92C00166C /* DemoCameraSettingsTests.swift in Sources */,
 				7A11CE468B55B6BA29F8543D /* DemoStudioTests.swift in Sources */,
 				5C71911A9F3B900C91E57AA1 /* DemoVoicePlaybackTests.swift in Sources */,
 				9C76AABCE67A67B731B83EE3 /* DemonstrationVideoTests.swift in Sources */,
@@ -969,11 +921,6 @@
 				8B25440F3FC7A5D825C5B5FE /* ProfileDataControlsTests.swift in Sources */,
 				1E2C98F182F862FFB2139342 /* ReleasePackagingTests.swift in Sources */,
 				EAB4171366502D9EADBBE84C /* RemoteVoicePlaybackTests.swift in Sources */,
-				6A95CAA6866D548CE83F9847 /* SecondaryCameraClientTests.swift in Sources */,
-				954F2B758692FEBF39858C6A /* SecondaryCameraSettingsTests.swift in Sources */,
-				D190FA1087D792C73F3D4C3F /* SecondaryCameraTrainingStoreTests.swift in Sources */,
-				A902159D61F5F0054F3C5174 /* SecondaryCameraTrustTests.swift in Sources */,
-				5AD28EECD4E14EDC9551B1F3 /* SecondaryCameraVisionWorkerTests.swift in Sources */,
 				5357FBF4D352221C68DF25EE /* TrainingPathPersistenceTests.swift in Sources */,
 				0B63A4FA3ADF202B28729FC9 /* TrainingRewardsDataRemovalTests.swift in Sources */,
 				8B29BF626589917E1A76AEDD /* TrainingRewardsFlowTests.swift in Sources */,
@@ -985,6 +932,7 @@
 				AB4461A37936384EC649929B /* VoiceFeedbackTests.swift in Sources */,
 				B68968EA9134B217B2DE8786 /* WatchMetricContinuityTests.swift in Sources */,
 				A9CE20F9A60EA48341D085E2 /* WorkoutCompletionVoiceTests.swift in Sources */,
+				18806E8A4EA78A889A2CF7CB /* PhoneCaptureRecoveryTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1005,7 +953,6 @@
 				8040E5EBB770C345569C74F6 /* DemoVoicePlayback.swift in Sources */,
 				933FC726D1A6E5B4ABFB0E43 /* DemonstrationGuideView.swift in Sources */,
 				39306EC0616C6BE041F75705 /* DemonstrationVideoLibrary.swift in Sources */,
-				EA8F7997AC0EA1A73C906100 /* DualCameraPreview.swift in Sources */,
 				E616AE6752C49A5F4F90E895 /* GamificationViews.swift in Sources */,
 				6A6BD15F65EA457DD5A5B2F6 /* HomeViews.swift in Sources */,
 				7337CBCCFD2B442CD0BFE360 /* InsightsView.swift in Sources */,
@@ -1022,11 +969,6 @@
 				FAA47BC7CFAC208DA57A9763 /* ProfileSettingsView.swift in Sources */,
 				B17FF390D97AAA5134542D74 /* RemoteVoicePlayback.swift in Sources */,
 				29F46181ABE3062F3531F192 /* ReportViews.swift in Sources */,
-				240A71C731F080F02611C3F0 /* SecondaryCameraClient.swift in Sources */,
-				8E11E6BEE8366CCF820247C0 /* SecondaryCameraSettings.swift in Sources */,
-				CD719F0F5CAAED79CDE9D39A /* SecondaryCameraSettingsView.swift in Sources */,
-				AF8AF8F47FEB20E9D4236FD0 /* SecondaryCameraTLS.swift in Sources */,
-				7E535B01CCDD7C5E0B5CE254 /* SecondaryCameraVisionWorker.swift in Sources */,
 				D7FC935B523B369CA438A761 /* SessionViews.swift in Sources */,
 				6F72103F9C5A6FB64CFF5EDE /* SkillsViews.swift in Sources */,
 				57F9ADA31153429790CC9E71 /* SmartSpectraDriver.swift in Sources */,
@@ -1062,7 +1004,6 @@
 				6F1AF3A0C42A27B29B10BBBB /* PathProgress.swift in Sources */,
 				787EBD7474D8523D4768E5EB /* PoseGeometry.swift in Sources */,
 				931E013F9AFA222BD74CB855 /* RepCounter.swift in Sources */,
-				31FBC40D06E9A92407A28130 /* SecondaryCameraConfig.swift in Sources */,
 				8929F0BB44BCB246F50EF8C5 /* SkillProgress.swift in Sources */,
 				CBE725D297E367AECF8AE760 /* StreakSummary.swift in Sources */,
 				D4F3F73B5174464BE0EC7A29 /* Telemetry.swift in Sources */,
@@ -1089,7 +1030,6 @@
 				C23A4C3A0EA4749744E0601E /* ProfileFlowTests.swift in Sources */,
 				C737E133D5CA156E0902E3E1 /* ReportFlowTests.swift in Sources */,
 				F3EFA96382A74329AA814C2A /* RewardsFlowTests.swift in Sources */,
-				CB88F2EA77870FA612443565 /* SecondaryCameraFlowTests.swift in Sources */,
 				853B4C4DC3EFA926DE2C65DF /* SkillsFlowTests.swift in Sources */,
 				6695010C43BA9FBBC6F6CF17 /* SpottrFlowTests.swift in Sources */,
 				3DA2FAA9E049BD76EC5FEB5C /* TrainingPathFlowTests.swift in Sources */,
