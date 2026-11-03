@@ -1,0 +1,8 @@
+node_modules/
+models/*.task
+.env
+.DS_Store
+.control-token
+voice_cache/
+# local raw clips for replay demos, never committed
+assets/_*

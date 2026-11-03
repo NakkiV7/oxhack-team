@@ -1,4 +1,11 @@
+# shared
 .DS_Store
+__pycache__/
+.env*
+!*.example
+.local/
+
+# Apple / Xcode
 .build/
 build/
 DerivedData/
@@ -8,10 +15,16 @@ xcuserdata/
 .swiftpm/
 .superpowers/
 .xcodebuildmcp/
-.env*
 Native/Vendor/
-!*.example
 
-.local/
+# Node
 server/node_modules/
-__pycache__/
+
+# squat tracker (Python)
+.venv/
+*.mp4
+!squat/assets/*.mp4
+squat/models/*.task
+squat/voice_cache/
+squat/sessions/
+!prototype/*/assets/*.mp4

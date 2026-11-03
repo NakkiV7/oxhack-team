@@ -1,0 +1,988 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Squat Coach</title>
+<style>
+  :root { color-scheme: light; --bg:#f5f5f7; --card:#ffffff; --fg:#1d1d1f; --mut:#6e6e73; --line:#e8e8ed; --fill:#f2f2f7; --acc:#0071e3; --ok:#34c759; --warn:#ff9500; --bad:#ff3b30; --shadow:0 1px 2px rgba(0,0,0,.04), 0 10px 30px rgba(0,0,0,.06); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark; --bg:#000; --card:#1c1c1e; --fg:#f5f5f7; --mut:#98989d; --line:#2c2c2e; --fill:#2c2c2e; --acc:#0a84ff; --ok:#30d158; --warn:#ff9f0a; --bad:#ff453a; --shadow:0 1px 2px rgba(0,0,0,.5); } }
+  :root[data-theme="dark"] { color-scheme: dark; --bg:#000; --card:#1c1c1e; --fg:#f5f5f7; --mut:#98989d; --line:#2c2c2e; --fill:#2c2c2e; --acc:#0a84ff; --ok:#30d158; --warn:#ff9f0a; --bad:#ff453a; --shadow:0 1px 2px rgba(0,0,0,.5); }
+  .hdr-right { margin-left:auto; display:flex; gap:8px; align-items:center; } #voiceSel { padding:6px 34px 6px 12px; font-size:13px; max-width:220px; } #themeBtn { padding:6px 12px; font-size:13px; }
+  * { box-sizing:border-box; }
+  html, body { height:100%; }
+  body { margin:0; padding:16px; background:var(--bg); color:var(--fg); font:15px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif; -webkit-font-smoothing:antialiased; overflow:hidden; }
+  /* One screen, no page scroll: video column on the left, panels on the right; long lists scroll inside their card. */
+  .wrap { height:100%; max-width:1440px; margin:0 auto; display:grid; gap:16px; grid-template-columns:minmax(0,1.7fr) minmax(320px,1fr); }
+  @media (max-width:800px) { body { overflow:auto; } .wrap { height:auto; grid-template-columns:1fr; } .stage { min-height:50vh; } .side { min-height:70vh; } }
+  .main, .side { display:flex; flex-direction:column; gap:14px; min-height:0; min-width:0; }
+  .side { overflow-y:auto; overscroll-behavior:contain; padding-right:2px; scrollbar-width:thin; }
+  .card { background:var(--card); border-radius:20px; padding:18px 20px; min-height:0; box-shadow:var(--shadow); }
+  .grow { flex:1; display:flex; flex-direction:column; }
+  h1 { font-size:22px; font-weight:600; letter-spacing:-.02em; margin:0; }
+  h2 { font-size:11px; font-weight:600; margin:0 0 8px; color:var(--mut); text-transform:uppercase; letter-spacing:.06em; }
+  .head { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; padding:2px 4px 0; }
+  .stage { position:relative; background:#000; border-radius:20px; overflow:hidden; flex:1; min-height:0; box-shadow:var(--shadow); }
+  .stage video, .stage canvas { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  button, select, .btn { font:inherit; font-size:14px; font-weight:500; line-height:1.2; padding:9px 18px; border-radius:980px; border:1px solid var(--line); background:var(--card); color:var(--fg); cursor:pointer; box-shadow:0 1px 1px rgba(0,0,0,.03); transition:background .15s, transform .05s; -webkit-appearance:none; appearance:none; }
+  select { padding-right:36px; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%236e6e73' stroke-width='1.6' stroke-linecap='round'/></svg>"); background-repeat:no-repeat; background-position:right 15px center; }
+  button:hover:not(:disabled), .btn:hover { background:var(--fill); }
+  button:active:not(:disabled) { transform:scale(.97); }
+  button:disabled { opacity:.35; cursor:default; }
+  button.primary { background:var(--acc); border-color:var(--acc); color:#fff; }
+  button.primary:hover:not(:disabled) { background:color-mix(in srgb, var(--acc) 86%, #000); }
+  #file { display:none; }
+  .top { display:flex; align-items:center; gap:20px; }
+  .stats { min-width:0; flex:1; }
+  .count { font-size:72px; font-weight:600; line-height:1; letter-spacing:-.04em; font-variant-numeric:tabular-nums; }
+  .sub { color:var(--mut); font-size:14px; }
+  .feedback { font-size:17px; font-weight:600; min-height:2.6em; margin-top:12px; overflow-wrap:anywhere; letter-spacing:-.01em; } .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+  .bar { height:8px; background:var(--fill); border-radius:999px; overflow:hidden; margin:5px 0 4px; } .bar > i { display:block; height:100%; background:var(--acc); width:0; border-radius:999px; transition:width .12s; }
+  .bar > i.g0 { background:var(--ok); } .bar > i.g1 { background:var(--warn); } .bar > i.g2 { background:var(--bad); }
+  .gauges { display:grid; grid-template-columns:1fr 1fr; gap:14px 18px; font-size:12px; }
+  ul { list-style:none; margin:0; padding:0; overflow:auto; flex:1; min-height:0; } li { padding:7px 0; border-bottom:1px solid var(--line); font-size:13.5px; } li:last-child { border-bottom:0; }
+  .tip { font-size:12.5px; color:var(--mut); }
+  .panel { position:absolute; inset:0; z-index:2; display:flex; align-items:center; justify-content:center; padding:16px; overflow:auto; background:rgba(0,0,0,.45); color:#fff; backdrop-filter:blur(18px) saturate(1.4); }
+  .panel[hidden] { display:none; } [hidden] { display:none !important; }
+  .side > *, .split > * { flex-shrink:0; } /* cards keep their content height; the column scrolls instead of squashing them */
+  .panel .box { width:100%; max-width:460px; text-align:center; background:rgba(28,28,30,.82); border-radius:24px; padding:26px 24px; }
+  .panel h3 { margin:0 0 14px; font-size:22px; font-weight:600; letter-spacing:-.02em; }
+  .tiles { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
+  .tile { background:rgba(255,255,255,.1); border-radius:14px; padding:12px 6px; min-width:0; }
+  .tile b { display:block; font-size:24px; font-weight:600; letter-spacing:-.02em; line-height:1.2; } .tile span { font-size:11px; color:#a1a1a6; text-transform:uppercase; letter-spacing:.05em; }
+  .panel .note { font-size:13.5px; color:#d2d2d7; margin-bottom:14px; overflow-wrap:anywhere; }
+  .panel .row { justify-content:center; margin-top:0; }
+  .panel button { background:rgba(255,255,255,.12); border-color:transparent; color:#fff; } .panel button.primary { background:var(--acc); }
+  li .slow { color:var(--warn); } li .fast { color:var(--ok); }
+  a, a:visited { color:var(--acc); text-decoration:none; } a:hover { text-decoration:underline; }
+  .split { flex:none; display:flex; flex-direction:column; gap:14px; }
+  .split > .card { flex:none; display:flex; flex-direction:column; }
+  #history { max-height:200px; overflow:auto; } #coachLog { max-height:180px; overflow:auto; }
+  .tiger .strip { display:flex; flex-wrap:wrap; gap:4px 16px; font-size:13px; color:var(--mut); margin:2px 0 4px; } .tiger .strip b { color:var(--fg); font-size:15px; font-weight:600; }
+  .tiger svg { width:100%; height:34px; display:block; margin:2px 0 4px; } .tiger details summary { cursor:pointer; }
+  .hrt .hrt-state { font-size:17px; font-weight:600; margin:6px 0 2px; letter-spacing:-.01em; }
+  .hrt[data-state="cue"] .hrt-state { color:var(--acc); } .hrt[data-state="unavailable"] .hrt-state, .hrt[data-state="ended"] .hrt-state { color:var(--mut); }
+  .hrt details summary { cursor:pointer; margin-top:6px; } .hrt select { font:inherit; font-size:13px; max-width:100%; } .hrt .opts { display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center; margin:6px 0 2px; font-size:13px; color:var(--mut); } .hrt .opts label { display:inline-flex; align-items:center; gap:4px; }
+  .coachloop .hrt-state { font-size:17px; font-weight:600; margin:6px 0 2px; } .coachloop[data-state="result"] .hrt-state { color:var(--acc); } .coachloop #coachCue { font-weight:500; color:var(--fg); }
+  .ev table { width:100%; border-collapse:collapse; font-size:13px; margin:6px 0 10px; } .ev th, .ev td { text-align:left; padding:4px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .ev svg { width:100%; max-width:520px; height:auto; display:block; margin:6px 0 4px; color:var(--fg); } .ev code { font-size:12px; }
+  input[type=text], input:not([type]) { -webkit-appearance:none; appearance:none; }
+  #askQ { border-radius:980px !important; padding:9px 16px !important; border:1px solid var(--line) !important; background:var(--fill) !important; }
+  dialog { padding:0; border:0; border-radius:22px; background:var(--card); color:var(--fg); box-shadow:0 30px 80px rgba(0,0,0,.35); }
+  dialog::backdrop { background:rgba(0,0,0,.35); backdrop-filter:blur(10px); }
+  dialog#refs, dialog#tutorial { width:min(860px, calc(100vw - 32px)); max-height:calc(100vh - 48px); }
+  dialog#profile { width:min(560px, calc(100vw - 32px)); }
+  .refs-head { position:sticky; top:0; z-index:1; display:flex; justify-content:space-between; align-items:center; padding:16px 22px; background:var(--card); border-bottom:1px solid var(--line); }
+  .refs-body { padding:6px 22px 22px; overflow:auto; max-height:calc(100vh - 120px); }
+  .refs-body h3 { font-size:16px; font-weight:600; margin:20px 0 8px; letter-spacing:-.01em; }
+  .refs-body p, .refs-body li { font-size:14px; line-height:1.55; }
+  .refs-body ul { list-style:disc; padding-left:20px; overflow:visible; } .refs-body ol { padding-left:24px; }
+  .refs-body li { border:0; padding:3px 0; }
+  .tbl { width:100%; overflow-x:auto; } .tbl table { border-collapse:collapse; width:100%; font-size:13px; }
+  .tbl th, .tbl td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .tbl th { color:var(--mut); font-weight:600; }
+  .tag { display:inline-block; font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; background:color-mix(in srgb, var(--warn) 25%, var(--card)); }
+  .stages li { list-style:none; padding:3px 0; color:var(--mut); } .stages li.done { color:var(--fg); } .stages li.done::before { content:'✓ '; color:var(--ok); } .stages li.now::before { content:'… '; }
+  #profile .refs-body p, #profile .refs-body li { margin:6px 0; }
+  /* tutorial dialog */
+  .tut-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:8px; } @media (max-width:720px) { .tut-grid { grid-template-columns:1fr; } }
+  .tut-video { width:100%; aspect-ratio:25/12; border-radius:16px; background:#000; display:block; margin:0 0 8px; }
+  .refs-body ol.steps { counter-reset:step; list-style:none; padding-left:0; }
+  .refs-body ol.steps li { position:relative; padding:5px 0 5px 38px; }
+  .refs-body ol.steps li::before { counter-increment:step; content:counter(step); position:absolute; left:0; top:5px; width:26px; height:26px; border-radius:50%; background:var(--acc); color:#fff; font-size:12px; font-weight:600; display:flex; align-items:center; justify-content:center; }
+  .credit { font-size:12px; color:var(--mut); margin:0 0 6px; }
+</style>
+<script>try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch {}</script>
+</head>
+<body>
+<div class="wrap">
+  <div class="main">
+    <div class="head">
+      <h1>Squat Coach</h1>
+      <span class="tip" id="codeTip" title="Enter this code in a phone client to pause / stop from the phone"></span>
+      <span class="tip">Camera <b>side-on</b> or facing you, 2–3 m away, feet in frame. Runs on your Mac.</span>
+      <span class="hdr-right"><select id="voiceSel" title="Spoken coach: pick a voice or turn it off"><option value="off">Voice off</option></select><button id="themeBtn" title="Switch between light and dark">Dark</button></span>
+    </div>
+    <div class="stage">
+      <video id="video" playsinline muted></video>
+      <canvas id="overlay"></canvas>
+      <div class="panel" id="panel" hidden></div>
+    </div>
+    <div class="row">
+      <select id="variation"></select>
+      <button class="primary" id="startCam">Start camera</button>
+      <label class="btn" for="file">Upload video</label><input type="file" id="file" accept="video/*">
+      <button id="pause" disabled>Pause</button>
+      <button id="stop">Stop</button>
+      <button id="reset">Reset reps</button>
+      <button id="tutorialBtn" title="How to do the exercise, with example videos">Tutorial</button>
+      <button id="refsBtn" title="How reps are judged, squat types and sources">References</button>
+      <button id="evidenceBtn" title="How the tempo forecasts perform: baselines, calibration, dataset">Evidence</button>
+    </div>
+    <div class="tip" id="status">Loading pose model…</div>
+  </div>
+  <div class="side">
+    <div class="card">
+      <div class="top">
+        <div class="count" id="count">0</div>
+        <div class="stats">
+          <div class="sub"><span id="good">0</span> good form</div>
+          <div class="sub" id="clock" title="Workout time (stops while paused)">⏱ 00:00</div>
+          <div class="sub" id="pace">– s/rep</div>
+        </div>
+      </div>
+      <div class="feedback" id="feedback"></div>
+      <div class="gauges" style="margin-top:10px">
+        <div><h2>Hip travel</h2><div class="bar"><i id="travelBar"></i></div><div class="sub" id="travelTxt">–</div></div>
+        <div><h2>Depth</h2><div class="bar"><i id="depthBar"></i></div><div class="sub" id="depthTxt">–</div></div>
+        <div><h2 id="metric3Label">Lean</h2><div class="bar"><i id="metric3Bar"></i></div><div class="sub" id="metric3Txt">–</div></div>
+        <div><h2 id="metric4Label">Balance</h2><div class="bar"><i id="metric4Bar"></i></div><div class="sub" id="metric4Txt">–</div></div>
+      </div>
+    </div>
+    <div class="card coachloop" id="coachCard" hidden>
+      <div class="row" style="justify-content:space-between;align-items:center;gap:8px;margin:0"><h2 style="margin:0">Coach · retry · verify</h2><a class="sub" id="coachBack" href="/coach">Back to programme</a></div>
+      <div class="hrt-state" id="coachState">Setting up</div>
+      <div class="sub" id="coachSub">Start the camera. Three counted reps make the baseline.</div>
+      <div class="sub" id="coachCue" style="margin-top:6px"></div>
+      <div class="row" style="margin-top:8px"><button class="primary" id="coachRetryBtn" hidden>Start retry</button><button id="coachStopBtn">Stop attempt</button><button id="coachAgainBtn" hidden>Try again</button></div>
+      <div class="sub" id="coachResult" style="margin-top:6px"></div>
+    </div>
+    <div class="card hrt" id="hrtCard" data-state="baseline">
+      <h2 style="margin:0">Tempo forecast</h2>
+      <div class="hrt-state" id="hrtState">Learning your pace</div>
+      <div class="sub" id="hrtSub">Forecasts start after three counted reps.</div>
+      <details id="hrtWhy"><summary class="sub">Why this?</summary><div class="sub" id="hrtWhyBody">No forecast yet.</div></details>
+      <details><summary class="sub">What this is, and settings</summary>
+        <div class="sub" style="margin:6px 0">A few reps ahead, it predicts whether your lowering tempo is about to drift from how you started this set and stay drifted. By default it only records its forecasts so they can be scored later; <b>cue me</b> speaks them.</div>
+        <div class="opts"><select id="hrtTarget" title="Tempo target for the lowering phase"></select><label title="Deliver a cue when the policy fires (otherwise shadow mode: forecasts are only recorded)"><input type="checkbox" id="hrtCoach"> cue me</label><label title="Replay demo: pause the video at each forecast before the next reps are revealed"><input type="checkbox" id="hrtPause"> pause at forecast</label></div>
+      </details>
+    </div>
+    <div class="split">
+      <div class="card" id="historyCard" hidden>
+        <h2>History</h2>
+        <ul id="history"></ul>
+      </div>
+      <div class="card coach">
+        <h2>AI coach</h2>
+        <ul id="coachLog"><li class="sub" id="coachEmpty">Gemini chimes in every few reps or when your form slips. Ask a short question below (answers come from WHO, CDC, NHS, NIH).</li></ul>
+        <form id="askForm" class="row" autocomplete="off" style="margin-top:8px">
+          <input id="askQ" maxlength="256" placeholder="Ask a short question…" style="flex:1;min-width:120px;font:inherit;padding:7px;border-radius:8px;border:1px solid var(--mut);background:var(--bg);color:var(--fg)">
+          <button class="primary" id="askBtn">Ask</button>
+          <span class="sub" id="askCount">0/256</span>
+        </form>
+      </div>
+    </div>
+    <div class="card tiger" id="tigerCard">
+      <h2>Tiger Data <span class="sub" id="tgState">connecting…</span></h2>
+      <div class="strip"><span><b id="tgFrames">–</b> frames</span><span><b id="tgRate">–</b> rows/s</span><span><b id="tgRatio">–</b> compressed</span><span><b id="tgMs">–</b> rollup</span></div>
+      <svg id="tgSpark" viewBox="0 0 300 40" preserveAspectRatio="none" aria-label="Per-second rollup of the last 90 seconds, read back from the database"><polyline id="tgLine" fill="none" stroke="#0a84ff" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>
+      <details><summary class="sub">About this card</summary>
+        <div class="row" style="justify-content:space-between;align-items:center;gap:8px;margin-top:6px">
+          <span class="sub" id="tgNote">Every analysed frame is a row in a hypertable. The line is hip travel per second from the continuous aggregate.</span>
+          <button id="tgCompress" title="Convert closed five-minute chunks to columnstore now">Compress now</button>
+        </div>
+      </details>
+    </div>
+  </div>
+</div>
+<dialog id="tutorial" aria-labelledby="tutTitle">
+  <div class="refs-head"><h1 id="tutTitle">How to squat</h1><button id="tutClose" aria-label="Close">Close</button></div>
+  <div class="refs-body">
+    <div class="tut-grid">
+      <div>
+        <h3>Side view</h3>
+        <video class="tut-video" controls preload="metadata" playsinline src="/assets/squat_side.mp4"></video>
+        <p class="credit">Six clean reps, then the coach notices the ascent slowing. Footage: Cavemantraining, CC BY-SA 4.0; the overlay and voice are this app.</p>
+      </div>
+      <div>
+        <h3>Facing the camera</h3>
+        <video class="tut-video" controls preload="metadata" playsinline src="/assets/squat_front.mp4"></video>
+        <p class="credit">Half squats, so the thighs go red and the coach asks for more depth. Footage: Gareth Myles (GM-FITNESS), CC BY.</p>
+      </div>
+    </div>
+    <h3>Set up</h3>
+    <ol class="steps">
+      <li>Camera 2–3 m away, side-on or facing you, feet in frame. Side-on shows depth and lean; facing the camera shows knee tracking and balance.</li>
+      <li>Feet about shoulder-width apart, toes turned out a little, weight spread across the whole foot.</li>
+      <li>Stand tall for a second so the app learns your standing height.</li>
+    </ol>
+    <h3>The rep</h3>
+    <ol class="steps">
+      <li>Brace your core and sit back and down, as if onto a chair behind you. Knees track over the toes.</li>
+      <li>Keep your chest up. A forward lean is normal; folding over is not.</li>
+      <li>Go down until the hip crease is level with the knee. That is the 0 line on the depth gauge.</li>
+      <li>Drive up through the whole foot to a full stand. The rep counts when you are back at the top.</li>
+    </ol>
+    <h3>What the coach watches</h3>
+    <ul>
+      <li><b>Shallow:</b> the hips never reached knee level, so the rep is listed but not counted.</li>
+      <li><b>Forward lean:</b> torso more than 40° from vertical at the bottom.</li>
+      <li><b>Knees in:</b> knees narrower than the ankles on the way up.</li>
+      <li><b>Uneven:</b> weight shifted to one side.</li>
+      <li><b>Tempo:</b> a rushed descent, or reps slowing down as you tire.</li>
+    </ul>
+  </div>
+</dialog>
+<dialog id="evidence" aria-labelledby="evTitle">
+  <div class="refs-head"><h1 id="evTitle">How the tempo forecasts perform</h1><button id="evClose" aria-label="Close">Close</button></div>
+  <div class="refs-body ev" id="evidenceBody"><p class="sub">Loading…</p></div>
+</dialog>
+<dialog id="refs" aria-labelledby="refsTitle">
+  <div class="refs-head"><h1 id="refsTitle">How it works and references</h1><button id="refsClose" aria-label="Close">Close</button></div>
+  <div class="refs-body">
+    <h3>How a rep is judged</h3>
+    <ul>
+      <li><b>Pose:</b> MediaPipe Pose Landmarker finds 33 body points per frame <a href="#ref-1">[1]</a>. The app uses the leg the camera sees best and works from the side, the front or in between: the view is detected from shoulder width against torso height.</li>
+      <li><b>Hip travel</b> counts reps: how far the hip drops, as a fraction of standing leg length (hip height above the ankle, so a panning camera does not fake a rep). A rep starts past 15% and ends back under 8%. The 2D knee angle only confirms that the legs actually bend, so stepping toward the camera is not a rep, and every visible leg must bend, so a leg lift is not one either.</li>
+      <li><b>Depth</b> is where the hip crease sits against the knee at the bottom, in thigh lengths: 0 is level with the knee (parallel), negative is above. Attempts that never travel 22% of leg length are listed but not counted.</li>
+      <li><b>Lean</b> (side view) is the torso angle from vertical on the worst frame. <b>Knees</b> (front view) is knee width over ankle width, so knees caving in show as a low ratio. <b>Balance</b> (front view) is the hip line's tilt minus the shoulder line's tilt, which cancels the tilt perspective adds and leaves real weight shift.</li>
+      <li><b>Not a squat:</b> bending over without sitting down (lean over 80°, or over 60° with shallow depth), a hallucinated hip below the frame, a rep that lasts under half a second or over 15 s, or travel over 90% of leg length, which only a camera cut produces.</li>
+      <li><b>Image shape:</b> MediaPipe gives x and y as fractions of width and height, so x is scaled by the video's width/height before measuring angles.</li>
+    </ul>
+
+    <h3>Squat types</h3>
+    <p>Both use the same counting logic; they differ only in how depth is judged.</p>
+    <div class="tbl"><table id="varTable"></table></div>
+
+    <h3>What the standards say</h3>
+    <ul>
+      <li><b>Depth:</b> competition and test rules define a full squat by the hip crease passing below the top of the knee, which is the 0 line of the depth gauge <a href="#ref-2">[2]</a>. A parallel squat (thigh horizontal) is the usual training target <a href="#ref-3">[3]</a>.</li>
+      <li><b>Knees:</b> knees tracking over the toes, not collapsing inward (valgus), is the most common form cue in screening tests <a href="#ref-4">[4]</a>.</li>
+      <li><b>Lean:</b> a forward trunk lean is normal in a squat; excessive lean with a rounded back shifts load to the spine. No standard gives a number in degrees, so the 40°/55° limits are this app's starting points.</li>
+    </ul>
+
+    <h3>Calibration notes</h3>
+    <ul>
+      <li>The counting rules were tuned on 16 Creative Commons clips (front, side, three-quarter and low angles, bodyweight, goblet, racked and overhead squats) and one webcam session with three testers. Every clean set counts exactly; the only misses are on footage that cuts away mid-rep.</li>
+      <li>This page runs the same rules as the Python reference in <code>squat/</code>; on identical landmark input the two agree on every clip (17 of 17).</li>
+      <li>Depth and knee tracking need the knees and feet actually in frame. From a desk-height laptop camera the app still counts, but those two gauges switch off rather than guess.</li>
+    </ul>
+
+    <h3>Limits</h3>
+    <ul>
+      <li>2D only: back rounding and bar path are not checked.</li>
+      <li>Loose clothing, poor light or a very close camera reduce landmark accuracy, especially at the feet.</li>
+      <li>Not medical advice or a certified coaching tool.</li>
+    </ul>
+
+    <h3>References</h3>
+    <ol>
+      <li id="ref-1">Google AI Edge. MediaPipe Pose Landmarker. <a href="https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker" target="_blank" rel="noopener">ai.google.dev</a></li>
+      <li id="ref-2">International Powerlifting Federation. Technical Rules Book: squat depth (hip joint below the top of the knee). <a href="https://www.powerlifting.sport/rules/codes/info/technical-rules" target="_blank" rel="noopener">powerlifting.sport</a></li>
+      <li id="ref-3">Schoenfeld BJ. Squatting kinematics and kinetics and their application to exercise performance. J Strength Cond Res. 2010;24(12):3497-3506. <a href="https://pubmed.ncbi.nlm.nih.gov/21088548/" target="_blank" rel="noopener">PubMed 21088548</a></li>
+      <li id="ref-4">Cook G, Burton L, Hoogenboom B. Pre-participation screening: the use of fundamental movements as an assessment of function, part 1. N Am J Sports Phys Ther. 2006;1(2):62-72. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC2953313/" target="_blank" rel="noopener">PMC2953313</a></li>
+    </ol>
+  </div>
+</dialog>
+<script type="module">
+import { PoseLandmarker, FilesetResolver } from '/vendor/vision_bundle.mjs';
+import { VARIATIONS, JOINTS, METRICS, RepCounter, GREEN, AMBER, RED } from '/squat.mjs';
+import { Forecaster, TARGETS, DEFAULT_TARGET, MIN_REPS, cueText, bounds } from '/hrt.mjs';
+import { renderEvidence, renderReview } from '/hrt-evidence.mjs';
+import { CoachLoop } from '/coach-loop.mjs';
+import { contractFor as coachContractFor } from '/coach.mjs';
+
+const $ = (id) => document.getElementById(id);
+const video = $('video'), canvas = $('overlay'), ctx = canvas.getContext('2d');
+const sel = $('variation');
+for (const [k, v] of Object.entries(VARIATIONS)) sel.add(new Option(v.label, k));
+const DEFAULT_VARIATION = 'standard';
+sel.value = DEFAULT_VARIATION;
+const counter = new RepCounter(DEFAULT_VARIATION);
+sel.onchange = () => { counter.setVariation(sel.value); newWorkout(); render(null); };
+$('reset').onclick = () => { newWorkout(); render(null); };
+
+// references dialog: the variation table is built from VARIATIONS so it always shows the live thresholds
+function fillVarTable() {
+  const head = '<tr><th>Type</th><th>Good depth (hip vs knee, thigh lengths)</th><th>Amber down to</th><th>Counts when hip travel reaches</th></tr>';
+  const rows = Object.entries(VARIATIONS).map(([, v]) => `<tr><td><b>${v.label}</b></td><td>${v.depthGood} or deeper</td><td>${v.depthWarn}</td><td>22% of leg length</td></tr>`).join('');
+  $('varTable').innerHTML = head + rows;
+}
+$('refsBtn').onclick = () => { fillVarTable(); $('refs').showModal(); };
+$('refsClose').onclick = () => $('refs').close();
+
+// Light / dark switch. With no choice saved the page follows the system setting.
+const themeBtn = $('themeBtn');
+const isDark = () => document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
+const showTheme = () => { themeBtn.textContent = isDark() ? 'Light' : 'Dark'; };
+themeBtn.onclick = () => { const next = isDark() ? 'light' : 'dark'; document.documentElement.dataset.theme = next; try { localStorage.setItem('theme', next); } catch {} showTheme(); };
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', showTheme);
+showTheme();
+
+// Spoken coach: ElevenLabs through the local server (/say, cached on disk). One line at a time, never cut off;
+// a more urgent cue waits its turn, repeats are rate-limited. The chosen voice also sets the Gemini coach's persona.
+const MOTIVATION = [{ text: 'Nobody is coming to do this for you. Keep moving.', tone: 'push' }, { text: "That's it. Earn every rep.", tone: 'push' }, { text: 'Pain is just information. Keep going.', tone: 'push' }, { text: 'Stay with it. The last reps are the ones that count.', tone: 'push' }, { text: 'Good. Strong. Again.', tone: 'calm' }, { text: 'You are not tired, you are warming up. Push.', tone: 'push' }, { text: "Finish it. Don't leave reps on the table.", tone: 'push' }, { text: 'Clean rep. Make the next one better.', tone: 'calm' }];  // tone: calm = praise, push = shouting voice
+const CLOSING = ['Set done. That is how you build it.', 'Done. Come back and beat it next time.', 'Good work. Rest, then go again.'];
+const CUES = ['Deeper: hips to knee height', 'Chest up', 'Knees out', 'Even weight on both feet', 'Not low enough: hips to knee height', 'Control the way down', "You're slowing down", 'Go lower', "Let's go. Stand tall."];
+const PREWARM = [...Array.from({ length: 30 }, (_, i) => ({ text: String(i + 1), tone: 'calm' })), ...CUES.map((text) => ({ text, tone: 'push' })), ...MOTIVATION, ...CLOSING.map((text) => ({ text, tone: 'calm' }))];
+const voiceSel = $('voiceSel');
+let voices = [], voiceId = (() => { try { return localStorage.getItem('voice'); } catch { return null; } })();
+const voiceName = () => voices.find((v) => v.id === voiceId)?.name ?? '';
+const personaFor = (n = '') => /arnold/i.test(n) ? 'larger-than-life bodybuilding champion turned coach: booming confidence, dry humour, every rep is a victory'
+  : /goggins/i.test(n) ? 'relentless no-excuses endurance coach: blunt, intense, demands more, never profane' : 'friendly, upbeat';
+async function loadVoices() {
+  try { voices = await (await fetch('/voices')).json(); } catch { voices = []; }
+  for (const v of voices) voiceSel.add(new Option(v.name, v.id));
+  if (!voiceId || (voiceId !== 'off' && !voices.some((v) => v.id === voiceId))) voiceId = voices[0]?.id ?? 'off';
+  voiceSel.value = voiceId;
+  if (!voices.length) voiceSel.hidden = true;
+  prewarm();
+}
+voiceSel.onchange = () => { voiceId = voiceSel.value; try { localStorage.setItem('voice', voiceId); } catch {} prewarm(); publish(null, true); };
+const toneId = (tone) => { const v = voices.find((x) => x.id === voiceId); return tone === 'push' && v?.loud ? v.loud : voiceId; };
+const sayUrl = (text, tone = 'calm') => `/say?text=${encodeURIComponent(text)}&voice=${encodeURIComponent(toneId(tone))}`;
+const speech = { queue: [], current: null, said: new Map() };
+window.coachVoice = speech; // debugging aid
+function say(text, prio = 2, tone = 'calm') {
+  if (voiceId === 'off' || !voices.length || !text) return;
+  text = String(text).slice(0, 240);
+  const now = performance.now();
+  if (!/^\d+$/.test(text) && now - (speech.said.get(text) ?? -1e9) < 8000) return;   // same cue too recently
+  if (speech.queue.some((q) => q.text === text)) return;
+  speech.said.set(text, now);
+  speech.queue.push({ text, prio, tone, t: now });
+  pump();
+}
+function pump() {
+  if (speech.current) return;
+  const now = performance.now();
+  speech.queue = speech.queue.filter((q) => q.prio >= 3 || now - q.t < 4000);        // stale low-priority cues expire
+  if (!speech.queue.length) return;
+  const next = speech.queue.reduce((a, b) => (b.prio > a.prio || (b.prio === a.prio && b.t < a.t) ? b : a));
+  speech.queue.splice(speech.queue.indexOf(next), 1);
+  const a = new Audio(sayUrl(next.text, next.tone));
+  speech.current = a;
+  const done = () => { speech.current = null; pump(); };
+  a.onended = done; a.onerror = done;
+  a.play().catch(done);
+}
+async function prewarm() {   // synthesise the fixed lines once per voice, in the background, so playback is instant
+  if (voiceId === 'off' || !voices.length) return;
+  const id = voiceId;
+  for (const { text, tone } of PREWARM) { if (voiceId !== id) return; try { await fetch(sayUrl(text, tone)); } catch { return; } }
+}
+let motivationN = 0;
+function voiceRep(rep) {
+  if (!rep.counted) { say(rep.issue, 2, 'push'); return; }
+  say(String(rep.n), 3);
+  if (rep.issue) say(rep.issue, 3, 'push');
+  else if (rep.n % 3 === 0) { const m = MOTIVATION[motivationN++ % MOTIVATION.length]; say(m.text, 1, m.tone); }
+}
+loadVoices();
+
+
+// Tutorial dialog: videos pause when it closes.
+const tut = $('tutorial');
+$('tutorialBtn').onclick = () => tut.showModal();
+$('tutClose').onclick = () => tut.close();
+tut.addEventListener('close', () => { for (const v of tut.querySelectorAll('video')) v.pause(); });
+tut.addEventListener('click', (e) => { if (e.target === tut) tut.close(); });
+
+$('refs').addEventListener('click', (e) => { if (e.target === $('refs')) $('refs').close(); });
+
+let lm0Logged = false;
+let landmarker, running = false, stream = null, lastTs = -1;
+
+async function init() {
+  const files = await FilesetResolver.forVisionTasks('/vendor/wasm');
+  const make = (delegate) => PoseLandmarker.createFromOptions(files, {
+    baseOptions: { modelAssetPath: '/models/pose_landmarker_full.task', delegate },
+    runningMode: 'VIDEO', numPoses: 1,
+  });
+  try { landmarker = await make('GPU'); } catch { landmarker = await make('CPU'); }
+  $('status').textContent = 'Model ready. Pick a squat type and start the camera (or upload a video).';
+}
+init().catch((e) => { console.error('[model] load failed', e); $('status').textContent = 'Model failed to load: ' + e.message; });
+
+// Workout clock: counts only while the workout is running (pause and stop freeze it).
+let clockAcc = 0, clockSince = null, workoutEnded = false;
+const clockMs = () => clockAcc + (clockSince != null ? performance.now() - clockSince : 0);
+const clockStart = () => { if (clockSince == null) clockSince = performance.now(); };
+const clockPause = () => { if (clockSince != null) { clockAcc += performance.now() - clockSince; clockSince = null; } };
+const clockReset = () => { clockAcc = 0; clockSince = running ? performance.now() : null; showClock(); };
+const fmtTime = (ms) => { const s = Math.round(ms / 1000), h = Math.floor(s / 3600); return `${h ? h + ':' : ''}${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
+const showClock = () => { $('clock').textContent = '⏱ ' + fmtTime(clockMs()); };
+setInterval(showClock, 250);
+
+const panel = $('panel');
+const hidePanel = () => { const was = !panel.hidden && workoutEnded; panel.hidden = true; panel.innerHTML = ''; if (was) publish(null, true); };
+function newWorkout() {
+  hrtNew(); tgEnd(); // the forecaster closes the old set (its outcomes join that set's batch) and opens a fresh one
+  hidePanel(); workoutEnded = false; counter.reset(); $('history').innerHTML = ''; $('historyCard').hidden = true; clockReset();
+}
+
+function askEnd() {
+  panel.innerHTML = '<div class="box"><h3>End this workout?</h3><div class="note">Your reps and time so far will be summarised.</div><div class="row"><button id="keepGoing">Keep going</button><button class="primary" id="endNow">End workout</button></div></div>';
+  panel.hidden = false;
+  $('keepGoing').onclick = hidePanel;
+  $('endNow').onclick = endWorkout;
+  $('keepGoing').focus();
+}
+
+// Numbers for the workout summary. Shown on this page and sent to a phone (see publish()).
+function summaryStats() {
+  const done = counter.reps.filter((r) => r.counted);
+  const secs = done.filter((r) => r.secs != null).map((r) => r.secs);
+  const issues = {};
+  for (const r of done) for (const f of r.faults) issues[f] = (issues[f] ?? 0) + 1;
+  const top = Object.entries(issues).sort((a, b) => b[1] - a[1])[0];
+  return {
+    timeMs: Math.round(clockMs()), reps: done.length, good: done.filter((r) => r.good).length,
+    avg: secs.length ? secs.reduce((x, y) => x + y, 0) / secs.length : null,
+    fastest: secs.length ? Math.min(...secs) : null, slowest: secs.length ? Math.max(...secs) : null,
+    notCounted: counter.reps.length - done.length, label: VARIATIONS[counter.variation].label,
+    topIssue: top?.[0] ?? null, topIssueCount: top?.[1] ?? 0,
+  };
+}
+
+let inputGeneration = 0, cameraStarting = false;
+
+function endWorkout() {
+  clockPause(); stopAll(); showClock(); workoutEnded = true; hrtEnd(); tgEnd();
+  if (typeof say === 'function' && typeof CLOSING !== 'undefined') say(CLOSING[counter.count % CLOSING.length], 3); // voice is optional
+  const st = summaryStats();
+  const tile = (v, l) => `<div class="tile"><b>${v}</b><span>${l}</span></div>`;
+  const s1 = (v) => v == null ? '–' : v.toFixed(1) + ' s';
+  panel.innerHTML = `<div class="box"><h3>Workout summary</h3>
+    <div class="tiles">
+      ${tile(fmtTime(st.timeMs), 'Total time')}${tile(st.reps, 'Reps')}${tile(st.good, 'Good form')}
+      ${tile(s1(st.avg), 'Avg / rep')}${tile(s1(st.fastest), 'Fastest')}${tile(s1(st.slowest), 'Slowest')}
+    </div>
+    <div class="note">${st.label}${st.notCounted ? ` · ${st.notCounted} not counted` : ''}${st.topIssue ? `<br>Most common issue: ${st.topIssue} (×${st.topIssueCount})` : st.reps ? '<br>Clean form all the way. Nice.' : ''}</div>
+    <div class="note" id="hrtReview">Loading what we anticipated…</div>
+    <div class="row"><button class="primary" id="closeSummary">Start again</button></div></div>`;
+  panel.hidden = false;
+  $('closeSummary').onclick = hidePanel;
+  hrtReview(tgLast);
+  $('status').textContent = 'Workout finished. Start the camera or upload a video to begin a new one.';
+}
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hidePanel(); });
+
+async function begin(generation = inputGeneration) {
+  if (generation !== inputGeneration) return false;
+  video.muted = true;
+  await video.play();
+  if (generation !== inputGeneration) return false;
+  running = true; lastTs = -1; lm0Logged = false;
+  clockStart();
+  if (video.src) setPause(true); // uploaded video only; covers the click-to-start path too
+  requestAnimationFrame(loop);
+  return true;
+}
+
+$('startCam').onclick = async () => {
+  tgNote = null; stopAll();
+  const generation = inputGeneration;
+  try {
+    cameraStarting = true;
+    newWorkout();
+    const opened = await navigator.mediaDevices.getUserMedia({ video: { width: 960, height: 720 } });
+    if (generation !== inputGeneration) { opened.getTracks().forEach(track => track.stop()); return; }
+    stream = opened;
+    // Camera unplugged, taken by another app or permission revoked: pause the attempt instead of scoring a broken set.
+    stream.getVideoTracks()[0]?.addEventListener('ended', () => { if (generation !== inputGeneration) return; stopAll(); $('status').textContent = 'Camera disconnected. Start the camera again to continue.'; });
+    video.srcObject = stream; video.loop = false;
+    const began = await begin(generation);
+    if (generation !== inputGeneration) return;
+    cameraStarting = false;
+    if (began) { $('status').textContent = 'Running. Stand tall with your feet in frame.'; say("Let's go. Stand tall.", 2, 'push'); coachAfterInput(); }
+  } catch (e) {
+    if (generation !== inputGeneration) return;
+    stopAll(); $('status').textContent = 'Camera error: ' + e.message + ' (grant camera access to your browser).';
+  }
+};
+$('file').onchange = async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  console.log('[video] picked', { name: f.name, type: f.type, size: f.size, landmarkerReady: !!landmarker, canPlay: video.canPlayType(f.type) || '(no)' });
+  tgNote = f.name; stopAll(); newWorkout();
+  const generation = inputGeneration;
+  if (!landmarker) { console.warn('[video] model not loaded yet'); $('status').textContent = 'Model is still loading, pick the video again in a moment.'; return; }
+  $('status').textContent = 'Loading video…';
+  video.onerror = () => { if (generation !== inputGeneration) return; console.error('[video] element error', video.error); running = false; clockPause(); $('status').textContent = 'Cannot play this video (codec not supported by the browser). Try an .mp4 (H.264).'; };
+  // Normally the clip loops. A held-out replay (pause at forecast) plays once and ends the set itself, so the review and the
+  // stored outcomes describe one pass of one recording.
+  const replayOnce = $('hrtPause').checked;
+  video.onended = replayOnce ? () => { if (generation === inputGeneration) endWorkout(); } : null;
+  video.onloadedmetadata = () => console.log('[video] metadata', { w: video.videoWidth, h: video.videoHeight, duration: video.duration });
+  video.src = URL.createObjectURL(f); video.loop = !replayOnce; // replays until the user pauses or stops, unless a held-out replay
+  try {
+    if (!await begin(generation)) return;
+    $('status').textContent = replayOnce ? 'Held-out replay: plays once and pauses at each forecast.' : 'Analysing video (looping). Press Pause to stop.'; setPause(true); coachAfterInput();
+  } catch (err) {
+    if (generation !== inputGeneration) return;
+    console.error('[video] play failed', err);
+    if (err.name === 'NotAllowedError') {
+      running = false;
+      $('status').textContent = 'Browser blocked autoplay. Click the video to start.';
+      canvas.addEventListener('click', async () => {
+        if (generation !== inputGeneration) return;
+        try { if (await begin(generation)) $('status').textContent = 'Analysing video…'; }
+        catch (e2) { if (generation === inputGeneration) $('status').textContent = 'Video error: ' + e2.message; }
+      }, { once: true });
+    } else $('status').textContent = 'Video error: ' + err.message + ' (try an .mp4 H.264 file).';
+  }
+  e.target.value = '';
+};
+// Pause/Resume only applies to an uploaded video (the camera has nothing to pause).
+let paused = false;
+function setPause(enabled) { paused = false; $('pause').disabled = !enabled; $('pause').textContent = 'Pause'; }
+$('pause').onclick = async () => {
+  const generation = inputGeneration;
+  if (!video.src) return;
+  if (!paused) {
+    paused = true; running = false; video.pause(); clockPause();
+    setTimeout(() => publish(null, true), 0);
+    $('pause').textContent = 'Resume'; $('status').textContent = 'Paused.';
+  } else {
+    paused = false; $('pause').textContent = 'Pause';
+    try { if (await begin(generation)) $('status').textContent = 'Analysing video (looping). Press Pause to stop.'; }
+    catch (err) { if (generation === inputGeneration) $('status').textContent = 'Video error: ' + err.message; }
+  }
+};
+$('stop').onclick = () => {
+  if (cameraStarting) { stopAll(); $('status').textContent = 'Camera start cancelled.'; return; }
+  if (!(running || paused)) { $('status').textContent = 'Nothing is running.'; return; }
+  askEnd();
+};
+function stopAll() {
+  if (cl && cl.pause()) coachRender();
+  inputGeneration++; cameraStarting = false;
+  running = false; setPause(false); clockPause();
+  setTimeout(() => publish(null, true), 0);
+  stream?.getTracks().forEach((t) => t.stop()); stream = null;
+  video.pause(); video.removeAttribute('src'); video.srcObject = null;
+}
+
+const clock = () => (video.src ? video.currentTime : performance.now() / 1000);
+function loop() {
+  if (!running) return;
+  if (landmarker && video.readyState >= 2 && video.currentTime !== lastTs) {
+    lastTs = video.currentTime;
+    let res;
+    try { res = landmarker.detectForVideo(video, performance.now()); } catch (err) { console.error('[video] detectForVideo failed', err); running = false; $('status').textContent = 'Pose detection error: ' + err.message; return; }
+    if (!lm0Logged) { lm0Logged = true; console.log('[video] first detection', res.landmarks?.length ? 'pose found' : 'no pose'); }
+    const lm = res.landmarks?.[0];
+    if (lm) {
+      const rep = counter.update(lm, clock(), video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 1);
+      tgFrame(); if (rep) { tgRep(rep); hrtRep(rep); coachRep(rep); }
+      if (rep) { rep.pace = timeClass(rep) || null; addHistory(rep); voiceRep(rep); }
+      render(lm);
+      publish(lm, !!rep);
+    } else { render(null); publish(null, false); }
+    publishFrame();
+  }
+  requestAnimationFrame(loop);
+}
+
+// Send the live state to the server, which fans it out to phone clients (~10 Hz, immediately on a finished rep).
+let lastPub = 0;
+function publish(lm, force = false) {
+  const now = performance.now();
+  if (!force && now - lastPub < 100) return;
+  lastPub = now;
+  const cfg = VARIATIONS[counter.variation];
+  const pt = (i) => (lm?.[i] ? [lm[i].x, lm[i].y] : null);
+  const fb = $('feedback');
+  const state = {
+    running, variation: counter.variation, label: cfg.label, view: counter.view, persona: personaFor(voiceName()), voice: voiceName(),
+    count: counter.count, good: counter.goodCount, total: counter.reps.length,
+    feedback: fb.textContent, tone: fb.className.split(' ')[1] ?? 'ok', phase: counter.state,
+    travel: counter.drop, depth: counter.live.depth, lean: counter.live.lean, knees: counter.live.knees, balance: counter.live.balance,
+    depthGood: cfg.depthGood, depthWarn: cfg.depthWarn, grades: counter.grades, segments: counter.segments,
+    aspect: video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 4 / 3,
+    pose: lm ? Object.fromEntries(Object.entries(JOINTS).map(([j, [l, r]]) => [j, [pt(l), pt(r)]])) : null,
+    reps: counter.reps.slice(-30),
+    paused, canPause: !!video.src && (running || paused), active: running || paused,
+    clockMs: Math.round(clockMs()), avgSecs: paceStats().avg, pace: paceStats().trend,
+    summary: workoutEnded && !panel.hidden ? summaryStats() : null,
+  };
+  fetch('/state', { method: 'POST', body: JSON.stringify(state) }).catch(() => {});
+}
+
+// Send a small JPEG of the camera/video to phone clients (~8 fps, 480 px wide). Skipped while the previous frame is still uploading.
+const frameCanvas = document.createElement('canvas');
+let lastFrame = 0, frameBusy = false;
+function publishFrame() {
+  const now = performance.now();
+  if (frameBusy || now - lastFrame < 125 || !video.videoWidth) return;
+  lastFrame = now; frameBusy = true;
+  frameCanvas.width = 480; frameCanvas.height = Math.round(480 * video.videoHeight / video.videoWidth);
+  frameCanvas.getContext('2d').drawImage(video, 0, 0, frameCanvas.width, frameCanvas.height);
+  const b64 = frameCanvas.toDataURL('image/jpeg', 0.5).split(',')[1];
+  fetch('/frame', { method: 'POST', body: b64 }).catch(() => {}).finally(() => { frameBusy = false; });
+}
+
+// Tiger Data stream: every analysed frame and every rep are queued here and posted to the server once a second, which
+// writes them to the database. The card polls the server's rollups, so its numbers and the line come from Tiger, not the page.
+let tg = { id: null, start: null, end: null, frames: [], reps: [], forecasts: [], outcomes: [] }, tgLast = null, tgNote = null;
+const tgNum = (v) => (Number.isFinite(v) ? Math.round(v * 1000) / 1000 : null);
+function tgStart(source) {
+  tg = { id: crypto.randomUUID(), start: { variation: counter.variation, source, client: 'squat-web', startedAt: new Date().toISOString(), note: tgNote }, end: null, frames: [], reps: [], forecasts: [], outcomes: [] };
+  tgLast = tg.id;
+}
+function tgFrame() { // the first analysed frame opens the workout, so page start order does not matter
+  if (!tg.id) tgStart(video.src ? 'video' : 'camera');
+  tg.frames.push({ at: Date.now(), ms: Math.round(clockMs()), state: counter.state, view: counter.view, travel: tgNum(counter.drop), depth: tgNum(counter.live.depth), lean: tgNum(counter.live.lean), knees: tgNum(counter.live.knees), balance: tgNum(counter.live.balance) }); }
+function tgRep(rep) { if (tg.id) tg.reps.push({ at: Date.now(), n: rep.n, counted: rep.counted, good: rep.good, secs: tgNum(rep.secs), downSecs: tgNum(rep.tDown), upSecs: tgNum(rep.tUp), travel: tgNum(rep.travel), depth: tgNum(rep.depth), lean: tgNum(rep.lean), knees: tgNum(rep.knees), balance: tgNum(rep.balance), issue: rep.issue ?? null, faults: rep.faults ?? [] }); }
+function tgEnd() { if (!tg.id) return; tg.end = { endedAt: new Date().toISOString() }; tgFlush(); }
+async function tgFlush() {
+  if (!tg.id || !(tg.start || tg.end || tg.frames.length || tg.reps.length || tg.forecasts.length || tg.outcomes.length)) return;
+  const batch = { workoutId: tg.id, exercise: 'squat', start: tg.start, end: tg.end, frames: tg.frames, reps: tg.reps, forecasts: tg.forecasts, outcomes: tg.outcomes };
+  tg = tg.end ? { id: null, start: null, end: null, frames: [], reps: [], forecasts: [], outcomes: [] } : { ...tg, start: null, frames: [], reps: [], forecasts: [], outcomes: [] };
+  try { await fetch('/telemetry', { method: 'POST', body: JSON.stringify(batch) }); } catch { /* the next batch carries on */ }
+}
+setInterval(tgFlush, 1000);
+
+let tgTick = 0;
+async function tgStatus() {
+  let s;
+  try { s = await (await fetch('/tiger?workout=' + (tg.id ?? tgLast ?? ''))).json(); } catch { s = { on: false }; }
+  const st = $('tgState');
+  if (!s.on) { st.textContent = s.error ? 'error: ' + s.error : 'off (set TIGER_DATABASE_URL in .env)'; return; }
+  st.textContent = `on · ${s.workouts} workouts · ${s.compressedChunks}/${s.chunks} chunks in columnstore`;
+  $('tgFrames').textContent = s.frames.toLocaleString(); $('tgRate').textContent = s.rate.toFixed(0);
+  $('tgRatio').textContent = s.ratio == null ? '–' : s.ratio.toFixed(0) + '%';
+  $('tgMs').textContent = s.rollupMs == null ? '–' : s.rollupMs.toFixed(0) + ' ms';
+  const n = s.series.length;
+  $('tgLine').setAttribute('points', s.series.map((r, i) => `${(n > 1 ? i / (n - 1) : 0.5) * 300},${38 - Math.min(1, Math.max(0, (r.max_travel ?? 0) / 0.6)) * 36}`).join(' '));
+}
+setInterval(() => { tgTick++; if (running || tg.id || tgTick % 5 === 0) tgStatus(); }, 2000);
+tgStatus();
+$('tgCompress').onclick = async () => {
+  const b = $('tgCompress'); b.disabled = true;
+  try { const r = await (await fetch('/tiger/compress', { method: 'POST' })).json(); $('tgNote').textContent = `${r.converted} closed chunk${r.converted === 1 ? '' : 's'} converted to columnstore.`; }
+  catch { $('tgNote').textContent = 'Compression call failed.'; }
+  b.disabled = false; tgStatus();
+};
+
+// Tempo forecast (HRT). After each counted rep the forecaster (/hrt.mjs, the same code the offline experiment used)
+// estimates whether the lowering tempo will leave the programme range within the next two reps. Shadow mode only records
+// the forecast; "cue me" routes a cue through the voice queue. The model comes from /hrt/model.json, fitted offline by
+// hrt/train.mjs; the page never fits anything. Forecasts are persisted before their outcome can be known.
+let hrtModels = {}, fc = null, hrtResultsCache = {};
+for (const [k, t] of Object.entries(TARGETS)) $('hrtTarget').add(new Option(t.short ?? t.label, k));
+$('hrtTarget').value = DEFAULT_TARGET;
+const hrtKey = () => (TARGETS[$('hrtTarget').value] ? $('hrtTarget').value : DEFAULT_TARGET);
+const hrtTarget = () => TARGETS[hrtKey()];
+// One model artifact per target (trained offline by hrt/train.mjs --target <key>); a target without one runs unavailable.
+async function hrtModel(key) { if (!(key in hrtModels)) hrtModels[key] = await fetch(`/hrt/model-${key}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null); return hrtModels[key]; }
+async function hrtNew() {
+  if (fc && !fc.ended) hrtEnd();
+  fc = new Forecaster({ artifact: await hrtModel(hrtKey()), target: hrtTarget(), mode: $('hrtCoach').checked ? 'coaching' : 'shadow' });
+  hrtRender();
+}
+hrtNew();
+$('hrtTarget').onchange = () => { newWorkout(); render(null); };           // a target change starts a new set (newWorkout calls hrtNew): labels stay frozen within a set
+$('hrtCoach').onchange = () => { if (fc && !fc.ended) fc.mode = $('hrtCoach').checked ? 'coaching' : 'shadow'; hrtRender(); };
+function hrtRep(rep) {
+  if (!fc || fc.ended) return;
+  const { forecast, outcomes } = fc.onRep(rep, clock());
+  if (forecast && tg.id) { tg.forecasts.push({ ...forecast, provenance: video.src ? 'video' : 'live' }); tgFlush(); } // persist before the outcome exists
+  for (const o of outcomes) if (tg.id) tg.outcomes.push(o);
+  if (forecast?.action === 'cue') { say(cueText(fc.bounds).cue, 1, 'push'); if (cl && !['setup', 'result', 'cancelled'].includes(cl.state)) cl.intervention('HRT tempo cue delivered'); }
+  if (forecast && $('hrtPause').checked && video.src && !paused) { $('pause').click(); $('status').textContent = `Paused at the forecast made after rep ${forecast.repN}. Resume to reveal the next two reps.`; }
+  hrtRender();
+}
+function hrtEnd() { if (!fc || fc.ended) return; for (const o of fc.end()) if (tg.id) tg.outcomes.push(o); hrtRender(); }
+function hrtRender() {
+  const T = fc?.target ?? hrtTarget(), st = fc?.state ?? { kind: 'unavailable' }, bd = fc?.bounds ?? (T.rel == null ? T : null), why = cueText(bd);
+  const lines = {
+    baseline: [`Learning your pace, ${st.have ?? 0} of ${st.need ?? MIN_REPS} counted reps`, 'Forecasts start after three counted reps.'],
+    monitoring: st.note === 'current_rep_outside_target' ? ['Last rep was outside the tempo range', 'Forecasting resumes when a rep is back in range.'] : ['Tracking your next reps', `Lowering target ${bd ? `${bd.L} to ${bd.U} s` : 'from your first three reps'}. Quiet unless a cue is due${fc?.mode === 'shadow' ? ' (shadow mode: forecasts are recorded, not spoken)' : ''}.`],
+    cue: [why.cue, 'Cue delivered through the coach voice.'],
+    unavailable: ['Prediction unavailable', 'No forecast model is loaded. Tracking continues as normal.'],
+    departed: [`Your tempo has shifted from how you started (rep ${st.k ?? '?'})`, 'Forecasting stops for this set; reset reps to start a fresh baseline.'],
+    ended: ['Set finished', 'See “What we anticipated” in the summary.'],
+  };
+  const framing = running && counter.warn && /hips|knees|step back/i.test(counter.warn) ? [counter.warn, 'Forecasts pause until the hips and knees are tracked.'] : null;
+  const [a, b] = framing ?? lines[st.kind] ?? lines.unavailable;
+  $('hrtState').textContent = a; $('hrtSub').textContent = b; $('hrtCard').dataset.state = framing ? 'insufficient' : st.kind;
+  const f = st.forecast;
+  $('hrtWhyBody').innerHTML = f
+    ? `<b>Forecast after rep ${f.repN}.</b> ${why.why}<br>Recent lowering: ${fc.reps.filter((r) => r.counted).slice(-3).map((r) => r.tDown.toFixed(2) + ' s').join(', ')} against ${bd.L} to ${bd.U} s${bd.base ? ` (25% around your first-three-rep median ${bd.base.toFixed(2)} s)` : ''}; trend ${f.features.down_trend >= 0 ? '+' : ''}${f.features.down_trend.toFixed(2)} s versus the previous reps${f.features.depth_missing ? '; depth not judged' : ''}.<br>Model ${f.modelRun}: preliminary out-of-fold probability ${(f.probability * 100).toFixed(0)}%, not calibrated (see Evidence); ${f.policyKind === 'drift' ? `cue rule: drift of ${(f.driftRatio * 100).toFixed(0)}% from your first three reps against a ${(fc.artifact.policy.theta * 100).toFixed(0)}% trigger` : `threshold ${(f.threshold * 100).toFixed(0)}%`}; ${f.mode} mode; ${f.latencyMs} ms after the rep.<br>These are observations the model associates with a tempo miss, not causes.`
+    : 'No forecast yet.';
+}
+async function hrtReview(workoutId) {
+  const el = $('hrtReview'); if (!el) return;
+  const T = fc?.target ?? hrtTarget(), reps = fc?.reps ?? [], b = fc?.bounds ?? (T.rel == null ? T : null);
+  const fetchReview = async () => { try { return await (await fetch('/hrt/review?workout=' + (workoutId ?? ''))).json(); } catch { return { persisted: false, rows: [] }; } };
+  await new Promise((r) => setTimeout(r, 1500)); // the end-of-set batch is still being written
+  let review = await fetchReview();
+  if (review.persisted && !review.rows.length && fc?.forecasts.length) { await new Promise((r) => setTimeout(r, 1500)); review = await fetchReview(); }
+  if ($('hrtReview')) $('hrtReview').innerHTML = renderReview(review, b, reps);
+}
+$('evidenceBtn').onclick = async () => {
+  $('evidence').showModal();
+  try {
+    const key = hrtKey();
+    hrtResultsCache[key] ??= await fetch(`/hrt/results-${key}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    const review = tgLast ? await (await fetch('/hrt/review?workout=' + tgLast)).json() : { persisted: false, rows: [] };
+    $('evidenceBody').innerHTML = renderEvidence(hrtResultsCache[key], review);
+  } catch (e) { $('evidenceBody').innerHTML = `<p class="sub">Could not load the evaluation artifact: ${e.message}</p>`; }
+};
+$('evClose').onclick = () => $('evidence').close();
+
+// Coach -> retry -> verify. Opened from a skill node (/?node=squat&programme=<id>&user=<id>): three counted baseline reps,
+// one cue (Gemini via the server, deterministic if not), an explicit retry, three retry reps, a computed comparison the
+// server stores with the node progress it earns, then Gemini explains the computed result. The state machine lives in
+// /coach-loop.mjs; the page only feeds it reps and user actions and persists snapshots at each transition.
+const coachParams = new URL(location.href).searchParams;
+// ?check=squat runs the same loop as a placement check from the path survey: stored as evidence, tied to no programme step.
+const coachCheck = coachParams.get('check') === 'squat';
+const coachNode = coachCheck ? 'placement-check' : coachParams.get('node'), coachProgramme = coachCheck ? null : coachParams.get('programme'), coachUser = coachParams.get('user');
+let cl = null, coachInfo = null, coachSource = null;
+// Which input the attempt's baseline came from: the camera device, or the uploaded file. A different one after the baseline
+// ends the attempt as unable to assess; the same one resumes it.
+const inputSource = () => stream ? 'camera:' + (stream.getVideoTracks()[0]?.getSettings().deviceId ?? '') : video.src ? 'file:' + (tgNote ?? '') : null;
+function coachAfterInput() {
+  if (!cl || cl.state !== 'paused') return;
+  const ev = coachSource && inputSource() !== coachSource ? cl.cameraChanged() : null;
+  if (ev) { coachShowResult(ev); return; }
+  if (cl.resume()) { coachRender(); coachSave(); }
+}
+const coachApi = async (path, body) => { const url = coachUser ? path + (path.includes('?') ? '&' : '?') + 'user=' + encodeURIComponent(coachUser) : path; const r = await fetch(url, body ? { method: 'POST', body: JSON.stringify(body) } : {}); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error ?? r.statusText); return j; };
+async function coachInit() {
+  if (!coachNode) return;
+  const back = `/coach${coachUser ? `?user=${encodeURIComponent(coachUser)}${coachCheck ? '&resume=survey' : ''}` : coachCheck ? '?resume=survey' : ''}`;
+  $('coachBack').href = back; $('coachBack').textContent = coachCheck ? 'Back to your path survey' : 'Back to programme';
+  if (coachCheck) coachInfo = { node: { id: 'placement-check', exerciseId: 'squat' }, entry: { name: 'Squats' }, capability: 'assessable', programmeId: null };
+  else { try { coachInfo = await coachApi(`/coach/node?id=${encodeURIComponent(coachNode)}`); } catch (e) { $('coachCard').hidden = false; $('coachState').textContent = 'Step unavailable'; $('coachSub').textContent = e.message; return; } }
+  $('coachCard').hidden = false;
+  // This page assesses squats only. Any other step, push-ups included, never reaches the squat assessor.
+  if (coachInfo.capability !== 'assessable' || coachInfo.node.exerciseId !== 'squat') {
+    $('coachState').textContent = coachInfo.capability === 'counting' ? 'Camera counting is on the push-up page' : 'AI assessment coming soon';
+    $('coachSub').textContent = coachInfo.capability === 'counting' ? `${coachInfo.entry.name} are counted on the push-up page, which is not linked to your path yet. Log practice from your path.` : `${coachInfo.entry.name} is practice-only for now. Log practice from your path; this page only assesses squats.`;
+    $('coachStopBtn').hidden = true; return;
+  }
+  coachNew();
+  if (coachCheck) $('coachSub').textContent = 'Camera check: start the camera and do three squats at your normal pace. You can stop after the baseline.';
+}
+function coachNew() {
+  cl = new CoachLoop({ contract: coachContractFor(coachInfo.node.exerciseId) }); coachSource = null;
+  $('coachRetryBtn').hidden = true; $('coachAgainBtn').hidden = true; $('coachStopBtn').hidden = false; $('coachCue').textContent = ''; $('coachResult').textContent = '';
+  coachRender();
+}
+function coachRender() {
+  if (!cl) return;
+  const c = cl.contract, b = cl.validCount('baseline'), r = cl.validCount('retry');
+  const lines = {
+    setup: ['Setting up', `Start the camera, side-on, hips and knees in frame. Target: ${c.label} about ${c.target} ${c.unit}.`],
+    baseline: [`Baseline: ${b} of 3 counted reps`, `Squat at your natural pace. ${c.label[0].toUpperCase() + c.label.slice(1)} is being timed; nothing is judged yet.`],
+    preparing_cue: ['Preparing one cue…', 'The coach is choosing one thing to change.'],
+    cue_ready: ['Your cue', `Target frozen at ${c.target} ${c.unit} (within ${c.tolerance}). Press Start retry when ready, then do three reps.`],
+    ready_to_retry: ['Retry: 0 of 3', 'Go when ready.'],
+    retry: [`Retry: ${r} of 3 counted reps`, 'Same movement, same camera.'],
+    verifying: ['Comparing…', ''],
+    result: ['Result', ''],
+    paused: ['Paused', 'The camera stopped. Start it again to continue the same phase; a different camera after the baseline ends the attempt.'],
+    cancelled: ['Attempt cancelled', 'Nothing was scored. Try again when ready.'],
+  }[cl.state] ?? ['', ''];
+  $('coachState').textContent = lines[0]; $('coachSub').textContent = lines[1]; $('coachCard').dataset.state = cl.state;
+}
+async function coachSave(extra = {}) {
+  if (!cl || !tg.id && !tgLast) return null;
+  try { return await coachApi('/coach/attempt', { attempt: cl.snapshot(), workoutId: tg.id ?? tgLast, programmeId: coachProgramme, nodeId: coachNode, ...extra }); } catch (e) { console.error('coach save', e.message); return null; }
+}
+async function coachRep(rep) {
+  if (!cl || !coachInfo || coachInfo.capability !== 'assessable') return;
+  if (cl.state === 'setup' && running && !counter.warn && cl.begin()) coachSource = inputSource();
+  const ev = cl.onRep(rep);
+  coachRender();
+  if (!ev) return;
+  if (ev.event === 'retry_ignored') { $('coachSub').textContent = 'That rep began before you pressed Start retry, so it does not count. Go when ready.'; return; }
+  if (ev.event === 'baseline_complete') {
+    coachSave();
+    let cue;
+    try { ({ cue } = await coachApi('/coach/cue', { attemptId: cl.attemptId, requestId: ev.requestId, exercise: cl.contract.exerciseId, baselineReps: ev.baseline, programmeId: coachProgramme, nodeId: coachNode, quality: { framing: counter.warn ? 'poor' : 'ok', view: counter.view } })); }
+    catch (e) { console.error('coach cue', e.message); }
+    if (!cue || !cl.cueReady(cue, ev.requestId)) cl.cueFailed();
+    $('coachCue').textContent = `“${cl.cue.text}”` + (cl.cue.provenance === 'gemini' ? '' : ' (deterministic cue)');
+    if (typeof say === 'function') say(cl.cue.text, 1, 'push');
+    if (cl.cue.action === 'request_better_view' || cl.cue.action === 'no_assessment') { $('coachSub').textContent = 'Fix the view, then start a new attempt.'; $('coachAgainBtn').hidden = false; }
+    else $('coachRetryBtn').hidden = false;
+    coachRender(); coachSave();
+  } else if (ev.event === 'result') coachShowResult(ev);
+}
+// The computed result: shown, saved with the progress it earns, then explained by Gemini (which cannot change it).
+async function coachShowResult(ev) {
+  const o = ev.outcome, label = { closer: 'Closer to the target', similar: 'About the same', further: 'Further from the target', unable: 'Unable to assess' }[o.classification];
+  $('coachResult').innerHTML = `<b>${label}.</b> ${o.classification === 'unable' ? o.reason[0].toUpperCase() + o.reason.slice(1) + '.' : `Baseline median ${o.baselineMedian} s, retry median ${o.retryMedian} s against ${o.target} s (${o.baselineN} and ${o.retryN} valid reps; "similar" within ${o.noiseTolerance} s).`}<br><span class="sub">Explaining…</span>`;
+  $('coachRetryBtn').hidden = true; $('coachAgainBtn').hidden = false; $('coachStopBtn').hidden = true; coachRender();
+  const saved = await coachSave();
+  // The milestone line describes this attempt: an attempt that does not qualify never shows a milestone, even when the step
+  // is already verified from an earlier one.
+  const qualifies = o.classification !== 'unable' && (o.retryMeets || (o.baselineMeets && o.classification !== 'further'));
+  if (saved?.node) { const v = saved.node.verification; $('coachResult').innerHTML += qualifies && v !== 'none' ? `<br><span class="pill" style="color:var(--acc)">${v === 'consistent' ? 'Milestone: verified on two days' : 'Milestone: first completion verified'} · ${saved.node.xp} XP</span>` : `<br><span class="sub">This attempt does not count towards the milestone: ${o.classification === 'unable' ? 'it could not be assessed' : 'the retry median must land within tolerance of the target'}.${v !== 'none' ? ' The step stays verified from an earlier attempt.' : ''}</span>`; }
+  try { const { explanation } = await coachApi('/coach/explain', { attemptId: cl.attemptId }); cl.explained(explanation); $('coachResult').querySelector('.sub').textContent = explanation.text + (explanation.provenance === 'gemini' ? '' : ' (deterministic explanation)'); if (typeof say === 'function') say(explanation.text, 2); }
+  catch (e) { $('coachResult').querySelector('.sub').textContent = 'No explanation available.'; }
+}
+$('coachRetryBtn').onclick = () => { if (cl?.startRetry()) { $('coachRetryBtn').hidden = true; coachRender(); coachSave(); } };
+$('coachStopBtn').onclick = () => { if (cl?.cancel()) { coachRender(); coachSave(); $('coachAgainBtn').hidden = false; $('coachStopBtn').hidden = true; } };
+$('coachAgainBtn').onclick = () => coachNew();
+coachInit();
+
+// AI coach panel: reads the coach messages the server already generated (no extra Gemini calls) and sends questions to /ask.
+const coachSeen = new Set();
+function fillItem(li, cls, text, sources = []) {
+  li.className = cls;
+  li.replaceChildren(document.createTextNode(text));
+  if (sources.length) {
+    li.append(document.createElement('br'));
+    for (const s of sources) {
+      const a = document.createElement('a');
+      a.href = s.url; a.target = '_blank'; a.rel = 'noopener'; a.title = s.title; a.textContent = `[${s.id}] ${new URL(s.url).hostname.replace('www.', '')}`;
+      a.style.marginRight = '8px';
+      li.append(a);
+    }
+  }
+}
+function coachItem(cls, text, sources = [], t = Date.now()) {
+  $('coachEmpty')?.remove();
+  const li = document.createElement('li');
+  li.dataset.t = t;
+  fillItem(li, cls, text, sources);
+  const log = $('coachLog');
+  log.insertBefore(li, [...log.children].find((c) => Number(c.dataset.t) > t) ?? null);
+  log.scrollTop = log.scrollHeight;
+  return li;
+}
+const qaItems = new Map();
+function showQA(q) {
+  let it = qaItems.get(q.id);
+  if (!it) {
+    it = { q: coachItem('', `🙋 ${q.question}`, [], q.time), a: coachItem('sub', 'Checking official sources…', [], q.time + 0.5) };
+    qaItems.set(q.id, it);
+  }
+  if (q.answer != null) { fillItem(it.a, q.failed ? 'bad' : '', q.answer, q.sources); $('coachLog').scrollTop = $('coachLog').scrollHeight; }
+}
+const coachEvents = new EventSource('/coach-events');
+coachEvents.addEventListener('coach', (e) => {
+  const m = JSON.parse(e.data);
+  if (coachSeen.has(m.time)) return;
+  coachSeen.add(m.time);
+  coachItem('', `✨ ${m.text}`);
+  say(m.text, 2);
+});
+coachEvents.addEventListener('control', (e) => {
+  const { cmd } = JSON.parse(e.data);
+  if (cmd === 'pause' && running && video.src) $('pause').click();
+  else if (cmd === 'resume' && paused) $('pause').click();
+  else if (cmd === 'stop' && (running || paused)) endWorkout();
+});
+fetch('/control-code').then((r) => r.text()).then((c) => { $('codeTip').innerHTML = `Phone code: <b>${c.replace(/[^0-9a-f]/g, '')}</b> ·`; }).catch(() => {});
+coachEvents.addEventListener('qa', (e) => showQA(JSON.parse(e.data)));
+coachEvents.addEventListener('status', (e) => {
+  if (!JSON.parse(e.data).voice) voiceSel.hidden = true;
+  if (!JSON.parse(e.data).on) { $('coachEmpty') && ($('coachEmpty').textContent = 'AI coach is off: add GEMINI_API_KEY to squat/.env and restart.'); $('askForm').style.display = 'none'; }
+});
+$('askQ').addEventListener('input', () => { $('askCount').textContent = `${$('askQ').value.length}/256`; });
+$('askForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const q = $('askQ').value.trim();
+  if (!q || $('askBtn').disabled) return;
+  $('askQ').value = ''; $('askCount').textContent = '0/256'; $('askBtn').disabled = true;
+  try {
+    const r = await fetch('/ask', { method: 'POST', body: JSON.stringify({ q }) });
+    const d = await r.json();
+    if (d.id == null) coachItem('bad', d.error ?? 'No answer.');
+  } catch { coachItem('bad', 'Could not reach the server.'); }
+  $('askBtn').disabled = false;
+});
+
+// Colour a rep's time against the average of the counted reps before it: slower = soft yellow, really fast = soft green.
+const SLOW = 1.15, FAST = 0.85;
+function timeClass(rep) {
+  if (!rep.counted || rep.secs == null) return '';
+  const before = counter.reps.slice(0, -1).filter((r) => r.counted && r.secs != null).map((r) => r.secs);
+  if (before.length < 2) return '';
+  const avg = before.reduce((x, y) => x + y, 0) / before.length;
+  return rep.secs > avg * SLOW ? 'slow' : rep.secs < avg * FAST ? 'fast' : '';
+}
+
+function addHistory(rep) {
+  $('historyCard').hidden = false;
+  const li = document.createElement('li');
+  const time = rep.secs != null ? `${rep.secs.toFixed(1)} s` : '';
+  if (rep.counted) {
+    const depth = rep.depth >= 0 ? `hip ${rep.depth.toFixed(2)} below knee` : `hip ${(-rep.depth).toFixed(2)} above knee`;
+    li.append(`${rep.good ? '✅' : '⚠️'} Rep ${rep.n}: ${depth}, travel ${Math.round(rep.travel * 100)}%`);
+    if (time) { const t = document.createElement('span'); t.textContent = `, ⏱ ${time}`; t.className = rep.pace ?? ''; li.append(t); }
+    if (rep.faults.length) li.append(' – ' + rep.faults.join(', '));
+  } else li.textContent = `✖ Not counted${time ? ' (' + time + ')' : ''} – ${rep.issue}`;
+  $('history').prepend(li);
+}
+
+// Average seconds per counted rep. Trend: last 3 reps vs the reps before them; >15% slower = slowing down (fatigue).
+function paceStats() {
+  const t = counter.reps.filter((r) => r.counted && r.secs != null).map((r) => r.secs);
+  if (!t.length) return { avg: null, trend: null };
+  const avg = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  if (t.length < 6) return { avg: avg(t), trend: null };
+  const recent = avg(t.slice(-3)), before = avg(t.slice(0, -3));
+  return { avg: avg(t), recent, before, trend: recent > before * 1.15 ? 'slowing' : recent < before * 0.85 ? 'faster' : 'steady' };
+}
+function renderPace() {
+  const p = paceStats(), el = $('pace');
+  if (p.avg == null) { el.textContent = '– s/rep'; el.className = 'sub'; return; }
+  el.textContent = `${p.avg.toFixed(1)} s/rep` + ({ slowing: ' ▲ slowing', faster: ' ▼ faster', steady: ' – steady' }[p.trend] ?? '');
+  el.className = p.trend === 'slowing' ? 'sub warn' : p.trend === 'faster' ? 'sub ok' : 'sub';
+  el.title = p.trend ? `Last 3 reps: ${p.recent.toFixed(1)} s, earlier: ${p.before.toFixed(1)} s` : '';
+}
+
+const COLOUR = ['#3ddc84', '#ffb74d', '#ff6b6b'];
+function gauge(bar, txt, value, lo, hi, grade, label) {
+  const el = $(bar), t = $(txt);
+  if (value == null) { el.style.width = '0%'; el.className = ''; t.textContent = '– (not judged from this view)'; return; }
+  el.style.width = Math.max(0, Math.min(100, ((value - lo) / (hi - lo)) * 100)) + '%';
+  el.className = grade == null ? '' : 'g' + grade;
+  t.textContent = label;
+}
+
+function render(lm) {
+  if (canvas.width !== video.videoWidth && video.videoWidth) { canvas.width = video.videoWidth; canvas.height = video.videoHeight; }
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  $('count').textContent = counter.count;
+  $('good').textContent = counter.goodCount;
+  renderPace();
+  const fb = $('feedback'), cfg = VARIATIONS[counter.variation], t = clock();
+  if (!lm) { fb.className = 'feedback warn'; fb.textContent = running ? 'Step back: show your whole body' : ''; return; }
+  const cue = counter.cueText(t);
+  if (counter.warn && counter.warn.startsWith('Step back:')) { fb.className = 'feedback warn'; fb.textContent = counter.warn; }
+  else if (cue) { fb.className = 'feedback ' + cue.tone; fb.textContent = cue.text; }
+  else if (counter.state === 'down') { fb.className = 'feedback ok'; fb.textContent = counter.live.depth != null && counter.live.depth >= cfg.depthGood ? 'Good depth, drive up!' : 'Sit back and down'; }
+  else if (counter.state === 'up') { fb.className = 'feedback ok'; fb.textContent = 'Drive up'; }
+  else { fb.className = 'feedback ' + (counter.warn ? 'warn' : 'ok'); fb.textContent = counter.warn || 'Stand tall, then sit back'; }
+
+  const side = counter.view === 'side';
+  gauge('travelBar', 'travelTxt', counter.drop, 0, 0.8, counter.drop >= 0.22 ? GREEN : null, `${Math.round(counter.drop * 100)}% of leg length (rep from 22%)`);
+  const d = counter.live.depth;
+  gauge('depthBar', 'depthTxt', d, -0.8, 0.4, d == null ? null : d >= cfg.depthGood ? GREEN : d >= cfg.depthWarn ? AMBER : RED,
+    d == null ? '' : `${d >= 0 ? 'hip below knee' : 'hip above knee'} by ${Math.abs(d).toFixed(2)} (good ≥ ${cfg.depthGood})`);
+  $('metric3Label').textContent = side ? 'Lean' : 'Knees';
+  $('metric4Label').textContent = side ? 'Tempo' : 'Balance';
+  if (side) {
+    const l = counter.live.lean;
+    gauge('metric3Bar', 'metric3Txt', l, 0, 90, l == null ? null : l <= METRICS.lean.good ? GREEN : l <= METRICS.lean.warn ? AMBER : RED, l == null ? '' : `${Math.round(l)}° from vertical (aim ≤ ${METRICS.lean.good}°)`);
+    const last = [...counter.reps].reverse().find((r) => r.counted);
+    gauge('metric4Bar', 'metric4Txt', last ? last.secs : null, 0, 5, last ? (last.faults.includes('slow ascent') ? AMBER : GREEN) : null, last ? `last rep ${last.tDown.toFixed(1)} s down, ${last.tUp.toFixed(1)} s up` : '');
+  } else {
+    const k = counter.live.knees;
+    gauge('metric3Bar', 'metric3Txt', k, 0.4, 1.2, k == null ? null : k >= METRICS.knees.good ? GREEN : k >= METRICS.knees.warn ? AMBER : RED, k == null ? '' : `knee width ${k.toFixed(2)} × ankle width (aim ≥ ${METRICS.knees.good})`);
+    const b = counter.live.balance;
+    gauge('metric4Bar', 'metric4Txt', b, 0, 25, b == null ? null : b <= METRICS.balance.good ? GREEN : b <= METRICS.balance.warn ? AMBER : RED, b == null ? '' : `${Math.round(b)}° hip vs shoulder tilt (aim ≤ ${METRICS.balance.good}°)`);
+  }
+
+  // Coloured skeleton: torso by lean (side) or balance (front), thighs and shins by depth, knee line by knee tracking (front).
+  const W = canvas.width, H = canvas.height, g = counter.segments;
+  const P = (i) => [lm[i].x * W, lm[i].y * H];
+  const seg = (a, b, grade, width = 5) => { ctx.strokeStyle = COLOUR[grade]; ctx.lineWidth = width; ctx.beginPath(); ctx.moveTo(...P(a)); ctx.lineTo(...P(b)); ctx.stroke(); };
+  const [sL, sR] = JOINTS.shoulder, [hL, hR] = JOINTS.hip, [kL, kR] = JOINTS.knee, [aL, aR] = JOINTS.ankle;
+  for (const [a, b] of [[sL, sR], [sL, hL], [sR, hR], [hL, hR]]) seg(a, b, g.torso);
+  seg(hL, kL, g.thigh); seg(hR, kR, g.thigh); seg(kL, aL, g.shin); seg(kR, aR, g.shin);
+  if (!side) seg(kL, kR, g.knees, 3);
+  for (const i of [sL, sR, hL, hR, kL, kR, aL, aR]) { ctx.fillStyle = (lm[i].visibility ?? 1) >= 0.5 ? '#fff' : '#ff6b6b'; ctx.beginPath(); ctx.arc(...P(i), 7, 0, 7); ctx.fill(); }
+}
+</script>
+</body>
+</html>

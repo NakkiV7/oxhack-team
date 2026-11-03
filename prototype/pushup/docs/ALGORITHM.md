@@ -115,6 +115,14 @@ This profile pipeline belongs to the standalone browser prototype, separate from
 
 `personalRule(profile)` in `pushup.mjs` turns the saved profile's baselines (good reps) into two limits for standard push-ups: `warnElbow = min(default down, typical elbow + 3 x max(spread, 3))` and `minLine = max(default minLine, typical line - 3 x max(spread, 2))`, needs >= 30 good reps. `RepCounter.setPersonal()` applies it in `#finish()`: a rep still counts by the default depth line, but is "good" only if it also meets the personal limits, and the issue text says "Shallower than your usual" or the posture cue at the personal line. Each rep keeps the default judgement (`baseGood`, `baseIssue`) and that is what `/sync` stores, so the profile never trains on its own labels (otherwise good reps would get ever narrower). The rule tree is not used live yet.
 
+## 9. Tutorial and spoken coach
+
+Added alongside the squat prototype and identical on both pages:
+
+- **Tutorial** button: a dialog with an example set rendered through this app's overlay and spoken count (`assets/pushup_side.mp4`, Cavemantraining footage, CC BY-SA 4.0, served from the new `/assets/` mount), the set-up and rep steps, and the list of faults the coach watches for.
+- **Spoken coach**: `GET /say?text=&voice=` synthesises a line through ElevenLabs once per voice and caches it in `voice_cache/`; `GET /voices` lists the account's voices or `ELEVENLABS_VOICES` from `.env`. The page keeps a speech queue (one line at a time, never cut off, repeats rate-limited): rep count, the rep's issue, a motivational line every third clean rep, the Gemini tip when it arrives, a start line and a sign-off. A voice with two ids (`Name:calmId+shoutingId`) speaks cues and push lines in the shouting voice. The chosen voice's name sets the Gemini persona in the prompt. Details and the queue rules: [squat ALGORITHM.md, section 7](../../squat/docs/ALGORITHM.md#7-spoken-coach).
+- **Theme**: one shared stylesheet with a Dark/Light switch in the header, remembered per browser.
+
 ## Known limitations
 
 - 2D only: no elbow flare, wrist alignment, scapular movement or head position.

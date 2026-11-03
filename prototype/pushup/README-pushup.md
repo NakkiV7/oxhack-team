@@ -4,6 +4,8 @@ Counts push-up reps and checks posture from a webcam or a video, in the browser,
 
 Optional extras:
 
+- **Spoken coach (ElevenLabs)**: pick a voice in the header and the coach counts your reps aloud, calls form cues, throws in a motivational line every third clean rep, reads the Gemini tips in that voice's persona, and signs off at the summary. Lines are synthesised once per voice and cached in `voice_cache/`, so the live set never waits on the API. Set `ELEVENLABS_API_KEY` in `.env`; a key with the *Voices: read* permission lists your account's voices automatically, otherwise list them as `ELEVENLABS_VOICES=Name:voiceId,Name:voiceId`. A second id after a `+` (`Goggins:calmId+shoutingId`) is used for form cues and push lines, the first for counts, praise and the sign-off.
+- **Tutorial**: a how-to guide on the page with an example set (side view) run through this app's coaching overlay and spoken count. Footage: Cavemantraining, CC BY-SA 4.0, in `assets/`.
 - **iPhone display**: the Mac is the camera, an iPhone in front of you shows the count, live video with the body-line drawing, gauges and history, and speaks the reps.
 - **Workout timer and summary**: total workout time (frozen while paused), time per rep with the average and a slowing-down warning, a confirm step before **Stop**, and a summary over the video when you end the workout. Standard push-up is the default variation.
 - **Phone remote control**: pause, resume and stop from the iPhone using a control code shown on the Mac page.
@@ -40,9 +42,10 @@ tiger.mjs         Tiger Data access: migrate, insert reps, read reps, session st
 db.mjs            CLI: migrate | load | stats (SQL in db/)
 ios/              SwiftUI iPhone app (Xcode project)
 scripts/          fetch-model.sh
+assets/           tutorial video (Creative Commons footage with the coaching overlay)
 test/             node:test unit tests
 docs/             TUTORIAL, ALGORITHM (how it works + guardrails), TEST_PLAN
-.env.example      optional GEMINI_API_KEY
+.env.example      optional GEMINI_API_KEY, ELEVENLABS_API_KEY, ELEVENLABS_VOICES
 ```
 
 ## Personal profile (mock history)

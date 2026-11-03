@@ -1,0 +1,203 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{microtype}
+\hypersetup{colorlinks=true,linkcolor=blue!60!black,citecolor=blue!60!black,urlcolor=blue!60!black}
+\input{results-relative.tex}
+\input{results-relative-h2.tex}
+\input{results-controlled.tex}
+
+\title{Spottr: Short-Horizon Exercise Forecasting and Coaching Decisions Under an Interruption Budget}
+\author{Nakki (NakkiV7) with the Spottr team \\ OxHack '26, 25 October 2026}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+A camera-based squat coach measures the lowering phase of every repetition. We ask whether those measurements, available the moment a repetition ends, forecast that the person's lowering tempo is about to shift away from how the set started, and whether that forecast is worth spending an interruption on. We fix the origin, the horizon, the exclusion rules for incomplete horizons, and a compact set of features computed only from completed repetitions, and compare an $L_2$-regularised logistic regression and a prespecified one-feature drift rule against a constant baseline, a set-position baseline and the coach's existing reactive slow-ascent rule, under cross-validation grouped by person with a paired cluster bootstrap. The specification was revised three times on development data, each time before any held-out recording existed and each time recorded with its reason: a fixed programme range turned labels into rounding noise at a natural pace, and single-repetition exceedances turned out to be boundary flicker rather than events, which is why the event is now the set's first sustained departure. On \NRecordings{} development recordings of \NPeople{} people (\NCounted{} counted repetitions) only \EventsDev{} sets contain such a departure. With \NDevOrigins{} eligible origins and \NDevPositive{} positives at a \Horizon-repetition horizon, the logistic model cannot improve on the constant (Brier \BrierFull{} against \BrierConst), and \ifdefined\DriftRuleFound the drift rule recalls \RecallDrift{} of departures a median \LeadDrift~s (\LeadDriftReps{} repetitions) ahead at \FADrift{} false alerts per set, against \RecallHeur{} for the existing rule\else no threshold of the drift rule stays within the false-alert budget either, so the deployed policy is silent\fi. The full pipeline runs: forecasts in shadow mode at every eligible origin, persisted in TimescaleDB before their outcome exists, resolved when the horizon closes, reviewed after the set, and replayed from held-out recordings using only the prefix played so far. A locked held-out evaluation awaits recordings of other people. We claim no prediction of fatigue, injury or muscular failure; the target is a tracker-derived tempo criterion.
+\end{abstract}
+
+\section{Motivation}
+
+A coach who speaks after a repetition has gone wrong is reacting; one who speaks before it has a chance to change it. The difference is a forecast, and the cost of a forecast is interruption: every unnecessary cue teaches the person to ignore the next. The decision is therefore not ``will the next rep be bad?'' but ``is the evidence strong enough to spend one interruption on it?'' That is a sequential decision under a budget, made once per repetition, with information that grows by one observation each time. Time runs through every part of it: the model learns from the repetitions before, forecasts the few after, decides whether to speak now, and is scored later by how far ahead its warning came.
+
+We keep the formulation small on purpose: one exercise, one measured quantity, one horizon, one linear model and one hand-set rule, and baselines that any claimed improvement must beat under the same budget. A reproducible negative result is preferable to an elaborate one nobody can check, and Section~\ref{sec:results} contains one together with the reasons for it.
+
+\section{System and data}
+
+\begin{figure}[t]
+\centering
+\resizebox{\linewidth}{!}{\begin{tikzpicture}[node distance=5mm and 7mm, box/.style={draw, rounded corners, align=center, font=\small, inner sep=4pt, minimum height=9mm}, >={Stealth[length=2mm]}]
+\node[box] (cam) {camera or\\replayed clip};
+\node[box, right=of cam] (pose) {MediaPipe pose\\33 landmarks, 30 Hz};
+\node[box, right=of pose] (rep) {rep counter\\hip travel, phases};
+\node[box, right=of rep] (fc) {forecaster\\features, model, policy};
+\node[box, below=of pose] (frames) {\texttt{spottr\_cv.frame}\\hypertable};
+\node[box, below=of rep] (reps) {\texttt{spottr\_cv.rep}};
+\node[box, below=of fc] (pred) {\texttt{prediction}\\\texttt{prediction\_outcome}};
+\node[box, right=of fc] (ui) {card, voice cue,\\review, evidence};
+\draw[->] (cam) -- (pose); \draw[->] (pose) -- (rep); \draw[->] (rep) -- (fc); \draw[->] (fc) -- (ui);
+\draw[->] (pose) -- (frames); \draw[->] (rep) -- (reps); \draw[->] (fc) -- (pred);
+\draw[->, dashed] (pred) -- node[below, font=\scriptsize] {read back} (ui |- pred) -- (ui);
+\end{tikzpicture}}
+\caption{Data flow. Everything left of the database runs in the browser; the database is TimescaleDB on Tiger Data. The forecaster writes each forecast before the next repetition can be observed; the review and evidence views read the stored rows, not the page's memory.}
+\label{fig:system}
+\end{figure}
+
+\paragraph{Measurements.} Pose is estimated per frame with MediaPipe Pose Landmarker \cite{bazarevsky2020,mediapipedocs}. The counter tracks hip height above the ankle in units of standing leg length. A repetition starts when that travel exceeds 0.15, reaches its bottom when travel has come back 0.04 below its maximum, and ends when travel drops below 0.08. The lowering duration $d_t$ is the time from start to bottom and the rising duration from bottom to end, both to 0.01~s (frame time is 0.033~s). Attempts that do not reach 0.22 of leg length, or last under 0.5~s or over 15~s, are recorded as attempts that did not count. Depth, lean and knee tracking are graded only when the joints are in frame; otherwise they are missing, not zero.
+
+\paragraph{Storage.} Every analysed frame, attempt and set are rows in a \texttt{spottr\_cv} schema on TimescaleDB \cite{timescaledocs}: a frame hypertable at about 30 rows per second, a repetition hypertable with both phase durations, and a workout table; continuous aggregates roll frames up per second and repetitions per minute. Forecasts and outcomes are two further tables: a forecast row is written once, with the instant after which no information was used, and never updated; an outcome row is added when the horizon closes and points at its forecast. A model-run table records the deployed artifact, its data fingerprint and its evaluation summary.
+
+\paragraph{Recordings.} The development set has \NRecordings{} recordings of \NPeople{} people: Creative Commons clips of squats from Wikimedia Commons and YouTube, one webcam session of three team members split into one recording each by the pauses between them, four sets of fast air squats by the first author recorded through the app on the day (one workout split at rest pauses longer than 12~s), and six long YouTube sets of 50 to 153 repetitions found through the platform's Creative Commons licence filter and confirmed from metadata; three of those six are one subject. All clips were used to tune the counter and are development material. The sampling unit for evaluation is the person where known and the recording otherwise; nothing treats frames or overlapping windows as independent. Provenance is in Table~\ref{tab:prov}.
+
+\section{Problem formulation}
+
+Let $d_t$ be the lowering duration of counted repetition $t$ in a set and $[L,U]$ the bounds the set is judged against. Two targets were specified:
+\begin{itemize}
+\item \textbf{Relative range} (\texttt{relative-v1}, primary): $L = 0.75\,\tilde d$, $U = 1.25\,\tilde d$, where $\tilde d$ is the median lowering duration of the set's first three counted repetitions. The instruction is ``keep your tempo''; the bounds freeze once three repetitions exist.
+\item \textbf{Fixed programme range} (\texttt{controlled-v1}, secondary): $L=0.6$, $U=1.5$~s.
+\end{itemize}
+Neither range defines safe or correct technique. Let $v_t = \mathbb{1}\{d_t < L \text{ or } d_t > U\}$. The \emph{event} of a set is its first sustained departure: the first repetition $k$ with $v_k = 1$ and at least two of $v_k, v_{k+1}, v_{k+2}$ equal to one. A single repetition outside the band is a blip, not an event. After repetition $t$ the forecaster emits
+\begin{equation}
+p_t = P\big(Y_t = 1 \mid \mathcal{I}_t\big), \qquad Y_t = \mathbb{1}\{t < k \le t + H\}, \quad H = \Horizon,
+\end{equation}
+where $\mathcal{I}_t$ is the information available at the end of repetition $t$. An origin is \emph{eligible} when at least \MinReps{} counted repetitions have been completed, $v_t = 0$, no departure has yet been confirmed, and variation and target are unchanged within the set. $Y_t$ is \emph{observed} once the repetitions that decide it are counted: a repetition inside the band rules itself out at once, one outside needs the two after it to be told from a blip. If the set ends first, or an attempt in the deciding window does not count, the origin is excluded with that reason and never labelled negative; an origin at or after the departure is excluded as well, since the regime has already changed.
+
+\paragraph{How the specification was revised.} Three changes were made on development data, all before any held-out recording existed, all logged with their reason in the repository. (1) The task was first specified on the fixed range with any single exceedance in the next two repetitions as the event, and durations to 0.1~s. The first author's natural lowering sits at 0.4 to 0.6~s, on the fixed range's lower edge, so labels there flipped with rounding; durations were taken to 0.01~s and the relative target was added as primary. (2) On 56 origins the relative target then showed an apparent gain over the constant; on 520 origins, after the long sets were added, the gain vanished. Inspection showed why: in the sets with real slowing, the band is left once and the tempo then flickers at the boundary, so half the counted ``onsets'' were blips at the noise floor and every return inside the band produced a spurious origin. The event became the first sustained departure. (3) A drift that builds over tens of repetitions yields two positive origins at a two-repetition horizon, so the primary horizon became five repetitions (the two-repetition result is reported too), cross-validation was grouped by person because three long sets share a subject, and a prespecified one-feature drift rule was added as a policy that needs no fitting. We regard the sequence as a result in itself: the obvious label is not the forecastable one.
+
+\section{Features, model and rule}
+
+The feature vector at an eligible origin uses only counted repetitions $1,\dots,t$ (feature version \FeatureVersion, window 3): the latest lowering duration; the median of the last three; the latest minus the median of the previous repetitions (trend); the range of the last three; the drift of the last-three median from the set's first-three median; the normalised distance to the nearer bound, $\min(d_t - L, U - d_t)/(U-L)$; the latest rising duration, its trend and its drift; the repetition number; time since the first repetition began; the change in depth against the previous repetitions; and an indicator for depth not being judged. A personal-history ablation adds the median lowering duration of the same person's earlier sets with a missing indicator. One function computes features offline and in the page; tests assert that the two agree and that changing repetitions after the origin cannot change its features.
+
+The model is logistic regression with an $L_2$ penalty on standardised features,
+\begin{equation}
+p_i = \sigma(\beta_0 + \mathbf{x}_i^{\top}\boldsymbol\beta), \qquad
+\min_{\beta_0,\boldsymbol\beta}\; -\frac{1}{n}\sum_{i=1}^{n}\big[y_i \log p_i + (1-y_i)\log(1-p_i)\big] + \lambda\lVert\boldsymbol\beta\rVert_2^2,
+\end{equation}
+intercept unpenalised \cite{hastie2009}, standardisation from the training groups only, missing values imputed as the training mean and flagged for depth, $\lambda \in \{0.01, 0.1, 1, 10, 100\}$ chosen by nested leave-one-group-out log loss. Coefficients are associational. No class weights or oversampling are used, so probabilities refer to the actual prevalence. The \emph{drift rule} alerts when the last-three median lowering has moved from the first-three median by at least a fraction $\theta$ of it; it has one parameter and no fitted weights.
+
+\section{Decision policy}
+
+Actions are: stay silent, give one permitted cue, or abstain because the origin is ineligible or tracking is unreliable. A cue is given when $p_t \ge \tau$ (or drift $\ge \theta$) and no cue was given in the previous $H$ repetitions. Thresholds are chosen on development predictions as
+\begin{equation}
+\tau^{*} = \arg\max_{\tau}\; \mathrm{Recall}(\tau) \quad \text{s.t.} \quad \mathrm{FalseAlertsPerMonitoredSet}(\tau) \le B, \qquad B = \Budget,
+\end{equation}
+ties resolved towards the higher threshold, and likewise for $\theta^{*}$. $B$ is a product choice (one unnecessary interruption every two sets). A warning at origin $t$ matches the set's departure $k$ when $t < k \le t + H$; each departure is matched at most once. A warning whose observed horizon holds no departure is a false alert; one whose horizon is excluded is unresolved. Lead time runs from the end of the origin repetition to the end of the departure repetition. The existing reactive rule (ascent over 2.2~s, or 1.6 times the median of earlier ascents) is evaluated as an alerting policy at the same origins, and always-silent is included. The deployed artifact carries whichever of the model threshold and the drift rule recalled more on development data; at submission that is \DeployedPolicy.
+
+\section{Experimental design}
+
+Groups are people where known and recordings otherwise (\DevGroups{} groups in the primary analysis). Development evaluation is leave-one-group-out: every origin's prediction comes from a model that never saw its group, with $\lambda$ chosen inside the training fold. Baselines: (A) a Laplace-smoothed constant equal to the training prevalence, (B) logistic on repetition number and elapsed time only, (C) the slow-ascent rule, (D) the model above, (E) the drift rule; ablations use set-position, tempo, tempo plus pose, and tempo plus pose plus personal history. Forecasts are scored with the Brier score \cite{brier1950} and log loss, both strictly proper \cite{gneiting2007}, and average precision; policies with event recall at the budget, false alerts per set, precision and lead time. Calibration is inspected with a reliability diagram with bin counts; Platt scaling \cite{platt1999} would be fitted only with at least ten out-of-fold events per class, which is not the case, so probabilities are labelled preliminary wherever shown. Uncertainty for differences comes from a paired cluster bootstrap \cite{efron1993}: groups are resampled with replacement (\BootN{} resamples, seed \Seed), both policies are scored on the same resample, and the 2.5 and 97.5 percentiles of the difference are reported; out-of-fold predictions are held fixed, so the intervals reflect sampling of groups, not model selection. The prespecified comparisons are D against A on Brier, and D and E against C on recall under the budget. A held-out test split is reserved in the manifest and empty at submission; the configuration is now frozen, and any later change to labels, features, $\lambda$, $\tau$, $\theta$, the horizon or the budget invalidates its untouched status.
+
+\section{Results}
+\label{sec:results}
+
+\begin{table}[t]
+\centering\small
+\caption{Relative target, first sustained departure, horizon \Horizon{} repetitions: development, out of fold over \DevGroups{} groups and \NDevOrigins{} eligible origins (prevalence \Prevalence). Recall at budget is departure recall at the highest threshold whose false alerts per set stay within \Budget. Dashes: not a probabilistic model.}
+\label{tab:rel}
+\begin{tabular}{lrrrrrr}
+\toprule
+model & $n$ & Brier & log loss & AP & recall at budget & false alerts/set \\
+\midrule
+\BaselineRows
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=.32\linewidth]{fig_brier-relative.pdf}\hfill
+\includegraphics[width=.32\linewidth]{fig_reliability-relative.pdf}\hfill
+\includegraphics[width=.34\linewidth]{fig_frontier-relative.pdf}
+\caption{Relative target. Left: Brier by feature set. Middle: reliability of the model's out-of-fold probabilities with bin counts; \CalibrationStatus. Right: departure recall against false alerts per set over thresholds, the budget line, the existing rule and silence.}
+\label{fig:results}
+\end{figure}
+
+\paragraph{Counts.} Of \NOrigins{} counted-repetition origins, \NIneligibleBaseline{} are in the three-repetition baseline, \NIneligibleOutside{} have a current repetition already outside the bounds, and \NIneligibleAfter{} come after the set's departure; \NExcludedEnded{} lose their horizon to the end of the set and \NExcludedInvalid{} to an uncounted attempt. That leaves \NObserved{} observed origins with \NPositive{} positives, which come from \EventsDev{} sets with a departure, all among the long sets. At a two-repetition horizon the same departures give \HNPositive{} positives in \HNDevOrigins{} origins.
+
+\paragraph{Models and policies.} Table~\ref{tab:rel} and Figure~\ref{fig:results}: the logistic model's out-of-fold Brier is \BrierFull{} against \BrierConst{} for the constant and \BrierPos{} for set position, with average precision \APFull{} against \APConst; with \NDevPositive{} positives from \EventsDev{} events there is nothing to learn, and the bootstrap difference against the constant, \CIBrierFullConst, says so. Under the budget no logistic threshold is admissible (recall \RecallFull). \ifdefined\DriftRuleFound The drift rule at $\theta^{*}=\DriftTheta$ alerts \AlertsDrift{} times and recalls \RecallDrift{} of departures, a median \LeadDrift~s or \LeadDriftReps{} repetitions ahead, at \FADrift{} false alerts per set; \else No threshold of the drift rule stays within the budget on this data either: at every $\theta$ that catches a departure, false alerts exceed \Budget{} per set; \fi the slow-ascent rule recalls \RecallHeur{} (\AlertsHeur{} alerts for \EventsDev{} departures). The bootstrap interval for recall, drift rule minus slow-ascent rule, is \CIRecallDriftHeur, and for false alerts per set \CIFADriftHeur. \ifdefined\HDriftRuleFound At the two-repetition horizon the drift rule recalls \HRecallDrift.\else At the two-repetition horizon no drift threshold meets the budget either.\fi The personal-history ablation (Brier \BrierHist) does not help: history exists for one person's four sets, none of which contains a departure.
+
+\paragraph{Fixed range.} \ifdefined\CBrierFull On the fixed programme range the model does not beat the constant (Brier \CBrierFull{} against \CBrierConst). \else On the fixed programme range the experiment has insufficient data: \CNIneligibleOutside{} of \CNOrigins{} origins are ineligible because the current repetition is already outside the range at a natural fast pace, leaving \CNDevOrigins{} origins with \CNDevPositive{} positives, too few to fit anything. \fi
+
+\paragraph{Regression fallback.} Predicting the next lowering duration, ridge on the tempo features has mean absolute error \MAERidge~s out of fold against \MAELast~s for repeating the last duration and \MAEMedian~s for the rolling median: persistence is hard to beat on tempo itself, which is why we forecast the departure rather than the duration.
+
+\paragraph{Latency.} Forecast latency in the page is below one millisecond after the repetition event (median 0.5~ms in the stored replays), so computation never consumes the horizon.
+
+\begin{table}[t]
+\centering\small
+\caption{Relative target: per-group out-of-fold Brier, model against the constant baseline.}
+\label{tab:pergroup}
+\begin{tabular}{lrrrr}
+\toprule
+group & origins & positives & Brier (model) & Brier (constant) \\
+\midrule
+\PerGroupRows
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Held-out test.} \ifdefined\TestGroups Evaluated once on \TestGroups{} held-out groups (\NTestOrigins{} origins, prevalence \TestPrevalence): Brier \TestBrierFull{} (model) against \TestBrierConst{} (constant), log loss \TestLogLossFull; at the frozen thresholds the model's recall is \TestRecallFull{} with \TestFAFull{} false alerts per set, the rule's \TestRecallHeur{} with \TestFAHeur. \else Not evaluated: no held-out recordings of other people existed at submission. The split is reserved and the configuration frozen; the evaluation runs once when the recordings arrive. \fi
+
+\paragraph{Failure cases.} The sets that start fast and slow gradually (the three sets of one subject) are the only ones with a departure late enough to have a build-up; the departures in the short clips sit at the fourth or fifth repetition, where the baseline has barely formed, and nothing anticipates them. The metronome-paced set of 100 repetitions never departs, as it should not.
+
+\section{User-facing system}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=.72\linewidth]{fig_timeline-relative.pdf}
+\caption{A stored shadow-mode replay of a held-out Creative Commons clip under the relative target. Top: lowering duration per repetition against the set's own band; a dotted line marks a departure. Bottom: forecast probability at each eligible origin and, for an observed positive, an arrow to the departure it preceded. All values are read from the database.}
+\label{fig:timeline}
+\end{figure}
+
+The forecaster runs inside the existing squat page. A card below the repetition counter shows one of seven states, updated only at repetition boundaries: learning your pace ($n$ of 3), tracking your next reps, a cue, the last rep was outside the band, your tempo has shifted (forecasting stops for the set), a framing problem, or prediction unavailable; it never uses danger styling. ``Why this?'' names the criterion and bounds, the last three lowering durations, the trend, the model identifier, the latency, and either the drift against its trigger or the probability labelled preliminary and uncalibrated. In \emph{shadow mode} every eligible forecast is recorded and nothing is spoken; in \emph{coaching mode} a forecast that the deployed policy accepts speaks one cue through the existing voice queue (priority, no overlap, expiry, stop interrupts), at most once per horizon, and outcomes after a cue are flagged as observed after coaching. The set summary gains ``What we anticipated'': each stored forecast, whether it would have cued, what was observed, the lead time, horizons left incomplete, and a departure that had no eligible warning. An \emph{Evidence} dialog renders the saved artifact for the selected target and the stored timeline of the last set (Figure~\ref{fig:timeline}). A replay mode plays a held-out clip once and pauses at every forecast before the following repetitions are shown; every forecast uses only the prefix that has played.
+
+\section{Discussion and limitations}
+
+The main result is a negative one with a clear cause: the development data contain \EventsDev{} departures. \ifdefined\DriftRuleFound Within that limit, the one-parameter drift rule behaves as a coach would hope, warning \RecallDrift{} of departures \LeadDriftReps{} repetitions ahead within the interruption budget, and the fitted model does not, because so few events cannot be learned from.\else Within that limit neither the one-parameter drift rule nor the fitted model earns an interruption: every setting that catches a departure also interrupts compliant sets more often than the budget allows, and so few events cannot be learned from.\fi The more durable findings are about the label. A fixed programme range at a natural pace labels rounding noise. Single-repetition exceedances are boundary flicker, and a model that appears to predict them on a small set is predicting noise, which we observed and report. The event that a coach cares about, and that the data can contain, is the first sustained departure, which happens at most once per set; the amount of evidence is therefore the number of sets recorded to natural slowing, not the number of repetitions. Three limitations dominate. Labels are produced by the repetition counter, not by independent annotation. The development set is mostly short clips of unrelated people plus a few long sets of one subject, so nothing here is evidence about other people. Overlapping horizons within a set are correlated, which is why uncertainty is computed over groups; informative stopping is excluded rather than modelled. Nothing estimates a causal effect of the cue, and nothing predicts physiological failure. The three revisions of the specification are disclosed above; they were made before any held-out recording existed, and both targets and both horizons will be evaluated once on the held-out split. A discrete-time survival formulation of repetitions until the first departure is the natural next step and the stored records support it.
+
+\section{Reproducibility}
+
+\begin{sloppypar}
+Commit \GitCommit; dataset fingerprint \DatasetSha; models \ModelRun{} (relative, horizon \Horizon) and \HModelRun{} (horizon 2); label \LabelVersion, features \FeatureVersion, policy \PolicyVersion; evaluated \GeneratedAt{} UTC with seed \Seed. From \texttt{prototype/squat}: \texttt{node --env-file=.env hrt/build\_dataset.mjs <landmark-dir> --tiger} writes the repetition dataset from landmark dumps (SHA-256s committed) and the app's stored camera sets; \texttt{node hrt/train.mjs --target relative --horizon 5} and \texttt{--target controlled --horizon 5} write the artifacts; \texttt{npm test} runs 41 offline checks. This document's numbers are macros generated from those artifacts by \texttt{make\_tables.py}, its figures by \texttt{make\_figures.py}; Node 26, Python 3.15 with matplotlib, Tectonic 0.17.
+\end{sloppypar}
+
+\appendix
+\section{Dataset provenance and label}
+
+\LabelDefinition
+
+\begin{table}[h]
+\centering\small
+\caption{Recordings. Person identifiers are anonymous; ``imported'' are Creative Commons clips, ``live-recorded'' the team session, ``live'' the author's camera sets.}
+\label{tab:prov}
+\begin{tabular}{lllll}
+\toprule
+recording & split & person & provenance & counted reps \\
+\midrule
+\ProvenanceRows
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering\small
+\caption{Relative target: reliability bins of the model's out-of-fold probabilities.}
+\begin{tabular}{lrrr}
+\toprule
+bin & $n$ & mean predicted & observed \\
+\midrule
+\ReliabilityRows
+\bottomrule
+\end{tabular}
+\end{table}
+
+\bibliographystyle{plain}
+\bibliography{references}
+\end{document}
