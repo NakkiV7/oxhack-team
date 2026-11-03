@@ -79,7 +79,7 @@ final class PreviewWorkspace {
         guard seed else { return }
         let manager = FileManager.default
         let missing = ["history.json", "profile.json"].filter { !manager.fileExists(atPath: folder.appendingPathComponent($0).path) }
-        guard !missing.isEmpty else { return }
+        guard !missing.isEmpty else { try enrichPreviewHistory(folder); return }
         let records = DemoPreviewData.sessions(referenceDate: referenceDate)
         guard !records.isEmpty else { throw Failure.unreadable }
         let staging = folder.deletingLastPathComponent().appendingPathComponent(".preview-seed-\(UUID().uuidString)")
@@ -101,6 +101,7 @@ final class PreviewWorkspace {
                 installed.append(destination)
             }
             try validate(folder)
+            try enrichPreviewHistory(folder)
         } catch {
             for url in installed { try? manager.removeItem(at: url) }
             if createdFolder, (try? manager.contentsOfDirectory(atPath: folder.path).isEmpty) == true {
@@ -108,6 +109,14 @@ final class PreviewWorkspace {
             }
             throw error
         }
+    }
+
+    private static func enrichPreviewHistory(_ folder: URL) throws {
+        let url = folder.appendingPathComponent("history.json")
+        let records = try HistoryStore(url: url).load()
+        let enriched = records.map { DemoPreviewData.enrichedRecord($0) ?? $0 }
+        guard enriched != records else { return }
+        try JSONEncoder().encode(enriched).write(to: url, options: .atomic)
     }
 
     private enum Failure: LocalizedError {

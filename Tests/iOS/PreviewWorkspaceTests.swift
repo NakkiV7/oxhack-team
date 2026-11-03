@@ -5,6 +5,28 @@ import XCTest
 final class PreviewWorkspaceTests: XCTestCase {
     private let referenceDate = Date(timeIntervalSince1970: 1_792_900_000)
 
+    func testExistingExactPreviewHistoryGainsBiometricsWithoutReplacingEditedOrRealData() throws {
+        let fixture = try fixture(seedReal: true)
+        defer { fixture.clean() }
+        let realBytes = try snapshots(fixture.folder)
+        let samples = DemoPreviewData.sessions(referenceDate: referenceDate)
+        let old = SessionRecord(id: samples[0].id, date: samples[0].date, sets: samples[0].sets, loggedSets: samples[0].loggedSets)
+        let changed = SessionRecord(id: samples[1].id, date: samples[1].date, sets: samples[1].sets,
+            telemetry: [.init(sessionID: samples[1].id, sentAt: samples[1].date,
+                heartRate: .init(value: 123, date: samples[1].date), accelerationG: nil, rotationRadiansPerSecond: nil)], loggedSets: samples[1].loggedSets)
+        let history = HistoryStore(url: fixture.folder.appendingPathComponent("Preview/history.json"))
+        try history.save(old); try history.save(changed)
+        let workspace = PreviewWorkspace(defaults: fixture.defaults, rootURL: fixture.root, now: { self.referenceDate })
+        try workspace.setPreview(true)
+        XCTAssertEqual(workspace.store.history.first { $0.id == old.id }, samples[0])
+        XCTAssertEqual(workspace.store.history.first { $0.id == changed.id }, changed)
+        let previewBytes = try snapshots(fixture.folder.appendingPathComponent("Preview"))
+        try workspace.setPreview(false)
+        XCTAssertEqual(try snapshots(fixture.folder), realBytes)
+        try workspace.setPreview(true)
+        XCTAssertEqual(try snapshots(fixture.folder.appendingPathComponent("Preview")), previewBytes)
+    }
+
     func testFreshNormalWorkspaceDoesNotInventProfileHistoryRewardsOrPreview() throws {
         let fixture = try fixture()
         defer { fixture.clean() }

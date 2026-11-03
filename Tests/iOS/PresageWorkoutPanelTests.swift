@@ -4,13 +4,55 @@ import XCTest
 
 @MainActor
 final class PresageWorkoutPanelTests: XCTestCase {
+    func testExampleValuesNeedFiveContinuousSecondsOfVisibleFrontCamera() {
+        var gate = CameraExampleGate()
+        gate.update(cameraVisible: false, at: 10)
+        XCTAssertFalse(gate.ready(at: 100))
+        gate.update(cameraVisible: true, at: 100)
+        XCTAssertFalse(gate.ready(at: 104.999))
+        XCTAssertTrue(gate.ready(at: 105))
+        gate.update(cameraVisible: false, at: 106)
+        XCTAssertFalse(gate.ready(at: 1000))
+        gate.update(cameraVisible: true, at: 1001)
+        XCTAssertFalse(gate.ready(at: 1005))
+        XCTAssertTrue(gate.ready(at: 1006))
+        XCTAssertFalse(gate.ready(at: .nan))
+        XCTAssertFalse(gate.ready(at: .infinity))
+    }
+
+    func testCompletedCheckDetachesCameraHookWithoutErasingFrozenResults() async throws {
+        let driver = PanelPresageDriver(), vision = VisionWorker()
+        var now = Date(timeIntervalSince1970: 100)
+        var expire: CheckedContinuation<Void, Never>?
+        var identity: (UUID, UUID)?
+        let controller = PresageCaptureController(now: { now }, waitForDeadline: {
+            await withCheckedContinuation { expire = $0 }
+        }) { session, measurement in identity = (session, measurement); return driver }
+        let model = PresageWorkoutModel(vision: vision, controller: controller)
+        model.update(sessionID: UUID(), generation: UUID(), phase: .rest, frontEnabled: true, appActive: true)
+        await model.start(allowAutomaticInsights: true, stationary: true)
+        while expire == nil { await Task.yield() }
+        now = Date(timeIntervalSince1970: 131)
+        let ids = try XCTUnwrap(identity)
+        driver.onUpdate?(.init(samples: [.init(sessionID: ids.0, measurementID: ids.1, metric: .pulse,
+            value: 72, date: now, confidence: 90, stable: true)], validationOK: true))
+        expire?.resume()
+        for _ in 0..<200 where controller.state != .completed || vision.onSample != nil { await Task.yield() }
+        XCTAssertEqual(controller.state, .completed)
+        XCTAssertFalse(model.isRunning)
+        XCTAssertNil(vision.onSample)
+        XCTAssertEqual(controller.vitals?.pulse(at: try XCTUnwrap(controller.completedAt))?.value, 72)
+        await model.stop()
+        XCTAssertNil(controller.vitals)
+    }
+
     func testNoAutostartAndConsentPrecedesDriverConstruction() async {
         let driver = PanelPresageDriver()
         var constructions = 0
         let controller = PresageCaptureController { _, _ in constructions += 1; return driver }
         let vision = VisionWorker()
         let model = PresageWorkoutModel(vision: vision, controller: controller)
-        model.update(sessionID: UUID(), generation: UUID(), phase: .active, frontEnabled: true, appActive: true)
+        model.update(sessionID: UUID(), generation: UUID(), phase: .rest, frontEnabled: true, appActive: true)
         XCTAssertEqual(constructions, 0)
         XCTAssertNil(vision.onSample)
         await model.start(allowAutomaticInsights: false, stationary: true)
@@ -29,7 +71,7 @@ final class PresageWorkoutPanelTests: XCTestCase {
         let controller = PresageCaptureController { _, _ in driver }
         let model = PresageWorkoutModel(vision: vision, controller: controller)
         let session = UUID(), generation = UUID()
-        model.update(sessionID: session, generation: generation, phase: .active, frontEnabled: true, appActive: true)
+        model.update(sessionID: session, generation: generation, phase: .rest, frontEnabled: true, appActive: true)
         await model.start(allowAutomaticInsights: true, stationary: true)
         let hook = try XCTUnwrap(vision.onSample)
         let sample = try sampleBuffer()
@@ -50,21 +92,41 @@ final class PresageWorkoutPanelTests: XCTestCase {
     }
 
     func testSessionGenerationPhaseForegroundAndFrontAvailabilityChangesStopMeasurement() async {
-        for change in 0..<6 {
+        for change in 0..<7 {
             let driver = PanelPresageDriver(), vision = VisionWorker()
             let controller = PresageCaptureController { _, _ in driver }
             let model = PresageWorkoutModel(vision: vision, controller: controller)
             let session = UUID(), generation = UUID()
-            model.update(sessionID: session, generation: generation, phase: .active, frontEnabled: true, appActive: true)
+            model.update(sessionID: session, generation: generation, phase: .rest, frontEnabled: true, appActive: true)
             await model.start(allowAutomaticInsights: true, stationary: true)
             model.update(sessionID: change == 0 ? UUID() : session, generation: change == 1 ? UUID() : generation,
-                         phase: change == 2 ? .paused : (change == 3 ? .rest : .active),
+                         phase: change == 2 ? .paused : (change == 3 ? .active : (change == 6 ? .finished : .rest)),
                          frontEnabled: change != 4, appActive: change != 5)
             XCTAssertNil(vision.onSample)
             await model.stop()
             XCTAssertGreaterThanOrEqual(driver.stops, 1)
             XCTAssertFalse(model.isRunning)
         }
+    }
+
+    func testActiveWorkoutCannotMeasureAndRestRequiresAnExplicitStart() async {
+        let driver = PanelPresageDriver(), vision = VisionWorker()
+        var constructions = 0
+        let controller = PresageCaptureController { _, _ in constructions += 1; return driver }
+        let model = PresageWorkoutModel(vision: vision, controller: controller)
+        let session = UUID(), generation = UUID()
+        model.update(sessionID: session, generation: generation, phase: .active, frontEnabled: true, appActive: true)
+        await model.start(allowAutomaticInsights: true, stationary: true)
+        XCTAssertEqual(constructions, 0, "Presage must not start while exercising")
+        XCTAssertEqual(driver.starts, 0)
+        XCTAssertNil(vision.onSample)
+        model.update(sessionID: session, generation: generation, phase: .rest, frontEnabled: true, appActive: true)
+        XCTAssertEqual(driver.starts, 0, "Enabling the rest camera alone must not start the SDK")
+        await model.start(allowAutomaticInsights: true, stationary: true)
+        XCTAssertEqual(constructions, 1)
+        XCTAssertEqual(driver.starts, 1)
+        XCTAssertNotNil(vision.onSample)
+        await model.stop()
     }
 
     private func sampleBuffer() throws -> CMSampleBuffer {

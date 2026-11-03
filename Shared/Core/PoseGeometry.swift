@@ -24,17 +24,23 @@ public enum PoseGeometry {
         guard frame.width.isFinite, frame.height.isFinite, frame.width > 0, frame.height > 0,
               frame.points.count == 33 else { return nil }
         for side in [preferredSide ?? 0, (preferredSide ?? 0) == 0 ? 1 : 0] {
-            let indices = exercise == .squat ? [23, 25, 27] : [11, 13, 15, 23, 27]
-            let points = indices.map { frame.points[$0 + side] }
+            let indices = exercise == .squat ? [23, 25, 27] : [11, 13, 15, 23]
+            var points = indices.map { frame.points[$0 + side] }
             guard points.allSatisfy({ valid($0) }) else { continue }
             let positions = points.map { ($0.x * frame.width, $0.y * frame.height) }
             guard let angle = angle(positions[0], positions[1], positions[2]) else { continue }
             var aligned = true
             var bodyAngle: Double?
             if exercise == .pushup {
-                guard abs(positions[0].0 - positions[4].0) > abs(positions[0].1 - positions[4].1),
-                      let measuredBodyAngle = self.angle(positions[0], positions[3], positions[4]) else { continue }
-                bodyAngle = measuredBodyAngle; aligned = measuredBodyAngle >= 150
+                guard abs(positions[0].0 - positions[3].0) > abs(positions[0].1 - positions[3].1) else { continue }
+                let ankle = frame.points[27 + side]
+                if valid(ankle) {
+                    let foot = (ankle.x * frame.width, ankle.y * frame.height)
+                    guard abs(positions[0].0 - foot.0) > abs(positions[0].1 - foot.1),
+                          let measuredBodyAngle = self.angle(positions[0], positions[3], foot) else { continue }
+                    points.append(ankle)
+                    bodyAngle = measuredBodyAngle; aligned = measuredBodyAngle >= 150
+                }
             }
             return .init(time: frame.time, angle: angle, confidence: points.map(\.confidence).min() ?? 0,
                          side: side, aligned: aligned, bodyAngle: bodyAngle)

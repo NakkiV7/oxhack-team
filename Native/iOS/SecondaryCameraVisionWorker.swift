@@ -99,7 +99,7 @@ final class SecondaryCameraVisionWorker {
         if emitIdle, let previousGeneration { onState?(.idle, previousGeneration) }
     }
     private func clearPreview(generation: UUID) {
-        image = nil; frame = nil; lastPublished = nil
+        frame = nil; lastPublished = nil
         guard state != .starting else { return }
         state = .starting; onState?(state, generation)
     }

@@ -29,18 +29,20 @@ import Testing
         #expect(shifted[0].date > sessions[0].date)
     }
 
-    @Test func reportsUseCoherentSyntheticCountsAndKeepPhysiologyUnavailable() {
+    @Test func reportsUseCoherentSyntheticCountsAndQualifiedPreviewWatchSignals() {
         let sessions = DemoPreviewData.sessions(referenceDate: reference)
         for record in sessions {
             let report = WorkoutReport(record: record)
             #expect(report.setCount == record.setCount)
             #expect(report.reps == record.reps)
             #expect(report.activeSeconds == record.activeSeconds)
-            #expect(record.telemetry.isEmpty)
-            #expect(report.heartRate.samples.isEmpty)
-            #expect(report.acceleration.samples.isEmpty)
-            #expect(report.rotation.samples.isEmpty)
-            #expect(report.activeEnergy.isEmpty)
+            #expect(record.telemetry.count >= 12)
+            #expect(record.telemetry.allSatisfy { $0.sessionID == record.id })
+            #expect(report.heartRate.samples.count == record.telemetry.count)
+            #expect(report.heartRate.samples.allSatisfy { (65...165).contains($0.value) })
+            #expect(report.acceleration.samples.count == record.telemetry.count)
+            #expect(report.rotation.samples.count == record.telemetry.count)
+            #expect(!report.activeEnergy.isEmpty)
             for set in report.sets {
                 #expect(ExerciseCatalog.find(set.exerciseID) != nil)
                 #expect(set.activeSeconds > 0)
@@ -63,6 +65,25 @@ import Testing
         #expect(reports.contains { $0.sets.contains { $0.exerciseID == "pushup" } })
         #expect(reports.contains { $0.sets.contains { $0.exerciseID == "squat" } })
         #expect(reports.contains { $0.holdSeconds > 0 })
+    }
+
+    @Test func previewBiometricsKeepAuthoredPresageAndEffortSeparateFromWatchProvenance() throws {
+        let sessions = DemoPreviewData.sessions(referenceDate: reference)
+        let insights = try sessions.map { try #require(DemoPreviewData.insight(for: $0)) }
+        for insight in insights {
+            #expect(insight.biometrics.sourceLabel == "Synthetic preview · not recorded health data")
+            #expect((60...110).contains(insight.biometrics.presagePulse))
+            #expect((10...30).contains(insight.biometrics.presageBreathing))
+            #expect(insight.biometrics.rationale.contains("authored"))
+            #expect(insight.biometrics.rationale.contains("not measured"))
+        }
+        #expect(Set(insights.map { $0.biometrics.effortBand }) == ["Lower effort", "Higher effort"])
+        let low = try #require(insights.first { $0.biometrics.effortBand == "Lower effort" })
+        let high = try #require(insights.first { $0.biometrics.effortBand == "Higher effort" })
+        #expect(high.biometrics.presagePulse > low.biometrics.presagePulse)
+        let changed = SessionRecord(id: sessions[0].id, date: sessions[0].date, sets: sessions[0].sets,
+            telemetry: [.init(sessionID: UUID(), sentAt: sessions[0].date, heartRate: nil, accelerationG: nil, rotationRadiansPerSecond: nil)])
+        #expect(DemoPreviewData.insight(for: changed) == nil, "Removing fixture provenance must remove authored biometric analysis")
     }
 
     @Test func authoredGradesReferToFixtureFactsAndNeverGradeRealOrChangedRecords() throws {
@@ -90,6 +111,52 @@ import Testing
     @Test func invalidReferenceDateNeverCreatesFixtures() {
         #expect(DemoPreviewData.sessions(referenceDate: Date(timeIntervalSince1970: .nan)).isEmpty)
         #expect(DemoPreviewData.sessions(referenceDate: Date(timeIntervalSince1970: .infinity)).isEmpty)
+    }
+
+    @Test func onlyExactPreviewFixturesCanBeEnrichedWithoutChangingRealOrEditedHistory() throws {
+        for enriched in DemoPreviewData.sessions(referenceDate: reference, calendar: calendar) {
+            let legacy = SessionRecord(id: enriched.id, date: enriched.date, sets: enriched.sets,
+                                       loggedSets: enriched.loggedSets, skippedSets: enriched.skippedSets)
+            #expect(legacy.telemetry.isEmpty)
+            #expect(DemoPreviewData.enrichedRecord(legacy) == enriched)
+            #expect(DemoPreviewData.enrichedRecord(enriched) == enriched)
+            #expect(DemoPreviewData.insight(for: legacy) != nil)
+            let real = SessionRecord(id: UUID(), date: enriched.date, sets: enriched.sets, loggedSets: enriched.loggedSets)
+            #expect(DemoPreviewData.enrichedRecord(real) == nil)
+            let edited = SessionRecord(id: enriched.id, date: enriched.date, sets: Array(enriched.sets.dropLast()),
+                                       loggedSets: Array(enriched.loggedSets.dropLast()))
+            #expect(DemoPreviewData.enrichedRecord(edited) == nil)
+            let editedTelemetry = SessionRecord(id: enriched.id, date: enriched.date, sets: enriched.sets,
+                telemetry: [.init(sessionID: enriched.id, sentAt: enriched.date,
+                                  heartRate: .init(value: 71, date: enriched.date), accelerationG: nil, rotationRadiansPerSecond: nil)],
+                loggedSets: enriched.loggedSets)
+            #expect(DemoPreviewData.enrichedRecord(editedTelemetry) == nil)
+        }
+    }
+
+    @Test func newlyCompletedPreviewWorkoutGetsSeparateDisplayExamplesWithoutInventingRecordedHealth() throws {
+        let date = reference
+        let record = try LoggedWorkout.make(exerciseID: "squat", count: 3, sets: 1, date: date)
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        let before = try encoder.encode(record)
+        #expect(DemoPreviewData.reportMetrics(for: record, previewEnabled: false) == nil)
+        let examples = try #require(DemoPreviewData.reportMetrics(for: record, previewEnabled: true))
+        #expect(examples.sourceLabel == "Synthetic preview · not recorded health data")
+        #expect(examples.exampleRecord.id == record.id)
+        #expect(examples.exampleRecord.sets == record.sets)
+        #expect(examples.exampleRecord.loggedSets == record.loggedSets)
+        let report = WorkoutReport(record: examples.exampleRecord)
+        #expect(report.heartRate.samples.count >= 12)
+        #expect(report.acceleration.samples.count >= 12)
+        #expect(report.rotation.samples.count >= 12)
+        #expect(!report.activeEnergy.isEmpty)
+        #expect(examples.angleSamples.count >= 12)
+        #expect(examples.angleSamples.allSatisfy { $0.date >= record.date && (0...180).contains($0.value) })
+        #expect(try encoder.encode(record) == before)
+        #expect(WorkoutReport(record: record).heartRate.samples.isEmpty)
+        #expect(record.telemetry.isEmpty)
+        let empty = SessionRecord(id: UUID(), date: date, sets: [])
+        #expect(DemoPreviewData.reportMetrics(for: empty, previewEnabled: true) == nil)
     }
 
     @Test func fixtureAccessDoesNotPopulateRealHistoryOrProfile() throws {

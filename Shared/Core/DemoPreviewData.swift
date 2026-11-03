@@ -1,5 +1,19 @@
 import Foundation
 
+public struct DemoPreviewBiometrics: Equatable, Sendable {
+    public let presagePulse: Double
+    public let presageBreathing: Double
+    public let effortBand: String
+    public let rationale: String
+    public let sourceLabel = "Synthetic preview · not recorded health data"
+}
+
+public struct DemoPreviewReportMetrics: Equatable, Sendable {
+    public let exampleRecord: SessionRecord
+    public let angleSamples: [SensorReading]
+    public let sourceLabel = "Synthetic preview · not recorded health data"
+}
+
 public struct DemoPreviewInsight: Equatable, Sendable {
     public let sessionID: UUID
     public let title: String
@@ -9,6 +23,7 @@ public struct DemoPreviewInsight: Equatable, Sendable {
     public let rationale: String
     public let achievementScore: Int
     public let effortScore: Int
+    public let biometrics: DemoPreviewBiometrics
     public let sourceLabel = "Synthetic preview"
 }
 
@@ -25,10 +40,36 @@ public enum DemoPreviewData {
         }
     }
 
+    public static func enrichedRecord(_ record: SessionRecord) -> SessionRecord? {
+        guard record.date.timeIntervalSince1970.isFinite,
+              let index = workouts.indices.first(where: { identifier(session: $0) == record.id }) else { return nil }
+        let enriched = self.record(workouts[index], index: index, date: record.date)
+        guard record == enriched || record == self.record(workouts[index], index: index, date: record.date, includeTelemetry: false) else { return nil }
+        return enriched
+    }
+
+    public static func reportMetrics(for record: SessionRecord, previewEnabled: Bool) -> DemoPreviewReportMetrics? {
+        guard previewEnabled, record.date.timeIntervalSince1970.isFinite,
+              record.sets.contains(where: { $0.reps > 0 }) || record.loggedSets.contains(where: { $0.reps > 0 || $0.seconds > 0 }) else { return nil }
+        let template = self.record(workouts[0], index: 0, date: record.date)
+        let telemetry = template.telemetry.map { sample in
+            WatchTelemetry(sessionID: record.id, sentAt: sample.sentAt, heartRate: sample.heartRate,
+                accelerationG: sample.accelerationG, rotationRadiansPerSecond: sample.rotationRadiansPerSecond,
+                activeEnergy: sample.activeEnergy.map { .init(recordingID: record.id, kilocalories: $0.kilocalories, asOf: $0.asOf) })
+        }
+        let example = SessionRecord(id: record.id, date: record.date, sets: record.sets,
+                                    telemetry: telemetry, loggedSets: record.loggedSets, skippedSets: record.skippedSets)
+        let angles: [Double] = [170, 145, 105, 90, 120, 160, 170, 130, 95, 110, 150, 170]
+        return .init(exampleRecord: example, angleSamples: angles.enumerated().map {
+            .init(value: $0.element, date: record.date.addingTimeInterval(Double($0.offset) * 5))
+        })
+    }
+
     public static func insight(for record: SessionRecord) -> DemoPreviewInsight? {
         guard record.date.timeIntervalSince1970.isFinite,
               let index = workouts.indices.first(where: { identifier(session: $0) == record.id }),
-              record == self.record(workouts[index], index: index, date: record.date) else { return nil }
+              record == self.record(workouts[index], index: index, date: record.date) ||
+                record == self.record(workouts[index], index: index, date: record.date, includeTelemetry: false) else { return nil }
         let workout = workouts[index]
         let quantities = workout.groups.flatMap { group in
             group.counts.map { min(1, Double($0) / Double(group.target)) }
@@ -41,7 +82,11 @@ public enum DemoPreviewData {
             summary: "Synthetic session: \(record.setCount) sets, \(record.reps) reps\(hold). \(workout.reflection)",
             grade: grade(score), score: score,
             rationale: "Demo achievement \(achievement)/100 is the mean completed share of each set target, capped at 100. Demo effort \(workout.effort)/100 is authored for this fictional session. The score averages these two values; it is not a health, readiness or measured effort assessment.",
-            achievementScore: achievement, effortScore: workout.effort)
+            achievementScore: achievement, effortScore: workout.effort,
+            biometrics: .init(presagePulse: [82, 88, 72, 94, 78, 102, 98][index],
+                presageBreathing: [16, 18, 13, 20, 15, 23, 21][index],
+                effortBand: workout.effort >= 80 ? "Higher effort" : "Lower effort",
+                rationale: "These authored Watch signals and stationary Presage-style pulse/breathing examples are not measured health data. Lower/higher effort describes the fictional workout narrative, not a physiological assessment; no readiness or fitness conclusion follows."))
     }
 
     private struct Group {
@@ -84,7 +129,7 @@ public enum DemoPreviewData {
     private static func identifier(session: Int, set: Int = 0) -> UUID {
         UUID(uuidString: String(format: "DE000000-0000-4000-A000-%012d", (session + 1) * 100 + set))!
     }
-    private static func record(_ workout: Workout, index: Int, date: Date) -> SessionRecord {
+    private static func record(_ workout: Workout, index: Int, date: Date, includeTelemetry: Bool = true) -> SessionRecord {
         let groups = workout.groups.enumerated().flatMap { groupIndex, group in
             group.counts.enumerated().map { number, count in
                 (group, number, count, identifier(session: index, set: groupIndex * 10 + number + 1))
@@ -105,7 +150,19 @@ public enum DemoPreviewData {
                 activeSeconds: Double(count) * (group.isHold ? 1 : 3),
                 restSecondsBefore: number == 0 ? nil : 45, reserve: nil, quantityOrigin: .selfReport)
         }
-        return SessionRecord(id: identifier(session: index), date: date, sets: sets, loggedSets: logs)
+        let sessionID = identifier(session: index)
+        let active = sets.reduce(0) { $0 + $1.activeSeconds } + logs.reduce(0) { $0 + ($1.activeSeconds ?? $1.seconds) }
+        let levels: [Double] = [0, 6, 16, 24, 32, 20, 10, 30, 38, 22, 10, 0]
+        let base: Double = [88, 94, 76, 104, 86, 112, 108][index]
+        let telemetry: [WatchTelemetry] = includeTelemetry ? levels.enumerated().map { number, level in
+            let observed = date.addingTimeInterval(Double(number) * 5)
+            return WatchTelemetry(sessionID: sessionID, sentAt: observed,
+                heartRate: .init(value: base + level, date: observed),
+                accelerationG: .init(value: 1 + level / 100, date: observed),
+                rotationRadiansPerSecond: .init(value: 0.1 + level / 30, date: observed),
+                activeEnergy: .init(recordingID: sessionID, kilocalories: active / 60 * 3.5 * Double(number) / 11, asOf: observed))
+        } : []
+        return SessionRecord(id: sessionID, date: date, sets: sets, telemetry: telemetry, loggedSets: logs)
     }
     private static func grade(_ score: Int) -> String {
         switch score {

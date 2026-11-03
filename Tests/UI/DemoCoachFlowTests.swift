@@ -9,7 +9,7 @@ final class DemoCoachFlowTests: XCTestCase {
         app.tabBars.buttons["Coach"].tap()
         XCTAssertTrue(app.scrollViews["coach-conversation"].waitForExistence(timeout: 5))
         XCTAssertFalse(element("demo-coach-conversation", in: app).exists)
-        XCTAssertFalse(element("demo-coach-preview-badge", in: app).exists)
+        XCTAssertFalse(element("demo-coach-plan-heading", in: app).exists)
 
         app.tabBars.buttons["Today"].tap()
         app.buttons["profile-settings"].tap()
@@ -21,7 +21,7 @@ final class DemoCoachFlowTests: XCTestCase {
         XCTAssertTrue(app.tabBars.buttons["Coach"].waitForExistence(timeout: 5))
         app.tabBars.buttons["Coach"].tap()
         XCTAssertTrue(element("demo-coach-conversation", in: app).waitForExistence(timeout: 5))
-        XCTAssertTrue(element("demo-coach-preview-badge", in: app).exists)
+        XCTAssertTrue(element("demo-coach-plan-heading", in: app).exists)
         XCTAssertTrue(element("demo-coach-user-message", in: app).exists)
         XCTAssertTrue(element("demo-coach-workflow", in: app).exists)
         let count = app.staticTexts["demo-coach-selection-count"]

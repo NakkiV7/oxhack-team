@@ -4,6 +4,47 @@ import XCTest
 
 @MainActor
 final class PresageCaptureTests: XCTestCase {
+    func testDeadlineFreezesQualifiedResultWhileSerializedStopSettlesAndManualStopClearsIt() async throws {
+        let driver = FakePresageDriver()
+        driver.suspendStop = true
+        var now = Date(timeIntervalSince1970: 100)
+        var expire: CheckedContinuation<Void, Never>?
+        var identity: (UUID, UUID)?
+        let controller = PresageCaptureController(now: { now }, waitForDeadline: {
+            await withCheckedContinuation { expire = $0 }
+        }) { session, measurement in
+            identity = (session, measurement)
+            return driver
+        }
+        await controller.start(sessionID: UUID(), allowAutomaticInsights: true, stationary: true)
+        while expire == nil { await Task.yield() }
+        now = Date(timeIntervalSince1970: 131)
+        let ids = try XCTUnwrap(identity)
+        driver.onUpdate?(.init(samples: [
+            .init(sessionID: ids.0, measurementID: ids.1, metric: .pulse, value: 72, date: now, confidence: 95, stable: true),
+            .init(sessionID: ids.0, measurementID: ids.1, metric: .breathing, value: 14, date: now, confidence: 95, stable: true)
+        ], validationOK: true))
+        now = Date(timeIntervalSince1970: 132)
+        expire?.resume()
+        while controller.state != .completed || driver.stopContinuation == nil { await Task.yield() }
+        let completedAt = try XCTUnwrap(controller.completedAt)
+        XCTAssertEqual(completedAt, now)
+        XCTAssertEqual(controller.vitals?.pulse(at: completedAt)?.value, 72)
+        XCTAssertEqual(controller.vitals?.breathing(at: completedAt)?.value, 14)
+        now = Date(timeIntervalSince1970: 1000)
+        driver.onUpdate?(.init(samples: [], validationOK: false, failed: true))
+        XCTAssertEqual(controller.state, .completed)
+        XCTAssertEqual(controller.vitals?.pulse(at: completedAt)?.value, 72)
+        XCTAssertNil(controller.vitals?.pulse(at: now))
+        let stopping = Task { await controller.stop() }
+        while controller.state != .idle { await Task.yield() }
+        XCTAssertNil(controller.completedAt)
+        XCTAssertNil(controller.vitals)
+        driver.stopContinuation?.resume()
+        await stopping.value
+        XCTAssertEqual(driver.stopCount, 1)
+    }
+
     func testConsentAndStationaryCheckPrecedeAnySDKConstructionOrStart() async {
         var constructions = 0
         let controller = PresageCaptureController { _, _ in
@@ -48,7 +89,7 @@ final class PresageCaptureTests: XCTestCase {
         XCTAssertNil(controller.vitals)
     }
 
-    func testDeadlineInvalidatesAPendingStartWithoutRetryOrLatePublishing() async {
+    func testDeadlineCompletesAPendingStartWithoutRetryOrLatePublishing() async {
         let driver = FakePresageDriver()
         driver.suspendStart = true
         var expire: CheckedContinuation<Void, Never>?
@@ -58,11 +99,13 @@ final class PresageCaptureTests: XCTestCase {
         let pending = Task { await controller.start(sessionID: UUID(), allowAutomaticInsights: true, stationary: true) }
         while driver.startContinuation == nil || expire == nil { await Task.yield() }
         expire?.resume()
-        while controller.state != .idle { await Task.yield() }
-        XCTAssertNil(controller.vitals)
+        while controller.state != .completed { await Task.yield() }
+        XCTAssertNotNil(controller.vitals)
+        XCTAssertNotNil(controller.completedAt)
+        XCTAssertNil(controller.vitals?.pulse(at: controller.completedAt!))
         driver.startContinuation?.resume()
         await pending.value
-        XCTAssertEqual(controller.state, .idle)
+        XCTAssertEqual(controller.state, .completed)
         XCTAssertEqual(driver.stopCount, 1)
     }
 
@@ -87,6 +130,30 @@ final class PresageCaptureTests: XCTestCase {
         await controller.start(sessionID: UUID(), allowAutomaticInsights: true, stationary: true)
         XCTAssertEqual(controller.state, .unavailable)
         XCTAssertNil(controller.vitals)
+        XCTAssertNil(controller.completedAt)
+        XCTAssertEqual(controller.guidance, "The camera check couldn’t start.")
+    }
+
+    func testMappedGuidanceSurvivesFailureAndClearsForStopAndNewStart() async {
+        let driver = FakePresageDriver()
+        let controller = PresageCaptureController { _, _ in driver }
+        await controller.start(sessionID: UUID(), allowAutomaticInsights: true, stationary: true)
+        driver.onUpdate?(.init(samples: [], validationOK: false, failed: true,
+            guidance: "Keep your face fully in the camera frame."))
+        XCTAssertEqual(controller.state, .unavailable)
+        XCTAssertEqual(controller.guidance, "Keep your face fully in the camera frame.")
+        XCTAssertNil(controller.completedAt)
+        await controller.stop()
+        XCTAssertNil(controller.guidance)
+        driver.failure = PresageFailure(guidance: "The camera service could not be reached.")
+        await controller.start(sessionID: UUID(), allowAutomaticInsights: true, stationary: true)
+        XCTAssertEqual(controller.guidance, "The camera service could not be reached.")
+        driver.failure = nil
+        await controller.start(sessionID: UUID(), allowAutomaticInsights: true, stationary: true)
+        XCTAssertEqual(controller.state, .measuring)
+        XCTAssertNil(controller.guidance)
+        XCTAssertNil(controller.completedAt)
+        await controller.stop()
     }
 }
 
@@ -96,11 +163,16 @@ private final class FakePresageDriver: PresageDriving {
     var suspendStart = false
     var startContinuation: CheckedContinuation<Void, Never>?
     var stopCount = 0
+    var suspendStop = false
+    var stopContinuation: CheckedContinuation<Void, Never>?
     var failure: Error?
     func start() async throws {
         if suspendStart { await withCheckedContinuation { startContinuation = $0 } }
         if let failure { throw failure }
     }
-    func stop() async { stopCount += 1 }
+    func stop() async {
+        stopCount += 1
+        if suspendStop { await withCheckedContinuation { stopContinuation = $0 } }
+    }
     func submit(_ sample: CMSampleBuffer) -> Bool { true }
 }

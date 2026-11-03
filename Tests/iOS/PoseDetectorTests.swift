@@ -2,6 +2,13 @@ import XCTest
 @testable import Spottr
 
 final class PoseDetectorTests: XCTestCase {
+    #if !SPOTTR_EXPERIMENTAL_PRESAGE
+    func testFullPoseModelUsedByThePushupPrototypeIsBundledForOfflineTracking() throws {
+        let url = try XCTUnwrap(Bundle.main.url(forResource: "pose_landmarker_full", withExtension: "task"))
+        XCTAssertGreaterThan(try Data(contentsOf: url).count, 9_000_000)
+    }
+    #endif
+
     func testBundledMediaPipeFindsHumanAndRejectsBlankImage() throws {
         let detector = try PoseDetector()
         let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "pose", withExtension: "jpg"))

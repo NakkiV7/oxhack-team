@@ -33,6 +33,7 @@ final class TrainingStore {
     var visionState: VisionState = .idle
     private(set) var frontPreviewState: VisionState = .idle
     private(set) var frontCameraEnabled = true
+    private(set) var restCameraEnabled = false
     var frame: PoseFrame?
     var image: UIImage?
     var source: InputSource = .camera
@@ -96,8 +97,23 @@ final class TrainingStore {
     func setAppActive(_ active: Bool) {
         appActive = active
         if !active {
+            setRestCameraEnabled(false)
             if requiresForegroundCapture, sessionPhase == .active, configured?.hasStarted != false { pause() }
             else { cancelCoaching() }
+        }
+    }
+
+    func setRestCameraEnabled(_ enabled: Bool) {
+        guard enabled != restCameraEnabled else { return }
+        if enabled {
+            guard appActive, sessionPhase == .rest else { return }
+            restCameraEnabled = true
+            frontPreviewState = .idle
+            vision.frontPreview(token: feedbackContext.generation)
+        } else {
+            restCameraEnabled = false
+            frontPreviewState = .idle
+            vision.stop()
         }
     }
 
@@ -252,8 +268,9 @@ final class TrainingStore {
         }
         self.vision.onPreviewState = { [weak self] state, generation in
             Task { @MainActor in
-                guard let self, self.frontCameraEnabled, self.usingSecondaryCamera, self.acceptsTracking,
-                      self.feedbackContext.generation == generation else { return }
+                guard let self, self.feedbackContext.generation == generation,
+                      (self.restCameraEnabled && self.sessionPhase == .rest) ||
+                        (self.frontCameraEnabled && self.usingSecondaryCamera && self.acceptsTracking) else { return }
                 self.frontPreviewState = state
             }
         }
@@ -485,7 +502,7 @@ final class TrainingStore {
             publish(); return
         }
         guard !reportedDiscomfort, session.phase == .rest else { publish(); return }
-        session.nextSet(at: now); clearInput()
+        stopCapture(); session.nextSet(at: now); clearInput()
         if session.phase == .finished { save(); announceCompletion() }
         publish()
     }
@@ -565,6 +582,7 @@ final class TrainingStore {
         var errorDescription: String? { "Finish your current workout before deleting training history." }
     }
     private func stopCapture() {
+        restCameraEnabled = false
         frontPreviewState = .idle
         vision.stop(); secondaryVision.stop()
     }

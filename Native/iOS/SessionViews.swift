@@ -90,9 +90,6 @@ struct LiveSetView: View {
                         .font(.caption.weight(.medium)).padding(8).background(.white.opacity(0.9), in: Capsule()).padding(12)
                 }.frame(height: 295).clipShape(RoundedRectangle(cornerRadius: 23))
                 }
-                if SmartSpectraDriver.isAvailable, store.hasInput, store.source == .camera {
-                    PresageWorkoutPanel(store: store)
-                }
                 if !store.hasInput {
                     Picker("Movement phase", selection: $guide) {
                         Text("Top").tag("top"); Text("Middle").tag("mid"); Text("Bottom").tag("bottom")
@@ -237,6 +234,7 @@ struct RecoveryView: View {
                         Text("Take longer if you need it.").font(.caption).foregroundStyle(.secondary)
                     }.frame(maxWidth: .infinity).padding(.vertical, 30)
                 }
+                if SmartSpectraDriver.isAvailable || store.previewMode { PresageWorkoutPanel(store: store) }
                 VStack(alignment: .leading, spacing: 13) {
                     Text("How many more could you do?").font(.headline)
                     Text("Think clean reps, with the same form.").font(.caption).foregroundStyle(.secondary)

@@ -1,6 +1,8 @@
 import Foundation
 
-public enum CameraVitalMetric: String, Equatable, Sendable { case pulse, breathing }
+public enum CameraVitalMetric: String, Equatable, Sendable {
+    case pulse, breathing, hrvRMSSD, hrvSDNN, meanNN, stressIndex
+}
 
 /// Derived Presage estimates only. Never a Watch reading or a claim of medical readiness.
 public struct CameraVitalSample: Equatable, Sendable {
@@ -42,8 +44,11 @@ public struct CameraVitalsRun: Equatable, Sendable {
     public func pulse(at date: Date) -> CameraVitalSample? { reading(.pulse, at: date) }
     public func breathing(at date: Date) -> CameraVitalSample? { reading(.breathing, at: date) }
 
-    private func reading(_ metric: CameraVitalMetric, at date: Date) -> CameraVitalSample? {
+    public func reading(_ metric: CameraVitalMetric, at date: Date) -> CameraVitalSample? {
         guard active, let sample = samples[metric], qualified(sample, at: date) else { return nil }
+        if metric != .pulse && metric != .breathing {
+            guard let pulse = samples[.pulse], qualified(pulse, at: date) else { return nil }
+        }
         return sample
     }
 
@@ -51,16 +56,19 @@ public struct CameraVitalsRun: Equatable, Sendable {
         let age = now.timeIntervalSince(sample.date)
         let elapsed = sample.date.timeIntervalSince(startedAt)
         let isPulse = sample.metric == .pulse
+        let isHRV = sample.metric != .pulse && sample.metric != .breathing
+        let minimumConfidence = isHRV ? 50.0 : (isPulse ? 40 : 45)
+        let validValue = isHRV ? sample.value >= 0 : ((isPulse ? 40.0 : 5.0)...(isPulse ? 110.0 : 40.0)).contains(sample.value)
         return sample.sessionID == sessionID && sample.measurementID == measurementID
             && sample.value.isFinite && sample.confidence.isFinite && sample.stable
-            && ((isPulse ? 40.0 : 45.0)...100).contains(sample.confidence)
-            && ((isPulse ? 40.0 : 5.0)...(isPulse ? 110.0 : 40.0)).contains(sample.value)
+            && (minimumConfidence...100).contains(sample.confidence)
+            && validValue
             && age.isFinite && age >= -2 && age <= 5
-            && elapsed.isFinite && elapsed >= (isPulse ? 12 : 30)
+            && elapsed.isFinite && elapsed >= (isHRV ? 60 : (isPulse ? 12 : 30))
     }
 }
 
-public enum VitalSource: String, Equatable, Sendable { case watch, presage }
+public enum VitalSource: String, Equatable, Sendable { case watch, presage, demonstration }
 public struct DisplayVital: Equatable, Sendable {
     public let value: Double
     public let date: Date
@@ -81,5 +89,32 @@ public struct VitalsDisplay: Equatable, Sendable {
         breathingRate = currentCamera?.breathing(at: now).map {
             .init(value: $0.value, date: $0.date, source: .presage)
         }
+    }
+}
+
+public struct DisplayRestVitals: Equatable, Sendable {
+    public let heartRate: DisplayVital?
+    public let breathingRate: DisplayVital?
+    public let hrvRMSSD: DisplayVital?
+    public let hrvSDNN: DisplayVital?
+    public let meanNN: DisplayVital?
+    public let stressIndex: DisplayVital?
+
+    public init(sessionID: UUID, watch: WatchTelemetry?, camera: CameraVitalsRun?, now: Date,
+                previewEnabled: Bool, measurementUnavailable: Bool) {
+        let observed = VitalsDisplay(sessionID: sessionID, watch: watch, camera: camera, now: now)
+        let examplesAllowed = previewEnabled && measurementUnavailable && now.timeIntervalSince1970.isFinite
+        heartRate = observed.heartRate ?? (examplesAllowed ? .init(value: 72, date: now, source: .demonstration) : nil)
+        breathingRate = observed.breathingRate ?? (examplesAllowed ? .init(value: 14, date: now, source: .demonstration) : nil)
+        func hrv(_ metric: CameraVitalMetric, example: Double) -> DisplayVital? {
+            if camera?.sessionID == sessionID, let value = camera?.reading(metric, at: now) {
+                return .init(value: value.value, date: value.date, source: .presage)
+            }
+            return examplesAllowed ? .init(value: example, date: now, source: .demonstration) : nil
+        }
+        hrvRMSSD = hrv(.hrvRMSSD, example: 42)
+        hrvSDNN = hrv(.hrvSDNN, example: 54)
+        meanNN = hrv(.meanNN, example: 833)
+        stressIndex = hrv(.stressIndex, example: 65)
     }
 }

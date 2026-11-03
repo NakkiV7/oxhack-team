@@ -22,7 +22,7 @@ struct DualCameraPreview: View {
             }
             ZStack {
                 Palette.surface
-                if let image = store.image {
+                if let image = sideImage {
                     Image(uiImage: image).resizable().scaledToFit()
                 } else {
                     VStack(spacing: 10) {
@@ -31,13 +31,25 @@ struct DualCameraPreview: View {
                             .font(.caption).multilineTextAlignment(.center)
                     }.foregroundStyle(.secondary).padding(16).frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                if let frame = store.frame { PoseOverlay(frame: frame, exercise: exercise) }
+                if store.secondaryVision.state == .tracking, let frame = store.frame {
+                    PoseOverlay(frame: frame, exercise: exercise)
+                }
             }.overlay(alignment: .topLeading) { cameraLabel("Side", symbol: "figure.strengthtraining.traditional") }
+                .overlay(alignment: .bottom) {
+                    if store.secondaryVision.state == .starting, sideImage != nil {
+                        Text("Reconnecting · last frame").font(.caption2.weight(.semibold))
+                            .padding(8).background(.regularMaterial, in: Capsule()).padding(8)
+                            .accessibilityIdentifier("side-camera-reconnecting")
+                    }
+                }
                 .accessibilityIdentifier("side-camera-preview")
         }.frame(height: 270)
             .clipShape(RoundedRectangle(cornerRadius: 20))
             .accessibilityElement(children: .contain)
             .accessibilityLabel(store.frontCameraEnabled ? "Front preview on the left, side-camera form on the right" : "Side-camera form")
+    }
+    private var sideImage: UIImage? {
+        store.secondaryVision.state == .starting ? store.secondaryVision.image : store.image
     }
     private func cameraLabel(_ title: String, symbol: String) -> some View {
         Label(title, systemImage: symbol).font(.caption2.weight(.semibold)).padding(8)

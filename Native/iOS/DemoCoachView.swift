@@ -22,13 +22,13 @@ struct DemoCoachView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     introduction
-                    message(role: "OMAR · SAMPLE", text: "It's been a while since I've been to the gym. Can you put together a full week for me? I'd like to rebuild strength and get moving again.", user: true)
+                    message(role: "YOU", text: "It's been a while since I've been to the gym. Can you put together a full week for me? I'd like to rebuild strength and get moving again.", user: true)
                         .accessibilityIdentifier("demo-coach-user-message")
                     workflow
-                    message(role: "SPOTTR COACH · SAMPLE", text: "Let's make the first week achievable. We'll use two short strength sessions with recovery between them, gentle mobility and room to rest. Bodyweight work is enough to begin; the only required support here is a wall.")
+                    message(role: "SPOTTR COACH", text: "Let's make the first week achievable. We'll use two short strength sessions with recovery between them, gentle mobility and room to rest. Bodyweight work is enough to begin; the only required support here is a wall.")
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Your comeback week").font(.title2.bold())
-                        Text("A conservative example, ready for your review.").font(.subheadline).foregroundStyle(.secondary)
+                        Text("A gentle first week, ready for your review.").font(.subheadline).foregroundStyle(.secondary)
                         Text("Start with a gentle warm-up. Use one easy set per selected exercise and 60 seconds between sets. Stop if an exercise causes pain; seek appropriate advice for symptoms or an existing condition.")
                             .font(.subheadline)
                         Text("I–V are Spottr's catalogue difficulty levels within each exercise family. They are not a medical readiness score. This restart stays at I–II; III–V can wait.")
@@ -36,7 +36,7 @@ struct DemoCoachView: View {
                     }
                     ForEach(DemoCoachTranscript.days) { day in dayCard(day) }
                     supportReview
-                    message(role: "WHY THIS SHAPE?", text: "Two separated strength days give you a repeatable rhythm without filling every day with hard work. The NHS advises building up gradually; WHO includes strength work on at least two days in its adult guidance. This sample is a starting week, not the full long-term activity target.")
+                    message(role: "WHY THIS SHAPE?", text: "Two separated strength days give you a repeatable rhythm without filling every day with hard work. The NHS advises building up gradually; WHO includes strength work on at least two days in its adult guidance. This starting week builds toward the longer-term activity target.")
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Next week: earn the next step").font(.headline)
                         Text("If the week feels comfortable and you recover well, repeat it or add one or two reps to one exercise. Change one thing at a time. Keep the same level while learning the movement; no automatic jump to harder variations.")
@@ -45,8 +45,10 @@ struct DemoCoachView: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     references
-                    Text("This prewritten example does not assess your health or use your real profile. Approving it stays on this screen. Only work you explicitly start and finish can be recorded in the preview workspace.")
-                        .font(.caption).foregroundStyle(.secondary)
+                    DisclosureGroup("Data sources") {
+                        Text("Synthetic preview · prewritten conversation and authored schedule. No live AI request was made. This week uses fictional context, not your real profile or recorded health data, and does not assess your health. Approving stays on this screen. Only work you explicitly start and finish is recorded in this separate preview workspace.")
+                            .font(.caption).foregroundStyle(.secondary).padding(.top, 8)
+                    }.font(.subheadline).accessibilityIdentifier("demo-coach-data-sources")
                     if let error { Text(error).font(.subheadline).foregroundStyle(Palette.red).accessibilityIdentifier("demo-coach-error") }
                 }.padding(24)
             }
@@ -60,13 +62,9 @@ struct DemoCoachView: View {
 
     private var introduction: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label("TestFlight preview", systemImage: "sparkles")
-                .font(.caption.weight(.semibold)).foregroundStyle(Palette.blue)
-                .padding(.horizontal, 10).padding(.vertical, 6)
-                .background(Palette.blue.opacity(0.08), in: Capsule())
-                .accessibilityIdentifier("demo-coach-preview-badge")
             Text("A fresh start.\nA week that fits.").font(.largeTitle.bold())
-            Text("Explore a prepared Coach conversation. No live AI request is made.")
+                .accessibilityIdentifier("demo-coach-plan-heading")
+            Text("Review your training week, choose your exercises and start when you’re ready.")
                 .font(.subheadline).foregroundStyle(.secondary)
         }
     }
@@ -87,14 +85,14 @@ struct DemoCoachView: View {
 
     private var workflow: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Sample planning workflow · prepared").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-            ForEach(Array(["Reviewing goals", "Balancing recovery", "Checking guidance"].enumerated()), id: \.offset) { index, title in
+            Text("Your week at a glance").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            ForEach(Array(["A gradual starting point", "Strength with mobility", "Room for rest"].enumerated()), id: \.offset) { index, title in
                 HStack(spacing: 10) {
                     Text("\(index + 1)").font(.caption.bold()).frame(width: 24, height: 24)
                         .background(Palette.blue.opacity(0.10), in: Circle())
                     Text(title).font(.subheadline)
                     Spacer()
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Palette.green).accessibilityLabel("Prepared")
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Palette.green).accessibilityLabel("Included")
                 }
             }
         }.padding(16).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
@@ -168,7 +166,7 @@ struct DemoCoachView: View {
     private var references: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Read the guidance").font(.headline)
-            Text("General guidance informs the example; the exact doses and schedule are illustrative.").font(.caption).foregroundStyle(.secondary)
+            Text("General guidance supports a gradual approach; the exact doses and schedule are illustrative.").font(.caption).foregroundStyle(.secondary)
             Link(destination: URL(string: "https://www.nhs.uk/live-well/exercise/strength-exercises/")!) {
                 Label("NHS · gentle strength exercises", systemImage: "arrow.up.right.square")
             }.accessibilityIdentifier("demo-coach-link-nhs-strength")

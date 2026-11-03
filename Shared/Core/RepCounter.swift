@@ -9,21 +9,33 @@ public struct RepCounter: Sendable {
     private var candidateAt: Double?
     private var candidate = 0
     private var lastTime: Double?
+    private var lastReliableTime: Double?
     private var side: Int?
     public init(exercise: Exercise) { self.exercise = exercise }
     public mutating func resetMovement() {
         armedAt = nil; reachedBottom = false; candidateAt = nil; candidate = 0
+        lastTime = nil; lastReliableTime = nil; side = nil
     }
     public mutating func consume(_ sample: MovementSample) -> Cue {
         guard sample.time.isFinite else { resetMovement(); return .tracking }
-        guard sample.confidence.isFinite, sample.confidence >= 0.6,
-              sample.angle.isFinite, (0...180).contains(sample.angle) else {
-            resetMovement(); lastTime = sample.time; return .tracking
+        let previousTime = lastTime
+        defer { lastTime = sample.time }
+        if let previousTime, sample.time == previousTime { return .tracking }
+        if let previousTime, sample.time < previousTime { resetMovement(); return .tracking }
+        guard sample.confidence.isFinite else { resetMovement(); return .tracking }
+        guard sample.confidence >= 0.6 else {
+            candidate = 0; candidateAt = nil
+            if lastReliableTime.map({ sample.time - $0 > 1.5 }) ?? true { resetMovement() }
+            return .tracking
         }
-        defer { lastTime = sample.time; side = sample.side }
-        if let lastTime, sample.time <= lastTime || sample.time - lastTime > 0.75 { resetMovement() }
+        guard sample.angle.isFinite, (0...180).contains(sample.angle) else {
+            resetMovement(); return .tracking
+        }
+        if let lastReliableTime, sample.time - lastReliableTime > 1.5 { resetMovement() }
+        else if let previousTime, sample.time - previousTime > 0.75 { candidate = 0; candidateAt = nil }
         if let side, side != sample.side { resetMovement() }
         guard sample.bodyLine != .reset else { resetMovement(); return .alignment }
+        defer { lastReliableTime = sample.time; side = sample.side }
         let zone = sample.angle >= 160 ? 1 : (sample.angle <= exercise.bottomAngle ? -1 : 0)
         if candidate != zone { candidate = zone; candidateAt = sample.time }
         guard let since = candidateAt, sample.time - since >= 0.15 else { return .lower }

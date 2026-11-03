@@ -48,7 +48,7 @@ struct WeeklyProgressView: View {
                         Text("Session reports").font(.headline)
                         ForEach(store.history) { record in
                             NavigationLink {
-                                SessionReportView(record: record, profile: profile, history: store.history)
+                                SessionReportView(record: record, profile: profile, history: store.history, previewEnabled: store.previewMode)
                             } label: {
                                 ReportSessionCard(report: WorkoutReport(record: record))
                             }
@@ -111,11 +111,22 @@ struct SessionReportView: View {
     let record: SessionRecord
     let profile: LocalProfile?
     let history: [SessionRecord]?
-    init(record: SessionRecord, profile: LocalProfile? = nil, history: [SessionRecord]? = nil) {
+    let previewEnabled: Bool
+    @State private var sourcesExpanded: Bool
+    init(record: SessionRecord, profile: LocalProfile? = nil, history: [SessionRecord]? = nil, previewEnabled: Bool = false) {
         self.record = record; self.profile = profile; self.history = history
+        self.previewEnabled = previewEnabled; _sourcesExpanded = State(initialValue: previewEnabled)
     }
     var body: some View {
         let report = WorkoutReport(record: record)
+        let examples = DemoPreviewData.reportMetrics(for: record, previewEnabled: previewEnabled)
+        let exampleReport = examples.map { WorkoutReport(record: $0.exampleRecord) }
+        let authored = previewEnabled && DemoPreviewData.insight(for: record) != nil
+        let heartRate = report.heartRate.samples.isEmpty ? (exampleReport?.heartRate ?? report.heartRate) : report.heartRate
+        let acceleration = report.acceleration.samples.isEmpty ? (exampleReport?.acceleration ?? report.acceleration) : report.acceleration
+        let rotation = report.rotation.samples.isEmpty ? (exampleReport?.rotation ?? report.rotation) : report.rotation
+        let activeEnergy = report.activeEnergy.isEmpty ? (exampleReport?.activeEnergy ?? []) : report.activeEnergy
+        let energyTimeline = report.activeEnergy.isEmpty ? (exampleReport?.energyTimeline ?? []) : report.energyTimeline
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: 7) {
@@ -191,15 +202,15 @@ struct SessionReportView: View {
 
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Watch heart rate").font(.headline)
-                    Text(report.heartRate.sourceLabel).font(.caption).foregroundStyle(.secondary)
-                    if let average = report.heartRate.average {
+                    Text(authored || (report.heartRate.samples.isEmpty && examples != nil) ? "Authored Watch-style example" : heartRate.sourceLabel).font(.caption).foregroundStyle(.secondary)
+                    if let average = heartRate.average {
                         HStack {
                             Metric(value: "\(Int(average.rounded())) bpm", title: "Average heart rate", symbol: "heart", symbolColor: Palette.red)
-                            if let maximum = report.heartRate.maximum {
+                            if let maximum = heartRate.maximum {
                                 Metric(value: "\(Int(maximum.rounded())) bpm", title: "Highest reading", symbol: "arrow.up", symbolColor: Palette.red)
                             }
                         }
-                        ReportSignalChart(signal: report.heartRate, unit: "bpm", color: Palette.red)
+                        ReportSignalChart(signal: heartRate, unit: "bpm", color: Palette.red)
                     } else {
                         Text("No Watch heart-rate readings recorded.").font(.subheadline).foregroundStyle(.secondary)
                     }
@@ -207,22 +218,22 @@ struct SessionReportView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     Label("Watch active energy", systemImage: "flame.fill")
                         .font(.headline).foregroundStyle(Palette.amber)
-                    Text("Apple Watch · HealthKit").font(.caption).foregroundStyle(.secondary)
-                    if report.activeEnergy.isEmpty {
+                    Text(authored || (report.activeEnergy.isEmpty && examples != nil) ? "Authored Watch-style example" : "Apple Watch · HealthKit").font(.caption).foregroundStyle(.secondary)
+                    if activeEnergy.isEmpty {
                         Text("No Watch active-energy readings recorded.").font(.subheadline).foregroundStyle(.secondary)
                     } else {
-                        ForEach(Array(report.activeEnergy.enumerated()), id: \.element.recordingID) { index, energy in
+                        ForEach(Array(activeEnergy.enumerated()), id: \.element.recordingID) { index, energy in
                             VStack(alignment: .leading, spacing: 5) {
                                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                                     Text(energy.kilocalories, format: .number.precision(.fractionLength(0...1)))
                                         .font(.system(size: 36, weight: .semibold)).monospacedDigit()
                                     Text("kcal").font(.subheadline).foregroundStyle(.secondary)
                                 }
-                                Text(report.activeEnergy.count == 1 ? "Estimated active energy" : "Recording \(index + 1) · estimated active energy")
+                                Text(activeEnergy.count == 1 ? "Estimated active energy" : "Recording \(index + 1) · estimated active energy")
                                     .font(.caption).foregroundStyle(.secondary)
                                 Text("As of \(energy.asOf.formatted(date: .omitted, time: .standard))")
                                     .font(.caption).foregroundStyle(.secondary)
-                                ReportEnergyChart(samples: report.energyTimeline.filter { $0.recordingID == energy.recordingID })
+                                ReportEnergyChart(samples: energyTimeline.filter { $0.recordingID == energy.recordingID })
                             }
                             .accessibilityElement(children: .combine)
                             .accessibilityIdentifier("watch-active-energy-reading")
@@ -239,14 +250,30 @@ struct SessionReportView: View {
                     } else {
                         Text("Rep tempo was not recorded.").font(.subheadline).foregroundStyle(.secondary)
                     }
-                    ReportMotionSignal(title: "Wrist acceleration magnitude", signal: report.acceleration,
-                                       unit: "g", missing: "No Watch acceleration readings recorded.")
-                    ReportMotionSignal(title: "Wrist rotation magnitude", signal: report.rotation,
-                                       unit: "rad/s", missing: "No Watch rotation readings recorded.")
+                    ReportMotionSignal(title: "Wrist acceleration magnitude", signal: acceleration,
+                                       unit: "g", missing: "No Watch acceleration readings recorded.",
+                                       authoredExample: authored || (report.acceleration.samples.isEmpty && examples != nil))
+                    ReportMotionSignal(title: "Wrist rotation magnitude", signal: rotation,
+                                       unit: "rad/s", missing: "No Watch rotation readings recorded.",
+                                       authoredExample: authored || (report.rotation.samples.isEmpty && examples != nil))
+                }
+                if let examples {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Joint angle example").font(.headline)
+                        Text("Authored movement curve · not measured").font(.caption).foregroundStyle(.secondary)
+                        Chart(examples.angleSamples, id: \.date) { sample in
+                            LineMark(x: .value("Time", sample.date), y: .value("Degrees", sample.value))
+                                .foregroundStyle(Palette.blue).lineStyle(StrokeStyle(lineWidth: 2))
+                        }.chartYScale(domain: 0...180).chartYAxisLabel("degrees").frame(height: 150)
+                            .accessibilityLabel("Authored joint angle example, not measured")
+                    }
                 }
                 CoachSummaryCard(record: record, profile: profile)
-                DisclosureGroup("How this is recorded") {
+                DisclosureGroup(previewEnabled ? "Data sources" : "How this is recorded", isExpanded: $sourcesExpanded) {
                     VStack(alignment: .leading, spacing: 10) {
+                        if previewEnabled {
+                            Text("This account uses authored metric examples where readings are absent. Authored examples and joint-angle curves are not recorded health or camera measurements; existing recorded signals take precedence. Missing-signal fallbacks and joint-angle curves are display-only and are never saved, exported or sent to Coach or cloud sync. Canonical demo history is synthetic and stored separately.")
+                        }
                         Text("Camera counts are observations; manual reps are self-reported. Video results describe replayed footage.")
                         Text("Recorded time includes tracked sets, live manual set timers and logged hold durations. Bulk manual rep entries have no recorded duration.")
                         Text("Acceleration is the magnitude of Core Motion user acceleration with gravity removed, in g. Rotation is angular-speed magnitude in radians per second. The Watch sends sampled magnitudes, not continuous raw motion.")
@@ -361,10 +388,11 @@ private struct ReportMotionSignal: View {
     let signal: ReportSignal
     let unit: String
     let missing: String
+    var authoredExample = false
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title).font(.subheadline.weight(.medium))
-            Text(signal.sourceLabel).font(.caption).foregroundStyle(.secondary)
+            Text(authoredExample ? "Authored Watch-style example" : signal.sourceLabel).font(.caption).foregroundStyle(.secondary)
             if let average = signal.average, let maximum = signal.maximum {
                 Text("Average \(average.formatted(.number.precision(.fractionLength(2)))) \(unit) · highest \(maximum.formatted(.number.precision(.fractionLength(2)))) \(unit)")
                     .font(.subheadline).monospacedDigit()
@@ -391,10 +419,16 @@ private struct ReportEnergyChart: View {
     let samples: [ActiveEnergy]
     @ScaledMetric(relativeTo: .caption2) private var chartHeight = 130.0
     var body: some View {
+        let segments = samples.indices.reduce(into: [Int]()) { values, index in
+            let gap = index > 0 && samples[index].asOf.timeIntervalSince(samples[index - 1].asOf) > 12
+            values.append((values.last ?? 0) + (gap ? 1 : 0))
+        }
         VStack(alignment: .leading, spacing: 9) {
             Chart {
-                ForEach(Array(samples.enumerated()), id: \.offset) { _, sample in
-                    // Points preserve sparse observations without suggesting continuous coverage.
+                ForEach(Array(samples.enumerated()), id: \.offset) { index, sample in
+                    LineMark(x: .value("As of", sample.asOf), y: .value("kcal", sample.kilocalories),
+                             series: .value("Segment", segments[index]))
+                        .interpolationMethod(.linear).foregroundStyle(Palette.amber)
                     PointMark(x: .value("As of", sample.asOf), y: .value("kcal", sample.kilocalories))
                         .foregroundStyle(Palette.amber).symbolSize(24)
                 }
@@ -404,7 +438,7 @@ private struct ReportEnergyChart: View {
             .chartLegend(.hidden)
             .chartYAxisLabel("kcal").frame(height: chartHeight)
             Text("Time from first observation (min:sec)").font(.caption2).foregroundStyle(.secondary)
-            Text("Cumulative observations for this recording. Points are not added together; no new point means no new energy observation.")
+            Text("Cumulative observations for this recording. Lines join readings up to 12 seconds apart; longer gaps stay blank. Values are not added together.")
                 .font(.caption2).foregroundStyle(.secondary)
         }.accessibilityIdentifier("watch-energy-timeline")
     }

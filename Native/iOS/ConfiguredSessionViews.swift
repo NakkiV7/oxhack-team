@@ -67,9 +67,6 @@ private struct ConfiguredLiveSetView: View {
                         }
                         inputControl(run)
                         preview(run)
-                        if SmartSpectraDriver.isAvailable, run.hasStarted, run.source == .camera {
-                            PresageWorkoutPanel(store: store)
-                        }
                         Text(run.current.entry.instruction).font(.headline)
                         Label(run.source == .camera ? "Camera observation" : (run.current.unit == .seconds ? "Manual hold · active timer" : "Manual self-report"), systemImage: run.source == .camera ? "camera" : "hand.tap")
                             .font(.caption.weight(.medium)).foregroundStyle(.secondary)
@@ -216,6 +213,9 @@ struct ConfiguredRecoveryView: View {
                             Text("\(Int(rest)) seconds of actual rest · take longer if needed").font(.caption).foregroundStyle(.secondary)
                         }.frame(maxWidth: .infinity).padding(.vertical, 20)
                     }
+                }
+                if SmartSpectraDriver.isAvailable || store.previewMode, store.configured?.currentWasSkipped == false {
+                    PresageWorkoutPanel(store: store)
                 }
                 if store.configured?.currentWasSkipped == true {
                     Label("It’s okay to stop here.", systemImage: "hand.raised").font(.headline)

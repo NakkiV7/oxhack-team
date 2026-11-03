@@ -16,3 +16,10 @@ fetch() {
 fetch MediaPipeTasksCommon 25690f3005c0405a7f27b6d273b4db241811d00fbb01c54004057ee1d0e983d8
 fetch MediaPipeTaskGraphs e4d88ed65c101764ef90281a411b9942f369e48673d448eff1f934e1f68d9633
 fetch MediaPipeTasksVision 755390ce853b062536899f0729321156d4cdceb263aa92c4bf3b2dd05fe640e0
+
+# Same Full float16 model used by the push-up prototype; pin integrity for repeatable installs.
+model="Native/Resources/pose_landmarker_full.task"
+if [[ ! -f "$model" ]]; then
+  curl -fL --retry 2 "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task" -o "$model"
+fi
+echo "4eaa5eb7a98365221087693fcc286334cf0858e2eb6e15b506aa4a7ecdcec4ad  $model" | shasum -a 256 -c -

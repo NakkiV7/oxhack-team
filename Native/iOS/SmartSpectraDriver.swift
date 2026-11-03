@@ -23,7 +23,7 @@ final class SmartSpectraDriver: PresageDriving {
         config.enableTelemetry = false
         config.imageOutputEnabled = false
         config.logLevel = .none
-        config.requestedMetrics = [.pulseRate, .breathingRate]
+        config.requestedMetrics = [.pulseRate, .breathingRate, .hrv]
         config.apiKey = apiKey
         sdk = SmartSpectraSDK(config: config)
         self.sessionID = sessionID; self.measurementID = measurementID
@@ -31,7 +31,11 @@ final class SmartSpectraDriver: PresageDriving {
 
     func start() async throws {
         input = try sdk.useCustomInput(frameTransform: .none)
-        try await sdk.start()
+        do { try await sdk.start() }
+        catch {
+            let code = (error as? SmartSpectraError).map { Int($0.code.rawValue) } ?? 0
+            throw PresageFailure(guidance: Self.failureGuidance(code: code))
+        }
         observing = true
         observe()
     }
@@ -43,8 +47,17 @@ final class SmartSpectraDriver: PresageDriving {
 
     func submit(_ sample: CMSampleBuffer) -> Bool {
         guard observing, let input else { return false }
-        if case .accepted = input.sendFrame(sample) { return true }
-        return false
+        switch input.sendFrame(sample) {
+        case .accepted: return true
+        case .rejected(let error):
+            onUpdate?(.init(samples: [], validationOK: false, failed: true,
+                            guidance: Self.failureGuidance(code: Int(error.code.rawValue))))
+            return false
+        @unknown default:
+            onUpdate?(.init(samples: [], validationOK: false, failed: true,
+                            guidance: Self.failureGuidance(code: 0)))
+            return false
+        }
     }
 
     private func observe() {
@@ -52,19 +65,67 @@ final class SmartSpectraDriver: PresageDriving {
         let update = withObservationTracking {
             (sdk.metrics,
              sdk.processingStatus == .running && sdk.validationStatus?.code == .ok,
-             sdk.error != nil || sdk.processingStatus == .error)
+             sdk.error.map { Int($0.code.rawValue) },
+             sdk.validationStatus.map { Int($0.code.rawValue) })
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in self?.observe() }
         }
-        let pulse = update.0?.cardio.pulseRate.suffix(128).map { convert($0, metric: .pulse) } ?? []
-        let breathing = update.0?.breathing.rate.suffix(128).map { convert($0, metric: .breathing) } ?? []
-        onUpdate?(.init(samples: pulse + breathing, validationOK: update.1, failed: update.2))
+        let samples = update.0.map { Self.samples(from: $0, sessionID: sessionID, measurementID: measurementID) } ?? []
+        let guidance = update.2.map { Self.failureGuidance(code: $0) } ?? Self.validationGuidance(code: update.3)
+        onUpdate?(.init(samples: samples, validationOK: update.1, failed: update.2 != nil, guidance: guidance))
     }
 
-    private func convert(_ sample: MeasurementWithConfidence, metric: CameraVitalMetric) -> CameraVitalSample {
-        .init(sessionID: sessionID, measurementID: measurementID, metric: metric,
-              value: Double(sample.value), date: Date(timeIntervalSince1970: Double(sample.timestamp) / 1_000_000),
-              confidence: Double(sample.confidence), stable: sample.stable)
+    static func samples(from metrics: Metrics, sessionID: UUID, measurementID: UUID) -> [CameraVitalSample] {
+        func sample(_ metric: CameraVitalMetric, _ value: Double, _ timestamp: Int64,
+                    _ confidence: Double, _ stable: Bool) -> CameraVitalSample {
+            .init(sessionID: sessionID, measurementID: measurementID, metric: metric, value: value,
+                  date: Date(timeIntervalSince1970: Double(timestamp) / 1_000_000),
+                  confidence: confidence, stable: stable)
+        }
+        let pulse = metrics.cardio.pulseRate.suffix(64).map {
+            sample(.pulse, Double($0.value), $0.timestamp, Double($0.confidence), $0.stable)
+        }
+        let breathing = metrics.breathing.rate.suffix(64).map {
+            sample(.breathing, Double($0.value), $0.timestamp, Double($0.confidence), $0.stable)
+        }
+        let hrv = metrics.cardio.hrv.suffix(16).flatMap { value in
+            [(CameraVitalMetric.hrvRMSSD, value.rmssd), (.hrvSDNN, value.sdnn),
+             (.meanNN, value.meanNn), (.stressIndex, value.baevsky)].map {
+                sample($0.0, $0.1, value.timestamp, Double(value.confidence), value.stable)
+            }
+        }
+        return pulse + breathing + hrv
+    }
+
+    static func failureGuidance(code: Int) -> String {
+        switch code {
+        case 2: return "Presage authentication failed. Check the API key and connection."
+        case 3: return "Presage setup failed. Restart the camera check."
+        case 4: return "Presage credits are exhausted. Add credits before trying again."
+        case 5, 6: return "Presage could not reach its service. Check the internet connection."
+        case 7: return "Presage cannot access camera input. Turn the rest camera off and on."
+        case 9: return "Presage could not read the camera frames. Restart the camera check."
+        case 10, 11: return "Camera timing was interrupted. Restart the check to begin a fresh measurement."
+        default: return "Presage could not complete this check. Continue resting or explicitly try again."
+        }
+    }
+    private static func validationGuidance(code: Int?) -> String {
+        switch code {
+        case 0: return "Camera signal is valid. Stay still while the measurement warms up."
+        case 1: return "Bring your face into view."
+        case 2: return "Only one person should be visible."
+        case 3, 15, 16: return "Center your face with your upper chest visible."
+        case 5: return "Add even light to your face and chest."
+        case 6: return "Reduce bright light on your face."
+        case 7: return "Move back until your face and upper chest are visible."
+        case 10: return "The camera is adjusting. Keep it still."
+        case 11: return "Camera frames are arriving too slowly. Close other camera tasks and try again."
+        case 12: return "Stay still and avoid talking during this check."
+        case 13: return "Move slightly farther from the camera."
+        case 14: return "Move slightly closer to the camera."
+        case 17: return "Face the camera directly."
+        default: return "Looking for a steady face and chest signal."
+        }
     }
 
     private enum ConfigurationError: Error { case missingKey }

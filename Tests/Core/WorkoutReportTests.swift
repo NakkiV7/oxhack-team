@@ -195,6 +195,28 @@ private func reportCalendar() -> Calendar {
     #expect(report.heartRate.samples.last?.date == start.addingTimeInterval(30))
 }
 
+@Test func partialWatchEnvelopesPreserveEachRecordedSignalAndOnlyRealGapsSplitItsLine() {
+    let id = UUID(), date = Date(timeIntervalSince1970: 1_792_886_400)
+    func reading(_ value: Double, _ time: Double) -> SensorReading {
+        .init(value: value, date: date.addingTimeInterval(time))
+    }
+    let packets: [WatchTelemetry] = [
+        .init(sessionID: id, sentAt: date, heartRate: reading(80, 0), accelerationG: nil, rotationRadiansPerSecond: nil),
+        .init(sessionID: id, sentAt: date.addingTimeInterval(4), heartRate: nil, accelerationG: reading(1.2, 4), rotationRadiansPerSecond: nil),
+        .init(sessionID: id, sentAt: date.addingTimeInterval(6), heartRate: nil, accelerationG: nil, rotationRadiansPerSecond: reading(0.8, 6),
+              activeEnergy: .init(recordingID: id, kilocalories: 3, asOf: date.addingTimeInterval(6))),
+        .init(sessionID: id, sentAt: date.addingTimeInterval(10), heartRate: reading(90, 10), accelerationG: nil, rotationRadiansPerSecond: nil),
+        .init(sessionID: id, sentAt: date.addingTimeInterval(30), heartRate: reading(85, 30), accelerationG: nil, rotationRadiansPerSecond: nil)
+    ]
+    let report = WorkoutReport(record: .init(id: id, date: date, sets: [], telemetry: packets))
+    #expect(report.heartRate.samples.map(\.value) == [80, 90, 85])
+    #expect(report.heartRate.samples.map(\.segment) == [0, 0, 1])
+    #expect(report.acceleration.samples.map(\.value) == [1.2])
+    #expect(report.rotation.samples.map(\.value) == [0.8])
+    #expect(report.activeEnergy.first?.kilocalories == 3)
+    #expect(WorkoutReport(record: .init(id: id, date: date, sets: [])).heartRate.samples.isEmpty)
+}
+
 @Test func motionReportPreservesRecordedMagnitudeUnitsAndLeavesMissingSignalsEmpty() {
     let id = UUID()
     let date = Date(timeIntervalSince1970: 100)

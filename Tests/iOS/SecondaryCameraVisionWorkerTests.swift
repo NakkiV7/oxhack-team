@@ -109,7 +109,7 @@ final class SecondaryCameraVisionWorkerTests: XCTestCase {
         XCTAssertEqual(starts, 1)
     }
 
-    func testExpiredPublishedPreviewClearsAndPersistentOutageStopsWithinFiveSeconds() async throws {
+    func testExpiredPublishedPoseRetainsNonLiveImageUntilBoundedOutageStopsCapture() async throws {
         let client = try client(jpeg: jpeg(), repeatFirstFrame: true)
         let published = expectation(description: "Initial preview published")
         let failed = expectation(description: "Bounded outage stops capture")
@@ -127,8 +127,9 @@ final class SecondaryCameraVisionWorkerTests: XCTestCase {
         worker.start(client: client, generation: UUID())
         await fulfillment(of: [published], timeout: 2)
         try await Task.sleep(for: .milliseconds(2300))
-        XCTAssertNil(worker.image)
+        XCTAssertNotNil(worker.image, "Retain the last-known preview during a short recovery, not an expired pose")
         XCTAssertNil(worker.frame)
+        XCTAssertEqual(worker.state, .starting, "The retained image must be visibly marked non-live")
         XCTAssertNil(failedAt)
         XCTAssertEqual(client.status, .streaming)
         await fulfillment(of: [failed], timeout: 4)
@@ -233,16 +234,24 @@ final class SecondaryCameraVisionWorkerTests: XCTestCase {
             })
             var deliveries = 0
             var failures = 0
+            var previousImage: UIImage?
             worker.onState = { state, _ in
                 if state == .starting, deliveries == 1 {
-                    XCTAssertNil(worker.image); XCTAssertNil(worker.frame); XCTAssertNil(client.frame)
+                    XCTAssertTrue(worker.image === previousImage)
+                    XCTAssertNotNil(worker.image)
+                    XCTAssertNil(worker.frame); XCTAssertNil(client.frame)
                     cleared.fulfill()
                 }
                 if case .failed = state { failures += 1 }
             }
-            worker.onFrame = { _, _, _ in
+            worker.onFrame = { _, image, _ in
                 deliveries += 1
-                if deliveries == 2 { recovered.fulfill(); worker.stop() }
+                XCTAssertEqual(worker.state, .tracking)
+                if deliveries == 1 { previousImage = image }
+                if deliveries == 2 {
+                    XCTAssertFalse(image === previousImage)
+                    recovered.fulfill(); worker.stop()
+                }
             }
             worker.start(client: client, generation: UUID())
             await fulfillment(of: [cleared, recovered], timeout: 3)
@@ -281,6 +290,27 @@ final class SecondaryCameraVisionWorkerTests: XCTestCase {
         XCTAssertEqual(client.status, .stopped)
         XCTAssertNil(worker.image)
         XCTAssertNil(worker.frame)
+    }
+
+    func testFatalTransportFailureAfterPreviewClearsHeldImageAndPose() async throws {
+        let client = try client(jpeg: jpeg(), frameFailure: { count in
+            if count > 1 { throw URLError(.serverCertificateUntrusted) }
+        })
+        let published = expectation(description: "Initial image shown")
+        let failed = expectation(description: "Fatal TLS failure removes preview")
+        let worker = SecondaryCameraVisionWorker(infer: { _, time in
+            (PoseFrame(time: time, width: 640, height: 360, points: []), UIImage())
+        })
+        defer { worker.stop() }
+        worker.onFrame = { _, _, _ in published.fulfill() }
+        worker.onState = { state, _ in
+            if case .failed = state { failed.fulfill() }
+        }
+        worker.start(client: client, generation: UUID())
+        await fulfillment(of: [published, failed], timeout: 3)
+        XCTAssertNil(worker.image)
+        XCTAssertNil(worker.frame)
+        XCTAssertEqual(client.status, .stopped)
     }
 
 }

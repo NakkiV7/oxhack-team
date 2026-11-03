@@ -4,25 +4,48 @@ import ImageIO
 import Vision
 
 final class PoseDetector {
-    init() throws {}
-    func detect(_ image: UIImage, at time: Double) throws -> PoseFrame {
-        guard let cgImage = image.cgImage else { throw CocoaError(.coderInvalidValue) }
-        let request = VNDetectHumanBodyPoseRequest()
-        let handler = VNImageRequestHandler(cgImage: cgImage,
-            orientation: AppleVisionPoseAdapter.orientation(for: image.imageOrientation), options: [:])
-        try handler.perform([request])
-        let observations = try (request.results ?? []).map { observation in
-            try observation.recognizedPoints(.all).mapValues { point in
-                PosePoint(x: point.location.x, y: point.location.y, confidence: Double(point.confidence))
+    typealias Observation = [VNHumanBodyPoseObservation.JointName: PosePoint]
+    private let observe: (CGImage, CGImagePropertyOrientation) throws -> [Observation]
+    private var preferredTurn = 0
+
+    init(observe: ((CGImage, CGImagePropertyOrientation) throws -> [Observation])? = nil) throws {
+        self.observe = observe ?? { image, orientation in
+            let request = VNDetectHumanBodyPoseRequest()
+            try VNImageRequestHandler(cgImage: image, orientation: orientation, options: [:]).perform([request])
+            return try (request.results ?? []).map { observation in
+                try observation.recognizedPoints(.all).mapValues { point in
+                    PosePoint(x: point.location.x, y: point.location.y, confidence: Double(point.confidence))
+                }
             }
         }
-        return AppleVisionPoseAdapter.frame(observations: observations, time: time, size: image.size)
+    }
+    func detect(_ image: UIImage, at time: Double) throws -> PoseFrame {
+        let upright = image.imageOrientation == .up ? image : UIGraphicsImageRenderer(size: image.size).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: image.size))
+        }
+        guard let cgImage = upright.cgImage else { throw CocoaError(.coderInvalidValue) }
+        let turns = [preferredTurn] + [0, 1, 3].filter { $0 != preferredTurn }
+        var best = PoseFrame(time: time, width: image.size.width, height: image.size.height, points: [])
+        var bestScore = -Double.infinity
+        for turn in turns {
+            let orientation: CGImagePropertyOrientation = turn == 1 ? .right : (turn == 3 ? .left : .up)
+            let observations = try observe(cgImage, orientation)
+            guard observations.count <= 1 else {
+                return PoseFrame(time: time, width: image.size.width, height: image.size.height, points: [])
+            }
+            let frame = AppleVisionPoseAdapter.frame(observations: observations, time: time,
+                size: image.size, quarterTurns: turn)
+            let score = AppleVisionPoseAdapter.trackingScore(frame)
+            if score > bestScore { best = frame; bestScore = score; preferredTurn = turn }
+            if score >= 0.6 { return frame }
+        }
+        return best
     }
 }
 
 enum AppleVisionPoseAdapter {
     static func frame(observations: [[VNHumanBodyPoseObservation.JointName: PosePoint]],
-                      time: Double, size: CGSize) -> PoseFrame {
+                      time: Double, size: CGSize, quarterTurns: Int = 0) -> PoseFrame {
         guard observations.count == 1, let observation = observations.first,
               observation.values.contains(where: { $0.confidence > 0 }) else {
             return PoseFrame(time: time, width: size.width, height: size.height, points: [])
@@ -36,9 +59,24 @@ enum AppleVisionPoseAdapter {
         ]
         for (index, joint) in joints {
             guard let point = observation[joint] else { continue }
-            points[index] = PosePoint(x: point.x, y: 1 - point.y, confidence: point.confidence)
+            let x = point.x, y = 1 - point.y
+            let mapped: (Double, Double)
+            switch (quarterTurns % 4 + 4) % 4 {
+            case 1: mapped = (y, 1 - x)
+            case 2: mapped = (1 - x, 1 - y)
+            case 3: mapped = (1 - y, x)
+            default: mapped = (x, y)
+            }
+            points[index] = PosePoint(x: mapped.0, y: mapped.1, confidence: point.confidence)
         }
         return PoseFrame(time: time, width: size.width, height: size.height, points: points)
+    }
+
+    static func trackingScore(_ frame: PoseFrame) -> Double {
+        guard frame.points.count == 33 else { return 0 }
+        return (0...1).map { side in
+            [11, 13, 15, 23].map { frame.points[$0 + side].confidence }.min() ?? 0
+        }.max() ?? 0
     }
 
     static func orientation(for orientation: UIImage.Orientation) -> CGImagePropertyOrientation {
@@ -61,7 +99,7 @@ import MediaPipeTasksVision
 final class PoseDetector {
     private let landmarker: PoseLandmarker
     init() throws {
-        guard let model = Bundle.main.path(forResource: "pose_landmarker_lite", ofType: "task") else {
+        guard let model = Bundle.main.path(forResource: "pose_landmarker_full", ofType: "task") else {
             throw CocoaError(.fileNoSuchFile)
         }
         let options = PoseLandmarkerOptions()
