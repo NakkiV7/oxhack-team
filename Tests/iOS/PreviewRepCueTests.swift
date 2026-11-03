@@ -1,3 +1,4 @@
+import AVFoundation
 import XCTest
 import UIKit
 @testable import Spottr
@@ -34,6 +35,7 @@ final class PreviewRepCueTests: XCTestCase {
             let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { _ in })
             let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("history.json")
             let store = TrainingStore(historyURL: url, voicePlayback: remote, vision: vision, previewMode: true, previewPlayback: cached)
+            store.repVoice.coach = nil   // the rep counter replaces this encouragement when on; see testPreviewEncouragementGivesWayToTheRepCounter
             defer { store.cancelCoaching(); vision.stop() }
             store.startPlan(try CoachSavedPlan.catalogue(exerciseID: exercise.rawValue, sets: 2, target: 2, restSeconds: 0), availableSupport: [])
             store.setVoiceFeedback(true)
@@ -168,7 +170,8 @@ final class PreviewRepCueTests: XCTestCase {
         XCTAssertFalse(cached.spoken.contains { $0.reason == .steadyRhythm })
     }
 
-    private func makeStore(preview: Bool = true, exercise: Exercise = .squat) -> (TrainingStore, RepRecordingVoice, RepCueClock) {
+    private func makeStore(preview: Bool = true, exercise: Exercise = .squat, repCounter: RepVoicePlan.Coach? = nil,
+                           clips: RepClipRecorder? = nil) -> (TrainingStore, RepRecordingVoice, RepCueClock) {
         let clock = RepCueClock(), cached = RepRecordingVoice()
         let remote = RemoteVoicePlayback(local: RepRecordingVoice(), previewPlayback: cached, client: {
             XCTFail("Rep encouragement must use the cache without a provider request")
@@ -176,6 +179,10 @@ final class PreviewRepCueTests: XCTestCase {
         }, uptime: { clock.now })
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("history.json")
         let store = TrainingStore(historyURL: url, voicePlayback: remote, previewMode: preview, previewPlayback: cached)
+        // The rep counter is off unless a test asks for it, so the preview encouragement tests keep their meaning.
+        let recorder = clips ?? RepClipRecorder()
+        store.repVoice = RepVoicePlayer(defaults: UserDefaults(suiteName: UUID().uuidString)!, makeOutput: recorder.make)
+        store.repVoice.coach = repCounter
         store.selectedExercise = exercise
         store.start()
         store.hasInput = true
@@ -213,6 +220,106 @@ final class PreviewRepCueTests: XCTestCase {
 }
 
 @MainActor private final class RepCueClock { var now = 100.0 }
+
+@MainActor private final class FakeRepClip: RepVoiceOutput {
+    var onFinish: (() -> Void)?
+    func play() -> Bool { true }
+    func stop() {}
+}
+
+/// Records which rep clips the rep voice starts, and finishes them on demand.
+@MainActor final class RepClipRecorder {
+    private(set) var made: [(clip: String, folder: String)] = []
+    private var current: FakeRepClip?
+    func make(_ clip: String, _ folder: String) -> RepVoiceOutput {
+        made.append((clip, folder)); let output = FakeRepClip(); current = output; return output
+    }
+    func finish() { current?.onFinish?() }
+}
+
+@MainActor
+final class RepCounterVoiceTests: XCTestCase {
+    private func store(preview: Bool, coach: RepVoicePlan.Coach?, clips: RepClipRecorder) -> (TrainingStore, RepRecordingVoice, RepCueClock) {
+        let clock = RepCueClock(), cached = RepRecordingVoice()
+        let remote = RemoteVoicePlayback(local: RepRecordingVoice(), previewPlayback: preview ? cached : nil, client: {
+            throw RemoteVoiceError.configuration
+        }, uptime: { clock.now })
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("history.json")
+        let store = TrainingStore(historyURL: url, voicePlayback: remote, previewMode: preview, previewPlayback: preview ? cached : nil)
+        store.repVoice = RepVoicePlayer(defaults: UserDefaults(suiteName: UUID().uuidString)!, makeOutput: clips.make)
+        store.repVoice.coach = coach
+        store.selectedExercise = .squat
+        store.start()
+        store.hasInput = true
+        store.setVoiceFeedback(true)
+        store.coachingTick(at: clock.now)
+        return (store, cached, clock)
+    }
+    private func rep(_ index: Int, _ store: TrainingStore, _ clock: RepCueClock) {
+        let base = Double(index) * 2.2
+        for (offset, angle) in [(0.0, 170.0), (0.2, 170), (0.6, 90), (0.8, 90), (1.2, 90), (1.4, 90), (1.8, 170), (2.0, 170)] {
+            store.session.consume(.init(time: base + offset, angle: angle), generation: store.session.generation)
+        }
+        clock.now = 100 + base + 2
+        store.coachingTick(at: clock.now)
+    }
+
+    func testCountsEveryCameraRepAndAddsALineEveryThirdCleanRep() {
+        let clips = RepClipRecorder()
+        let (store, _, clock) = store(preview: false, coach: .goggins, clips: clips)
+        defer { store.cancelCoaching() }
+        clips.finish()
+        for index in 0..<3 { rep(index, store, clock); clips.finish() }
+        XCTAssertEqual(clips.made.map(\.clip), ["start", "count-01", "count-02", "count-03", "motivate-1"])
+        XCTAssertTrue(clips.made.allSatisfy { $0.folder == "DemoVoice/goggins-reps" })
+        XCTAssertTrue(store.history.isEmpty, "Spoken counts never create completed work")
+    }
+
+    func testStaysSilentWhenOffForVideoAndWhenVoiceFeedbackIsOff() {
+        for scenario in ["off", "video", "muted"] {
+            let clips = RepClipRecorder()
+            let (store, _, clock) = store(preview: false, coach: scenario == "off" ? nil : .arnold, clips: clips)
+            defer { store.cancelCoaching() }
+            if scenario == "video" { store.source = .video; store.session.restartSet(source: .video, at: 0) }
+            if scenario == "muted" { store.setVoiceFeedback(false) }
+            let before = clips.made.count
+            for index in 0..<3 { rep(index, store, clock); clips.finish() }
+            XCTAssertEqual(clips.made.count, before, scenario)
+        }
+    }
+
+    func testPreviewEncouragementGivesWayToTheRepCounter() {
+        let clips = RepClipRecorder()
+        let (store, cached, clock) = store(preview: true, coach: .arnold, clips: clips)
+        defer { store.cancelCoaching() }
+        clips.finish()
+        for index in 0..<4 { rep(index, store, clock); clips.finish() }
+        XCTAssertTrue(cached.spoken.isEmpty, "The every-two-reps clip would double up with the counts")
+        XCTAssertEqual(clips.made.map(\.clip), ["start", "count-01", "count-02", "count-03", "motivate-1", "count-04"])
+        XCTAssertTrue(clips.made.allSatisfy { $0.folder == "DemoVoice/arnold-reps" })
+    }
+
+    func testEveryRepClipIsBundledForBothCoachesInThePlayableFormat() throws {
+        for coach in RepVoicePlan.Coach.allCases {
+            for clip in RepVoicePlan.allClips {
+                let url = try XCTUnwrap(Bundle.main.url(forResource: clip, withExtension: "mp3", subdirectory: coach.folder), "\(coach) \(clip)")
+                let player = try AVAudioPlayer(contentsOf: url)
+                XCTAssertEqual(player.format.sampleRate, 22_050, "\(coach) \(clip)")
+                XCTAssertTrue(player.duration > 0 && player.duration <= 10, "\(coach) \(clip)")
+            }
+        }
+    }
+
+    func testCancellingStopsTheQueue() {
+        let clips = RepClipRecorder()
+        let (store, _, clock) = store(preview: false, coach: .arnold, clips: clips)
+        rep(0, store, clock)
+        store.pause()
+        clips.finish()
+        XCTAssertFalse(store.repVoice.isPlaying)
+        XCTAssertEqual(clips.made.map(\.clip), ["start"], "The count waiting behind the start line is dropped on pause")
+    }
+}
 
 @MainActor private final class RepRecordingVoice: VoicePlayback {
     var onFinish: ((UUID) -> Void)?

@@ -1,0 +1,510 @@
+{
+ "provider": "ElevenLabs",
+ "coach": "arnold",
+ "model": "eleven_turbo_v2_5",
+ "format": "mp3_22050_32",
+ "voiceSettings": {
+  "stability": 0.4,
+  "similarityBoost": 0.8,
+  "style": 0.6
+ },
+ "source": "Synthesised for the squat web prototype and reused from its on-disk cache (prototype/squat/voice_cache, keyed by voice and text); no new synthesis.",
+ "collectedAt": "2026-10-25",
+ "omitted": [
+  "Pain is just information. Keep going. (the app stops on pain or discomfort)"
+ ],
+ "clips": [
+  {
+   "name": "count-01",
+   "kind": "count",
+   "text": "1",
+   "tone": "calm",
+   "bytes": 2316,
+   "sha256": "6bf3ff97882b61baed8ca8f9ec3346a972cbd09b9729f21eddac4e82bc561ec0",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.522
+   }
+  },
+  {
+   "name": "count-02",
+   "kind": "count",
+   "text": "2",
+   "tone": "calm",
+   "bytes": 2107,
+   "sha256": "45af48d657c847fcf1764afc8bbf307e95665ec6fe5ca278ddd90a48397416be",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.47
+   }
+  },
+  {
+   "name": "count-03",
+   "kind": "count",
+   "text": "3",
+   "tone": "calm",
+   "bytes": 2525,
+   "sha256": "dddec7e22160da968a20442097fbeafd8d0687fc23afaf349d6744ce5fe864b8",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.575
+   }
+  },
+  {
+   "name": "count-04",
+   "kind": "count",
+   "text": "4",
+   "tone": "calm",
+   "bytes": 2002,
+   "sha256": "e38e209269d3f2ae59566a2ffe237f1c4610c3982e192723a3a0e03de4a823af",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.444
+   }
+  },
+  {
+   "name": "count-05",
+   "kind": "count",
+   "text": "5",
+   "tone": "calm",
+   "bytes": 2316,
+   "sha256": "eeaad0b9bc9569e2d43637746d5da086f93ce650ca800720221c487d354c346d",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.522
+   }
+  },
+  {
+   "name": "count-06",
+   "kind": "count",
+   "text": "6",
+   "tone": "calm",
+   "bytes": 2525,
+   "sha256": "2b5123fb978cacbd07245b6f23750762c5ef4defafd8b01be7dd9382f88bd103",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.575
+   }
+  },
+  {
+   "name": "count-07",
+   "kind": "count",
+   "text": "7",
+   "tone": "calm",
+   "bytes": 2002,
+   "sha256": "a7d94396dfd1249f272c0062f0e2ad31b76d47639e339a4f407aee43bc0363ac",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.444
+   }
+  },
+  {
+   "name": "count-08",
+   "kind": "count",
+   "text": "8",
+   "tone": "calm",
+   "bytes": 2525,
+   "sha256": "d5e37b103c16e1a9962a1affb658c4ca39d3885cf9225d2d0c60e87b3f32c9fa",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.575
+   }
+  },
+  {
+   "name": "count-09",
+   "kind": "count",
+   "text": "9",
+   "tone": "calm",
+   "bytes": 2525,
+   "sha256": "649c52e3eb470147bdb49294b6b14a7973966c2f576a1cb60bc0c5035c5955c5",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.575
+   }
+  },
+  {
+   "name": "count-10",
+   "kind": "count",
+   "text": "10",
+   "tone": "calm",
+   "bytes": 2525,
+   "sha256": "172daa6fab258861b42c7170919965aa3338b983b43715b2c6f0884800d52372",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.575
+   }
+  },
+  {
+   "name": "count-11",
+   "kind": "count",
+   "text": "11",
+   "tone": "calm",
+   "bytes": 3047,
+   "sha256": "4e3fa0b166e035448875755b6f62ef3ec35beb626dd4fe284a47a013780b5aee",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.705
+   }
+  },
+  {
+   "name": "count-12",
+   "kind": "count",
+   "text": "12",
+   "tone": "calm",
+   "bytes": 2525,
+   "sha256": "83c5078bdaf09c5480d66decf3b13eaca20238aff83a6dd8514da62170e3c95f",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.575
+   }
+  },
+  {
+   "name": "count-13",
+   "kind": "count",
+   "text": "13",
+   "tone": "calm",
+   "bytes": 2734,
+   "sha256": "a933b7b28dd891c0a384c842afe8e4694d136a74211f05d2f74fcb7c14a25190",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.627
+   }
+  },
+  {
+   "name": "count-14",
+   "kind": "count",
+   "text": "14",
+   "tone": "calm",
+   "bytes": 3047,
+   "sha256": "0abb0ee593b8364f1635e2e27d78b845890b0621e29f71e388a1baad08dfe33d",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.705
+   }
+  },
+  {
+   "name": "count-15",
+   "kind": "count",
+   "text": "15",
+   "tone": "calm",
+   "bytes": 2316,
+   "sha256": "4c31d27015e7c8ab1da59f36e3ee6aa8193cc7b9d1174636ffe1d631092de1ad",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.522
+   }
+  },
+  {
+   "name": "count-16",
+   "kind": "count",
+   "text": "16",
+   "tone": "calm",
+   "bytes": 2943,
+   "sha256": "939fe8832e93c24b500640492d6b232b7305715d09b90f8b0d7a8a858b9e9534",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.679
+   }
+  },
+  {
+   "name": "count-17",
+   "kind": "count",
+   "text": "17",
+   "tone": "calm",
+   "bytes": 3047,
+   "sha256": "c799a7bc4567257f049de7aef48c993b29bbd33c1c1636ad481acd7336eda6ec",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.705
+   }
+  },
+  {
+   "name": "count-18",
+   "kind": "count",
+   "text": "18",
+   "tone": "calm",
+   "bytes": 3047,
+   "sha256": "d5c8d5ba19f45fe907d0bb387312600fed5b441fa9ccb0acc361627535c67694",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.705
+   }
+  },
+  {
+   "name": "count-19",
+   "kind": "count",
+   "text": "19",
+   "tone": "calm",
+   "bytes": 3047,
+   "sha256": "c3207d3a1deb33a354986e032f8b0868eb25261761839bcc7ccd16a9dd2c3914",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.705
+   }
+  },
+  {
+   "name": "count-20",
+   "kind": "count",
+   "text": "20",
+   "tone": "calm",
+   "bytes": 2734,
+   "sha256": "44e47415687c35cf4c414746eed0645b252478bb7cb902e19a46d86138039ae6",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.627
+   }
+  },
+  {
+   "name": "count-21",
+   "kind": "count",
+   "text": "21",
+   "tone": "calm",
+   "bytes": 2943,
+   "sha256": "a8f55ce37e024114f42bd80eaa5c0e02b4be687f26f657aeb4383c05f7f0fee6",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.679
+   }
+  },
+  {
+   "name": "count-22",
+   "kind": "count",
+   "text": "22",
+   "tone": "calm",
+   "bytes": 2734,
+   "sha256": "f545d862bd35f96389ccc7aaa46fa539f528040953362ca6108aeebd9b4ca76a",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.627
+   }
+  },
+  {
+   "name": "count-23",
+   "kind": "count",
+   "text": "23",
+   "tone": "calm",
+   "bytes": 3465,
+   "sha256": "09207ebd56be3224daadd98d792bf1ec9a78d6bf894236e5feea56f2f078c63b",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.81
+   }
+  },
+  {
+   "name": "count-24",
+   "kind": "count",
+   "text": "24",
+   "tone": "calm",
+   "bytes": 3465,
+   "sha256": "8d8c9c91b9b98c5e0ac3255cc15a72cd32f88e07941a87bf38d5c2d47eac5346",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.81
+   }
+  },
+  {
+   "name": "count-25",
+   "kind": "count",
+   "text": "25",
+   "tone": "calm",
+   "bytes": 3674,
+   "sha256": "103da86889a551e5c310335e0d2e28b1caca209915ca63938f3fd8160cb8b242",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.862
+   }
+  },
+  {
+   "name": "count-26",
+   "kind": "count",
+   "text": "26",
+   "tone": "calm",
+   "bytes": 4197,
+   "sha256": "dd5535dabb6e8d346a801575aaaa9b61ed032249f667f6063fc809e10acefe2b",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.993
+   }
+  },
+  {
+   "name": "count-27",
+   "kind": "count",
+   "text": "27",
+   "tone": "calm",
+   "bytes": 3674,
+   "sha256": "2d43c605b150960651ea787b30d3f8e5158cca8b7a5ec808bb01589d43d65811",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.862
+   }
+  },
+  {
+   "name": "count-28",
+   "kind": "count",
+   "text": "28",
+   "tone": "calm",
+   "bytes": 2943,
+   "sha256": "a9e7ca1e1651560c30c09045a3ec7349d4caff23824905e23984c608b15ffec2",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.679
+   }
+  },
+  {
+   "name": "count-29",
+   "kind": "count",
+   "text": "29",
+   "tone": "calm",
+   "bytes": 3465,
+   "sha256": "576a259e5829f1702b7ab69a8f7e6284c27ade2c969a8b4c953fdf7656df279d",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.81
+   }
+  },
+  {
+   "name": "count-30",
+   "kind": "count",
+   "text": "30",
+   "tone": "calm",
+   "bytes": 2525,
+   "sha256": "3d1513ed59955b900a52fc7e4651969e6ca6105d16be5997ab553b3be4e2b2cf",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 0.575
+   }
+  },
+  {
+   "name": "motivate-1",
+   "kind": "motivation",
+   "text": "Nobody is coming to do this for you. Keep moving.",
+   "tone": "push",
+   "bytes": 9944,
+   "sha256": "c2526a68585c7df62f64d40a4acb667474dd229f6961802bf98dd8650ae154c0",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 2.429
+   }
+  },
+  {
+   "name": "motivate-2",
+   "kind": "motivation",
+   "text": "That's it. Earn every rep.",
+   "tone": "push",
+   "bytes": 6809,
+   "sha256": "2829882d1d67da3c28c5e5ae77b4e13b2d9e008e17e706d5f32e9cc7d113605d",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 1.646
+   }
+  },
+  {
+   "name": "motivate-3",
+   "kind": "motivation",
+   "text": "Stay with it. The last reps are the ones that count.",
+   "tone": "push",
+   "bytes": 13496,
+   "sha256": "9a8bfd4c8a2e644bab221c2e34e57c10d8f5c8ca11c26edba3d508e8dabe9d3f",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 3.318
+   }
+  },
+  {
+   "name": "motivate-4",
+   "kind": "motivation",
+   "text": "Good. Strong. Again.",
+   "tone": "calm",
+   "bytes": 4928,
+   "sha256": "d8947cb2a4fc76db7da3bb0653bccfc6c9d23471eb6eda62dff2d571d965a0d7",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 1.176
+   }
+  },
+  {
+   "name": "motivate-5",
+   "kind": "motivation",
+   "text": "You are not tired, you are warming up. Push.",
+   "tone": "push",
+   "bytes": 9735,
+   "sha256": "196fe45165f5372bef7242afc864e619c849807e13afa13070bef7d2e07e3c27",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 2.377
+   }
+  },
+  {
+   "name": "motivate-6",
+   "kind": "motivation",
+   "text": "Finish it. Don't leave reps on the table.",
+   "tone": "push",
+   "bytes": 9421,
+   "sha256": "fbe1ea1eb21d41849ad9f04026a991b2cb8fda135b6a650fc7a9b74aad9fb1f4",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 2.299
+   }
+  },
+  {
+   "name": "motivate-7",
+   "kind": "motivation",
+   "text": "Clean rep. Make the next one better.",
+   "tone": "calm",
+   "bytes": 9735,
+   "sha256": "09d5a963ed1d8a14d515e995cf25a300897717085a9dfbead0c0bc3d93a29343",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 2.377
+   }
+  },
+  {
+   "name": "closing-1",
+   "kind": "closing",
+   "text": "Set done. That is how you build it.",
+   "tone": "calm",
+   "bytes": 8272,
+   "sha256": "fddeb26df04aa8a7219764ed440b07369e158eea681c6773e6fb8e5ad67dc728",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 2.011
+   }
+  },
+  {
+   "name": "closing-2",
+   "kind": "closing",
+   "text": "Done. Come back and beat it next time.",
+   "tone": "calm",
+   "bytes": 9944,
+   "sha256": "c10135672530a36647ea2b52c3af57366eab0c05c5e7ddd417d3062c55c765c2",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 2.429
+   }
+  },
+  {
+   "name": "closing-3",
+   "kind": "closing",
+   "text": "Good work. Rest, then go again.",
+   "tone": "calm",
+   "bytes": 8481,
+   "sha256": "203fe7e2f27e9ec414d3c0974116e44c9fb8123da52bfa5a33b55bb4f07900e7",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 2.064
+   }
+  },
+  {
+   "name": "start",
+   "kind": "start",
+   "text": "Let's go. Stand tall.",
+   "tone": "push",
+   "bytes": 6391,
+   "sha256": "37570e8af3273b9e19019837caafa66d340b45ecb961cda2cee0ceb5c3175173",
+   "decode": {
+    "sampleRate": 22050,
+    "durationSeconds": 1.541
+   }
+  }
+ ]
+}

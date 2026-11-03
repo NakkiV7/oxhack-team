@@ -14,7 +14,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "8EAABDB7BF31F2E7BEEEF3AC"
+               BlueprintIdentifier = "0B07B5181A46722E1FD87410"
                BuildableName = "Spottr.app"
                BlueprintName = "Spottr"
                ReferencedContainer = "container:Spottr.xcodeproj">
@@ -30,7 +30,7 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "8EAABDB7BF31F2E7BEEEF3AC"
+            BlueprintIdentifier = "0B07B5181A46722E1FD87410"
             BuildableName = "Spottr.app"
             BlueprintName = "Spottr"
             ReferencedContainer = "container:Spottr.xcodeproj">
@@ -41,7 +41,7 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "6D4887C2FB8DA6B9F505FD51"
+               BlueprintIdentifier = "E8F29EC46B9E5A027CC1EE3A"
                BuildableName = "SpottrTests.xctest"
                BlueprintName = "SpottrTests"
                ReferencedContainer = "container:Spottr.xcodeproj">
@@ -51,7 +51,7 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "CAD4AC9E1BE1D17CA6DBFE0A"
+               BlueprintIdentifier = "0FB8C972D574A16B32BBC361"
                BuildableName = "SpottrUITests.xctest"
                BlueprintName = "SpottrUITests"
                ReferencedContainer = "container:Spottr.xcodeproj">
@@ -73,7 +73,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "8EAABDB7BF31F2E7BEEEF3AC"
+            BlueprintIdentifier = "0B07B5181A46722E1FD87410"
             BuildableName = "Spottr.app"
             BlueprintName = "Spottr"
             ReferencedContainer = "container:Spottr.xcodeproj">
@@ -90,7 +90,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "8EAABDB7BF31F2E7BEEEF3AC"
+            BlueprintIdentifier = "0B07B5181A46722E1FD87410"
             BuildableName = "Spottr.app"
             BlueprintName = "Spottr"
             ReferencedContainer = "container:Spottr.xcodeproj">

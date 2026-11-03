@@ -71,6 +71,10 @@ public struct CoachGatewayClient: Sendable {
         return try CoachWeekContracts.parse(await send(input, path: "week-proposal"), request: week, context: input.context, guidance: guidance)
     }
     private func send(_ input: CoachRequest, path: String) async throws -> Data {
+        try await post(try boundedBody(input), path: path)
+    }
+    /// POSTs an already-bounded JSON body to `v1/<path>` with the same transport, URL and response checks as every route.
+    func post(_ body: Data, path: String) async throws -> Data {
         let local = ["localhost", "127.0.0.1", "::1"].contains(baseURL.host ?? "")
         guard (baseURL.scheme == "https" || (local && baseURL.scheme == "http")), baseURL.user == nil, baseURL.password == nil,
               baseURL.query == nil, baseURL.fragment == nil, !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw CoachGatewayError.configuration }
@@ -79,7 +83,7 @@ public struct CoachGatewayClient: Sendable {
         request.httpMethod = "POST"; request.timeoutInterval = 45
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try boundedBody(input)
+        request.httpBody = body
         let (data, response) = try await transport(request)
         try Task.checkCancellation()
         guard let http = response as? HTTPURLResponse else { throw CoachGatewayError.invalidResponse }
