@@ -9,6 +9,9 @@ struct OnboardingView: View {
     @State private var weeklyTarget: Int
     @State private var goals: Set<TrainingAttribute>
     @State private var baselineAbility: LocalProfile.BaselineAbility?
+    @State private var comfortableExercises: Set<String>
+    @State private var weightManagementGoal: Bool
+    @AppStorage("trainer.audioEnabled") private var audioEnabled = false
     @State private var bodyMeasurements: LocalBodyMeasurements?
     @State private var measurementsPresented = false
     @State private var error: String?
@@ -20,6 +23,8 @@ struct OnboardingView: View {
         _weeklyTarget = State(initialValue: profileStore.profile?.weeklyTarget ?? 3)
         _goals = State(initialValue: profileStore.profile?.goals ?? [.strength])
         _baselineAbility = State(initialValue: profileStore.profile?.baselineAbility)
+        _comfortableExercises = State(initialValue: profileStore.profile?.comfortableExercises ?? [])
+        _weightManagementGoal = State(initialValue: profileStore.profile?.weightManagementGoal ?? false)
         _bodyMeasurements = State(initialValue: profileStore.profile?.bodyMeasurements)
     }
 
@@ -28,7 +33,7 @@ struct OnboardingView: View {
             HStack {
                 if step > 0 { Button { step -= 1 } label: { Image(systemName: "chevron.left") }.accessibilityLabel("Previous step") }
                 Spacer()
-                Text("\(step + 1) of 3").font(.caption).foregroundStyle(.secondary)
+                Text("\(step + 1) of 5").font(.caption).foregroundStyle(.secondary)
                 if profileStore.profile != nil { Button("Cancel introduction") { dismiss() }.font(.caption) }
             }.padding(.horizontal, 25).padding(.vertical, 17)
             ScrollView {
@@ -36,14 +41,16 @@ struct OnboardingView: View {
                     if step == 0 { introduction }
                     if step == 1 { goalSelection }
                     if step == 2 { personalDetails }
+                    if step == 3 { comfortableMovements }
+                    if step == 4 { trainer }
                     if let issue = profileStore.loadError { Text(issue).font(.caption).foregroundStyle(Palette.red) }
                     if let error { Text(error).font(.callout).foregroundStyle(Palette.red).accessibilityAddTraits(.updatesFrequently) }
                 }.padding(.horizontal, 25).padding(.bottom, 20)
             }.scrollDismissesKeyboard(.interactively)
             VStack(spacing: 12) {
-                PrimaryButton(title: step == 2 ? "Find my first step" : "Continue") { advance() }
-                    .disabled(step == 1 && goals.isEmpty)
-                    .opacity(step == 1 && goals.isEmpty ? 0.4 : 1)
+                PrimaryButton(title: step == 4 ? "Let’s get moving" : "Continue") { advance() }
+                    .disabled(step == 1 && goals.isEmpty && !weightManagementGoal)
+                    .opacity(step == 1 && goals.isEmpty && !weightManagementGoal ? 0.4 : 1)
                     .accessibilityIdentifier("onboarding-continue")
                 Text("A local profile on this iPhone. No account needed.")
                     .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
@@ -57,7 +64,7 @@ struct OnboardingView: View {
     private var introduction: some View {
         VStack(alignment: .leading, spacing: 22) {
             Text("spottr").font(.title3.weight(.bold)).tracking(-0.6)
-            Image("onboarding-skills").resizable().scaledToFit().frame(maxWidth: .infinity).frame(height: 260).accessibilityHidden(true)
+            StickFigureArtwork(exercise: .halfSquat).frame(maxWidth: .infinity).frame(height: 240).accessibilityHidden(true)
             Text("Move a little.\nBuild from there.").font(.largeTitle.bold()).tracking(-1)
             Text("Find a comfortable starting point, practise with clear feedback and see your progress over time.")
                 .font(.body).foregroundStyle(.secondary)
@@ -70,6 +77,12 @@ struct OnboardingView: View {
             Text("What are you\nworking towards?").font(.largeTitle.bold()).tracking(-1)
             Text("Choose one or more goals. You can change them whenever you like.").foregroundStyle(.secondary)
             ProfileGoalPicker(goals: $goals)
+            Toggle(isOn: $weightManagementGoal) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Label("Weight management", systemImage: "scalemass").font(.headline)
+                    Text("Build a movement habit and track your activity.").font(.caption).foregroundStyle(.secondary)
+                }
+            }.padding(17).background(Palette.surface, in: RoundedRectangle(cornerRadius: 17)).accessibilityIdentifier("goal-weightManagement")
         }.padding(.top, 20)
     }
 
@@ -108,11 +121,52 @@ struct OnboardingView: View {
         }.padding(.top, 20)
     }
 
+    private var comfortableMovements: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            Text("Where do you feel comfortable?").font(.largeTitle.bold()).tracking(-1)
+            Text("Choose the hardest movement you can comfortably repeat. Unsure is a good place to start too.").foregroundStyle(.secondary)
+            ForEach([ExerciseFamily.push, .legs], id: \.self) { family in
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(family.title).font(.headline)
+                    let ids = LocalSkillPath.chain(family: family)
+                    ForEach(ids.prefix(family == .push ? 4 : 3), id: \.self) { id in
+                        if let entry = ExerciseCatalog.find(id) {
+                            Button {
+                                comfortableExercises.subtract(ids)
+                                comfortableExercises.insert(id)
+                            } label: {
+                                HStack(spacing: 13) {
+                                    ExerciseArtwork(entry: entry).frame(width: 42, height: 48)
+                                    Text(entry.name).font(.subheadline.weight(.semibold))
+                                    Spacer()
+                                    Image(systemName: comfortableExercises.contains(id) ? "checkmark.circle.fill" : "circle")
+                                }.padding(13).background(Palette.surface, in: RoundedRectangle(cornerRadius: 16))
+                            }.buttonStyle(.plain).accessibilityIdentifier("comfortable-\(id)")
+                        }
+                    }
+                    Button("Not sure yet") { comfortableExercises.subtract(ids) }.font(.subheadline)
+                }
+            }
+            Text("Your starting skills will be marked on your path. They don’t add workouts, camera results or XP.").font(.caption).foregroundStyle(.secondary)
+        }.padding(.top, 16)
+    }
+
+    private var trainer: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            Text("Find your voice").font(.largeTitle.bold()).tracking(-1)
+            Text("Pick the coach and style you enjoy. You can change both later.").foregroundStyle(.secondary)
+            TrainerSelection()
+            Toggle("Voice feedback during workouts", isOn: $audioEnabled)
+            Text("No faces or avatars. Just a voice and clear movement guidance.").font(.caption).foregroundStyle(.secondary)
+        }.padding(.top, 16)
+    }
+
     private func advance() {
-        guard step == 2 else { step += 1; return }
+        guard step == 4 else { step += 1; return }
         do {
-            try profileStore.save(LocalProfile(name: name, weeklyTarget: weeklyTarget, goals: goals,
-                                               baselineAbility: baselineAbility, bodyMeasurements: bodyMeasurements))
+            try profileStore.save(LocalProfile(name: name, weeklyTarget: weeklyTarget, goals: goals.isEmpty ? [.stamina] : goals,
+                                               baselineAbility: baselineAbility, bodyMeasurements: bodyMeasurements,
+                                               comfortableExercises: comfortableExercises, weightManagementGoal: weightManagementGoal))
             onComplete()
             dismiss()
         } catch { self.error = error.localizedDescription }

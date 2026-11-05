@@ -196,8 +196,8 @@ struct PresageWorkoutPanel: View {
                         displayReading("Breathing", value: display.breathingRate, unit: "/min")
                     }
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 14) {
-                        displayReading("HRV · RMSSD", value: display.hrvRMSSD, unit: "ms", symbol: "waveform.path.ecg")
-                        displayReading("HRV · SDNN", value: display.hrvSDNN, unit: "ms", symbol: "waveform.path.ecg")
+                        displayReading("HRV, RMSSD", value: display.hrvRMSSD, unit: "ms", symbol: "waveform.path.ecg")
+                        displayReading("HRV, SDNN", value: display.hrvSDNN, unit: "ms", symbol: "waveform.path.ecg")
                         displayReading("Mean beat interval", value: display.meanNN, unit: "ms", symbol: "heart.text.clipboard")
                         displayReading("Baevsky stress index", value: display.stressIndex, unit: "", symbol: "waveform.path")
                     }

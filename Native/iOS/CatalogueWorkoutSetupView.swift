@@ -27,7 +27,7 @@ struct CatalogueWorkoutSetupView: View {
                 quantity(entry.unit == .reps ? "Target reps per set" : "Target seconds per set",
                          value: $target, identifier: "catalogue-target")
                 quantity("Rest between sets (sec)", value: $restSeconds, identifier: "catalogue-rest")
-                Text("1–10 sets · 1–\(entry.unit == .reps ? 200 : 600) \(entry.unit == .reps ? "reps" : "seconds") per set · 0–600 seconds of suggested rest.")
+                Text("1–10 sets, 1–\(entry.unit == .reps ? 200 : 600) \(entry.unit == .reps ? "reps" : "seconds") per set, 0–600 seconds of suggested rest.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             if let support = entry.support {

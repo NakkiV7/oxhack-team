@@ -16,7 +16,7 @@ struct ConfiguredSessionView: View {
                     VStack(spacing: 4) {
                         Text(run.phase == .finished ? "Your session" : run.current.entry.name).font(.headline)
                         if run.phase != .finished {
-                            Text("Set \(run.current.number) of \(run.current.totalSets) · \(run.index + 1) of \(run.steps.count) planned")
+                            Text("Set \(run.current.number) of \(run.current.totalSets), \(run.index + 1) of \(run.steps.count) planned")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                     }.multilineTextAlignment(.center)
@@ -67,7 +67,7 @@ private struct ConfiguredLiveSetView: View {
                         inputControl(run)
                         preview(run)
                         Text(run.current.entry.instruction).font(.headline)
-                        Label(run.source == .camera ? "Camera observation" : (run.current.unit == .seconds ? "Manual hold · active timer" : "Manual self-report"), systemImage: run.source == .camera ? "camera" : "hand.tap")
+                        Label(run.source == .camera ? "Camera observation" : (run.current.unit == .seconds ? "Manual hold, active timer" : "Manual self-report"), systemImage: run.source == .camera ? "camera" : "hand.tap")
                             .font(.caption.weight(.medium)).foregroundStyle(.secondary)
                         Text(status(run)).font(.subheadline).accessibilityIdentifier("configured-status")
                         if run.source == .camera, run.hasStarted {
@@ -81,11 +81,11 @@ private struct ConfiguredLiveSetView: View {
                         if run.source == .manual, run.hasStarted, run.current.unit == .reps {
                             VStack(alignment: .leading, spacing: 10) {
                                 Text("Actual completed reps").font(.subheadline.weight(.semibold))
-                                TextField("Enter reps", text: $quantity).keyboardType(.numberPad).focused($enteringReps)
+                                TextField("Enter reps", text: Binding(get: { quantity }, set: { quantity = $0; store.setConfiguredReps(Int($0)) })).keyboardType(.numberPad).focused($enteringReps)
                                     .padding(16).background(Palette.surface, in: RoundedRectangle(cornerRadius: 12))
                                     .accessibilityIdentifier("configured-reps")
-                                    .onChange(of: quantity) { _, value in store.setConfiguredReps(Int(value)) }
                                 if enteringReps { Button("Done entering reps") { enteringReps = false }.font(.caption) }
+                                SpokenRepControls(store: store)
                                 Text("Enter 1–200 reps you actually completed. Your target is not filled in for you.")
                                     .font(.caption).foregroundStyle(.secondary)
                             }
@@ -123,15 +123,12 @@ private struct ConfiguredLiveSetView: View {
                     }
             }
         }
-        .alert("Reset this unfinished set?", isPresented: Binding(get: { pendingInput != nil }, set: { if !$0 { pendingInput = nil } })) {
-            if let input = pendingInput {
-                Button("Reset and switch", role: .destructive) {
-                    store.selectConfiguredInput(input)
-                    pendingInput = nil
-                }
-            }
-            Button("Cancel", role: .cancel) { pendingInput = nil }
-        } message: { Text("This set’s unsaved reps and active time will be discarded. Ended sets stay saved. Start the new input when you’re ready.") }
+        .onChange(of: store.configured?.actualReps) { _, count in
+            if store.configured?.source == .manual { quantity = count.map(String.init) ?? "" }
+        }
+        .onChange(of: store.configuredInput) { _, _ in
+            quantity = store.configured?.actualReps.map(String.init) ?? ""
+        }
     }
     @ViewBuilder private func inputControl(_ run: ConfigurableSession) -> some View {
         if run.trackingExercise != nil {
@@ -140,8 +137,7 @@ private struct ConfiguredLiveSetView: View {
                     Button(input.title) {
                         guard input != store.configuredInput else { return }
                         enteringReps = false
-                        if run.hasStarted { pendingInput = input }
-                        else { store.selectConfiguredInput(input) }
+                        store.selectConfiguredInput(input)
                     }.accessibilityIdentifier("configured-input-\(input.rawValue)")
                 }
             } label: {
@@ -158,10 +154,8 @@ private struct ConfiguredLiveSetView: View {
                 CameraPreview(session: store.vision.capture)
             } else if let image = store.image, run.source == .camera {
                 Image(uiImage: image).resizable().scaledToFit()
-            } else if UIImage(named: run.current.entry.art) != nil {
-                Image(run.current.entry.art).resizable().scaledToFit().padding(20)
             } else {
-                Image(systemName: "figure.strengthtraining.traditional").resizable().scaledToFit().padding(30)
+                ExerciseArtwork(entry: run.current.entry).padding(20)
             }
             if let frame = store.frame, let exercise = run.trackingExercise, run.source == .camera {
                 PoseOverlay(frame: frame, exercise: exercise)
@@ -174,7 +168,7 @@ private struct ConfiguredLiveSetView: View {
         if !run.hasStarted {
             return run.source == .camera ? "Get your full body in view, then Start to open the selected camera. Preparation time is left out." : "Get into position, then start. Preparation time is left out."
         }
-        if run.phase == .paused { return "Your set is paused. Resume when you’re ready, or switch input to reset this unfinished set." }
+        if run.phase == .paused { return "Your set is paused. Resume when you’re ready, or change input while keeping your work." }
         if run.current.unit == .seconds { return "Only active hold seconds count. Pause whenever you stop holding. End the set yourself." }
         return run.source == .camera ? "Keep your full body visible for camera form tracking." : "Complete your reps, enter the actual count, then end this set."
     }
@@ -190,10 +184,10 @@ struct ConfiguredRecoveryView: View {
                 TimelineView(.periodic(from: .now, by: 1)) { _ in
                     if let run = store.configured, !run.currentWasSkipped, let rest = run.restElapsed(at: store.now) {
                         VStack(spacing: 9) {
-                            Text("Suggested rest · \(run.current.restSeconds) sec").font(.caption).foregroundStyle(.secondary)
+                            Text("Suggested rest, \(run.current.restSeconds) sec").font(.caption).foregroundStyle(.secondary)
                             Text(clockText(max(0, Double(run.current.restSeconds) - rest)))
                                 .font(.system(size: 64, weight: .medium, design: .rounded)).monospacedDigit()
-                            Text("\(Int(rest)) seconds of actual rest · take longer if needed").font(.caption).foregroundStyle(.secondary)
+                            Text("\(Int(rest)) seconds of actual rest, take longer if needed").font(.caption).foregroundStyle(.secondary)
                         }.frame(maxWidth: .infinity).padding(.vertical, 20)
                     }
                 }
@@ -281,10 +275,10 @@ private struct ConfiguredFinishedView: View {
                     }
                     if !run.skippedSets.isEmpty {
                         VStack(alignment: .leading, spacing: 9) {
-                            Text("\(run.skippedSets.count) skipped \(run.skippedSets.count == 1 ? "step" : "steps") · not completed sets")
+                            Text("\(run.skippedSets.count) skipped \(run.skippedSets.count == 1 ? "step" : "steps"), not completed sets")
                                 .font(.subheadline.weight(.semibold)).foregroundStyle(Palette.muted)
                             ForEach(run.skippedSets) { skipped in
-                                Text("\(ExerciseCatalog.find(skipped.exerciseID)?.name ?? skipped.exerciseID) · planned set \(skipped.number) · skipped by choice")
+                                Text("\(ExerciseCatalog.find(skipped.exerciseID)?.name ?? skipped.exerciseID), planned set \(skipped.number), skipped by choice")
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                             Text("Skip details stay in local history and exports. Cloud upload includes completed sets only.")
@@ -293,8 +287,8 @@ private struct ConfiguredFinishedView: View {
                     }
                     ForEach(run.completed) { set in
                         VStack(alignment: .leading, spacing: 7) {
-                            Text("\(ExerciseCatalog.find(set.exerciseID)?.name ?? set.exerciseID) · Set \(set.number ?? 1)").font(.headline)
-                            Text("\(set.seconds > 0 ? "\(Int(set.seconds)) sec" : "\(set.reps) \(set.reps == 1 ? "rep" : "reps")") · \(set.source == .camera ? "camera observation" : (set.quantityOrigin == .activeTimer ? "active hold timer" : "manual self-report"))")
+                            Text("\(ExerciseCatalog.find(set.exerciseID)?.name ?? set.exerciseID), Set \(set.number ?? 1)").font(.headline)
+                            Text("\(set.seconds > 0 ? "\(Int(set.seconds)) sec" : "\(set.reps) \(set.reps == 1 ? "rep" : "reps")"), \(set.source == .camera ? "camera observation" : (set.quantityOrigin == .activeTimer ? "active hold timer" : "manual self-report"))")
                                 .font(.subheadline)
                             Text(set.reason.title).font(.caption).foregroundStyle(.secondary)
                             if let rest = set.restSecondsBefore { Text("\(Int(rest)) sec recorded rest before this set").font(.caption).foregroundStyle(.secondary) }

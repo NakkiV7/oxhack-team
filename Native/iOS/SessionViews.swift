@@ -91,12 +91,12 @@ struct LiveSetView: View {
                 }
                 HStack(spacing: 14) {
                     Button("Use camera", systemImage: "camera") {
-                        if store.hasInput || store.source == .manual { replaceCamera = true; return }
                         store.camera()
                     }
                     Spacer()
                     Button("Import video", systemImage: "film") { importing = true }
                 }.font(.subheadline.weight(.medium)).buttonStyle(.plain)
+                if let error = store.error { Text(error).font(.caption).foregroundStyle(Palette.red) }
                 if case .failed(let message) = store.visionState {
                     Text(message).font(.caption).foregroundStyle(Palette.red)
                         .accessibilityIdentifier("camera-tracking-error")
@@ -106,19 +106,18 @@ struct LiveSetView: View {
                 if store.source == .manual {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Actual completed reps").font(.subheadline.weight(.semibold))
-                        TextField("Enter reps", text: $manualQuantity)
+                        TextField("Enter reps", text: Binding(get: { manualQuantity }, set: { manualQuantity = $0; store.setManualReps(Int($0)) }))
                             .keyboardType(.numberPad).focused($enteringReps)
                             .padding(16).background(Palette.surface, in: RoundedRectangle(cornerRadius: 12))
                             .accessibilityIdentifier("legacy-manual-reps")
-                            .onChange(of: manualQuantity) { _, value in store.setManualReps(Int(value)) }
                         if enteringReps { Button("Done entering reps") { enteringReps = false }.font(.caption) }
-                        Text("Enter 1–200 reps you actually completed. Camera counts and targets are not filled in for you.")
+                        SpokenRepControls(store: store)
+                        Text("Enter 1–200 reps you actually completed. Your camera count is kept when you switch. Update it to your actual completed total.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 } else {
                     Button("Use manual reps", systemImage: "hand.tap") {
-                        store.pause()
-                        pendingManualFallback = store.session.generation
+                        store.switchToManualReps()
                     }.font(.subheadline.weight(.medium))
                         .accessibilityIdentifier("legacy-manual-fallback")
                 }
@@ -155,18 +154,12 @@ struct LiveSetView: View {
             }.padding(.horizontal, 24).padding(.vertical, 12).background(.white)
         }
         .scrollDismissesKeyboard(.interactively)
+        .onChange(of: store.session.actualReps) { _, count in
+            if store.source == .manual { manualQuantity = count.map(String.init) ?? "" }
+        }
         .onChange(of: store.source) { _, source in
             manualQuantity = source == .manual ? store.session.manualReps.map(String.init) ?? "" : ""
             enteringReps = false
-        }
-        .alert("Restart this set with manual reps?", isPresented: Binding(get: { pendingManualFallback != nil }, set: { if !$0 { pendingManualFallback = nil } })) {
-            Button("Reset and use manual reps", role: .destructive) {
-                if pendingManualFallback == store.session.generation { store.switchToManualReps() }
-                pendingManualFallback = nil
-            }
-            Button("Cancel", role: .cancel) { pendingManualFallback = nil }
-        } message: {
-            Text("This set’s unfinished camera count and active time will be discarded. Ended sets stay saved. A fresh manual set starts when you confirm; enter only reps you actually complete.")
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.movie]) { result in
             guard case .success(let url) = result else { return }
@@ -176,9 +169,7 @@ struct LiveSetView: View {
         .confirmationDialog("Start a fresh set with this video?", isPresented: Binding(get: { pendingImport != nil }, set: { if !$0 { pendingImport = nil } })) {
             Button("Start fresh set") { if let url = pendingImport { store.video(url) }; pendingImport = nil }
         } message: { Text("The current set’s count will reset.") }
-        .confirmationDialog("Start a fresh camera set?", isPresented: $replaceCamera) {
-            Button("Start fresh set") { store.camera() }
-        } message: { Text("The current set’s count will reset.") }
+
     }
     private var validManualQuantity: Int? {
         Int(manualQuantity).flatMap { (1...200).contains($0) ? $0 : nil }
@@ -259,7 +250,7 @@ struct FinishedView: View {
                 ForEach(store.session.sets) { set in
                     HStack {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("\(set.exercise.title) · Set \(set.number)").font(.headline)
+                            Text("\(set.exercise.title), Set \(set.number)").font(.headline)
                             Text(set.reason.title).font(.caption).foregroundStyle(.secondary)
                             if set.source == .manual {
                                 Label("Manual self-report", systemImage: "hand.tap").font(.caption).foregroundStyle(.secondary)

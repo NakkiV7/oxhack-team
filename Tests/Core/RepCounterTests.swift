@@ -194,7 +194,7 @@ func rejectsBrokenMovementContinuity(reason: String) {
     for exercise in Exercise.allCases {
         var counter = loweredCounter(exercise)
         _ = counter.consume(.init(time: 1.4, angle: .nan, confidence: 0))
-        finish(&counter, at: exercise == .squat ? 3.4 : 2.85)
+        finish(&counter, at: exercise.isSquat ? 3.4 : 2.85)
         #expect(counter.reps == 0)
     }
 }

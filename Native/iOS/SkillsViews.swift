@@ -85,7 +85,7 @@ struct SkillsView: View {
 
     private func practiceIdeas(progress: SkillProgress, profile: LocalProfile, baseline: LocalProfile.BaselineAbility) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Practice ideas · \(baseline.title)").font(.headline)
+            Text("Practice ideas, \(baseline.title)").font(.headline)
             Text("Based on your self-reported starting point and goals. Choose a comfortable variation; these ideas don’t award XP or complete challenges.")
                 .font(.caption).foregroundStyle(.secondary)
             ForEach(progress.suggestedChallengeIDs(profile: profile), id: \.self) { id in
@@ -241,7 +241,7 @@ private struct SkillGraphNode: View {
             Text(entry.levelName).font(.caption.weight(.bold)).lineLimit(1).minimumScaleFactor(0.85)
             Text(entry.name).font(.caption).multilineTextAlignment(.center).lineLimit(2)
             Label(access.title, systemImage: access.symbol).font(.caption2.weight(.semibold)).foregroundStyle(access.tint)
-            Text("\(min(3, node?.qualifyingSets ?? 0))/3 sets · \(min(2, node?.trainingDays ?? 0))/2 days")
+            Text("\(min(3, node?.qualifyingSets ?? 0))/3 sets, \(min(2, node?.trainingDays ?? 0))/2 days")
                 .font(.caption2).foregroundStyle(.secondary)
         }.padding(10).frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(access.background, in: RoundedRectangle(cornerRadius: 20))
@@ -271,12 +271,12 @@ private struct SkillRow: View {
                 Text(entry.name).font(.caption).foregroundStyle(.secondary)
                 Text(entry.goalText).font(.caption2).foregroundStyle(.secondary)
                 Label(access.title, systemImage: access.symbol).font(.caption.weight(.semibold)).foregroundStyle(access.tint)
-                Text("\(min(3, node?.qualifyingSets ?? 0))/3 sets · \(min(2, node?.trainingDays ?? 0))/2 days")
+                Text("\(min(3, node?.qualifyingSets ?? 0))/3 sets, \(min(2, node?.trainingDays ?? 0))/2 days")
                     .font(.caption).foregroundStyle(.secondary)
                 if !pending.isEmpty {
                     Text("Earn first: \(pending). Practice is always available.").font(.caption).foregroundStyle(Palette.ink)
                 }
-                Text("Manual: \(node?.manualSets ?? 0) · Camera: \(node?.cameraSets ?? 0) goal sets")
+                Text("Manual: \(node?.manualSets ?? 0), Camera: \(node?.cameraSets ?? 0) goal sets")
                     .font(.caption2).foregroundStyle(.secondary)
             }.fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
@@ -338,7 +338,9 @@ struct ExerciseArtwork: View {
     let entry: ExerciseEntry
     var body: some View {
         Group {
-            if UIImage(named: entry.art) != nil {
+            if let exercise = entry.tracking, [Exercise.halfSquat, .supportedSquat, .wideSquat].contains(exercise) {
+                StickFigureArtwork(exercise: exercise)
+            } else if UIImage(named: entry.art) != nil {
                 Image(entry.art).resizable().scaledToFit()
             } else {
                 Image(systemName: "figure.strengthtraining.traditional").resizable().scaledToFit().padding(15).foregroundStyle(.secondary)
@@ -368,7 +370,7 @@ private struct ExerciseDetailView: View {
                     Text("Challenge").font(.headline)
                     Text("3 sets of \(entry.goal) \(entry.unit == .reps ? "reps" : "seconds") across at least 2 training days.")
                         .font(.subheadline)
-                    Text("\(min(3, node?.qualifyingSets ?? 0))/3 goal sets · \(min(2, node?.trainingDays ?? 0))/2 days")
+                    Text("\(min(3, node?.qualifyingSets ?? 0))/3 goal sets, \(min(2, node?.trainingDays ?? 0))/2 days")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(node?.isComplete == true ? Palette.green : (node?.isAvailable == true ? Palette.blue : Palette.muted))
                     Text("Manual: \(node?.manualSets ?? 0) sets").font(.caption).foregroundStyle(.secondary)
@@ -388,7 +390,7 @@ private struct ExerciseDetailView: View {
                     let next = SkillGraph.dependents(of: entry.id)
                     if !next.isEmpty {
                         Text("Opens the path to").font(.caption.weight(.semibold)).padding(.top, 6)
-                        Text(next.compactMap { ExerciseCatalog.find($0)?.name }.joined(separator: " · "))
+                        Text(next.compactMap { ExerciseCatalog.find($0)?.name }.joined(separator: ", "))
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     if node?.isAvailable == false {
@@ -445,7 +447,7 @@ struct ManualWorkoutView: View {
                     VStack(spacing: 20) {
                         Image(systemName: "checkmark.circle").font(.system(size: 48, weight: .light)).foregroundStyle(Palette.green)
                         Text("Workout saved").font(.title2.bold())
-                        Text("\(sets) \(Int(sets) == 1 ? "set" : "sets") · \(quantity) \(entry.unit == .reps ? (Int(quantity) == 1 ? "rep" : "reps") : "sec") per set")
+                        Text("\(sets) \(Int(sets) == 1 ? "set" : "sets"), \(quantity) \(entry.unit == .reps ? (Int(quantity) == 1 ? "rep" : "reps") : "sec") per set")
                         Text("Manual self-report").font(.caption).foregroundStyle(.secondary)
                         PrimaryButton(title: "Done", symbol: "checkmark") { dismiss() }
                     }.padding(28)

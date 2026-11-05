@@ -3,6 +3,8 @@ import AVFoundation
 @MainActor
 final class LocalVoicePlayback: NSObject, VoicePlayback, AVSpeechSynthesizerDelegate {
     var onFinish: ((UUID) -> Void)?
+    var preferredGender: AVSpeechSynthesisVoiceGender?
+    var rate: Float = AVSpeechUtteranceDefaultSpeechRate
     private let synthesizer: AVSpeechSynthesizer
     private var current: (cueID: UUID, utterance: AVSpeechUtterance)?
     private var completing: [ObjectIdentifier: AVSpeechUtterance] = [:]
@@ -17,6 +19,11 @@ final class LocalVoicePlayback: NSObject, VoicePlayback, AVSpeechSynthesizerDele
     func speak(_ cue: VoiceCue) {
         if current != nil { stop() }
         let utterance = AVSpeechUtterance(string: cue.text)
+        if let preferredGender {
+            let voices = AVSpeechSynthesisVoice.speechVoices().filter { $0.language.hasPrefix("en") && $0.gender == preferredGender }
+            utterance.voice = voices.sorted { $0.quality.rawValue > $1.quality.rawValue }.first
+        }
+        utterance.rate = rate
         current = (cue.id, utterance)
         synthesizer.speak(utterance)
     }

@@ -97,6 +97,7 @@ enum AppleVisionPoseAdapter {
 import MediaPipeTasksVision
 
 final class PoseDetector {
+    private var processingClock = PoseProcessingClock()
     private let landmarker: PoseLandmarker
     init() throws {
         guard let model = Bundle.main.path(forResource: "pose_landmarker_full", ofType: "task") else {
@@ -112,7 +113,8 @@ final class PoseDetector {
         landmarker = try PoseLandmarker(options: options)
     }
     func detect(_ image: UIImage, at time: Double) throws -> PoseFrame {
-        let result = try landmarker.detect(videoFrame: MPImage(uiImage: image), timestampInMilliseconds: Int(time * 1000))
+        guard let timestamp = processingClock.milliseconds(for: time) else { throw CocoaError(.coderInvalidValue) }
+        let result = try landmarker.detect(videoFrame: MPImage(uiImage: image), timestampInMilliseconds: timestamp)
         let points = result.landmarks.count == 1 ? result.landmarks[0].map {
             PosePoint(x: Double($0.x), y: Double($0.y),
                       confidence: min($0.visibility?.doubleValue ?? 0, $0.presence?.doubleValue ?? 0))

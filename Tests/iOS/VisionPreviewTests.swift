@@ -3,6 +3,24 @@ import XCTest
 @testable import Spottr
 
 final class VisionPreviewTests: XCTestCase {
+    func testCameraRestartsReuseLoadedPoseProcessor() async throws {
+        let camera = PreviewFakeCamera()
+        var constructions = 0
+        let worker = VisionWorker(cameraAvailable: { true }, requestAccess: { $0(true) }, cameraDriver: camera,
+            makePoseProcessor: { constructions += 1; return { _, time in .init(time: time, width: 1, height: 1, points: []) } })
+        defer { worker.stop() }
+        for index in 0..<3 {
+            let started = expectation(description: "Camera capture \(index)")
+            worker.onState = { _, _ in started.fulfill() }
+            worker.camera(token: UUID())
+            await fulfillment(of: [started], timeout: 2)
+            worker.stop()
+            await camera.drain()
+        }
+        XCTAssertEqual(constructions, 1, "Changing a camera set must not reload the offline pose model")
+        XCTAssertEqual(camera.startCount, 3)
+    }
+
     func testFrontPreviewUsesExistingCaptureWithoutPoseAndKeepsStateSeparate() async throws {
         let camera = PreviewFakeCamera()
         let started = expectation(description: "Front preview started")

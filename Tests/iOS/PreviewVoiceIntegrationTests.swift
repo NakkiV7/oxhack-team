@@ -37,8 +37,8 @@ final class PreviewVoiceIntegrationTests: XCTestCase {
         XCTAssertEqual(spoken.kind, .coaching(.form))
         XCTAssertEqual(spoken.reason, .tracking)
 
-        let normal = TrainingStore(historyURL: historyURL(), previewMode: false, previewPlayback: PreviewRecordingVoice())
-        XCTAssertEqual(normal.remoteVoice?.preference, .arnold)
+        let normal = TrainingStore(historyURL: historyURL(), defaults: UserDefaults(suiteName: UUID().uuidString)!, previewMode: false, previewPlayback: PreviewRecordingVoice())
+        XCTAssertEqual(normal.remoteVoice?.preference, .maya)
         XCTAssertFalse(normal.voiceFeedbackEnabled)
     }
 

@@ -90,7 +90,7 @@ final class VisionWorker: NSObject, @unchecked Sendable {
 
     private func startCamera(token: UUID, mode: CameraMode) {
         do {
-            processPose = mode == .pose ? try makePoseProcessor() : nil
+            if mode == .pose, processPose == nil { processPose = try makePoseProcessor() }
             lastFrame = -.infinity
             guard hasIntent(token) else { return }
             let captureID = UUID()
@@ -147,7 +147,8 @@ final class VisionWorker: NSObject, @unchecked Sendable {
 
     private func beginVideo(token: UUID) {
         do {
-            processPose = try makePoseProcessor(); onState?(.video, token); stepVideo(token: token)
+            if processPose == nil { processPose = try makePoseProcessor() }
+            onState?(.video, token); stepVideo(token: token)
         } catch { onState?(.failed("Couldn’t load pose tracking."), token) }
     }
 
@@ -186,7 +187,7 @@ final class VisionWorker: NSObject, @unchecked Sendable {
     }
     func stop() {
         setIntent(nil)
-        queue.async { self.token = nil; self.captureID = nil; self.cameraDriver.stop(); self.closeVideo(); self.processPose = nil; self.cameraMode = .pose }
+        queue.async { self.token = nil; self.captureID = nil; self.cameraDriver.stop(); self.closeVideo(); self.cameraMode = .pose }
     }
     private func closeVideo() {
         generator?.cancelAllCGImageGeneration(); generator = nil

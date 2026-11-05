@@ -324,9 +324,9 @@ func configuredCameraCountsObservedCyclesAndNeverEndsAtItsTarget(exerciseID: Str
 @Test func configuredMixedCameraManualAndHoldSaveInQueueOrderWithOriginalRest() throws {
     var run = try ConfigurableSession(plan: customPlan("""
     {"exerciseID":"squat","sets":1,"target":1,"unit":"reps","restSeconds":30},
-    {"exerciseID":"wallPushup","sets":1,"target":8,"unit":"reps","restSeconds":30},
+    {"exerciseID":"deadBug","sets":1,"target":8,"unit":"reps","restSeconds":30},
     {"exerciseID":"plank","sets":1,"target":20,"unit":"seconds","restSeconds":30}
-    """), availableSupport: ["Wall"])
+    """), availableSupport: [])
     run.start(at: 0); run.resetSet(source: .camera, at: 0); run.beginSet(at: 10)
     configuredCycle(&run, from: 0)
     run.endSet(at: 15); run.nextSet(at: 20)
@@ -339,7 +339,7 @@ func configuredCameraCountsObservedCyclesAndNeverEndsAtItsTarget(exerciseID: Str
     run.beginSet(at: 40); run.pause(at: 45); run.resume(at: 50); run.endSet(at: 55); run.finish(at: 56)
     let reopened = try JSONDecoder().decode(SessionRecord.self, from: JSONEncoder().encode(run.record))
     let report = WorkoutReport(record: reopened)
-    #expect(report.sets.map(\.exerciseID) == ["squat", "wallPushup", "plank"])
+    #expect(report.sets.map(\.exerciseID) == ["squat", "deadBug", "plank"])
     #expect(report.sets.map(\.source) == [.camera, .manual, .manual])
     #expect(report.sets.map(\.restSecondsBefore) == [nil, 10, 10])
     #expect(report.sets.map(\.activeSeconds) == [5, 5, 10])
@@ -410,7 +410,7 @@ private func configuredCycle(_ run: inout ConfigurableSession, from offset: Doub
     #expect(legacy.configured?.source == nil)
 }
 
-@Test(arguments: ["wallPushup", "plank"])
+@Test(arguments: ["deadBug", "plank"])
 func configuredWatchRejectsUnsupportedCameraSourceClaims(exerciseID: String) throws {
     let unit = exerciseID == "plank" ? "seconds" : "reps"
     var run = try ConfigurableSession(plan: customPlan("""

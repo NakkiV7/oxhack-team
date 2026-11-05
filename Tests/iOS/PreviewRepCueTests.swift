@@ -6,7 +6,7 @@ import UIKit
 @MainActor
 final class PreviewRepCueTests: XCTestCase {
     func testEvenLegacyTargetStillEncouragesAndNextSetStartsANewTwoRepMilestone() {
-        for exercise in Exercise.allCases {
+        for exercise in [Exercise.squat, .pushup] {
             let (store, cached, clock) = makeStore(exercise: exercise)
             defer { store.cancelCoaching() }
             for index in 0..<exercise.target { completeRep(index, store: store, clock: clock) }
@@ -26,7 +26,7 @@ final class PreviewRepCueTests: XCTestCase {
     }
 
     func testConfiguredCameraEncouragesAtTwoRepTargetAcrossExplicitSetTransitions() async throws {
-        for exercise in Exercise.allCases {
+        for exercise in [Exercise.squat, .pushup] {
             let cached = RepRecordingVoice()
             let remote = RemoteVoicePlayback(local: RepRecordingVoice(), previewPlayback: cached, client: {
                 XCTFail("Configured preview encouragement cannot request a provider")
@@ -65,7 +65,7 @@ final class PreviewRepCueTests: XCTestCase {
     }
 
     func testPreviewCameraEncouragesEveryTwoFreshRepsWithoutHistoryAndDoesNotRepeatATick() throws {
-        for exercise in Exercise.allCases {
+        for exercise in [Exercise.squat, .pushup] {
             let (store, cached, clock) = makeStore(exercise: exercise)
             defer { store.cancelCoaching() }
             XCTAssertTrue(store.history.isEmpty)

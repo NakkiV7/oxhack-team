@@ -16,7 +16,10 @@ final class ProfileDraftPersistence {
         do {
             let profile = try LocalProfile(name: name, weeklyTarget: weeklyTarget, goals: goals,
                                            baselineAbility: store.profile?.baselineAbility,
-                                           bodyMeasurements: store.profile?.bodyMeasurements)
+                                           bodyMeasurements: store.profile?.bodyMeasurements,
+                                           comfortableExercises: store.profile?.comfortableExercises ?? [],
+                                           weightManagementGoal: store.profile?.weightManagementGoal ?? false,
+                                           onboardingRevision: store.profile?.onboardingRevision ?? 2)
             guard store.loadError == nil else {
                 validationError = "Automatic saving is paused. Use Save profile to explicitly replace the unreadable profile."
                 return
@@ -37,7 +40,10 @@ final class ProfileDraftPersistence {
         do {
             pending = try LocalProfile(name: name, weeklyTarget: weeklyTarget, goals: goals,
                                        baselineAbility: store.profile?.baselineAbility,
-                                       bodyMeasurements: store.profile?.bodyMeasurements)
+                                       bodyMeasurements: store.profile?.bodyMeasurements,
+                                           comfortableExercises: store.profile?.comfortableExercises ?? [],
+                                           weightManagementGoal: store.profile?.weightManagementGoal ?? false,
+                                           onboardingRevision: store.profile?.onboardingRevision ?? 2)
             return persistPending()
         } catch { validationError = error.localizedDescription; return false }
     }
@@ -131,20 +137,11 @@ struct ProfileSettingsView: View {
                     Text("Valid changes save automatically. You can also save now or retry a failed save.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                if let workspace {
-                    Section("TestFlight preview") {
-                        Toggle(isOn: Binding(get: { workspace.isPreview }, set: { enabled in
-                            editingName = false
-                            guard flushPendingSave() else { return }
-                            do { try workspace.setPreview(enabled) }
-                            catch { self.error = workspace.error ?? error.localizedDescription }
-                        })) {
-                            Label("TestFlight preview", systemImage: "sparkles")
-                        }.accessibilityIdentifier("testflight-preview-toggle")
-                        Text("Explore a prepared training week and sample insights. Your personal profile and workouts stay separate.")
-                            .font(.caption).foregroundStyle(.secondary)
-                        if let issue = workspace.error { Text(issue).font(.caption).foregroundStyle(Palette.red) }
+                Section("Your trainer") {
+                    NavigationLink("Voice and coaching style") {
+                        VoiceCoachSettingsView(playback: RemoteVoicePlayback(offlineOnly: true), cancelCoaching: {})
                     }
+                    Text("Your trainer works offline. Voice feedback is always your choice.").font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Exercise lessons") {
                     NavigationLink { DemonstrationGuideView() } label: {

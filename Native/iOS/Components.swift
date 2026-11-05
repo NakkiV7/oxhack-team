@@ -101,13 +101,21 @@ struct PoseOverlay: View {
                 let color: Color = edgeColor(measurement, bodyEdge: bodyEdge)
                 var path = Path(); path.move(to: from); path.addLine(to: to)
                 context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                context.fill(Path(ellipseIn: CGRect(x: from.x - 3, y: from.y - 3, width: 6, height: 6)), with: .color(.white))
+            }
+            let joints = exercise.isSquat ? [23,24,25,26,27,28] : [11,12,13,14,15,16]
+            for index in joints {
+                guard frame.points.indices.contains(index) else { continue }
+                let point = frame.points[index]
+                guard point.confidence >= 0.6, point.x.isFinite, point.y.isFinite else { continue }
+                let x = point.x * frame.width * scale + offset.x, y = point.y * frame.height * scale + offset.y
+                context.fill(Path(ellipseIn: CGRect(x: x - 5, y: y - 5, width: 10, height: 10)), with: .color(Palette.green))
+                context.stroke(Path(ellipseIn: CGRect(x: x - 5, y: y - 5, width: 10, height: 10)), with: .color(.white), lineWidth: 1.5)
             }
         }.accessibilityHidden(true)
     }
     private func edgeColor(_ sample: MovementSample?, bodyEdge: Bool) -> Color {
         guard let sample else { return .gray }
-        guard exercise == .pushup, bodyEdge else { return Palette.green }
+        guard !exercise.isSquat, bodyEdge else { return Palette.green }
         switch sample.bodyLine {
         case .unknown: return .gray
         case .steady: return Palette.green

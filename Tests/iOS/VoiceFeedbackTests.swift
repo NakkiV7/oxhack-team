@@ -46,10 +46,10 @@ final class VoiceFeedbackTests: XCTestCase {
     }
 
     func testAppOwnsOfflineArnoldAndPreservesInjectedPlayback() {
-        let store = TrainingStore()
-        XCTAssertEqual(store.remoteVoice?.preference, .arnold)
+        let store = TrainingStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        XCTAssertEqual(store.remoteVoice?.preference, .maya)
         XCTAssertFalse(store.voiceFeedbackEnabled)
-        XCTAssertEqual(store.remoteVoice?.configuredVoices, [.arnold])
+        XCTAssertEqual(store.remoteVoice?.configuredVoices, [.maya, .leo, .local, .arnold, .david])
 
         let remote = RemoteVoicePlayback(local: FakeVoicePlayback(), client: {
             XCTFail("Creating a workout must not contact a voice provider")
@@ -131,7 +131,7 @@ final class VoiceFeedbackTests: XCTestCase {
         store.coachingTick(at: 10)
         XCTAssertTrue(playback.spoken.isEmpty)
         store.start()
-        XCTAssertFalse(store.voiceFeedbackEnabled)
+        XCTAssertTrue(store.voiceFeedbackEnabled)
     }
 
     func testLeavingForegroundCancelsRestSpeechWithoutStoppingRestClockOrReplayingOnReturn() {

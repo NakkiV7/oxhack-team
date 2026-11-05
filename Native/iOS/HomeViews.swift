@@ -18,27 +18,30 @@ struct SpottrRoot: View {
     var body: some View {
         Group {
             if introductionPresented {
-                OnboardingView(profileStore: profileStore) { introductionPresented = false }
+                OnboardingView(profileStore: profileStore) {
+                    store.remoteVoice?.reloadPreferences()
+                    store.repVoice.choose(RepVoicePlan.Coach(rawValue: UserDefaults.standard.string(forKey: RepVoicePlayer.defaultsKey) ?? "off"))
+                    store.setVoiceFeedback(UserDefaults.standard.bool(forKey: "trainer.audioEnabled"))
+                    introductionPresented = false
+                }
             } else {
                 TabView(selection: $selectedTab) {
                     TodayView(store: store, profileStore: profileStore, showSettings: { settingsPresented = true },
                               openPath: { selectedTab = "skills" })
                         .tabItem { Label("Today", systemImage: "house") }.tag("today")
-                    Group {
-                        if workspace?.isPreview == true { DemoProgressView(store: store, profile: profileStore.profile) }
-                        else { WeeklyProgressView(store: store, profile: profileStore.profile) }
-                    }.tabItem { Label("Progress", systemImage: "chart.bar.xaxis") }.tag("progress")
-                    PathSkillsView(store: store, profile: profileStore.profile, previewMode: workspace?.isPreview == true).tabItem { Label("Skills", systemImage: "point.3.connected.trianglepath.dotted") }.tag("skills")
-                    InsightsView(store: store, profile: profileStore.profile, previewMode: workspace?.isPreview == true).tabItem { Label("Insights", systemImage: "doc.text.magnifyingglass") }.tag("insights")
-                    Group {
-                        if workspace?.isPreview == true { DemoCoachView(store: store, profile: profileStore.profile) }
-                        else { CoachView(store: store, profile: profileStore.profile) }
-                    }.tabItem { Label("Coach", systemImage: "bubble") }.tag("coach")
+                    PathSkillsView(store: store, profile: profileStore.profile)
+                        .tabItem { Label("Skills", systemImage: "point.3.connected.trianglepath.dotted") }.tag("skills")
+                    InsightsView(store: store, profile: profileStore.profile)
+                        .tabItem { Label("Insights", systemImage: "chart.xyaxis.line") }.tag("insights")
+                    OfflineCoachView(store: store, profile: profileStore.profile)
+                        .tabItem { Label("Coach", systemImage: "bubble") }.tag("coach")
                 }
             }
         }
         .fullScreenCover(isPresented: $store.presented) { SessionView(store: store).interactiveDismissDisabled() }
         .sheet(isPresented: $settingsPresented, onDismiss: {
+            store.remoteVoice?.reloadPreferences()
+            store.repVoice.choose(RepVoicePlan.Coach(rawValue: UserDefaults.standard.string(forKey: RepVoicePlayer.defaultsKey) ?? "off"))
             if profileStore.profile == nil { introductionPresented = profileStore.shouldShowIntroduction() }
         }) {
             ProfileSettingsView(profileStore: profileStore, history: store.history,
@@ -79,7 +82,7 @@ struct TodayView: View {
                             .frame(width: 48, height: 48).background(Palette.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
                         VStack(alignment: .leading, spacing: 5) {
                             Text(store.history.isEmpty ? "Start where you are." : "Your next step.").font(.headline)
-                            Text("A personal path, from a few simple questions.").font(.caption).foregroundStyle(.secondary)
+                            Text("Follow your next comfortable challenge.").font(.caption).foregroundStyle(.secondary)
                         }
                         Spacer(minLength: 0)
                         Image(systemName: "chevron.right").font(.caption).foregroundStyle(Palette.blue)
@@ -94,20 +97,20 @@ struct TodayView: View {
                         VStack(alignment: .leading, spacing: 18) {
                             Text("Build your\nfoundation.").font(.system(size: 27, weight: .bold)).tracking(-0.8)
                             HStack(spacing: 14) {
-                                Label("12 min", systemImage: "clock")
+                                Label("Your pace", systemImage: "clock")
                                 Label("6 sets", systemImage: "square.3.layers.3d")
                             }.font(.caption).foregroundStyle(.secondary)
                         }.frame(maxWidth: .infinity, alignment: .leading)
-                        Image("\(store.selectedExercise.rawValue)-mid").resizable().scaledToFit().frame(width: 116, height: 155)
+                        StickFigureArtwork(exercise: store.selectedExercise).frame(width: 116, height: 155)
                     }
                     PrimaryButton(title: "Start session", action: store.start)
                 }.padding(21).background(Palette.surface, in: RoundedRectangle(cornerRadius: 25))
                 HStack { Text("Your session").font(.headline); Spacer(); Text("Bodyweight").font(.caption).foregroundStyle(.secondary) }
                 VStack(spacing: 0) {
-                    ForEach(Exercise.allCases, id: \.self) { exercise in
+                    ForEach([Exercise.squat, .pushup], id: \.self) { exercise in
                         Button { store.selectedExercise = exercise } label: {
                             HStack(spacing: 14) {
-                                Image("\(exercise.rawValue)-mid").resizable().scaledToFit().frame(width: 42, height: 47)
+                                StickFigureArtwork(exercise: exercise).frame(width: 42, height: 47)
                                     .padding(6).background(Palette.surface, in: RoundedRectangle(cornerRadius: 12))
                                 VStack(alignment: .leading, spacing: 6) {
                                     Text(exercise.title).font(.subheadline.weight(.semibold))
@@ -124,11 +127,6 @@ struct TodayView: View {
                     Label("Exercise library", systemImage: "square.grid.2x2").font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity).padding(16).background(Palette.surface, in: RoundedRectangle(cornerRadius: 14))
                 }.buttonStyle(.plain)
-                Button { demoPresented = true } label: {
-                    Label("Demo studio", systemImage: "play.rectangle")
-                        .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity).padding(16)
-                        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 14))
-                }.buttonStyle(.plain).accessibilityIdentifier("demo-studio")
                 Label("Keep your rhythm.", systemImage: "applewatch").font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity)
                 if let error = store.error { Text(error).font(.caption).foregroundStyle(Palette.red) }
             }.padding(24)
@@ -166,16 +164,7 @@ struct TodayView: View {
                                baseXP: baseXP, bonusXP: max(0, totalXP - baseXP), totalXP: totalXP,
                                onManage: { rewardsPresented = true })
                 }
-                if let profile = profileStore.profile {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), alignment: .leading)], alignment: .leading, spacing: 9) {
-                        ForEach(TrainingAttribute.allCases.filter { profile.goals.contains($0) }, id: \.self) { goal in
-                            HStack(spacing: 7) {
-                                Image(goal.rawValue).resizable().scaledToFit().frame(width: 24, height: 24).accessibilityHidden(true)
-                                Text(goal.title).font(.caption.weight(.medium)).foregroundStyle(.secondary)
-                            }.accessibilityElement(children: .combine)
-                        }
-                    }.padding(.horizontal, 18).padding(.bottom, 18)
-                }
+
             }.background(Palette.surface, in: RoundedRectangle(cornerRadius: 18))
                 .task(id: store.rewards.ledger.calendar.startOfDay(for: timeline.date)) { store.refreshRewards(at: timeline.date) }
         }

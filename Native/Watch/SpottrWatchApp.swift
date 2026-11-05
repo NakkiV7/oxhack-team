@@ -17,7 +17,7 @@ struct SpottrWatchApp: App {
 }
 
 struct WatchTrainingView: View {
-    private enum Page: Hashable { case metrics, controls }
+    private enum Page: Hashable { case metrics, controls, vitals }
     let store: WatchStore
     @State private var page = Page.metrics
     @ScaledMetric(relativeTo: .largeTitle) private var countFontSize: CGFloat = 42
@@ -28,6 +28,7 @@ struct WatchTrainingView: View {
                     TabView(selection: $page) {
                         metrics(snapshot, now: context.date).tag(Page.metrics)
                         controls(snapshot, now: context.date).tag(Page.controls)
+                        vitals(snapshot, now: context.date).tag(Page.vitals)
                     }.tabViewStyle(.verticalPage)
                         .containerBackground(.black, for: .tabView)
                 } else {
@@ -131,26 +132,37 @@ struct WatchTrainingView: View {
                     Text("No recent heart-rate reading. Check Watch fit and Health access.")
                         .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 }
-                Divider()
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Session details").font(.headline)
-                    Text(exerciseName(snapshot)).font(.body)
-                    Text(setDescription(snapshot)).font(.body)
-                    if snapshot.phase == .finished {
-                        Text("Session complete. Your review is on iPhone.").font(.body)
-                    } else {
-                        Text(quantity(snapshot) == "—" ? "No count entered. Target \(snapshot.target) reps." : "\(quantity(snapshot)) / \(snapshot.target) \(snapshot.configured?.unit == .seconds ? "seconds" : "reps")")
-                            .font(.title3).monospacedDigit()
-                        let heartRate = store.heart?.heartRate(at: now)
-                        Label(heartRate.map { "\(Int($0.rounded())) BPM" } ?? "No recent heart-rate reading", systemImage: "heart.fill")
-                            .font(.body).foregroundStyle(heartRate == nil ? Color.gray : Color.red)
-                        Text(instruction(snapshot)).font(.body)
-                            .foregroundStyle(snapshot.configured?.stoppedForDiscomfort == true ? Color.red : Color.white)
-                    }
-                }.frame(maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("watch-session-details")
+
             }.frame(maxWidth: .infinity).padding(.horizontal, 12).padding(.vertical, 6)
         }.accessibilityIdentifier("watch-controls-page")
+    }
+    private func vitals(_ snapshot: CompanionSnapshot, now: Date) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Live vitals").font(.headline)
+                let heart = store.heart?.heartRate(at: now)
+                Label(heart.map { "\(Int($0.rounded())) bpm" } ?? "No recent pulse", systemImage: "heart.fill")
+                    .font(.title2.bold()).foregroundStyle(heart == nil ? .gray : .red)
+                let energy = store.activeEnergy.flatMap { $0.isValid(at: now) && now.timeIntervalSince($0.asOf) <= 12 ? $0.kilocalories : nil }
+                Label(energy.map { "\(Int($0.rounded())) active kcal" } ?? "No recent energy", systemImage: "flame")
+                    .font(.body).foregroundStyle(.orange)
+                metric("Acceleration", reading: store.acceleration, unit: "g", now: now)
+                metric("Rotation", reading: store.rotation, unit: "rad/s", now: now)
+                Text(store.recordingState.message).font(.caption2).foregroundStyle(.secondary)
+                Text("Energy is cumulative for this Watch recording. Missing or old readings stay blank.")
+                    .font(.caption2).foregroundStyle(.secondary)
+                if !store.recordingBusy { recordingControl(snapshot) }
+            }.padding(.horizontal, 12).padding(.vertical, 6)
+        }.accessibilityIdentifier("watch-vitals-page")
+    }
+    private func metric(_ title: String, reading: SensorReading?, unit: String, now: Date) -> some View {
+        let value = reading.flatMap { reading in
+            reading.value.isFinite && reading.value >= 0 && (-2...12).contains(now.timeIntervalSince(reading.date)) ? reading.value : nil
+        }
+        return VStack(alignment: .leading, spacing: 4) {
+            Text(title).font(.caption2).foregroundStyle(.secondary)
+            Text(value.map { String(format: "%.2f %@", $0, unit) } ?? "—").font(.body).monospacedDigit()
+        }
     }
     @ViewBuilder private func recordingControl(_ snapshot: CompanionSnapshot, compact: Bool = false) -> some View {
         if snapshot.configured?.stoppedForDiscomfort != true, snapshot.configured?.currentWasSkipped != true {
@@ -193,7 +205,7 @@ struct WatchTrainingView: View {
         }
         if configured.stoppedForDiscomfort { return "Stop here. Finish this session and recover." }
         if configured.currentWasSkipped == true { return "Set skipped. Check in on iPhone." }
-        if snapshot.phase == .rest { return "Rest \(Int(configured.restElapsed ?? 0)) s · suggested \(configured.restTarget) s" }
+        if snapshot.phase == .rest { return "Rest \(Int(configured.restElapsed ?? 0)) s, suggested \(configured.restTarget) s" }
         if !configured.hasStarted { return "Start when ready." }
         if snapshot.phase == .paused { return "Paused. Resume when you’re ready." }
         if configured.source == .camera { return shortCue(snapshot.cue) }

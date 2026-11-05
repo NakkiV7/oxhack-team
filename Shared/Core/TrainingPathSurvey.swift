@@ -9,7 +9,7 @@ public enum PathGoal: String, Codable, CaseIterable, Sendable {
     public var family: ExerciseFamily { self == .squat ? .legs : .push }
     /// The main chain of the family, foundation first.
     public var chain: [String] {
-        ExerciseCatalog.all.filter { $0.family == family }.sorted { $0.level < $1.level }.map(\.id)
+        self == .squat ? ["gluteBridge", "squat", "reverseLunge", "splitSquat", "assistedSquat"] : ["wallPushup", "inclinePushup", "kneePushup", "pushup", "closeGripPushup"]
     }
     /// Movements a person may leave out: the rest of the chain and its catalogue support steps. Never the goal itself.
     public var avoidable: [String] {

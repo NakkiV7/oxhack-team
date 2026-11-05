@@ -292,7 +292,7 @@ func reportRejectsInvalidOrIncompleteRecordedTempo(durations: [Double]) {
     let cases: [(InputSource, String, Int, [Double]?, LoggedSet.QuantityOrigin?, Int)] = [
         (.camera, "squat", 2, [1, 2], nil, 2),
         (.camera, "pushup", 2, [1], nil, 0),
-        (.camera, "wallPushup", 2, [1, 2], nil, 0),
+        (.camera, "wallPushup", 2, [1, 2], nil, 2),
         (.manual, "squat", 2, [1, 2], .selfReport, 0),
         (.video, "squat", 2, [1, 2], nil, 0),
         (.camera, "squat", 2, [1, .infinity], nil, 0),

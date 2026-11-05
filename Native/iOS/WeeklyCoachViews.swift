@@ -82,7 +82,7 @@ struct WeeklyCoachPanel: View {
                                 if enabled { selected.insert(day.date) } else { selected.remove(day.date); movedDates.removeValue(forKey: day.date) }
                             })) { Text(Self.dayTitle(day.date)).font(.subheadline.weight(.semibold)) }.tint(Palette.blue)
                             ForEach(workout.items, id: \.exerciseID) { item in
-                                Text("\(ExerciseCatalog.find(item.exerciseID)?.name ?? item.exerciseID) · \(item.sets) × \(item.target) \(item.unit == .reps ? "reps" : "sec") · \(item.restSeconds)s rest")
+                                Text("\(ExerciseCatalog.find(item.exerciseID)?.name ?? item.exerciseID), \(item.sets) × \(item.target) \(item.unit == .reps ? "reps" : "sec"), \(item.restSeconds)s rest")
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                             if selected.contains(day.date), let request, let dates = try? request.dates() {
@@ -108,12 +108,12 @@ struct WeeklyCoachPanel: View {
     private func saved(_ week: CoachSavedWeek) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Label("Your saved week", systemImage: "checkmark.circle").font(.headline).foregroundStyle(Palette.green)
-            Text("Week of \(week.weekStart) · \(week.timeZone)").font(.caption).foregroundStyle(.secondary)
+            Text("Week of \(week.weekStart), \(week.timeZone)").font(.caption).foregroundStyle(.secondary)
             ForEach(week.days) { day in
                 VStack(alignment: .leading, spacing: 8) {
                     Text(Self.dayTitle(day.date)).font(.subheadline.weight(.semibold))
                     ForEach(day.plan.items) { item in
-                        Text("\(ExerciseCatalog.find(item.exerciseID)?.name ?? item.exerciseID) · \(item.sets) × \(item.target) \(item.unit == .reps ? "reps" : "sec")")
+                        Text("\(ExerciseCatalog.find(item.exerciseID)?.name ?? item.exerciseID), \(item.sets) × \(item.target) \(item.unit == .reps ? "reps" : "sec")")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     Button { store.startPlan(day.plan, availableSupport: support) } label: { Label("Start this workout", systemImage: "play.fill") }

@@ -55,9 +55,9 @@ struct CloudSyncCard: View {
             Text("Save a copy of this workout to your configured Tiger database. This includes recorded sets, timestamps and any Watch heart-rate and motion readings. Your local workout stays on this iPhone.")
                 .font(.caption).foregroundStyle(.secondary)
             if let receipt = model.receipt {
-                Label(receipt.replayed ? "Already saved · cloud copy confirmed" : "Cloud copy confirmed", systemImage: "checkmark.circle")
+                Label(receipt.replayed ? "Already saved, cloud copy confirmed" : "Cloud copy confirmed", systemImage: "checkmark.circle")
                     .font(.subheadline.weight(.medium))
-                Text("Workout \(receipt.workoutID.uuidString.prefix(8)) · receipt \(receipt.sha256.prefix(12))").font(.caption2).monospaced().foregroundStyle(.secondary)
+                Text("Workout \(receipt.workoutID.uuidString.prefix(8)), receipt \(receipt.sha256.prefix(12))").font(.caption2).monospaced().foregroundStyle(.secondary)
             }
             if model.isLoading {
                 HStack {

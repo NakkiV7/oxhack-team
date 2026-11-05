@@ -82,6 +82,7 @@ public struct TrainingSession: Sendable {
     private var accumulated = 0.0
     public private(set) var source: InputSource = .camera
     private var repDurations: [Double] = []
+    private var includesManualReps = false
     private var currentRestBefore: Double?
     private var restStartedAt: Double?
     private let firstExercise: Exercise
@@ -111,7 +112,7 @@ public struct TrainingSession: Sendable {
         restStartedAt = nil
         counter = RepCounter(exercise: sets.count < 3 ? firstExercise : (firstExercise == .squat ? .pushup : .squat))
         accumulated = 0; activeStarted = time; phase = .active; generation = UUID(); cue = .ready
-        source = .camera; repDurations = []; manualReps = nil
+        source = .camera; repDurations = []; manualReps = nil; includesManualReps = false
     }
     public mutating func finish(at time: Double) {
         if phase == .active || phase == .paused { endSet(at: time) }
@@ -121,6 +122,15 @@ public struct TrainingSession: Sendable {
         guard phase == .active || phase == .paused else { return }
         self.source = source; counter = RepCounter(exercise: exercise); repDurations = []; manualReps = nil
         accumulated = 0; activeStarted = time; phase = .active; generation = UUID(); cue = .ready
+    }
+    public mutating func switchInput(source: InputSource, at time: Double) {
+        guard source != .video, self.source != .video, time.isFinite, phase == .active || phase == .paused else { return }
+        let count = actualReps ?? 0
+        if self.source == .manual && count > 0 { includesManualReps = true }
+        self.source = source
+        counter = RepCounter(exercise: exercise, initialReps: count)
+        manualReps = count > 0 ? count : nil
+        generation = UUID(); cue = phase == .paused ? .paused : .ready
     }
     public func elapsed(at time: Double) -> Double { accumulated + max(0, time - (activeStarted ?? time)) }
     public mutating func start(at time: Double) {
@@ -150,8 +160,8 @@ public struct TrainingSession: Sendable {
     public mutating func endSet(at time: Double, reason: StopReason = .voluntary) {
         guard time.isFinite, phase == .active || phase == .paused, let reps = actualReps else { return }
         sets.append(.init(id: UUID(), exercise: exercise, number: setNumber, reps: reps,
-                          target: exercise.target, activeSeconds: elapsed(at: time), source: source, reason: reason,
-                          repDurations: source == .manual ? nil : repDurations, restSecondsBefore: currentRestBefore))
+                          target: exercise.target, activeSeconds: elapsed(at: time), source: includesManualReps ? .manual : source, reason: reason,
+                          repDurations: source == .manual || includesManualReps ? nil : repDurations, restSecondsBefore: currentRestBefore))
         restStartedAt = time
         phase = .rest; activeStarted = nil; accumulated = 0; generation = UUID(); cue = .ready
     }

@@ -12,7 +12,7 @@ struct WeeklyProgressView: View {
                 LazyVStack(alignment: .leading, spacing: 24) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("This week").font(.system(size: 32, weight: .bold)).tracking(-1)
-                        Text("\(week.interval.start.formatted(.dateTime.day().month(.abbreviated))) – \(week.interval.end.addingTimeInterval(-1).formatted(.dateTime.day().month(.abbreviated))) · week so far")
+                        Text("\(week.interval.start.formatted(.dateTime.day().month(.abbreviated))) – \(week.interval.end.addingTimeInterval(-1).formatted(.dateTime.day().month(.abbreviated))), week so far")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     HStack {
@@ -65,7 +65,7 @@ struct WeeklyProgressView: View {
                                     Text(category.category.rawValue).font(.subheadline.weight(.medium))
                                     Spacer()
                                     VStack(alignment: .trailing, spacing: 4) {
-                                        Text("\(category.setCount) \(category.setCount == 1 ? "set" : "sets") · \(category.reps) \(category.reps == 1 ? "rep" : "reps")")
+                                        Text("\(category.setCount) \(category.setCount == 1 ? "set" : "sets"), \(category.reps) \(category.reps == 1 ? "rep" : "reps")")
                                         if category.holdSeconds > 0 { Text("\(Int(category.holdSeconds)) sec holds") }
                                     }.font(.caption).foregroundStyle(.secondary)
                                 }
@@ -91,7 +91,7 @@ private struct ReportSessionCard: View {
                 Spacer()
                 Image(systemName: "arrow.up.right").font(.caption)
             }
-            Text("\(report.setCount) \(report.setCount == 1 ? "set" : "sets") · \(report.reps) \(report.reps == 1 ? "rep" : "reps")").font(.title3.weight(.semibold))
+            Text("\(report.setCount) \(report.setCount == 1 ? "set" : "sets"), \(report.reps) \(report.reps == 1 ? "rep" : "reps")").font(.title3.weight(.semibold))
             HStack {
                 Text(report.date.formatted(date: .abbreviated, time: .shortened))
                 Spacer()
@@ -188,7 +188,7 @@ struct SessionReportView: View {
                         ForEach(record.skippedSets) { skipped in
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(ExerciseCatalog.find(skipped.exerciseID)?.name ?? skipped.exerciseID).font(.subheadline.weight(.semibold))
-                                Text("Planned set \(skipped.number) · target \(skipped.target) \(skipped.unit == .reps ? (skipped.target == 1 ? "rep" : "reps") : "sec")")
+                                Text("Planned set \(skipped.number), target \(skipped.target) \(skipped.unit == .reps ? (skipped.target == 1 ? "rep" : "reps") : "sec")")
                                     .font(.caption).foregroundStyle(.secondary)
                                 ReportSourceBadge(source: skipped.source)
                                 Text("Skipped by choice. Missing entries or observations do not prove no physical exercise occurred.")
@@ -218,7 +218,7 @@ struct SessionReportView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     Label("Watch active energy", systemImage: "flame.fill")
                         .font(.headline).foregroundStyle(Palette.amber)
-                    Text(authored || (report.activeEnergy.isEmpty && examples != nil) ? "Authored Watch-style example" : "Apple Watch · HealthKit").font(.caption).foregroundStyle(.secondary)
+                    Text(authored || (report.activeEnergy.isEmpty && examples != nil) ? "Authored Watch-style example" : "Apple Watch, HealthKit").font(.caption).foregroundStyle(.secondary)
                     if activeEnergy.isEmpty {
                         Text("No Watch active-energy readings recorded.").font(.subheadline).foregroundStyle(.secondary)
                     } else {
@@ -229,7 +229,7 @@ struct SessionReportView: View {
                                         .font(.system(size: 36, weight: .semibold)).monospacedDigit()
                                     Text("kcal").font(.subheadline).foregroundStyle(.secondary)
                                 }
-                                Text(activeEnergy.count == 1 ? "Estimated active energy" : "Recording \(index + 1) · estimated active energy")
+                                Text(activeEnergy.count == 1 ? "Estimated active energy" : "Recording \(index + 1), estimated active energy")
                                     .font(.caption).foregroundStyle(.secondary)
                                 Text("As of \(energy.asOf.formatted(date: .omitted, time: .standard))")
                                     .font(.caption).foregroundStyle(.secondary)
@@ -245,7 +245,7 @@ struct SessionReportView: View {
                     Text("Tempo & movement").font(.headline)
                     if let average = report.averageRepSeconds {
                         Metric(value: String(format: "%.1f sec", average), title: "Average rep tempo", symbol: "metronome")
-                        Text("\(report.timedRepCount) recorded reps · sets without timings excluded.")
+                        Text("\(report.timedRepCount) recorded reps, sets without timings excluded.")
                             .font(.caption).foregroundStyle(.secondary)
                     } else {
                         Text("Rep tempo was not recorded.").font(.subheadline).foregroundStyle(.secondary)
@@ -260,7 +260,7 @@ struct SessionReportView: View {
                 if let examples {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Joint angle example").font(.headline)
-                        Text("Authored movement curve · not measured").font(.caption).foregroundStyle(.secondary)
+                        Text("Authored movement curve, not measured").font(.caption).foregroundStyle(.secondary)
                         Chart(examples.angleSamples, id: \.date) { sample in
                             LineMark(x: .value("Time", sample.date), y: .value("Degrees", sample.value))
                                 .foregroundStyle(Palette.blue).lineStyle(StrokeStyle(lineWidth: 2))
@@ -290,7 +290,7 @@ struct SessionReportView: View {
                     }.accessibilityIdentifier("skip-only-local-note")
                 } else {
                     DisclosureGroup("Cloud sync") {
-                        CloudSyncCard(record: record).padding(.top, 8)
+
                         if !record.skippedSets.isEmpty {
                             Text("Cloud sync includes completed sets only. Skip details remain in local history and exports.")
                                 .font(.caption).foregroundStyle(.secondary)
@@ -334,7 +334,7 @@ private struct ReportHighlightCard: View {
         case .repBest(let exerciseID, let source, let reps, let previous):
             let name = ExerciseCatalog.find(exerciseID)?.name ?? "Exercise"
             let label = source == .manual ? "Manual self-report" : "Camera"
-            return "\(name) · \(reps) reps · \(label). Earlier saved best for this exercise and source: \(previous) \(previous == 1 ? "rep" : "reps")."
+            return "\(name), \(reps) reps, \(label). Earlier saved best for this exercise and source: \(previous) \(previous == 1 ? "rep" : "reps")."
         case .discomfort: return "Give yourself time to recover. Your recorded work is below."
         case .difficult: return "You recorded difficulty with form or completing a set. Your sets and feedback are below."
         case .noActivity: return "Recorded time and any available sensor readings are shown below."
@@ -394,7 +394,7 @@ private struct ReportMotionSignal: View {
             Text(title).font(.subheadline.weight(.medium))
             Text(authoredExample ? "Authored Watch-style example" : signal.sourceLabel).font(.caption).foregroundStyle(.secondary)
             if let average = signal.average, let maximum = signal.maximum {
-                Text("Average \(average.formatted(.number.precision(.fractionLength(2)))) \(unit) · highest \(maximum.formatted(.number.precision(.fractionLength(2)))) \(unit)")
+                Text("Average \(average.formatted(.number.precision(.fractionLength(2)))) \(unit), highest \(maximum.formatted(.number.precision(.fractionLength(2)))) \(unit)")
                     .font(.subheadline).monospacedDigit()
                 ReportSignalChart(signal: signal, unit: unit)
             } else {
@@ -464,7 +464,7 @@ private struct ReportSignalChart: View {
             .frame(height: chartHeight)
             Text("Time from first reading (min:sec)").font(.caption2).foregroundStyle(.secondary)
             if let span = signal.sampleSpan {
-                Text("\(signal.samples.count) \(signal.samples.count == 1 ? "reading" : "readings") · \(clockText(span)) first-to-last span · \(signal.gapCount) \(signal.gapCount == 1 ? "gap" : "gaps") over 12 sec")
+                Text("\(signal.samples.count) \(signal.samples.count == 1 ? "reading" : "readings"), \(clockText(span)) first-to-last span, \(signal.gapCount) \(signal.gapCount == 1 ? "gap" : "gaps") over 12 sec")
                     .font(.caption2).foregroundStyle(.secondary)
             }
             Text("Gaps stay blank. Time between the first and last reading is not continuous coverage.")

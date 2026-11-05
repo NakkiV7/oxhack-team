@@ -32,13 +32,14 @@ final class NativeProfileStore {
         if measurements == nil && profile == nil { return }
         let current = try profile ?? LocalProfile()
         try save(LocalProfile(name: current.name, weeklyTarget: current.weeklyTarget, goals: current.goals,
-                              baselineAbility: current.baselineAbility, bodyMeasurements: measurements))
+                              baselineAbility: current.baselineAbility, bodyMeasurements: measurements, comfortableExercises: current.comfortableExercises,
+                              weightManagementGoal: current.weightManagementGoal, onboardingRevision: current.onboardingRevision))
     }
 
     func shouldShowIntroduction(environment: [String: String] = ProcessInfo.processInfo.environment) -> Bool {
         if environment["SPOTTR_FORCE_ONBOARDING"] == "1" { return true }
         if environment["SPOTTR_DATA_NAMESPACE"].flatMap(UUID.init(uuidString:)) != nil { return false }
-        return profile == nil
+        return profile == nil || (profile?.onboardingRevision ?? 0) < 2
     }
 
     func resetProfile() throws {

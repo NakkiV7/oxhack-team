@@ -6,34 +6,68 @@ struct PathSkillsView: View {
     @Bindable var store: TrainingStore
     var profile: LocalProfile? = nil
     var previewMode = false
-    @State private var pathStore: TrainingPathStore
-    @State private var surveyPresented = false
-    @State private var surveyAtReview = false
-
-    init(store: TrainingStore, profile: LocalProfile? = nil, previewMode: Bool = false) {
-        self.store = store; self.profile = profile; self.previewMode = previewMode
-        _pathStore = State(initialValue: TrainingPathStore(preview: previewMode))   // preview mode keeps its own path
-    }
-
+    @State private var family = ExerciseFamily.push
     var body: some View {
-        // One stable root: swapping one navigation stack for another inside a tab makes the tab bar jump back to Today, so
-        // the existing tree stays mounted underneath and the path screen covers it once a path exists.
-        ZStack {
-            SkillsView(store: store, profile: profile, previewMode: previewMode)
-                .safeAreaInset(edge: .bottom) {
-                    if pathStore.active == nil { BuildPathBanner(error: pathStore.loadError) { surveyAtReview = false; surveyPresented = true } }
-                }
-                .opacity(pathStore.active == nil ? 1 : 0)
-                .accessibilityHidden(pathStore.active != nil)
-                .allowsHitTesting(pathStore.active == nil)
-            if let version = pathStore.active {
-                PathHomeView(store: store, pathStore: pathStore, version: version, previewMode: previewMode) { surveyAtReview = true; surveyPresented = true }
+        NavigationStack {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        Text("Your next level").font(.system(size: 32, weight: .bold)).tracking(-1)
+                        Text("Small steps. New skills. Your pace.").foregroundStyle(.secondary)
+                        Picker("Training path", selection: $family) {
+                            ForEach(ExerciseFamily.allCases, id: \.self) { Text($0.title).tag($0) }
+                        }.pickerStyle(.menu).accessibilityIdentifier("skill-path-family")
+                        let steps = LocalSkillPath.make(family: family, profile: profile, history: store.history)
+                        ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
+                            if let entry = ExerciseCatalog.find(step.id) {
+                                VStack(spacing: 0) {
+                                    if index > 0 {
+                                        Capsule().fill(step.state == .locked ? Palette.muted.opacity(0.2) : Palette.blue.opacity(0.25))
+                                            .frame(width: 5, height: 28).padding(.bottom, 12).accessibilityHidden(true)
+                                    }
+                                    if step.state == .locked {
+                                        pathNode(step, entry: entry).accessibilityLabel("Locked challenge. Complete the previous step to reveal it.")
+                                    } else {
+                                        NavigationLink { CatalogueWorkoutSetupView(store: store, entry: entry) } label: { pathNode(step, entry: entry) }
+                                            .buttonStyle(.plain).accessibilityIdentifier("skill-\(entry.id)")
+                                    }
+                                }.frame(maxWidth: .infinity).id(entry.id)
+                            }
+                        }
+                        Label("More challenges appear as you progress", systemImage: "lock.fill")
+                            .font(.subheadline).foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.vertical, 24)
+                        Text("Starting skills come from your onboarding answers. Earned skills come from three goal sets over two days. Starting skills do not add workouts or XP.")
+                            .font(.caption).foregroundStyle(.secondary)
+                        NavigationLink("Browse every exercise") { ExerciseLibraryView(store: store) }.font(.subheadline.weight(.semibold))
+                    }.padding(24)
+                }.background(.white).navigationTitle("Skills").navigationBarTitleDisplayMode(.inline)
             }
         }
-        .fullScreenCover(isPresented: $surveyPresented) {
-            PathSurveyView(store: store, pathStore: pathStore, profile: profile, startAtReview: surveyAtReview)
-        }
-        .onAppear { pathStore.reload() }
+    }
+    private func pathNode(_ step: LocalSkillStep, entry: ExerciseEntry) -> some View {
+        let locked = step.state == .locked
+        let completed = step.state == .earned || step.state == .startingSkill
+        let color = completed ? Palette.green : locked ? Palette.muted : Palette.blue
+        return VStack(spacing: 12) {
+            ZStack {
+                Circle().fill(color.opacity(0.12)).frame(width: 104, height: 104)
+                Circle().stroke(color.opacity(0.25), lineWidth: 7).frame(width: 92, height: 92)
+                if locked { Image(systemName: "lock.fill").font(.title).foregroundStyle(Palette.muted) }
+                else { ExerciseArtwork(entry: entry).frame(width: 73, height: 73) }
+            }.overlay(alignment: .bottomTrailing) {
+                if completed { Image(systemName: "checkmark.circle.fill").font(.title2).foregroundStyle(Palette.green).background(.white, in: Circle()) }
+            }
+            Text(locked ? "Next challenge" : entry.name).font(.headline).foregroundStyle(Palette.ink)
+            Text(step.state == .startingSkill ? "Starting skill" : step.state == .earned ? "Earned" : locked ? "Keep going to reveal" : "Your next quest")
+                .font(.caption.weight(.semibold)).foregroundStyle(color)
+            if step.state == .current {
+                Text("Practise \(entry.goal) \(entry.unit == .reps ? "reps" : "seconds")").font(.subheadline).foregroundStyle(.secondary)
+                Text("LET’S GO").font(.caption.bold()).tracking(1).foregroundStyle(.white)
+                    .padding(.horizontal, 23).padding(.vertical, 12).background(Palette.blue, in: Capsule())
+            }
+        }.frame(maxWidth: .infinity).padding(.vertical, 15)
+            .background(step.state == .current ? Palette.blue.opacity(0.035) : Color.clear, in: RoundedRectangle(cornerRadius: 28))
+            .accessibilityElement(children: .combine)
     }
 }
 
@@ -88,7 +122,7 @@ private struct PathHomeView: View {
                 VStack(alignment: .leading, spacing: 22) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Your path.").font(.system(size: 32, weight: .bold)).tracking(-1)
-                        Text("\(path.goal.title) · goal: \(ExerciseCatalog.find(path.goalNode)?.name ?? path.goalNode)").font(.subheadline).foregroundStyle(.secondary)
+                        Text("\(path.goal.title), goal: \(ExerciseCatalog.find(path.goalNode)?.name ?? path.goalNode)").font(.subheadline).foregroundStyle(.secondary)
                         ProvenanceBadge(provenance: path.provenance)
                     }
                     PlayerCard(level: level, path: path, status: status) { id in selected = .init(id: id) }
@@ -107,7 +141,7 @@ private struct PathHomeView: View {
                         Button { allChallenges = true } label: { Label("All challenges", systemImage: "square.grid.2x2").frame(maxWidth: .infinity).padding(16) }
                             .background(Palette.surface, in: RoundedRectangle(cornerRadius: 15)).accessibilityIdentifier("path-all-challenges")
                     }.font(.subheadline.weight(.semibold)).buttonStyle(.plain)
-                    Text("Version \(version.id) · saved \(version.createdAt.formatted(date: .abbreviated, time: .shortened))").font(.caption).foregroundStyle(.secondary)
+                    Text("Version \(version.id), saved \(version.createdAt.formatted(date: .abbreviated, time: .shortened))").font(.caption).foregroundStyle(.secondary)
                 }.padding(24)
             }
             .background(.white).navigationTitle("Skills").navigationBarTitleDisplayMode(.inline)
@@ -152,7 +186,7 @@ private struct PlayerCard: View {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("CURRENT QUEST").font(.caption2.weight(.bold)).foregroundStyle(Palette.blue).tracking(0.6)
                             Text(entry.name).font(.headline)
-                            Text(node.practiceTarget.map { "\($0.sets) × \($0.target) \(entry.unit == .reps ? "reps" : "sec") · \($0.perWeek)× a week" } ?? entry.goalText)
+                            Text(node.practiceTarget.map { "\($0.sets) × \($0.target) \(entry.unit == .reps ? "reps" : "sec"), \($0.perWeek)× a week" } ?? entry.goalText)
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                         Spacer()
@@ -321,8 +355,8 @@ private struct PathNodeView: View {
         }
     }
     private var subtitle: String {
-        if role == .goal { return "Goal · \(step.title)" }
-        if role == .optional { return "Optional · \(step.title)" }
+        if role == .goal { return "Goal, \(step.title)" }
+        if role == .optional { return "Optional, \(step.title)" }
         return step.state == .notRequired ? "Not required" : step.title
     }
     private var accessibilityText: String {
@@ -393,7 +427,7 @@ private struct PathListView: View {
                             ExerciseArtwork(entry: entry).frame(width: 52, height: 52).opacity(step.state == .locked ? 0.4 : 1).accessibilityHidden(true)
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(entry.name).font(.subheadline.weight(.semibold))
-                                Text([step.title, PathCapability.of(id).title, node.optional ? "optional" : nil, id == path.goalNode ? "goal" : nil].compactMap { $0 }.joined(separator: " · "))
+                                Text([step.title, PathCapability.of(id).title, node.optional ? "optional" : nil, id == path.goalNode ? "goal" : nil].compactMap { $0 }.joined(separator: ", "))
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
@@ -446,7 +480,7 @@ private struct PathStepSheet: View {
                     section("To earn it") {
                         Text("3 sets of \(entry.goal) \(entry.unit == .reps ? "reps" : "seconds") across at least 2 training days. Manual and camera sets both count; sets with pain or discomfort don’t.")
                             .font(.subheadline)
-                        Text("\(min(3, step.qualifyingSets))/3 goal sets · \(min(2, step.trainingDays))/2 days · manual \(step.manualSets), camera \(step.cameraSets)")
+                        Text("\(min(3, step.qualifyingSets))/3 goal sets, \(min(2, step.trainingDays))/2 days, manual \(step.manualSets), camera \(step.cameraSets)")
                             .font(.subheadline.weight(.semibold)).foregroundStyle(stepTint(step))
                         if let target = node.practiceTarget, target.target < entry.goal {
                             Text("Your practice target builds towards it; only sets of \(entry.goal) or more count.").font(.caption).foregroundStyle(.secondary)

@@ -121,7 +121,7 @@ private func skillCalendar() -> Calendar {
     let regular = try LocalProfile(goals: [.strength], baselineAbility: .regularPractice)
     #expect(progress.suggestedChallengeIDs(profile: starting) == ["wallPushup", "gluteBridge"])
     #expect(progress.suggestedChallengeIDs(profile: familiar) == ["inclinePushup", "squat"])
-    #expect(progress.suggestedChallengeIDs(profile: regular) == ["kneePushup", "squat"])
+    #expect(progress.suggestedChallengeIDs(profile: regular) == ["kneePushup", "wideSquat"])
     #expect(progress.suggestedChallengeIDs(profile: try LocalProfile()) == [])
     #expect(progress.nodes.allSatisfy { !$0.isComplete && $0.qualifyingSets == 0 && $0.trainingDays == 0 })
     #expect(progress.points(for: .strength) == 0)

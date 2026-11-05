@@ -151,7 +151,7 @@ private struct DemoWorkoutRow: View {
                 Text(insight?.displayTitle ?? report.category.rawValue).font(.headline)
                 Text(report.date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))
                     .font(.caption).foregroundStyle(.secondary)
-                Text("\(report.setCount) sets · \(report.reps) reps\(report.holdSeconds > 0 ? " · \(Int(report.holdSeconds)) sec holds" : "")")
+                Text("\(report.setCount) sets, \(report.reps) reps\(report.holdSeconds > 0 ? ", \(Int(report.holdSeconds)) sec holds" : "")")
                     .font(.caption).foregroundStyle(.secondary)
                 Text(insight == nil ? "Recorded workout" : "Effort & achievement")
                     .font(.caption2.weight(.medium)).foregroundStyle(Palette.blue)
@@ -239,7 +239,7 @@ private struct DemoWorkoutInsightDetail: View {
                                 Text("Effort & achievement").font(.title3.bold())
                             }
                         }
-                        Text("\(report.setCount) sets · \(report.reps) reps\(report.holdSeconds > 0 ? " · \(Int(report.holdSeconds)) sec holds" : "")").font(.headline)
+                        Text("\(report.setCount) sets, \(report.reps) reps\(report.holdSeconds > 0 ? ", \(Int(report.holdSeconds)) sec holds" : "")").font(.headline)
                         ViewThatFits(in: .horizontal) {
                             HStack(spacing: 24) { scoreBreakdown(insight) }
                             VStack(alignment: .leading, spacing: 14) { scoreBreakdown(insight) }
@@ -287,7 +287,7 @@ private struct DemoGradeExplanation: View {
     var body: some View {
         DisclosureGroup("About grades") {
             VStack(alignment: .leading, spacing: 8) {
-            Text("A+ · A · A− · B+ · B · B− · C+ · C · C− · D+ · D · D−")
+            Text("A+, A, A−, B+, B, B−, C+, C, C−, D+, D, D−")
                 .font(.caption).foregroundStyle(.secondary)
             Text("Effort and completed targets illustrate achievement. These example grades are not a health or readiness assessment. Stopping for discomfort is always appropriate.")
                 .font(.caption).foregroundStyle(.secondary)
@@ -335,7 +335,7 @@ private struct DemoBiometricOverview: View {
                     DemoBiometricValue(title: "Acceleration", value: demoBiometricNumber(latest.report.acceleration.average, digits: 2), unit: "g", color: Palette.blue)
                     DemoBiometricValue(title: "Rotation", value: demoBiometricNumber(latest.report.rotation.average, digits: 2), unit: "rad/s", color: Palette.blue)
                 }
-                Text("Latest workout · \(latest.insight.displayTitle)").font(.caption).foregroundStyle(.secondary)
+                Text("Latest workout, \(latest.insight.displayTitle)").font(.caption).foregroundStyle(.secondary)
             }
             if let lower = workouts.min(by: { $0.insight.effortScore < $1.insight.effortScore }),
                let higher = workouts.max(by: { $0.insight.effortScore < $1.insight.effortScore }), lower.id != higher.id {
@@ -345,7 +345,7 @@ private struct DemoBiometricOverview: View {
                 comparison(higher)
             }
             DisclosureGroup("Data sources") {
-                Text("Synthetic preview · not recorded health data. These fictional workouts, Watch-style heart rate, motion and cumulative energy, and Presage-style stationary pulse/breathing values are authored examples. Effort bands and grades are not inferred from biometrics and do not assess readiness or fitness. Your real history remains separate.")
+                Text("Synthetic preview, not recorded health data. These fictional workouts, Watch-style heart rate, motion and cumulative energy, and Presage-style stationary pulse/breathing values are authored examples. Effort bands and grades are not inferred from biometrics and do not assess readiness or fitness. Your real history remains separate.")
                     .font(.caption).foregroundStyle(.secondary).padding(.top, 8)
             }.font(.subheadline).accessibilityIdentifier("demo-progress-data-sources")
         }.padding(22).background(Palette.surface, in: RoundedRectangle(cornerRadius: 24))
@@ -358,7 +358,7 @@ private struct DemoBiometricOverview: View {
                 Spacer()
                 Text("\(workout.insight.effortScore)/100").font(.caption.weight(.semibold)).foregroundStyle(Palette.blue)
             }
-            Text("\(demoBiometricNumber(workout.report.heartRate.average)) bpm average · \(demoBiometricNumber(workout.energy)) kcal · \(workout.report.reps) reps")
+            Text("\(demoBiometricNumber(workout.report.heartRate.average)) bpm average, \(demoBiometricNumber(workout.energy)) kcal, \(workout.report.reps) reps")
                 .font(.caption).foregroundStyle(.secondary)
         }.accessibilityElement(children: .combine)
     }

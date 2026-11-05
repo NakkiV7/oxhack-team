@@ -35,10 +35,11 @@ public struct ConfigurableSession: Sendable {
     public private(set) var repDurations: [Double] = []
     private var activeStarted: Double?
     private var accumulated = 0.0
+    private var includesManualReps = false
     private var restStarted: Double?
     private var restBefore: Double?
     public var current: WorkoutStep { steps[index] }
-    public var trackingExercise: Exercise? { Exercise(rawValue: current.exerciseID) }
+    public var trackingExercise: Exercise? { current.entry.tracking }
     public var actualReps: Int? { source == .camera ? counter?.reps : manualReps }
     public var record: SessionRecord { .init(id: id, date: date, sets: [], telemetry: telemetry, loggedSets: completed, skippedSets: skippedSets) }
 
@@ -83,9 +84,21 @@ public struct ConfigurableSession: Sendable {
         guard time.isFinite, phase == .active || phase == .paused, !stoppedForDiscomfort,
               source == .manual || (source == .camera && trackingExercise != nil) else { return false }
         self.source = source
-        counter = source == .camera ? trackingExercise.map(RepCounter.init) : nil
+        counter = source == .camera ? trackingExercise.map { RepCounter(exercise: $0) } : nil
         hasStarted = false; manualReps = nil; activeStarted = nil; accumulated = 0
         repDurations = []; cue = .ready; phase = .active; generation = UUID()
+        return true
+    }
+    @discardableResult public mutating func switchInput(source: InputSource, at time: Double) -> Bool {
+        guard time.isFinite, phase == .active || phase == .paused, !stoppedForDiscomfort,
+              source == .manual || (source == .camera && trackingExercise != nil) else { return false }
+        guard hasStarted else { return resetSet(source: source, at: time) }
+        let count = actualReps ?? 0
+        if self.source == .manual && count > 0 { includesManualReps = true }
+        self.source = source
+        counter = source == .camera ? trackingExercise.map { RepCounter(exercise: $0, initialReps: count) } : nil
+        manualReps = count > 0 ? count : nil
+        generation = UUID(); cue = phase == .paused ? .paused : .ready
         return true
     }
     public mutating func consume(_ sample: MovementSample, generation: UUID) {
@@ -115,10 +128,10 @@ public struct ConfigurableSession: Sendable {
         let seconds = elapsed(at: time)
         completed.append(.init(id: UUID(), exerciseID: current.exerciseID,
             reps: current.unit == .reps ? (actualReps ?? 0) : 0,
-            seconds: current.unit == .seconds ? seconds : 0, source: source, reason: reason,
+            seconds: current.unit == .seconds ? seconds : 0, source: includesManualReps ? .manual : source, reason: reason,
             number: current.number, target: current.target, activeSeconds: seconds,
-            restSecondsBefore: restBefore, quantityOrigin: source == .camera ? nil : (current.unit == .seconds ? .activeTimer : .selfReport),
-            repDurations: source == .camera ? repDurations : nil))
+            restSecondsBefore: restBefore, quantityOrigin: source == .camera && !includesManualReps ? nil : (current.unit == .seconds ? .activeTimer : .selfReport),
+            repDurations: source == .camera && !includesManualReps ? repDurations : nil))
         if reason == .discomfort { stoppedForDiscomfort = true }
         restStarted = time; activeStarted = nil; accumulated = 0; phase = .rest; generation = UUID()
         return true
@@ -158,7 +171,7 @@ public struct ConfigurableSession: Sendable {
         guard phase == .rest, time.isFinite, !stoppedForDiscomfort else { return }
         guard index + 1 < steps.count else { phase = .finished; generation = UUID(); return }
         index += 1; hasStarted = false; manualReps = nil; phase = .active; generation = UUID()
-        source = .manual; counter = nil; cue = .ready; repDurations = []; restBefore = nil
+        source = .manual; counter = nil; cue = .ready; repDurations = []; restBefore = nil; includesManualReps = false
     }
     public mutating func feedback(reserve: Int?, reason: StopReason) {
         guard phase == .rest, !completed.isEmpty,

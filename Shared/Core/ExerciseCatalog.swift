@@ -31,19 +31,22 @@ public struct ExerciseEntry: Identifiable, Sendable {
     public let tracking: Exercise?
     public var levelName: String { "\(family.title) \(["I", "II", "III", "IV", "V"][min(4, max(0, level - 1))])" }
     public var goalText: String { "3 × \(goal) \(unit == .reps ? "reps" : "sec") · 2 days" }
-    public var art: String { tracking.map { "\($0.rawValue)-mid" } ?? id }
+    public var art: String { tracking?.art ?? id }
 }
 
 public enum ExerciseCatalog {
     public static let version = 1
     public static let all: [ExerciseEntry] = [
-        .init(id: "wallPushup", name: "Wall push-ups", family: .push, level: 1, goal: 8, unit: .reps, attribute: .strength, instruction: "Keep your body straight. Bend your elbows toward the wall, then press away.", support: "Wall", tracking: nil),
-        .init(id: "inclinePushup", name: "Incline push-ups", family: .push, level: 2, goal: 8, unit: .reps, attribute: .strength, instruction: "Use a stable raised surface. Keep your body in one line as you lower and press.", support: "Stable sofa or counter", tracking: nil),
-        .init(id: "kneePushup", name: "Knee push-ups", family: .push, level: 3, goal: 8, unit: .reps, attribute: .strength, instruction: "Rest your knees on the floor. Keep shoulders, hips and knees in one line.", support: nil, tracking: nil),
+        .init(id: "wallPushup", name: "Wall push-ups", family: .push, level: 1, goal: 8, unit: .reps, attribute: .strength, instruction: "Keep your body straight. Bend your elbows toward the wall, then press away.", support: "Wall", tracking: .wallPushup),
+        .init(id: "inclinePushup", name: "Incline push-ups", family: .push, level: 2, goal: 8, unit: .reps, attribute: .strength, instruction: "Use a stable raised surface. Keep your body in one line as you lower and press.", support: "Stable sofa or counter", tracking: .inclinePushup),
+        .init(id: "kneePushup", name: "Knee push-ups", family: .push, level: 3, goal: 8, unit: .reps, attribute: .strength, instruction: "Rest your knees on the floor. Keep shoulders, hips and knees in one line.", support: nil, tracking: .kneePushup),
         .init(id: "pushup", name: "Push-ups", family: .push, level: 4, goal: 10, unit: .reps, attribute: .strength, instruction: "Brace your body. Lower with control and return to extended arms.", support: nil, tracking: .pushup),
-        .init(id: "closeGripPushup", name: "Close-grip push-ups", family: .push, level: 5, goal: 6, unit: .reps, attribute: .strength, instruction: "Place your hands closer together under your chest. Keep elbows close to your sides.", support: nil, tracking: nil),
+        .init(id: "closeGripPushup", name: "Close-grip push-ups", family: .push, level: 5, goal: 6, unit: .reps, attribute: .strength, instruction: "Place your hands closer together under your chest. Keep elbows close to your sides.", support: nil, tracking: .closeGripPushup),
         .init(id: "gluteBridge", name: "Glute bridges", family: .legs, level: 1, goal: 12, unit: .reps, attribute: .strength, instruction: "Plant your feet, lift your hips with control, then lower without arching your back.", support: nil, tracking: nil),
         .init(id: "squat", name: "Squats", family: .legs, level: 2, goal: 12, unit: .reps, attribute: .strength, instruction: "Sit back to a comfortable depth. Keep your feet planted and return to standing.", support: nil, tracking: .squat),
+        .init(id: "halfSquat", name: "Half squats", family: .legs, level: 1, goal: 10, unit: .reps, attribute: .strength, instruction: "Stand side-on to the camera. Bend your knees to a comfortable half depth, then stand tall.", support: nil, tracking: .halfSquat),
+        .init(id: "supportedSquat", name: "Supported squats", family: .legs, level: 1, goal: 8, unit: .reps, attribute: .strength, instruction: "Hold a stable support lightly. Sit back to a comfortable depth and stand tall. Keep your near leg in view.", support: "Stable support", tracking: .supportedSquat),
+        .init(id: "wideSquat", name: "Wide squats", family: .legs, level: 3, goal: 10, unit: .reps, attribute: .strength, instruction: "Take a comfortably wider stance. Keep knees following your toes and sit back with control. Film from the side.", support: nil, tracking: .wideSquat),
         .init(id: "reverseLunge", name: "Reverse lunges", family: .legs, level: 3, goal: 8, unit: .reps, attribute: .balance, instruction: "Step back, lower with control and return. Count each completed side as one rep.", support: nil, tracking: nil),
         .init(id: "splitSquat", name: "Split squats", family: .legs, level: 4, goal: 8, unit: .reps, attribute: .strength, instruction: "Keep a stable split stance. Lower and rise without stepping. Alternate sides between sets.", support: nil, tracking: nil),
         .init(id: "assistedSquat", name: "Assisted single-leg squats", family: .legs, level: 5, goal: 5, unit: .reps, attribute: .balance, instruction: "Hold a stable support. Use a comfortable single-leg range and rise with control.", support: "Stable support", tracking: nil),

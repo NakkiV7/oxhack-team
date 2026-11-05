@@ -225,7 +225,7 @@ extension ConfiguredWorkoutFlowTests {
     func testUnsupportedExerciseCannotCaptureAndPhoneFailureAllowsExplicitManualFallback() async throws {
         let vision = VisionWorker(cameraAvailable: { false }, requestAccess: { _ in XCTFail("Unavailable camera must not request access") })
         let store = TrainingStore(historyURL: cameraHistoryURL(), vision: vision)
-        store.startPlan(try cameraPlan(exerciseID: "wallPushup"), availableSupport: ["Wall"])
+        store.startPlan(try cameraPlan(exerciseID: "deadBug"), availableSupport: ["Wall"])
         XCTAssertFalse(store.selectConfiguredInput(.phoneCamera))
         store.finish()
         store.startPlan(try cameraPlan(), availableSupport: [])
@@ -236,8 +236,8 @@ extension ConfiguredWorkoutFlowTests {
         XCTAssertEqual(store.sessionPhase, .paused)
         XCTAssertNil(store.frame)
         XCTAssertTrue(store.selectConfiguredInput(.manual))
-        XCTAssertFalse(store.configured?.hasStarted ?? true)
-        store.beginConfiguredSet(); store.setConfiguredReps(3); store.endSet()
+        XCTAssertTrue(store.configured?.hasStarted == true)
+        store.resume(); store.setConfiguredReps(3); store.endSet()
         XCTAssertEqual(store.configured?.completed.last?.source, .manual)
         XCTAssertEqual(store.configured?.completed.last?.reps, 3)
         store.finish()
@@ -259,7 +259,7 @@ extension ConfiguredWorkoutFlowTests {
         XCTAssertEqual(voice.stops, 1)
         XCTAssertNil(store.coachingEvent)
         store.startPlan(try cameraPlan(), availableSupport: [])
-        XCTAssertFalse(store.voiceFeedbackEnabled)
+        XCTAssertTrue(store.voiceFeedbackEnabled)
         store.finish()
     }
 

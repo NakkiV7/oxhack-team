@@ -83,9 +83,13 @@ public struct LocalProfile: Codable, Equatable, Sendable {
     public let goals: Set<TrainingAttribute>
     public let baselineAbility: BaselineAbility?
     public let bodyMeasurements: LocalBodyMeasurements?
+    public let comfortableExercises: Set<String>
+    public let weightManagementGoal: Bool
+    public let onboardingRevision: Int
 
     public init(name: String = "", weeklyTarget: Int = 3, goals: Set<TrainingAttribute> = [.strength],
-                baselineAbility: BaselineAbility? = nil, bodyMeasurements: LocalBodyMeasurements? = nil) throws {
+                baselineAbility: BaselineAbility? = nil, bodyMeasurements: LocalBodyMeasurements? = nil,
+                comfortableExercises: Set<String> = [], weightManagementGoal: Bool = false, onboardingRevision: Int = 2) throws {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count <= 40, !trimmed.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains) else { throw Invalid.name }
         guard (1...7).contains(weeklyTarget) else { throw Invalid.weeklyTarget }
@@ -95,15 +99,21 @@ public struct LocalProfile: Codable, Equatable, Sendable {
         self.goals = goals
         self.baselineAbility = baselineAbility
         self.bodyMeasurements = bodyMeasurements
+        self.comfortableExercises = comfortableExercises.filter { ExerciseCatalog.find($0) != nil }
+        self.weightManagementGoal = weightManagementGoal
+        self.onboardingRevision = onboardingRevision
     }
 
-    private enum CodingKeys: String, CodingKey { case name, weeklyTarget, goals, baselineAbility, bodyMeasurements }
+    private enum CodingKeys: String, CodingKey { case name, weeklyTarget, goals, baselineAbility, bodyMeasurements, comfortableExercises, weightManagementGoal, onboardingRevision }
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         try self.init(name: values.decode(String.self, forKey: .name),
                       weeklyTarget: values.decode(Int.self, forKey: .weeklyTarget),
                       goals: values.decode(Set<TrainingAttribute>.self, forKey: .goals),
                       baselineAbility: values.decodeIfPresent(BaselineAbility.self, forKey: .baselineAbility),
-                      bodyMeasurements: values.decodeIfPresent(LocalBodyMeasurements.self, forKey: .bodyMeasurements))
+                      bodyMeasurements: values.decodeIfPresent(LocalBodyMeasurements.self, forKey: .bodyMeasurements),
+                      comfortableExercises: values.decodeIfPresent(Set<String>.self, forKey: .comfortableExercises) ?? [],
+                      weightManagementGoal: values.decodeIfPresent(Bool.self, forKey: .weightManagementGoal) ?? false,
+                      onboardingRevision: values.decodeIfPresent(Int.self, forKey: .onboardingRevision) ?? 0)
     }
 }

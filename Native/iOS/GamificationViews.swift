@@ -59,7 +59,7 @@ struct StreakCard: View {
                 Text("\(protectedStreak) \(protectedStreak == 1 ? "day" : "days")")
                     .font(.title3.weight(.semibold)).monospacedDigit()
                 Text("Protected streak").font(.caption).foregroundStyle(.secondary)
-                Text(trainedToday ? "Training logged today" : protectedStreak > 0 ? "Active · train when you’re ready" : "No training logged today")
+                Text(trainedToday ? "Training logged today" : protectedStreak > 0 ? "Active, train when you’re ready" : "No training logged today")
                     .font(.caption.weight(.medium))
                     .foregroundStyle(trainedToday ? Palette.green : protectedStreak > 0 ? Palette.amber : Palette.muted)
                     .fixedSize(horizontal: false, vertical: true)

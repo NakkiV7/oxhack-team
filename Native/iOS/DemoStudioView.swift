@@ -20,7 +20,7 @@ struct DemoStudioView: View {
                         Text("Two recorded examples. Then try a session at your own pace.")
                             .foregroundStyle(.secondary)
                     }
-                    ForEach(Exercise.allCases, id: \.self) { exercise in
+                    ForEach([Exercise.squat, .pushup], id: \.self) { exercise in
                         VStack(alignment: .leading, spacing: 16) {
                             HStack(spacing: 20) {
                                 Image("\(exercise.rawValue)-mid").resizable().scaledToFit()
@@ -57,7 +57,7 @@ private struct RecordedExampleView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    Label("Recorded example · not your workout", systemImage: "play.rectangle")
+                    Label("Recorded example, not your workout", systemImage: "play.rectangle")
                         .font(.caption.weight(.semibold)).foregroundStyle(Palette.blue)
                     if let player {
                         VideoPlayer(player: player).aspectRatio(16 / 9, contentMode: .fit)
@@ -68,7 +68,7 @@ private struct RecordedExampleView: View {
                     Text("Prepared footage from the web prototype, including its original visual feedback. Use it to understand the experience; it isn’t a live assessment.")
                         .font(.subheadline).foregroundStyle(.secondary)
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Cavemantraining · CC BY-SA 4.0").font(.caption.weight(.semibold))
+                        Text("Cavemantraining, CC BY-SA 4.0").font(.caption.weight(.semibold))
                         Text("Source footage credit retained from the contributor’s demonstration. Overlay and narration: Spottr prototype.")
                             .font(.caption).foregroundStyle(.secondary)
                         Link("Creative Commons licence", destination: URL(string: "https://creativecommons.org/licenses/by-sa/4.0/")!)

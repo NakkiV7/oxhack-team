@@ -45,7 +45,7 @@ struct CoachView: View {
                             HStack {
                                 if turn.role == .user { Spacer(minLength: 32) }
                                 VStack(alignment: .leading, spacing: 7) {
-                                    Text(turn.role == .user ? "YOU" : "SPOTTR · GEMINI").font(.system(size: 9, weight: .bold)).tracking(1)
+                                    Text(turn.role == .user ? "YOU" : "SPOTTR, GEMINI").font(.system(size: 9, weight: .bold)).tracking(1)
                                     Text(turn.text).font(.subheadline).textSelection(.enabled)
                                 }.padding(17).foregroundStyle(turn.role == .user ? .white : Palette.ink)
                                     .background(turn.role == .user ? Palette.ink : Palette.surface, in: RoundedRectangle(cornerRadius: 19))
@@ -141,7 +141,7 @@ struct CoachView: View {
                 Toggle(isOn: Binding(get: { selected.contains(item.exerciseID) }, set: { if $0 { selected.insert(item.exerciseID) } else { selected.remove(item.exerciseID) } })) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(ExerciseCatalog.find(item.exerciseID)?.name ?? item.exerciseID).font(.subheadline.weight(.semibold))
-                        Text("\(item.sets) × \(item.target) \(item.unit == .reps ? "reps" : "sec") · \(item.restSeconds)s rest").font(.caption).foregroundStyle(.secondary)
+                        Text("\(item.sets) × \(item.target) \(item.unit == .reps ? "reps" : "sec"), \(item.restSeconds)s rest").font(.caption).foregroundStyle(.secondary)
                     }
                 }.tint(Palette.blue)
             }
@@ -159,7 +159,7 @@ struct CoachView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(ExerciseCatalog.find(item.exerciseID)?.name ?? item.exerciseID).font(.subheadline.weight(.medium))
-                        Text("\(item.sets) × \(item.target) \(item.unit == .reps ? "reps" : "sec") · \(item.restSeconds)s rest").font(.caption).foregroundStyle(.secondary)
+                        Text("\(item.sets) × \(item.target) \(item.unit == .reps ? "reps" : "sec"), \(item.restSeconds)s rest").font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
                     Button("Log") { composerFocused = false; logItem = item }.font(.subheadline.weight(.semibold)).accessibilityLabel("Log \(ExerciseCatalog.find(item.exerciseID)?.name ?? item.exerciseID)")
@@ -253,37 +253,16 @@ struct CoachSummaryCard: View {
     let history: [SessionRecord]
     let kind: CoachSummaryKind
     let profile: LocalProfile?
-    @State private var model = CoachModel()
-    @State private var task: Task<Void, Never>?
     init(history: [SessionRecord], kind: CoachSummaryKind, profile: LocalProfile? = nil) {
         self.history = history; self.kind = kind; self.profile = profile
     }
     init(record: SessionRecord, profile: LocalProfile? = nil) { history = [record]; kind = .session; self.profile = profile }
     var body: some View {
+        let summary = QuantitativeInsights(history: history)
         VStack(alignment: .leading, spacing: 13) {
-            Label("Coach insight", systemImage: "sparkles").font(.headline)
-            CoachGoalContext(profile: profile, identifier: "coach-summary-goal-context")
-            if let summary = model.summary {
-                Text(summary.headline.text).font(.subheadline.weight(.semibold))
-                ForEach(Array(summary.insights.enumerated()), id: \.offset) { _, insight in Text(insight.text).font(.subheadline) }
-                Text(summary.focus.text).font(.subheadline).foregroundStyle(.secondary)
-                Text("Generated with Gemini from the recorded facts shared for this report.").font(.caption2).foregroundStyle(.secondary)
-            } else {
-                Text("Share this \(kind == .weekly ? "week’s" : "session’s") training sets and recorded Watch summaries\(profile == nil ? "" : ", plus your selected goals and weekly target") with Gemini when you tap.").font(.caption).foregroundStyle(.secondary)
-                if profile != nil { Text("Your optional profile name stays on this iPhone.").font(.caption).foregroundStyle(.secondary) }
-            }
-            if model.isLoading {
-                HStack { ProgressView(); Text(model.loadingText).font(.caption); Spacer(); Button("Cancel") { task?.cancel(); model.cancel() } }
-            } else {
-                Button(model.summary == nil ? "Generate coach summary" : "Regenerate summary") { task = Task { await model.summarize(history: history, kind: kind) } }
-                    .font(.subheadline.weight(.semibold)).disabled(history.isEmpty)
-            }
-            if let error = model.error { Text(error).font(.caption).foregroundStyle(Palette.red) }
+            Label("From your recorded work", systemImage: "chart.bar.doc.horizontal").font(.headline)
+            ForEach(summary.lines, id: \.self) { Text($0).font(.subheadline) }
+            Text("Calculated on this iPhone from completed sets. No generated advice.").font(.caption).foregroundStyle(.secondary)
         }.padding(20).frame(maxWidth: .infinity, alignment: .leading).background(Palette.surface, in: RoundedRectangle(cornerRadius: 22))
-            .onAppear { model.updateProfile(profile) }
-            .onChange(of: profile?.goals) { _, _ in task?.cancel(); model.updateProfile(profile) }
-            .onChange(of: profile?.weeklyTarget) { _, _ in task?.cancel(); model.updateProfile(profile) }
-            .onChange(of: history) { _, _ in task?.cancel(); model.invalidateContext() }
-            .onDisappear { task?.cancel(); model.cancel() }
     }
 }

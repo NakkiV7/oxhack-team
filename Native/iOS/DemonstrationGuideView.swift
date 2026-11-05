@@ -32,7 +32,7 @@ struct DemonstrationGuideView: View {
         List {
             Section {
                 Text("Your filming checklist").font(.title2.bold())
-                Text("\(library.recordedIDs.count) of \(ExerciseDemonstrationGuide.all.count) filmed · \(library.importedCount) local videos added")
+                Text("\(library.recordedIDs.count) of \(ExerciseDemonstrationGuide.all.count) filmed, \(library.importedCount) local videos added")
                     .font(.subheadline).foregroundStyle(.secondary)
                 Text("Film each exercise when you’re ready. Add your own recording to see it beside the guide graphic.")
                     .font(.subheadline)
@@ -134,7 +134,7 @@ private struct DemonstrationComparisonContent: View {
                 VStack(spacing: 9) {
                     Text("Guide graphic").font(.caption.weight(.medium))
                     Group {
-                        if UIImage(named: guide.art) != nil { Image(guide.art).resizable().scaledToFit() }
+                        if let entry = ExerciseCatalog.find(guide.id) { ExerciseArtwork(entry: entry) }
                         else { Image(systemName: "figure.strengthtraining.traditional").resizable().scaledToFit().padding(35) }
                     }.frame(maxWidth: .infinity).frame(height: 200)
                         .background(Palette.surface, in: RoundedRectangle(cornerRadius: 15))

@@ -52,7 +52,7 @@ resource(project, unit, 'Tests/iOS/Resources/blank.mp4')
     config.build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = 'com.omarchoudhry.' + target.name.downcase
     config.build_settings['GENERATE_INFOPLIST_FILE'] = 'YES'
     config.build_settings['MARKETING_VERSION'] = '0.1'
-    config.build_settings['CURRENT_PROJECT_VERSION'] = '1'
+    config.build_settings['CURRENT_PROJECT_VERSION'] = '18'
     config.build_settings['CODE_SIGN_STYLE'] = 'Automatic'
     config.build_settings['SWIFT_EMIT_LOC_STRINGS'] = 'NO'
     config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'YES'
@@ -98,7 +98,7 @@ Dir['Native/Vendor/*.xcframework'].sort.each do |path|
     embedded.settings = { 'ATTRIBUTES' => ['CodeSignOnCopy', 'RemoveHeadersOnCopy'] }
   end
 end
-%w[Accelerate AVFoundation CoreMedia AudioToolbox CoreGraphics CoreImage CoreVideo QuartzCore Vision].each do |name|
+%w[Accelerate AVFoundation CoreMedia AudioToolbox CoreGraphics CoreImage CoreVideo QuartzCore Vision Speech].each do |name|
   app.add_system_framework(name)
 end
 app.add_dependency(watch)

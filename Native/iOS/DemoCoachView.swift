@@ -46,7 +46,7 @@ struct DemoCoachView: View {
                     }
                     references
                     DisclosureGroup("Data sources") {
-                        Text("Synthetic preview · prewritten conversation and authored schedule. No live AI request was made. This week uses fictional context, not your real profile or recorded health data, and does not assess your health. Approving stays on this screen. Only work you explicitly start and finish is recorded in this separate preview workspace.")
+                        Text("Synthetic preview, prewritten conversation and authored schedule. No live AI request was made. This week uses fictional context, not your real profile or recorded health data, and does not assess your health. Approving stays on this screen. Only work you explicitly start and finish is recorded in this separate preview workspace.")
                             .font(.caption).foregroundStyle(.secondary).padding(.top, 8)
                     }.font(.subheadline).accessibilityIdentifier("demo-coach-data-sources")
                     if let error { Text(error).font(.subheadline).foregroundStyle(Palette.red).accessibilityIdentifier("demo-coach-error") }
@@ -111,7 +111,7 @@ struct DemoCoachView: View {
                     Toggle(isOn: selectionBinding(id)) {
                         VStack(alignment: .leading, spacing: 5) {
                             Text(entry.name).font(.subheadline.weight(.semibold))
-                            Text("\(entry.levelName) · 1 × \(DemoCoachTranscript.target(exerciseID: id)) \(entry.unit == .reps ? "reps" : "sec")")
+                            Text("\(entry.levelName), 1 × \(DemoCoachTranscript.target(exerciseID: id)) \(entry.unit == .reps ? "reps" : "sec")")
                                 .font(.caption).foregroundStyle(.secondary)
                             Text(entry.instruction).font(.caption).foregroundStyle(.secondary)
                             Text(entry.support.map { "Support: \($0)" } ?? "No equipment needed").font(.caption)
@@ -152,7 +152,7 @@ struct DemoCoachView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("\(selected.count) of 7 exercises selected").font(.subheadline.weight(.semibold))
                 .accessibilityIdentifier("demo-coach-selection-count")
-            Button(approved ? "Week approved · choose a day above" : "Approve selected week") {
+            Button(approved ? "Week approved, choose a day above" : "Approve selected week") {
                 approved = true
                 error = nil
             }
@@ -168,13 +168,13 @@ struct DemoCoachView: View {
             Text("Read the guidance").font(.headline)
             Text("General guidance supports a gradual approach; the exact doses and schedule are illustrative.").font(.caption).foregroundStyle(.secondary)
             Link(destination: URL(string: "https://www.nhs.uk/live-well/exercise/strength-exercises/")!) {
-                Label("NHS · gentle strength exercises", systemImage: "arrow.up.right.square")
+                Label("NHS, gentle strength exercises", systemImage: "arrow.up.right.square")
             }.accessibilityIdentifier("demo-coach-link-nhs-strength")
             Link(destination: URL(string: "https://www.nhs.uk/live-well/exercise/how-to-improve-strength-flexibility/")!) {
-                Label("NHS · strength and flexibility", systemImage: "arrow.up.right.square")
+                Label("NHS, strength and flexibility", systemImage: "arrow.up.right.square")
             }.accessibilityIdentifier("demo-coach-link-nhs-flexibility")
             Link(destination: URL(string: "https://www.who.int/initiatives/behealthy/physical-activity/")!) {
-                Label("WHO · physical activity", systemImage: "arrow.up.right.square")
+                Label("WHO, physical activity", systemImage: "arrow.up.right.square")
             }.accessibilityIdentifier("demo-coach-link-who")
         }.font(.subheadline).tint(Palette.blue)
     }

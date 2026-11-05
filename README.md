@@ -21,6 +21,12 @@
 ![Tiger Data](https://img.shields.io/badge/Tiger_Data-adapter-FDB515)
 ![Status](https://img.shields.io/badge/status-hackathon_prototype-orange)
 
+## Offline testing build, 5 November 2026
+
+The current consumer app uses local, rule-based coaching and quantitative insights. It adds seven camera variations, preserves live work when switching camera/manual input, offers optional on-device spoken counting, and starts a vertical skill path from onboarding comfort answers. Coach selection uses abstract colour designs and all exercise guides remain faceless stick figures. TestFlight preview and generative consumer coach/path/report flows are removed from navigation. Today, Skills, Insights and Coach are the four main tabs.
+
+Original Maya/Leo voices currently use installed iPhone speech. New bundled ElevenLabs recordings need renewed authoring access; existing optional Arnold/Goggins-inspired audio is retained. The [testing guide and prioritised feature list](docs/offline-mvp-testing-and-next-steps-2026-11-05.md) distinguishes implemented behavior, software checks and physical acceptance. See the [software and signed-build verification](docs/evidence/offline-mvp-2026-11-05.md) and [current skill-path capture](docs/media/offline-mvp-2026-11-05/vertical-skill-path.png). Historical screenshots, server integrations and release receipts below describe earlier builds.
+
 ## November patient-demo build
 
 The consolidated native demo includes personalised training paths, Insights, offline Arnold/Goggins rep audio, gentler guest onboarding and an in-app Demo studio with both exercise examples. Local iPhone build **0.1 (16)** was built, installed and launched on 3 November. Software verification and the remaining physical rehearsal are recorded in [the delivery note](docs/demo-consolidation-2026-11-03.md).

@@ -24,14 +24,14 @@ public struct RepCounter: Sendable {
     private var lastReliableTime: Double?
     private var side: Int?
     private var interruptedPhases = false
-    private var continuityWindow: Double { exercise == .squat ? 2 : 1.5 }
+    private var continuityWindow: Double { exercise.isSquat ? 2 : 1.5 }
     /// Hold the observed leg through a short squat occlusion; never combine two legs into one movement.
     public func continuitySide(at time: Double) -> Int? {
-        guard exercise == .squat, armedAt != nil, time.isFinite, let lastReliableTime,
+        guard exercise.isSquat, armedAt != nil, time.isFinite, let lastReliableTime,
               time >= (lastTime ?? lastReliableTime), time - lastReliableTime <= continuityWindow else { return nil }
         return side
     }
-    public init(exercise: Exercise) { self.exercise = exercise }
+    public init(exercise: Exercise, initialReps: Int = 0) { self.exercise = exercise; reps = max(0, min(200, initialReps)) }
     public mutating func resetMovement() {
         armedAt = nil; reachedBottom = false; candidateAt = nil; candidate = 0
         lastTime = nil; lastReliableTime = nil; side = nil
@@ -47,7 +47,7 @@ public struct RepCounter: Sendable {
         guard sample.confidence.isFinite else { resetMovement(); return .tracking }
         guard sample.confidence >= 0.6 else {
             interruptedPhases = true
-            if exercise != .squat || candidate != -1 { candidate = 0; candidateAt = nil }
+            if !exercise.isSquat || candidate != -1 { candidate = 0; candidateAt = nil }
             if lastReliableTime.map({ sample.time - $0 > continuityWindow }) ?? true { resetMovement() }
             return .tracking
         }
@@ -57,7 +57,7 @@ public struct RepCounter: Sendable {
         if let lastReliableTime, sample.time - lastReliableTime > continuityWindow { resetMovement() }
         else if let previousTime, sample.time - previousTime > 0.75 {
             interruptedPhases = true
-            if exercise != .squat || candidate != -1 { candidate = 0; candidateAt = nil }
+            if !exercise.isSquat || candidate != -1 { candidate = 0; candidateAt = nil }
         }
         if let side, side != sample.side { resetMovement() }
         guard sample.bodyLine != .reset else { resetMovement(); return .alignment }

@@ -1,8 +1,7 @@
 import SwiftUI
 
 /// One tab for looking back: the training calendar, every session report, the weekly review and the research library.
-/// Everything here is read from the history on this phone, so it works offline; only the Gemini weekly summary needs the
-/// gateway.
+/// Uses recorded history on this phone without generated summaries.
 struct InsightsView: View {
     enum Section: String, CaseIterable, Identifiable {
         case calendar = "Calendar", reports = "Reports", weekly = "Weekly", research = "Research"
@@ -57,7 +56,7 @@ private struct CalendarSection: View {
         let monthDays = days.values.filter { calendar.isDate($0.date, equalTo: month, toGranularity: .month) }
         VStack(alignment: .leading, spacing: 18) {
             if previewMode {
-                Label("Preview · example training history", systemImage: "play.rectangle")
+                Label("Preview, example training history", systemImage: "play.rectangle")
                     .font(.caption.weight(.semibold)).foregroundStyle(Palette.blue)
             }
             VStack(spacing: 14) {
@@ -297,20 +296,12 @@ private struct WeeklySection: View {
     private var quests: [String] {
         var list: [String] = []
         if let profile { list.append("Train on \(profile.weeklyTarget) \(profile.weeklyTarget == 1 ? "day" : "days") this week.") }
-        if let version = pathStore.active {
-            let skill = SkillProgress.evaluate(history: store.history)
-            let status = PathStatus.evaluate(path: version.path, skill: skill, attempts: pathStore.attempts)
-            if let id = status.current, let node = version.path.node(id), let entry = node.entry, let step = status.step(id) {
-                if let target = node.practiceTarget {
-                    list.append("Practise \(entry.name.lowercased()) on \(target.perWeek) days: \(target.sets) × \(target.target) \(entry.unit == .reps ? "reps" : "sec").")
-                }
-                let sets = max(0, 3 - step.qualifyingSets), days = max(0, 2 - step.trainingDays)
-                if sets > 0 || days > 0 {
-                    list.append("Earn \(entry.name.lowercased()): \(sets) more goal \(sets == 1 ? "set" : "sets") of \(entry.goal)\(days > 0 ? " over \(days) more \(days == 1 ? "day" : "days")" : "").")
-                }
-            }
-        } else {
-            list.append("Build your training path in Skills to get a quest for each step.")
+        let steps = LocalSkillPath.make(family: .push, profile: profile, history: store.history)
+        if let current = steps.first(where: { $0.state == .current }), let entry = ExerciseCatalog.find(current.id) {
+            list.append("Practise \(entry.name.lowercased()) at a comfortable pace. Your next skill is waiting in Skills.")
+        }
+        if profile?.weightManagementGoal == true {
+            list.append("Keep a repeatable movement routine. Track active time and training days rather than estimating weight change from reps.")
         }
         return list
     }

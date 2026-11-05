@@ -1,5 +1,71 @@
 import SwiftUI
 
+struct TrainerPortrait: View {
+    let voice: VoiceCoachPreference
+    private var color: Color {
+        switch voice {
+        case .maya: return .purple
+        case .leo: return .teal
+        case .arnold: return .orange
+        case .david: return Palette.ink
+        case .local: return Palette.blue
+        }
+    }
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 19).fill(color.opacity(0.12))
+            Circle().stroke(color.opacity(0.25), lineWidth: 2).padding(9)
+            HStack(spacing: 3) {
+                ForEach(0..<5) { i in Capsule().fill(color).frame(width: 4, height: CGFloat([13, 25, 35, 25, 13][i])) }
+            }
+        }.accessibilityHidden(true)
+    }
+}
+
+struct TrainerSelection: View {
+    @AppStorage("trainer.voice") private var selection = "maya"
+    @AppStorage("trainer.tone") private var tone = TrainerTone.encouraging.rawValue
+    var onSelect: ((VoiceCoachPreference) -> Void)? = nil
+    var body: some View {
+        VStack(alignment: .leading, spacing: 15) {
+            Text("Your coaching style").font(.headline).padding(.top, 10)
+            Slider(value: Binding(get: { Double(TrainerTone.allCases.firstIndex(of: TrainerTone(rawValue: tone) ?? .encouraging) ?? 1) },
+                                  set: { tone = TrainerTone.allCases[min(2, max(0, Int($0.rounded())))].rawValue }), in: 0...2, step: 1)
+                .accessibilityLabel("Coaching style").accessibilityValue(tone)
+            HStack { Text("Gentle"); Spacer(); Text("Encouraging"); Spacer(); Text("Direct") }.font(.caption).foregroundStyle(.secondary)
+            Text("Style changes encouragement. Form and stop instructions stay clear and calm.").font(.caption).foregroundStyle(.secondary)
+            ForEach([VoiceCoachPreference.maya, .leo, .arnold, .david, .local]) { voice in
+                Button {
+                    selection = voice.rawValue
+                    if voice == .arnold || voice == .david {
+                        UserDefaults.standard.set(voice == .arnold ? "arnold" : "goggins", forKey: RepVoicePlayer.defaultsKey)
+                    } else { UserDefaults.standard.set("off", forKey: RepVoicePlayer.defaultsKey) }
+                    onSelect?(voice)
+                } label: {
+                    HStack(spacing: 15) {
+                        TrainerPortrait(voice: voice).frame(width: 58, height: 58)
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(voice == .david ? "Goggins" : voice.title).font(.headline)
+                            Text(detail(voice)).font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: selection == voice.rawValue ? "checkmark.circle.fill" : "circle").foregroundStyle(Palette.blue)
+                    }.padding(12).background(selection == voice.rawValue ? Palette.blue.opacity(0.06) : Palette.surface, in: RoundedRectangle(cornerRadius: 20))
+                }.buttonStyle(.plain).accessibilityIdentifier("coach-voice-\(voice.rawValue)")
+            }
+
+        }
+    }
+    private func detail(_ voice: VoiceCoachPreference) -> String {
+        switch voice {
+        case .maya: return "Female voice with varied local coaching"
+        case .leo: return "Male voice with varied local coaching"
+        case .arnold, .david: return "Optional inspired voice pack with offline rep audio"
+        case .local: return "Your iPhone’s default speaking voice"
+        }
+    }
+}
+
 struct WorkoutVoiceControls: View {
     let store: TrainingStore
     let identifier: String
@@ -7,14 +73,9 @@ struct WorkoutVoiceControls: View {
     var body: some View {
         HStack(spacing: 14) {
             if let voice = store.remoteVoice {
-                Button { choosing = true } label: {
-                    Label(voice.preference.title, systemImage: "gearshape")
-                        .font(.caption).lineLimit(1)
-                }.accessibilityLabel("Choose coach voice")
-                    .accessibilityIdentifier("choose-coach-voice")
-                    .sheet(isPresented: $choosing) {
-                        VoiceCoachSettingsView(playback: voice, cancelCoaching: store.cancelCoaching, repVoice: store.repVoice)
-                    }
+                Button { choosing = true } label: { Label(voice.preference.title, systemImage: "waveform").font(.caption).lineLimit(1) }
+                    .accessibilityLabel("Choose coach voice").accessibilityIdentifier("choose-coach-voice")
+                    .sheet(isPresented: $choosing) { VoiceCoachSettingsView(playback: voice, cancelCoaching: store.cancelCoaching, repVoice: store.repVoice) }
             }
             Toggle("Voice feedback", isOn: Binding(get: { store.voiceFeedbackEnabled }, set: { store.setVoiceFeedback($0) }))
                 .font(.caption).accessibilityIdentifier(identifier)
@@ -27,89 +88,25 @@ struct VoiceCoachSettingsView: View {
     let cancelCoaching: () -> Void
     var repVoice: RepVoicePlayer? = nil
     @Environment(\.dismiss) private var dismiss
-    @State private var refresh: UUID?
-    @State private var loading = false
-    @State private var error: String?
-    @State private var connection = false
-
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    ForEach(VoiceCoachPreference.allCases) { voice in
-                        Button {
-                            do {
-                                cancelCoaching()
-                                try playback.select(voice)
-                                error = nil
-                            } catch { self.error = error.localizedDescription }
-                        } label: {
-                            HStack(spacing: 14) {
-                                portrait(voice)
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(voice.title).font(.headline).foregroundStyle(Palette.ink)
-                                    Text(voice == .local ? "On this iPhone" : (voice == .arnold ? "Bundled workout cues · offline" : "ElevenLabs · current coaching cues"))
-                                        .font(.caption).foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                if playback.preference == voice {
-                                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Palette.blue)
-                                }
-                            }.padding(.vertical, 6).contentShape(Rectangle())
-                        }.buttonStyle(.plain)
-                            .disabled(voice != .local && !playback.configuredVoices.contains(voice))
-                            .accessibilityLabel("\(voice.title)\(playback.preference == voice ? ", selected" : "")")
-                            .accessibilityIdentifier("coach-voice-\(voice.rawValue)")
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    TrainerSelection { voice in
+                        cancelCoaching(); try? playback.select(voice)
+                        repVoice?.choose(voice == .arnold ? .arnold : voice == .david ? .goggins : nil)
                     }
-                } header: { Text("Your coach") } footer: {
-                    Text("Voice feedback stays off until you enable it in a workout. Choosing a voice doesn’t play audio.")
-                }
-                if let repVoice {
-                    Section {
-                        Picker("Rep counter voice", selection: Binding(get: { repVoice.coach?.rawValue ?? "off" },
-                                                                      set: { repVoice.choose(RepVoicePlan.Coach(rawValue: $0)) })) {
-                            Text("Off").tag("off")
-                            ForEach(RepVoicePlan.Coach.allCases, id: \.self) { coach in Text(coach.title).tag(coach.rawValue) }
-                        }.pickerStyle(.segmented).accessibilityIdentifier("rep-counter-voice")
-                    } header: { Text("Rep counter") } footer: {
-                        Text("Counts each camera rep out loud and adds a line every third clean rep, using audio bundled in the app, so it works offline. It speaks only when Voice feedback is on, steps aside for form and stop cues, and stays silent if you report pain.")
+                    if let repVoice {
+                        Toggle("Speak rep counts", isOn: Binding(get: { repVoice.coach != nil }, set: { enabled in
+                            repVoice.choose(enabled ? (playback.preference == .david ? .goggins : .arnold) : nil)
+                        }))
+                        Text("Optional rep packs use the bundled Arnold or Goggins recordings. Turn them off for coaching only.").font(.caption).foregroundStyle(.secondary)
                     }
-                }
-                Section {
-                    Button { refresh = UUID() } label: {
-                        HStack {
-                            Label("Check configured voices", systemImage: "arrow.clockwise")
-                            Spacer()
-                            if loading { ProgressView() }
-                        }
-                    }.disabled(loading).accessibilityIdentifier("coach-voices-refresh")
-                    Button { connection = true } label: { Label("Gateway connection", systemImage: "network") }
-                    if let error { Text(error).font(.caption).foregroundStyle(Palette.red).accessibilityIdentifier("coach-voice-error") }
-                    if let error = playback.errorMessage { Text(error).font(.caption).foregroundStyle(Palette.red) }
-                } footer: {
-                    Text(playback.isPreview ? "Arnold uses bundled workout audio without network requests, including stop warnings. If a stop recording cannot play, the iPhone speaks the warning immediately." : "Arnold uses bundled workout cues offline, including stop warnings. David sends short coaching text to your gateway and ElevenLabs. Checking lists server configuration without using voice credits. A stop recording that cannot play falls back to immediate iPhone speech.")
-                }
-            }.scrollContentBackground(.hidden).background(.white).tint(Palette.blue)
-                .navigationTitle("Coach voice").navigationBarTitleDisplayMode(.inline)
+                    Text("All workout speech runs offline. Original voices currently use the voices installed on your iPhone. No text, video or health data is sent to a voice service.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }.padding(24)
+            }.background(.white).navigationTitle("Your trainer").navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } } }
-                .sheet(isPresented: $connection) { CoachSettingsView() }
-                .task(id: refresh) {
-                    guard refresh != nil else { return }
-                    loading = true
-                    defer { loading = false }
-                    do { try await playback.refreshVoices(); error = nil }
-                    catch { if !Task.isCancelled { self.error = error.localizedDescription } }
-                }
         }.preferredColorScheme(.light)
-    }
-
-    @ViewBuilder private func portrait(_ voice: VoiceCoachPreference) -> some View {
-        if voice == .local {
-            Image(systemName: "speaker.wave.2.fill").font(.title2).foregroundStyle(Palette.blue)
-                .frame(width: 52, height: 56).background(Palette.surface, in: RoundedRectangle(cornerRadius: 12))
-        } else {
-            Image(voice == .david ? "coach-david" : "coach-arnold").resizable().scaledToFill()
-                .frame(width: 52, height: 56).clipShape(RoundedRectangle(cornerRadius: 12)).accessibilityHidden(true)
-        }
     }
 }
