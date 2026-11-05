@@ -303,6 +303,24 @@ final class DemoVoicePlaybackTests: XCTestCase {
         XCTAssertEqual(releases, 1)
     }
 
+    func testOSInterruptionStopsBundledOutputAndClearsTheController() async {
+        let audio = DemoSilentAudio()
+        let playback = DemoVoicePlayback(local: DemoSilentVoice(), makeAudio: { _ in audio },
+            prepareAudioSession: {}, releaseAudioSession: {}, uptime: { 2 })
+        let controller = VoiceCuePlaybackController(playback: playback)
+        let event = cue(reason: .tracking, kind: .coaching(.form))
+        let context = VoiceCueContext(sessionID: event.sessionID, generation: event.generation, phase: .active)
+        controller.update(context: context, event: event, enabled: true, now: 2)
+        NotificationCenter.default.post(name: AVAudioSession.interruptionNotification, object: nil,
+            userInfo: [AVAudioSessionInterruptionTypeKey: AVAudioSession.InterruptionType.began.rawValue])
+        for _ in 0..<10 { await Task.yield() }
+        XCTAssertFalse(controller.isTrackingPromptPlaying)
+        XCTAssertEqual(audio.stops, 1)
+        controller.update(context: context, event: event, enabled: true, now: 3)
+        XCTAssertEqual(audio.plays, 1)
+        controller.cancel()
+    }
+
     private func cue(reason: CoachingReason? = .steadyRhythm, kind: VoiceCue.Kind = .coaching(.pacing), expiry: Double? = 6, issued: Double = 0) -> VoiceCue {
         .init(id: UUID(), sessionID: UUID(), generation: UUID(), text: "Original deterministic cue", kind: kind, issuedAt: issued, expiresAt: expiry, reason: reason)
     }

@@ -490,6 +490,56 @@ final class RemoteVoicePlaybackTests: XCTestCase {
         XCTAssertEqual(cached.stops, 1)
     }
 
+    func testAllStartedArnoldSentencesFinishBeyondTheirStartDeadline() async throws {
+        let cached = SilentLocalVoice()
+        let playback = RemoteVoicePlayback(local: SilentLocalVoice(), arnoldPlayback: cached, uptime: { 1.99 })
+        let event = VoiceCue(id: UUID(), sessionID: UUID(), generation: UUID(), text: "Keep control.",
+            kind: .coaching(.pacing), issuedAt: 0, expiresAt: 2, reason: .steadyRhythm)
+        playback.speak(event)
+        try await Task.sleep(for: .milliseconds(60))
+        XCTAssertEqual(cached.stops, 0)
+        cached.onFinish?(event.id)
+        XCTAssertEqual(cached.stops, 1)
+    }
+
+    func testCoachChangeCancelsControllerSoFreshCoachingCanStart() throws {
+        let cached = SilentLocalVoice(), local = SilentLocalVoice()
+        let playback = RemoteVoicePlayback(local: local, arnoldPlayback: cached, uptime: { 2 })
+        let controller = VoiceCuePlaybackController(playback: playback)
+        let first = cue(reason: .tracking)
+        let context = VoiceCueContext(sessionID: first.sessionID, generation: first.generation, phase: .active)
+        controller.update(context: context, event: first, enabled: true, now: 2)
+        try playback.select(.local)
+        XCTAssertFalse(controller.isTrackingPromptPlaying)
+        let fresh = cue(session: first.sessionID, generation: first.generation, reason: .alignment)
+        controller.update(context: context, event: fresh, enabled: true, now: 3)
+        XCTAssertEqual(local.spoken, [fresh])
+        controller.cancel()
+    }
+
+    func testInterruptionClearsControllerAndOldSpeechCannotRestart() async {
+        let cached = SilentLocalVoice()
+        let playback = RemoteVoicePlayback(local: SilentLocalVoice(), arnoldPlayback: cached, uptime: { 2 })
+        let controller = VoiceCuePlaybackController(playback: playback)
+        let first = cue(reason: .tracking)
+        let context = VoiceCueContext(sessionID: first.sessionID, generation: first.generation, phase: .active)
+        controller.update(context: context, event: first, enabled: true, now: 2)
+        NotificationCenter.default.post(name: AVAudioSession.interruptionNotification, object: nil,
+            userInfo: [AVAudioSessionInterruptionTypeKey: AVAudioSession.InterruptionType.began.rawValue])
+        for _ in 0..<10 { await Task.yield() }
+        XCTAssertFalse(controller.isTrackingPromptPlaying)
+        XCTAssertEqual(cached.stops, 1)
+        NotificationCenter.default.post(name: AVAudioSession.interruptionNotification, object: nil,
+            userInfo: [AVAudioSessionInterruptionTypeKey: AVAudioSession.InterruptionType.ended.rawValue])
+        for _ in 0..<10 { await Task.yield() }
+        controller.update(context: context, event: first, enabled: true, now: 3)
+        XCTAssertEqual(cached.spoken.count, 1)
+        let fresh = cue(session: first.sessionID, generation: first.generation, reason: .tracking)
+        controller.update(context: context, event: fresh, enabled: true, now: 3)
+        XCTAssertEqual(cached.spoken.count, 2)
+        controller.cancel()
+    }
+
     private var audio: Data { Data([0xff, 0xf3, 0x40, 0xc0] + Array(repeating: 0, count: 100)) }
     private func timestamp(_ date: Date) -> String {
         let formatter = ISO8601DateFormatter(); formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]

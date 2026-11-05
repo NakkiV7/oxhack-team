@@ -31,29 +31,60 @@ public struct VoiceCueContext: Sendable, Equatable {
 @MainActor
 public protocol VoicePlayback: AnyObject {
     var onFinish: ((UUID) -> Void)? { get set }
+    var onInterrupt: (() -> Void)? { get set }
     func speak(_ cue: VoiceCue)
     func stop()
+}
+
+extension VoicePlayback {
+    /// Engines without an OS interruption source need no special handling.
+    public var onInterrupt: (() -> Void)? { get { nil } set {} }
 }
 
 @MainActor
 public final class VoiceCuePlaybackController {
     private let playback: VoicePlayback
+    private let uptime: () -> Double
     private var active: VoiceCue?
+    private var deferred: VoiceCue?
     private var seen: Set<UUID> = []
     private var context: VoiceCueContext?
+    private var timeAnchor: (logical: Double, uptime: Double)?
+    public private(set) var lastStartedCueID: UUID?
+    public var isSpeaking: Bool { active != nil }
     public var isTrackingPromptPlaying: Bool { active?.reason == .tracking && active?.kind == .coaching(.form) }
     public private(set) var completedTrackingPrompt: VoiceCue?
 
-    public init(playback: VoicePlayback) {
+    public init(playback: VoicePlayback, uptime: @escaping () -> Double = { ProcessInfo.processInfo.systemUptime }) {
         self.playback = playback
+        self.uptime = uptime
+        playback.onInterrupt = { [weak self] in self?.cancel() }
         playback.onFinish = { [weak self] id in
             guard let self, let finished = self.active, finished.id == id else { return }
             if self.isTrackingPromptPlaying { self.completedTrackingPrompt = finished }
             self.active = nil
+            guard let next = self.deferred else { return }
+            self.deferred = nil
+            guard let context = self.context, let anchor = self.timeAnchor else { return }
+            let elapsed = self.uptime() - anchor.uptime
+            guard elapsed.isFinite, elapsed >= 0,
+                  self.isFresh(next, context: context, now: anchor.logical + elapsed),
+                  self.isTransition(next, context: context) else { return }
+            self.start(next)
         }
     }
 
-    public func update(context: VoiceCueContext, event: VoiceCue?, enabled: Bool, now: Double) {
+    /// Only natural active/rest → rest/finished actions may retain the current sentence across a source generation.
+    /// New sets, input switches, pauses and abandoned sessions must use normal update/cancel instead.
+    public func transition(to context: VoiceCueContext) {
+        guard self.context?.sessionID == context.sessionID,
+              self.context?.phase == .active || self.context?.phase == .rest,
+              context.phase == .rest || context.phase == .finished else { return }
+        deferred = nil
+        self.context = context
+    }
+
+    public func update(context: VoiceCueContext, event: VoiceCue?, enabled: Bool, now: Double, playbackAvailable: Bool = true) {
         if self.context?.sessionID != context.sessionID || self.context?.generation != context.generation {
             cancel()
             seen = []
@@ -61,32 +92,57 @@ public final class VoiceCuePlaybackController {
         }
         self.context = context
         guard now.isFinite else { cancel(); return }
-        if !isTrackingPromptPlaying, active?.expiresAt.map({ now >= $0 }) == true { cancel() }
-        let completion = event?.reason == .workoutCompleted
-        let eligiblePhase = completion
-            ? context.phase == .finished && event?.kind == .coaching(.rest)
-            : context.phase == .active || context.phase == .rest
-        guard enabled, eligiblePhase else {
+        timeAnchor = (now, uptime())
+        guard enabled, context.phase == .active || context.phase == .rest || context.phase == .finished else {
             if let event { seen.insert(event.id) }
             cancel()
             return
         }
-        // Once started, finish the visibility sentence. Drop intervening cues rather than queueing stale warnings.
-        if isTrackingPromptPlaying, event?.kind != .coaching(.stop) {
-            if let event, event.sessionID == context.sessionID, event.generation == context.generation { seen.insert(event.id) }
+        guard let event else { return }
+        guard event.sessionID == context.sessionID, event.generation == context.generation else { return }
+        guard !seen.contains(event.id) else { return }
+        guard isFresh(event, context: context, now: now) else { seen.insert(event.id); return }
+        if let active {
+            if event.kind == .coaching(.stop) {
+                cancel()
+            } else if isTransition(event, context: context), active.kind != .coaching(.stop) {
+                // Exactly one natural transition can wait; ordinary warnings never enter this slot.
+                seen.insert(event.id)
+                deferred = event
+                return
+            } else if event.kind == .coaching(.form), active.kind != .coaching(.stop),
+                      rank(active.kind) < rank(event.kind) || event.reason != active.reason {
+                // Reassess a still-current form intent on a later tick; never truncate the current sentence.
+                return
+            } else { seen.insert(event.id); return }
+        }
+        guard playbackAvailable || event.kind == .coaching(.stop) else {
+            if event.kind != .coaching(.form), !isTransition(event, context: context) { seen.insert(event.id) }
             return
         }
-        guard let event else { cancel(); return }
-        guard event.sessionID == context.sessionID, event.generation == context.generation else { return }
-        guard seen.insert(event.id).inserted else { return }
-        guard !event.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, event.text.count <= 500,
-              event.issuedAt.isFinite, event.issuedAt <= now,
-              event.expiresAt.map({ $0.isFinite && now < $0 }) ?? (event.kind == .coaching(.stop)) else { return }
-        if completion, active?.kind != .coaching(.stop) { cancel() }
-        guard active.map({ rank(event.kind) >= rank($0.kind) }) ?? true else { return }
-        cancel()
-        active = event
-        playback.speak(event)
+        seen.insert(event.id)
+        start(event)
+    }
+
+    private func isTransition(_ cue: VoiceCue, context: VoiceCueContext) -> Bool {
+        cue.kind == .coaching(.rest) &&
+            ((context.phase == .finished && cue.reason == .workoutCompleted) ||
+             (context.phase == .rest && cue.reason != .workoutCompleted))
+    }
+
+    private func isFresh(_ cue: VoiceCue, context: VoiceCueContext, now: Double) -> Bool {
+        guard cue.sessionID == context.sessionID, cue.generation == context.generation,
+              !cue.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, cue.text.count <= 500,
+              cue.issuedAt.isFinite, cue.issuedAt <= now,
+              cue.expiresAt.map({ $0.isFinite && now < $0 }) ?? (cue.kind == .coaching(.stop)) else { return false }
+        if cue.reason == .workoutCompleted { return isTransition(cue, context: context) }
+        return context.phase == .active || context.phase == .rest
+    }
+
+    private func start(_ cue: VoiceCue) {
+        active = cue
+        lastStartedCueID = cue.id
+        playback.speak(cue)
     }
 
     private func rank(_ kind: VoiceCue.Kind) -> Int {
@@ -101,6 +157,7 @@ public final class VoiceCuePlaybackController {
 
     public func cancel() {
         completedTrackingPrompt = nil
+        deferred = nil
         guard active != nil else { return }
         active = nil
         playback.stop()

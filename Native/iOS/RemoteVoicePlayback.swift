@@ -132,6 +132,8 @@ extension VoiceAudioOutput {
 @MainActor @Observable
 final class RemoteVoicePlayback: VoicePlayback {
     var onFinish: ((UUID) -> Void)?
+    var onInterrupt: (() -> Void)?
+    @ObservationIgnored private var interruptionObserver: NSObjectProtocol?
     private(set) var preference: VoiceCoachPreference = .arnold
     private(set) var configuredVoices: [VoiceCoachPreference] = [.arnold]
     private(set) var errorMessage: String?
@@ -149,7 +151,6 @@ final class RemoteVoicePlayback: VoicePlayback {
     private let uptime: () -> Double
     private var availability: [VoiceCoachAvailability] = []
     @ObservationIgnored private var pending: Task<Void, Never>?
-    @ObservationIgnored private var expiry: Task<Void, Never>?
     @ObservationIgnored private var active: (cueID: UUID, token: UUID)?
     @ObservationIgnored private var output: VoiceAudioOutput?
     @ObservationIgnored private var localCueID: UUID?
@@ -171,7 +172,17 @@ final class RemoteVoicePlayback: VoicePlayback {
         if previewPlayback != nil { preference = .arnold; configuredVoices = [.arnold] }
         self.local.onFinish = { [weak self] id in self?.finishedPlayback(id) }
         self.arnoldPlayback.onFinish = { [weak self] id in self?.finishedPlayback(id) }
+        interruptionObserver = NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification,
+            object: nil, queue: .main) { [weak self] notification in
+            guard (notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt) == AVAudioSession.InterruptionType.began.rawValue else { return }
+            Task { @MainActor [weak self] in
+                self?.stop()
+                self?.onInterrupt?()
+            }
+        }
     }
+    deinit { if let interruptionObserver { NotificationCenter.default.removeObserver(interruptionObserver) } }
+
     func refreshVoices() async throws {
         guard previewPlayback == nil, !offlineOnly else { return }
         let options = try await client().voices()
@@ -185,7 +196,7 @@ final class RemoteVoicePlayback: VoicePlayback {
     func select(_ preference: VoiceCoachPreference) throws {
         guard preference == .local || configuredVoices.contains(preference) else { throw RemoteVoiceError.unavailable }
         guard self.preference != preference else { return }
-        stop(); self.preference = preference; errorMessage = nil
+        stop(); onInterrupt?(); self.preference = preference; errorMessage = nil
         if offlineOnly { defaults.set(preference.rawValue, forKey: "trainer.voice") }
     }
     func speak(_ cue: VoiceCue) {
@@ -251,13 +262,6 @@ final class RemoteVoicePlayback: VoicePlayback {
             complete(token: token, error: RemoteVoiceError.invalidResponse); return
         }
         let voice = preference, expiresAt = wall.addingTimeInterval(deadline - now)
-        // A bundled visibility recording must start while fresh, then finish its sentence naturally.
-        if voice != .arnold || cue.reason != .tracking {
-            expiry = Task { [weak self] in
-                do { try await Task.sleep(for: .seconds(deadline - now)) } catch { return }
-                self?.complete(token: token, error: RemoteVoiceError.invalidResponse)
-            }
-        }
         if voice == .arnold {
             previewCueID = cue.id
             arnoldPlayback.speak(cue)
@@ -289,7 +293,7 @@ final class RemoteVoicePlayback: VoicePlayback {
         }
     }
     func stop() {
-        active = nil; pending?.cancel(); pending = nil; expiry?.cancel(); expiry = nil
+        active = nil; pending?.cancel(); pending = nil
         output?.onFinish = nil; output?.stop(); output = nil
         if localCueID != nil { localCueID = nil; local.stop() }
         if previewCueID != nil { previewCueID = nil; arnoldPlayback.stop() }

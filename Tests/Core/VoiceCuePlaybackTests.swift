@@ -77,20 +77,62 @@ final class VoiceCuePlaybackTests: XCTestCase {
         XCTAssertEqual(playback.events.count, 3)
     }
 
-    func testChatCannotInterruptCoachingAndIsNeverQueuedButFormCanReplacePacing() {
-        let playback = RecordingVoicePlayback()
-        let controller = VoiceCuePlaybackController(playback: playback)
-        let pacing = cue(), chat = cue(.chat), form = cue(.coaching(.form))
-        controller.update(context: context(), event: pacing, enabled: true, now: 0)
-        controller.update(context: context(), event: chat, enabled: true, now: 1)
-        XCTAssertEqual(playback.events, [.speak(pacing.id)])
-        controller.update(context: context(), event: form, enabled: true, now: 2)
-        playback.onFinish?(form.id)
-        controller.update(context: context(), event: chat, enabled: true, now: 3)
-        XCTAssertEqual(playback.events, [.speak(pacing.id), .stop, .speak(form.id)])
+    func testFormWaitsForCurrentSentenceAndOnlyStartsOnAFreshCurrentTick() {
+        for clears in [false, true] {
+            let playback = RecordingVoicePlayback()
+            let controller = VoiceCuePlaybackController(playback: playback)
+            let pacing = cue(), chat = cue(.chat), form = cue(.coaching(.form))
+            controller.update(context: context(), event: pacing, enabled: true, now: 0)
+            controller.update(context: context(), event: chat, enabled: true, now: 1)
+            controller.update(context: context(), event: form, enabled: true, now: 2)
+            XCTAssertEqual(playback.events, [.speak(pacing.id)])
+            controller.update(context: context(), event: clears ? nil : form, enabled: true, now: 3)
+            playback.onFinish?(pacing.id)
+            XCTAssertEqual(playback.events, [.speak(pacing.id)], "Warnings are not queued by the controller")
+            controller.update(context: context(), event: clears ? nil : form, enabled: true, now: 4)
+            XCTAssertEqual(playback.events, clears ? [.speak(pacing.id)] : [.speak(pacing.id), .speak(form.id)])
+            controller.update(context: context(), event: chat, enabled: true, now: 4)
+            XCTAssertEqual(playback.events.count, clears ? 1 : 2, "Lower cues were consumed while busy")
+        }
     }
 
-    func testExpiredCuesDoNotStartAndActiveCueStopsAtItsDeadline() {
+    func testDifferentCurrentFormCanSpeakAfterTheFirstFormFinishes() {
+        let playback = RecordingVoicePlayback()
+        let controller = VoiceCuePlaybackController(playback: playback)
+        let alignment = VoiceCue(id: UUID(), sessionID: sessionID, generation: generation,
+            text: "Align.", kind: .coaching(.form), issuedAt: 0, expiresAt: 6, reason: .alignment)
+        let tracking = VoiceCue(id: UUID(), sessionID: sessionID, generation: generation,
+            text: "Stay visible.", kind: .coaching(.form), issuedAt: 1, expiresAt: 6, reason: .tracking)
+        controller.update(context: context(), event: alignment, enabled: true, now: 0)
+        controller.update(context: context(), event: tracking, enabled: true, now: 1)
+        XCTAssertEqual(playback.events, [.speak(alignment.id)])
+        playback.onFinish?(alignment.id)
+        controller.update(context: context(), event: tracking, enabled: true, now: 2)
+        XCTAssertEqual(playback.events, [.speak(alignment.id), .speak(tracking.id)])
+    }
+
+    func testDeferredCompletionIsDiscardedForEveryExplicitCancellation() {
+        for action in ["mute", "pause", "cancel", "generation", "session"] {
+            let playback = RecordingVoicePlayback()
+            let controller = VoiceCuePlaybackController(playback: playback)
+            let first = cue()
+            controller.update(context: context(), event: first, enabled: true, now: 0)
+            let completion = VoiceCue(id: UUID(), sessionID: sessionID, generation: generation,
+                text: "Finished.", kind: .coaching(.rest), issuedAt: 1, expiresAt: 6, reason: .workoutCompleted)
+            controller.update(context: context(.finished), event: completion, enabled: true, now: 1)
+            switch action {
+            case "cancel": controller.cancel()
+            case "generation": controller.update(context: context(generation: UUID()), event: nil, enabled: true, now: 2)
+            case "session": controller.update(context: context(sessionID: UUID()), event: nil, enabled: true, now: 2)
+            default: controller.update(context: context(action == "pause" ? .paused : .finished), event: nil,
+                                       enabled: action != "mute", now: 2)
+            }
+            playback.onFinish?(first.id)
+            XCTAssertEqual(playback.events, [.speak(first.id), .stop], action)
+        }
+    }
+
+    func testExpiryLimitsStartAndNeverCutsOffAnActiveSentence() {
         let playback = RecordingVoicePlayback()
         let controller = VoiceCuePlaybackController(playback: playback)
         controller.update(context: context(), event: cue(expiresAt: 1), enabled: true, now: 1)
@@ -98,7 +140,7 @@ final class VoiceCuePlaybackTests: XCTestCase {
         let current = cue(expiresAt: 3)
         controller.update(context: context(), event: current, enabled: true, now: 1)
         controller.update(context: context(), event: current, enabled: true, now: 3)
-        XCTAssertEqual(playback.events, [.speak(current.id), .stop])
+        XCTAssertEqual(playback.events, [.speak(current.id)])
     }
 
     func testMuteConsumesEventsAndEnablingSpeaksOnlyNewEvents() {
@@ -115,7 +157,7 @@ final class VoiceCuePlaybackTests: XCTestCase {
     }
 
     func testCancelAndInactivePhasesStopWithoutReplayingEvent() {
-        for phase in [SessionPhase.paused, .idle, .finished] {
+        for phase in [SessionPhase.paused, .idle] {
             let playback = RecordingVoicePlayback()
             let controller = VoiceCuePlaybackController(playback: playback)
             let event = cue()
@@ -144,7 +186,7 @@ final class VoiceCuePlaybackTests: XCTestCase {
         }
     }
 
-    func testLateCompletionCannotClearNewCueAndNilEventCancelsSpeech() {
+    func testLateCompletionCannotClearNewCueAndNilEventPreservesSpeech() {
         let playback = RecordingVoicePlayback()
         let controller = VoiceCuePlaybackController(playback: playback)
         let old = cue(), stop = cue(.coaching(.stop), expiresAt: nil)
@@ -153,7 +195,7 @@ final class VoiceCuePlaybackTests: XCTestCase {
         playback.onFinish?(old.id)
         controller.update(context: context(), event: cue(.chat), enabled: true, now: 2)
         controller.update(context: context(), event: nil, enabled: true, now: 3)
-        XCTAssertEqual(playback.events, [.speak(old.id), .stop, .speak(stop.id), .stop])
+        XCTAssertEqual(playback.events, [.speak(old.id), .stop, .speak(stop.id)])
     }
 
     func testWorkoutCompletionSpeaksOnceOnlyInFinishedPhaseAndOrdinaryCuesStaySilent() {
@@ -165,7 +207,7 @@ final class VoiceCuePlaybackTests: XCTestCase {
         controller.update(context: context(.finished), event: completion, enabled: true, now: 2)
         XCTAssertEqual(playback.events, [.speak(completion.id)])
         controller.update(context: context(.finished), event: cue(), enabled: true, now: 2)
-        XCTAssertEqual(playback.events, [.speak(completion.id), .stop])
+        XCTAssertEqual(playback.events, [.speak(completion.id)])
         for phase in [SessionPhase.idle, .active, .rest, .paused] {
             let wrongPhasePlayback = RecordingVoicePlayback()
             let wrongPhaseController = VoiceCuePlaybackController(playback: wrongPhasePlayback)
@@ -174,19 +216,72 @@ final class VoiceCuePlaybackTests: XCTestCase {
         }
     }
 
-    func testCompletionReplacesOrdinaryAudioButCannotCutOffAnActiveStop() {
-        for kind in [VoiceCue.Kind.coaching(.pacing), .coaching(.stop)] {
+    func testCompletionWaitsForSentenceAndSpeaksOnceOnlyWhileFresh() {
+        for finishTime in [2.0, 7.0] {
+            var clock = 0.0
             let playback = RecordingVoicePlayback()
-            let controller = VoiceCuePlaybackController(playback: playback)
-            let ordinary = cue(kind, expiresAt: kind == .coaching(.stop) ? nil : 6)
-            controller.update(context: context(), event: ordinary, enabled: true, now: 0)
+            let controller = VoiceCuePlaybackController(playback: playback, uptime: { clock })
+            let ordinary = cue()
             let completion = VoiceCue(id: UUID(), sessionID: sessionID, generation: generation,
-                text: "We'll be back.", kind: .coaching(.rest), issuedAt: 1, expiresAt: 6, reason: .workoutCompleted)
+                text: "Finished.", kind: .coaching(.rest), issuedAt: 1, expiresAt: 6, reason: .workoutCompleted)
+            controller.update(context: context(), event: ordinary, enabled: true, now: 0)
+            clock = 1
             controller.update(context: context(.finished), event: completion, enabled: true, now: 1)
-            let expected: [RecordingVoicePlayback.Event] = kind == .coaching(.stop)
-                ? [.speak(ordinary.id)] : [.speak(ordinary.id), .stop, .speak(completion.id)]
+            XCTAssertEqual(playback.events, [.speak(ordinary.id)])
+            clock = finishTime
+            playback.onFinish?(ordinary.id)
+            playback.onFinish?(ordinary.id)
+            let expected: [RecordingVoicePlayback.Event] = finishTime < 6
+                ? [.speak(ordinary.id), .speak(completion.id)] : [.speak(ordinary.id)]
+            XCTAssertEqual(playback.events, expected)
+            controller.update(context: context(.finished), event: completion, enabled: true, now: finishTime)
             XCTAssertEqual(playback.events, expected)
         }
+    }
+
+    func testNilEqualAndLowerWarningsNeverCutOrQueueOrdinarySpeech() {
+        let playback = RecordingVoicePlayback()
+        let controller = VoiceCuePlaybackController(playback: playback)
+        let first = cue(), equal = cue(), lower = cue(.coaching(.rest))
+        controller.update(context: context(), event: first, enabled: true, now: 0)
+        for event in [nil, equal, lower] {
+            controller.update(context: context(), event: event, enabled: true, now: 1)
+        }
+        XCTAssertEqual(playback.events, [.speak(first.id)])
+        playback.onFinish?(first.id)
+        for event in [equal, lower] {
+            controller.update(context: context(), event: event, enabled: true, now: 2)
+        }
+        XCTAssertEqual(playback.events, [.speak(first.id)])
+    }
+
+    func testNaturalRestTransitionPreservesSentenceAndInvalidatesDeferredOnNewContext() {
+        let playback = RecordingVoicePlayback()
+        let controller = VoiceCuePlaybackController(playback: playback)
+        let first = cue()
+        controller.update(context: context(), event: first, enabled: true, now: 0)
+        let rest = context(.rest, generation: UUID())
+        controller.transition(to: rest)
+        let recovery = VoiceCue(id: UUID(), sessionID: sessionID, generation: rest.generation,
+            text: "Recover.", kind: .coaching(.rest), issuedAt: 1, expiresAt: 6)
+        controller.update(context: rest, event: recovery, enabled: true, now: 1)
+        XCTAssertEqual(playback.events, [.speak(first.id)])
+        controller.update(context: context(generation: UUID()), event: recovery, enabled: true, now: 2)
+        playback.onFinish?(first.id)
+        XCTAssertEqual(playback.events, [.speak(first.id), .stop])
+    }
+
+    func testStopDiscardsDeferredRecoveryImmediately() {
+        let playback = RecordingVoicePlayback()
+        let controller = VoiceCuePlaybackController(playback: playback)
+        let first = cue(), stop = cue(.coaching(.stop), expiresAt: nil)
+        controller.update(context: context(), event: first, enabled: true, now: 0)
+        let rest = context(.rest)
+        controller.update(context: rest, event: cue(.coaching(.rest)), enabled: true, now: 1)
+        controller.update(context: rest, event: stop, enabled: true, now: 2)
+        playback.onFinish?(first.id)
+        playback.onFinish?(stop.id)
+        XCTAssertEqual(playback.events, [.speak(first.id), .stop, .speak(stop.id)])
     }
 
     func testMutedExpiredAndWrongPriorityCompletionNeverSpeaksOrReplays() {

@@ -7,6 +7,8 @@ enum DemoVoiceRecoveryReason { case endedSet, fatigue }
 @MainActor
 final class DemoVoicePlayback: VoicePlayback {
     var onFinish: ((UUID) -> Void)?
+    var onInterrupt: (() -> Void)?
+    private var interruptionObserver: NSObjectProtocol?
     private let local: VoicePlayback
     private let makeAudio: @MainActor (String) throws -> VoiceAudioOutput
     private let recoveryReason: @MainActor (VoiceCue) -> DemoVoiceRecoveryReason?
@@ -68,7 +70,14 @@ final class DemoVoicePlayback: VoicePlayback {
             guard let self, self.localCueID == id, let active = self.active else { return }
             self.complete(token: active.token)
         }
+        interruptionObserver = NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification,
+            object: nil, queue: .main) { [weak self] notification in
+            guard (notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt) == AVAudioSession.InterruptionType.began.rawValue else { return }
+            Task { @MainActor [weak self] in self?.stop(); self?.onInterrupt?() }
+        }
     }
+
+    deinit { if let interruptionObserver { NotificationCenter.default.removeObserver(interruptionObserver) } }
 
     func speak(_ cue: VoiceCue) {
         stop()
@@ -180,12 +189,16 @@ private final class DemoBundledAudioOutput: NSObject, VoiceAudioOutput, AVAudioP
 final class RepVoicePlayer {
     static let defaultsKey = "voice.repCounterCoach"
     /// The rep counter voice, or nil for off. Defaults to Arnold; `choose(_:)` remembers a person's choice.
-    var coach: RepVoicePlan.Coach? { didSet { if coach != oldValue { cancel() } } }
+    var coach: RepVoicePlan.Coach? { didSet { if coach != oldValue { cancel(); onInterrupt?() } } }
     /// Clips started, newest last (for tests and diagnostics).
     @ObservationIgnored private(set) var started: [String] = []
     @ObservationIgnored private var plan = RepVoicePlan()
     @ObservationIgnored private var output: RepVoiceOutput?
     @ObservationIgnored private var audioSessionActive = false
+    @ObservationIgnored private var outputToken: UUID?
+    @ObservationIgnored private var afterCurrent: (() -> Void)?
+    @ObservationIgnored private var interruptionObserver: NSObjectProtocol?
+    @ObservationIgnored var onInterrupt: (() -> Void)?
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private let uptime: () -> Double
     @ObservationIgnored private let makeOutput: @MainActor (String, String) throws -> RepVoiceOutput
@@ -198,7 +211,14 @@ final class RepVoicePlayer {
         self.makeOutput = makeOutput ?? { try RepClipOutput(name: $0, folder: $1, bundle: .main) }
         let saved = defaults.string(forKey: Self.defaultsKey)
         coach = saved == "off" ? nil : RepVoicePlan.Coach(rawValue: saved ?? "") ?? .arnold
+        interruptionObserver = NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification,
+            object: nil, queue: .main) { [weak self] notification in
+            guard (notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt) == AVAudioSession.InterruptionType.began.rawValue else { return }
+            Task { @MainActor [weak self] in self?.cancel(); self?.onInterrupt?() }
+        }
     }
+
+    deinit { if let interruptionObserver { NotificationCenter.default.removeObserver(interruptionObserver) } }
 
     /// A person's choice from the coach voice sheet; remembered across launches.
     func choose(_ coach: RepVoicePlan.Coach?) {
@@ -212,10 +232,24 @@ final class RepVoicePlayer {
     func rep(_ number: Int, clean: Bool) { guard coach != nil else { return }; plan.rep(number, clean: clean, at: uptime()); pump() }
     func closing() { guard coach != nil else { return }; plan.closing(at: uptime()); pump() }
 
-    /// A form, pacing or stop cue is about to speak: stop rep lines so the cue is heard on its own.
+    /// Retain the current sentence, discard pending counts, then hand off the shared session.
+    func finishCurrent(then action: (() -> Void)?) {
+        plan.clear()
+        afterCurrent = action
+        if output == nil {
+            afterCurrent = nil
+            releaseAudioSession()
+            action?()
+        }
+    }
+
+    /// An immediate action is about to take over the shared audio session.
     func yield() {
         plan.clear()
+        afterCurrent = nil
+        outputToken = nil
         output?.onFinish = nil; output?.stop(); output = nil
+        releaseAudioSession()
     }
 
     func cancel() {
@@ -235,15 +269,24 @@ final class RepVoicePlayer {
                     audioSessionActive = true
                 } catch { return }
             }
+            let token = UUID()
+            outputToken = token
             clip.onFinish = { [weak self] in
-                guard let self else { return }
+                guard let self, self.outputToken == token else { return }
+                self.outputToken = nil
+                self.output?.onFinish = nil
                 self.output = nil
-                self.pump()
+                if let action = self.afterCurrent {
+                    self.afterCurrent = nil
+                    self.releaseAudioSession()
+                    action()
+                } else { self.pump() }
             }
             output = clip
             started.append(line.clip)
             if clip.play() { return }
-            output = nil
+            clip.onFinish = nil; clip.stop()
+            outputToken = nil; output = nil
         }
         releaseAudioSession()
     }

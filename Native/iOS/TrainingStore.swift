@@ -25,7 +25,7 @@ final class TrainingStore {
     private(set) var configured: ConfigurableSession?
     private(set) var configuredInput: ConfiguredInput = .manual
     var sessionPhase: SessionPhase { configured?.phase ?? session.phase }
-    var presented = false
+    var presented = false { didSet { if oldValue && !presented { cancelCoaching() } } }
     var history: [SessionRecord] = []
     private(set) var historyAvailable = true
     var error: String?
@@ -60,8 +60,11 @@ final class TrainingStore {
     private var previewRepTime: Double?
     private(set) var voiceFeedbackEnabled = false
     /// Spoken rep counts and lines from bundled Arnold or Goggins clips, under the same Voice feedback switch.
-    var repVoice: RepVoicePlayer
-    private var repVoiceState: (sessionID: UUID, generation: UUID, phase: SessionPhase, reps: Int)?
+    var repVoice: RepVoicePlayer { didSet { coachingVoice.repVoice = repVoice } }
+    private struct SpokenSet: Hashable { let sessionID: UUID; let index: Int }
+    private var startedRepSets: Set<SpokenSet> = []
+    private var pendingRepClosing: (set: SpokenSet, issuedAt: Double)?
+    private var repVoiceState: (set: SpokenSet, phase: SessionPhase, reps: Int)?
     private var appActive = true
     let remoteVoice: RemoteVoicePlayback?
     let previewMode: Bool
@@ -93,15 +96,23 @@ final class TrainingStore {
     }
 
     func cancelCoaching() {
+        pendingRepClosing = nil
         activeCoachingEvent = nil
         trackingLoss = nil; trackingContext = nil; lastTrackingPromptAt = nil; handledTrackingCompletion = nil
         coachingVoice.cancel()
         repVoice.cancel()
     }
 
+    private func transitionCoaching() {
+        activeCoachingEvent = nil
+        trackingLoss = nil; trackingContext = nil; lastTrackingPromptAt = nil; handledTrackingCompletion = nil
+        coachingVoice.transition(to: feedbackContext)
+    }
+
     func setVoiceFeedback(_ enabled: Bool) {
         guard voiceFeedbackEnabled != enabled else { return }
         coachingVoice.update(context: feedbackContext, event: coachingEvent, enabled: false, now: now)
+        activeCoachingEvent = nil
         if !enabled { repVoice.cancel() }
         voiceFeedbackEnabled = enabled
         if persistsVoicePreferences { rewardDefaults.set(enabled, forKey: "trainer.audioEnabled") }
@@ -153,7 +164,7 @@ final class TrainingStore {
         let milestone = consumePreviewRep(context: context, reps: reps, time: time)
         repVoiceTick(context: context, reps: reps, clean: (configured?.cue ?? session.cue) == .controlled, at: time)
         if context.phase == .finished {
-            if coachingEvent?.expiresAt.map({ time >= $0 }) == true { cancelCoaching() }
+            if coachingEvent?.expiresAt.map({ time >= $0 }) == true { activeCoachingEvent = nil }
             return
         }
         if configured?.stoppedForDiscomfort == true {
@@ -174,6 +185,16 @@ final class TrainingStore {
         if let run = configured {
             stopReason = run.stoppedForDiscomfort ? .discomfort : (run.phase == .rest ? run.completed.last?.reason : nil)
         } else { stopReason = session.phase == .rest ? session.sets.last?.reason : nil }
+        // An undelivered form intent may outlive its start window while another sentence finishes.
+        // Re-issue only from the current observed warning; cleared warnings and muted actions cannot return.
+        if let event = coachingEvent, event.decision.priority == .form,
+           event.expiresAt.map({ time >= $0 }) == true, voiceFeedbackEnabled,
+           coachingVoice.lastStartedCueID != event.id, context.phase == .active,
+           (event.decision.reason == .tracking && cue == .tracking) ||
+            (event.decision.reason == .alignment && cue == .alignment) {
+            activeCoachingEvent = CoachingEvent(sessionID: context.sessionID, generation: context.generation,
+                decision: event.decision, issuedAt: time, expiresAt: time + 6)
+        }
         if coachingEvent == nil || activeCoachingEvent?.expiresAt.map({ time >= $0 }) == true {
             activeCoachingEvent = nil
         }
@@ -202,7 +223,6 @@ final class TrainingStore {
             coachingEvent?.decision.reason != .slowerRep
         if let decision, !previewEncouragement || decision.reason != .targetReached {
             if decision.reason == .tracking { lastTrackingPromptAt = time }
-            if decision.priority != .rest { repVoice.yield() }
             activeCoachingEvent = CoachingEvent(sessionID: context.sessionID, generation: context.generation,
                                                decision: decision, issuedAt: time,
                                                expiresAt: decision.priority == .stop ? nil : time + 6)
@@ -245,28 +265,32 @@ final class TrainingStore {
     }
 
     /// Speaks the count on each camera-counted rep (a line every third clean rep), a start line when a camera set begins
-    /// and a closing line when it ends. Stop, form and pacing cues still take over through `repVoice.yield()`.
+    /// and a closing line when it ends. Ordinary coaching waits for the current line; stop acts immediately.
     private func repVoiceTick(context: VoiceCueContext, reps: Int, clean: Bool, at time: Double) {
         let previous = repVoiceState
-        repVoiceState = (context.sessionID, context.generation, context.phase, reps)
-        guard repVoiceEnabled, appActive else { return }
-        if coachingVoice.isTrackingPromptPlaying { repVoice.yield(); return }
-        if let event = coachingEvent, event.decision.priority != .rest,
-           event.expiresAt.map({ time < $0 }) ?? true {
-            repVoice.yield()
-            return
+        let index = configured?.index ?? max(0, session.sets.count - ((context.phase == .rest || context.phase == .finished) ? 1 : 0))
+        let set = SpokenSet(sessionID: context.sessionID, index: index)
+        let firstStart = context.phase == .active && acceptsTracking && startedRepSets.insert(set).inserted
+        repVoiceState = (set, context.phase, reps)
+        if previous?.set.sessionID == context.sessionID, previous?.phase == .active,
+           (context.phase == .rest || context.phase == .finished), (previous?.reps ?? 0) > 0 {
+            pendingRepClosing = (set, time)
         }
-        let sameSession = previous?.sessionID == context.sessionID
-        let sameSet = sameSession && previous?.generation == context.generation
+        guard repVoiceEnabled, appActive else { pendingRepClosing = nil; return }
+        if coachingVoice.isSpeaking { return }
+        let sameSet = previous?.set == set
         if context.phase == .active, acceptsTracking {
-            if !sameSet || previous?.phase != .active {
+            if firstStart {
                 if reps == 0 { repVoice.start() } else if reps == 1 { repVoice.rep(1, clean: clean) }
-            } else if let before = previous?.reps, reps > before, reps > 0 {
+            } else if sameSet, let before = previous?.reps, reps > before, reps > 0 {
                 repVoice.rep(reps, clean: clean)
             }
-        } else if sameSession, previous?.phase == .active, context.phase == .rest || context.phase == .finished,
-                  (previous?.reps ?? 0) > 0, coachingEvent == nil || coachingEvent?.decision.priority == .rest {
-            repVoice.closing()
+        } else if let closing = pendingRepClosing {
+            pendingRepClosing = nil
+            if closing.set == set, time >= closing.issuedAt, time - closing.issuedAt <= 8,
+               context.phase == .rest, coachingEvent == nil {
+                repVoice.closing()
+            }
         }
     }
 
@@ -311,6 +335,7 @@ final class TrainingStore {
         historyStore = HistoryStore(url: historyURL ?? folder.appendingPathComponent("history.json"))
         watchInbox = WatchTelemetryInbox(url: historyStore.url.deletingLastPathComponent().appendingPathComponent("watch-inbox.json"))
         rewards = rewardsStore ?? NativeRewardsStore(url: historyStore.url.deletingLastPathComponent().appendingPathComponent("rewards.json"))
+        coachingVoice.repVoice = repVoice
         if !previewMode, defaults.string(forKey: RepVoicePlayer.defaultsKey) == nil,
            remoteVoice?.preference == .maya || remoteVoice?.preference == .leo { repVoice.coach = nil }
         do { history = try historyStore.load().reversed() }
@@ -527,14 +552,15 @@ final class TrainingStore {
             let quantity = run.current.unit == .reps ? Double(run.actualReps ?? 0) : run.elapsed(at: now)
             guard configured?.endSet(at: now, reason: quantity >= Double(run.current.target) ? .target : .voluntary) == true else { return }
             stopCapture(); frame = nil; image = nil; preferredSide = nil
-            cancelCoaching(); publish(); return
+            transitionCoaching(); coachingTick(); publish(); return
         }
         guard session.phase == .active || session.phase == .paused, let reps = session.actualReps else { return }
         let time = now
         session.endSet(at: time, reason: reps >= session.exercise.target ? .target : .voluntary)
         stopCapture(); frame = nil; image = nil; restStartedAt = time
         restGeneration = session.generation
-        cancelCoaching()
+        transitionCoaching()
+        coachingTick()
         publish()
     }
     func feedback(reserve: Int?, reason: StopReason) {
@@ -547,23 +573,23 @@ final class TrainingStore {
         if configured != nil {
             guard configured?.phase == .rest, configured?.stoppedForDiscomfort == false else { return }
             configured?.nextSet(at: now)
-            stopCapture(); clearInput()
+            stopCapture(); clearInput(cancelAudio: configured?.phase != .finished)
             configuredInput = .manual; source = .manual
-            if configured?.phase == .finished { save(); announceCompletion() }
+            if configured?.phase == .finished { transitionCoaching(); save(); announceCompletion() }
             publish(); return
         }
         guard !reportedDiscomfort, session.phase == .rest else { publish(); return }
-        stopCapture(); session.nextSet(at: now); clearInput()
-        if session.phase == .finished { save(); announceCompletion() }
+        stopCapture(); session.nextSet(at: now); clearInput(cancelAudio: session.phase != .finished)
+        if session.phase == .finished { transitionCoaching(); save(); announceCompletion() }
         publish()
     }
     func finish() {
         guard sessionPhase != .finished else { return }
         if configured != nil {
-            configured?.finish(at: now); stopCapture(); clearInput()
+            configured?.finish(at: now); stopCapture(); clearInput(cancelAudio: false); transitionCoaching()
             configuredInput = .manual; source = .manual; save(); announceCompletion(); publish(); return
         }
-        session.finish(at: now); stopCapture(); frame = nil; image = nil; cancelCoaching(); save(); announceCompletion(); publish()
+        session.finish(at: now); stopCapture(); frame = nil; image = nil; transitionCoaching(); save(); announceCompletion(); publish()
     }
     private func announceCompletion() {
         guard voiceFeedbackEnabled, appActive, remoteVoice != nil,
@@ -707,9 +733,9 @@ final class TrainingStore {
         frontPreviewState = .idle
         vision.stop()
     }
-    private func clearInput() {
+    private func clearInput(cancelAudio: Bool = true) {
         frame = nil; image = nil; preferredSide = nil; hasInput = false; visionState = .idle; source = .camera
         frontPreviewState = .idle
-        cancelCoaching()
+        if cancelAudio { cancelCoaching() }
     }
 }

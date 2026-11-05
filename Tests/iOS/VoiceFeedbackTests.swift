@@ -3,6 +3,59 @@ import XCTest
 
 @MainActor
 final class VoiceFeedbackTests: XCTestCase {
+    func testEndingSetPreservesOrdinarySentenceAndFinishingWaitsForActualCompletion() throws {
+        let playback = FakeVoicePlayback()
+        let store = TrainingStore(voicePlayback: playback)
+        store.repVoice.coach = nil
+        defer { store.cancelCoaching() }
+        store.start(); store.setVoiceFeedback(true)
+        store.session.cue = .alignment
+        store.coachingTick()
+        let first = try XCTUnwrap(playback.spoken.first)
+        store.endSet(); store.coachingTick()
+        XCTAssertEqual(playback.stops, 0)
+        store.finish(); store.coachingTick()
+        XCTAssertEqual(playback.stops, 0)
+        playback.onFinish?(first.id)
+    }
+
+    func testDismissingTheSessionCancelsSpeechImmediatelyAndNeverReplaysIt() {
+        let playback = FakeVoicePlayback()
+        let store = TrainingStore(voicePlayback: playback)
+        store.repVoice.coach = nil
+        store.start(); store.setVoiceFeedback(true)
+        store.session.cue = .alignment; store.coachingTick()
+        XCTAssertEqual(playback.spoken.count, 1)
+        store.presented = false
+        XCTAssertEqual(playback.stops, 1)
+        store.presented = true; store.coachingTick()
+        XCTAssertEqual(playback.spoken.count, 1)
+        store.cancelCoaching()
+    }
+
+    func testRepHandoffRechecksCompletionFreshnessAndDropsCancelledCallbacks() {
+        for action in ["fresh", "expired", "cancelled"] {
+            var clock = 0.0
+            let playback = FakeVoicePlayback(), clips = RepClipRecorder()
+            let rep = RepVoicePlayer(defaults: UserDefaults(suiteName: UUID().uuidString)!, uptime: { clock }, makeOutput: clips.make)
+            let bridge = CoachingVoiceBridge(playback: playback, uptime: { clock })
+            bridge.repVoice = rep
+            rep.start()
+            let sessionID = UUID(), generation = UUID()
+            let event = CoachingEvent(sessionID: sessionID, generation: generation,
+                decision: .init(text: "Completed.", priority: .rest, reason: .workoutCompleted, facts: [], elapsed: nil),
+                issuedAt: 0, expiresAt: 6)
+            bridge.update(context: .init(sessionID: sessionID, generation: generation, phase: .finished),
+                          event: event, enabled: true, now: clock)
+            XCTAssertTrue(playback.spoken.isEmpty)
+            if action == "cancelled" { bridge.cancel(); rep.cancel() }
+            clock = action == "expired" ? 7 : 2
+            clips.finish()
+            XCTAssertEqual(playback.spoken.map(\.reason), action == "fresh" ? [.workoutCompleted] : [])
+            bridge.cancel(); rep.cancel()
+        }
+    }
+
     func testVisibilityPromptFinishesThenRepeatsOnlyIfBodyIsStillMissing() throws {
         let playback = FakeVoicePlayback()
         let store = TrainingStore(voicePlayback: playback)

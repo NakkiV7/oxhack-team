@@ -5,11 +5,33 @@ import UIKit
 
 @MainActor
 final class PreviewRepCueTests: XCTestCase {
+    func testPersistentFormWarningGetsAFreshDeliveryAfterALongOrdinarySentence() throws {
+        let (store, cached, clock) = makeStore()
+        defer { store.cancelCoaching() }
+        completeRep(0, store: store, clock: clock)
+        completeRep(1, store: store, clock: clock)
+        let first = try XCTUnwrap(cached.spoken.first)
+        store.session.cue = .alignment
+        clock.now += 0.2
+        store.coachingTick(at: clock.now)
+        XCTAssertEqual(cached.spoken.count, 1)
+        clock.now += 7
+        store.coachingTick(at: clock.now)
+        cached.onFinish?(first.id)
+        clock.now += 1
+        store.coachingTick(at: clock.now)
+        XCTAssertEqual(cached.spoken.map(\.reason), [.steadyRhythm, .alignment])
+        XCTAssertTrue((cached.spoken.last?.expiresAt ?? 0) > clock.now)
+    }
+
     func testEvenLegacyTargetStillEncouragesAndNextSetStartsANewTwoRepMilestone() {
         for exercise in [Exercise.squat, .pushup] {
             let (store, cached, clock) = makeStore(exercise: exercise)
             defer { store.cancelCoaching() }
-            for index in 0..<exercise.target { completeRep(index, store: store, clock: clock) }
+            for index in 0..<exercise.target {
+                completeRep(index, store: store, clock: clock)
+                if let cue = cached.spoken.last { cached.onFinish?(cue.id) }
+            }
             XCTAssertEqual(cached.spoken.filter { $0.reason == .steadyRhythm }.count, exercise.target / 2)
             XCTAssertEqual(store.coachingEvent?.decision.reason, .steadyRhythm,
                            "Reaching an even target must not replace the requested cached encouragement with local target speech")
@@ -269,6 +291,131 @@ final class RepCounterVoiceTests: XCTestCase {
         store.coachingTick(at: clock.now)
     }
 
+    func testFormWarningWaitsForCurrentRepAndClearedWarningNeverStartsLater() {
+        for cleared in [false, true] {
+            let clips = RepClipRecorder()
+            let (store, cached, clock) = store(preview: false, coach: .arnold, clips: clips)
+            defer { store.cancelCoaching() }
+            store.session.cue = .alignment
+            store.coachingTick(at: clock.now)
+            XCTAssertTrue(cached.spoken.isEmpty)
+            XCTAssertTrue(store.repVoice.isPlaying)
+            if cleared {
+                store.session.cue = .lower
+                store.coachingTick(at: clock.now + 0.5)
+            }
+            clips.finish()
+            XCTAssertEqual(cached.spoken.map(\.reason), cleared ? [] : [.alignment])
+            XCTAssertFalse(store.repVoice.isPlaying)
+        }
+    }
+
+    func testClosingWaitsForCoachingSentenceAndDropsWhenTooLate() throws {
+        for delay in [1.0, 10.0] {
+            let clips = RepClipRecorder()
+            let (store, cached, clock) = store(preview: false, coach: .arnold, clips: clips)
+            defer { store.cancelCoaching() }
+            clips.finish(); rep(0, store, clock); clips.finish()
+            clock.now = store.now
+            store.session.cue = .alignment
+            store.coachingTick(at: clock.now)
+            let form = try XCTUnwrap(cached.spoken.last)
+            store.endSet()
+            XCTAssertFalse(clips.made.contains { $0.clip.hasPrefix("closing") })
+            cached.onFinish?(form.id)
+            store.coachingTick(at: store.now + delay)
+            XCTAssertEqual(clips.made.filter { $0.clip.hasPrefix("closing") }.count, delay < 8 ? 1 : 0)
+        }
+    }
+
+    func testRepYieldMustReleaseAndReacquireTheSharedSession() throws {
+        let player = RepVoicePlayer(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        defer { player.cancel() }
+        player.start()
+        XCTAssertTrue(player.isPlaying)
+        player.yield()
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.ambient, mode: .default)
+        player.rep(1, clean: true)
+        XCTAssertTrue(player.isPlaying)
+        XCTAssertEqual(session.category, .playback, "A yielded player must reacquire its shared session")
+        XCTAssertEqual(session.mode, .spokenAudio)
+    }
+
+    func testRecoveryWaitsForCurrentRepAndNeverOverlapsTheClosingLine() {
+        let clips = RepClipRecorder()
+        let (store, cached, clock) = store(preview: false, coach: .arnold, clips: clips)
+        defer { store.cancelCoaching() }
+        rep(0, store, clock)
+        store.endSet()
+        clock.now = store.now + 46
+        store.coachingTick(at: clock.now)
+        XCTAssertTrue(cached.spoken.isEmpty, "Recovery must wait while the start sentence is playing")
+        clips.finish()
+        XCTAssertEqual(cached.spoken.map(\.reason), [.restReminder])
+        XCTAssertFalse(store.repVoice.isPlaying, "Recovery takes the one bounded transition slot")
+    }
+
+    func testOldRepCompletionCannotClearAReplacementLine() throws {
+        let outputs = RepOutputBank()
+        let player = RepVoicePlayer(defaults: UserDefaults(suiteName: UUID().uuidString)!, makeOutput: outputs.make)
+        player.start()
+        let stale = try XCTUnwrap(outputs.outputs.first?.onFinish)
+        player.yield(); player.rep(1, clean: true)
+        stale()
+        XCTAssertTrue(player.isPlaying)
+        player.rep(2, clean: true)
+        XCTAssertEqual(player.started, ["start", "count-01"], "The replacement is still playing")
+        player.cancel()
+    }
+
+    func testRepInterruptionDropsAllWaitingSpeechAndDoesNotRestartOnReturn() async {
+        let outputs = RepOutputBank()
+        let player = RepVoicePlayer(defaults: UserDefaults(suiteName: UUID().uuidString)!, makeOutput: outputs.make)
+        player.start(); player.rep(1, clean: true)
+        NotificationCenter.default.post(name: AVAudioSession.interruptionNotification, object: nil,
+            userInfo: [AVAudioSessionInterruptionTypeKey: AVAudioSession.InterruptionType.began.rawValue])
+        for _ in 0..<10 { await Task.yield() }
+        XCTAssertFalse(player.isPlaying)
+        outputs.outputs.first?.onFinish?()
+        XCTAssertEqual(player.started, ["start"])
+        player.cancel()
+    }
+
+    func testResumeAndInputChangeDoNotRepeatStartButNextSetDoes() {
+        let clips = RepClipRecorder()
+        let (store, _, clock) = store(preview: false, coach: .arnold, clips: clips)
+        defer { store.cancelCoaching() }
+        clips.finish()
+        store.pause(); store.resume(); store.coachingTick(at: clock.now + 1)
+        XCTAssertEqual(clips.made.map(\.clip), ["start"])
+        store.switchToManualReps()
+        store.session.switchInput(source: .camera, at: clock.now + 2)
+        store.source = .camera; store.hasInput = true
+        store.coachingTick(at: clock.now + 2)
+        XCTAssertEqual(clips.made.map(\.clip), ["start"])
+        rep(0, store, clock); clips.finish()
+        store.endSet(); store.coachingTick(); clips.finish()
+        XCTAssertEqual(clips.made.filter { $0.clip.hasPrefix("closing") }.count, 1)
+        store.next(); store.hasInput = true; store.coachingTick()
+        XCTAssertEqual(clips.made.filter { $0.clip == "start" }.count, 2)
+    }
+
+    func testEndingSetFinishesCurrentRepLineThenClosesExactlyOnce() {
+        let clips = RepClipRecorder()
+        let (store, _, clock) = store(preview: false, coach: .arnold, clips: clips)
+        defer { store.cancelCoaching() }
+        rep(0, store, clock)
+        store.endSet(); store.coachingTick(); store.coachingTick()
+        XCTAssertTrue(store.repVoice.isPlaying)
+        XCTAssertEqual(clips.made.map(\.clip), ["start"])
+        clips.finish()
+        XCTAssertEqual(clips.made.map(\.clip), ["start", "closing-1"])
+        clips.finish(); store.coachingTick()
+        XCTAssertFalse(store.repVoice.isPlaying)
+        XCTAssertEqual(clips.made.map(\.clip), ["start", "closing-1"])
+    }
+
     func testCountsEveryCameraRepAndAddsALineEveryThirdCleanRep() {
         let clips = RepClipRecorder()
         let (store, _, clock) = store(preview: false, coach: .goggins, clips: clips)
@@ -280,20 +427,20 @@ final class RepCounterVoiceTests: XCTestCase {
         XCTAssertTrue(store.history.isEmpty, "Spoken counts never create completed work")
     }
 
-    func testTargetCueKeepsPriorityOverSubsequentRepCountsUntilItExpires() {
+    func testTargetCueNeverCutsTheCurrentRepOrBlocksLaterCountsWhenDropped() {
         let clips = RepClipRecorder()
         let (store, cached, clock) = store(preview: false, coach: .goggins, clips: clips)
         defer { store.cancelCoaching() }
         clips.finish()
         for index in 0..<store.session.exercise.target { rep(index, store, clock); clips.finish() }
         XCTAssertEqual(store.coachingEvent?.decision.reason, .targetReached)
-        XCTAssertTrue(cached.spoken.contains { $0.reason == .targetReached })
+        XCTAssertFalse(cached.spoken.contains { $0.reason == .targetReached }, "An ordinary target cue cannot cut the count")
+        for _ in 0..<4 where store.repVoice.isPlaying { clips.finish() }
+        XCTAssertFalse(store.repVoice.isPlaying, "The bounded fake count/motivation queue has naturally completed")
         let before = clips.made.count
         rep(store.session.exercise.target, store, clock)
-        XCTAssertEqual(clips.made.count, before, "A rep must not overlap the active target cue")
-        clock.now += 7
-        rep(store.session.exercise.target + 4, store, clock)
-        XCTAssertGreaterThan(clips.made.count, before)
+        XCTAssertGreaterThan(clips.made.count, before, "A discarded cue cannot block actual later counts")
+        XCTAssertFalse(cached.spoken.contains { $0.reason == .targetReached }, "The discarded target cannot replay stale")
     }
 
     func testStaysSilentWhenOffForVideoAndWhenVoiceFeedbackIsOff() {
@@ -347,4 +494,11 @@ final class RepCounterVoiceTests: XCTestCase {
     var spoken: [VoiceCue] = []
     func speak(_ cue: VoiceCue) { spoken.append(cue) }
     func stop() {}
+}
+
+@MainActor private final class RepOutputBank {
+    var outputs: [FakeRepClip] = []
+    func make(_ name: String, _ folder: String) -> RepVoiceOutput {
+        let output = FakeRepClip(); outputs.append(output); return output
+    }
 }
