@@ -1,6 +1,6 @@
 # Install the Spottr beta
 
-**5 November 2026 update** — Build **0.1 (20)** is VALID and IN_BETA_TESTING internally and externally, with beta review APPROVED. It adds Today/report/Insights improvements, optional Watch/Health onboarding, dated Health history and durable Watch telemetry. The offline catalogue retains 32 exercises and 13 camera styles, with unrestricted beta access. [Current build 20 evidence](evidence/watch-insights-2026-11-05.md). [Install through the existing invitation](https://testflight.apple.com/join/f3MhePbf). Physical installation/sensor acceptance and paid-product approval remain separate.
+**5 November 2026 update** — Build **0.1 (21)** is VALID and IN_BETA_TESTING internally and externally, with beta review APPROVED. It unifies artwork and layouts, improves onboarding and adds guided Watch model/connection/sync setup. All beta training remains available without purchase. [Current build21 evidence](evidence/ui-watch-polish-2026-11-05.md). [Install through the existing invitation](https://testflight.apple.com/join/f3MhePbf). Update both iPhone and Watch apps before using the new companion check. Physical sensor acceptance and paid-product approval remain separate.
 
 ## Historical build 5 checkpoint
 

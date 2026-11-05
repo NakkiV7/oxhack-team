@@ -18,13 +18,15 @@
 ![MediaPipe](https://img.shields.io/badge/MediaPipe-Pose_Landmarker-0097A7?logo=google&logoColor=white)
 ![Cloudflare](https://img.shields.io/badge/Cloudflare-optional_accounts-F38020?logo=cloudflare&logoColor=white)
 ![Coaching](https://img.shields.io/badge/coaching-on_device-08786f)
-![Status](https://img.shields.io/badge/status-TestFlight_20-2156ce)
+![Status](https://img.shields.io/badge/status-TestFlight_21-2156ce)
 
 ## Offline testing build, 5 November 2026
 
-**Build 0.1 (20) is available through the existing TestFlight invitation**, internally and externally, with approved beta review. The current consumer app uses local, rule-based coaching and quantitative insights. It has 32 exercise entries and 13 camera-supported styles, including tempo and paused squats and push-ups. Live work survives switching camera/manual input, optional on-device spoken counting is available, and onboarding comfort answers establish a vertical skill path. Coach selection uses abstract colours and exercise guides remain faceless stick figures. Today, Skills, Insights and Coach are the four main tabs.
+**Build 0.1 (21) is available through the existing TestFlight invitation**, internally and externally, with approved beta review. The current consumer app uses local, rule-based coaching and quantitative insights. It has 32 exercise entries and 13 camera-supported styles, including tempo and paused squats and push-ups. Live work survives switching camera/manual input, optional on-device spoken counting is available, and onboarding comfort answers establish a vertical skill path. Coach selection uses abstract colours and exercise guides remain faceless stick figures. Today, Skills, Insights and Coach are the four main tabs.
 
-Original Maya/Leo voices currently use installed iPhone speech. New bundled ElevenLabs recordings need renewed authoring access; existing optional Arnold/Goggins-inspired audio is retained. The [testing guide and prioritised feature list](docs/offline-mvp-testing-and-next-steps-2026-11-05.md) distinguishes implemented behavior, software checks and physical acceptance. See the [software and signed-build verification](docs/evidence/offline-mvp-2026-11-05.md) and [current skill-path capture](docs/media/offline-mvp-2026-11-05/vertical-skill-path.png). Historical screenshots, server integrations and release receipts below describe earlier builds.
+Original Maya/Leo voices currently use installed iPhone speech. New bundled ElevenLabs recordings need renewed authoring access; existing optional Arnold/Goggins-inspired audio is retained. The [testing guide and prioritised feature list](docs/offline-mvp-testing-and-next-steps-2026-11-05.md) distinguishes implemented behavior, software checks and physical acceptance. See the [software and signed-build verification](docs/evidence/offline-mvp-2026-11-05.md) and [current skill-path capture](docs/media/ui-watch-polish-2026-11-05/skills.png). Historical screenshots, server integrations and release receipts below describe earlier builds.
+
+Build 21 brings the workout-style figures into onboarding and exercise previews, with consistent headings/actions, subtle transitions, accessible layouts and concise explanations. Guided Watch setup asks your model, shows observed connection milestones and separates queue status from actual data-arrival time. [Current verification](docs/evidence/ui-watch-polish-2026-11-05.md), [actual screen review](docs/media/ui-watch-polish-2026-11-05/review.md).
 
 Build 20 adds optional Watch/Health setup to onboarding, a clearer Today page, an Insights overview and reports based on observed readings. Heart-rate coverage and zones, energy, work/rest, camera rep timing and wrist-motion summaries retain gaps and measurement limits. Nine dated Apple Health metrics stay separate from workout records. [Build 20 verification and limits](docs/evidence/watch-insights-2026-11-05.md), [Watch and Health setup](docs/watch-health-setup-2026-11-05.md), [actual screen captures](docs/media/watch-insights-2026-11-05/review.md).
 
@@ -33,7 +35,7 @@ The [live Cloudflare website](https://spottr.omarchoudhry.co.uk/) provides suppo
 ## Inside Spottr
 
 <table><tr>
-<td align="center" width="33%"><a href="docs/media/offline-mvp-2026-11-05/vertical-skill-path.png"><img src="docs/media/offline-mvp-2026-11-05/vertical-skill-path.png" alt="Vertical skill path with one current challenge" width="230"></a><br>One clear next step</td>
+<td align="center" width="33%"><a href="docs/media/ui-watch-polish-2026-11-05/skills.png"><img src="docs/media/ui-watch-polish-2026-11-05/skills.png" alt="Vertical skill path with one current challenge" width="230"></a><br>One clear next step</td>
 <td align="center" width="33%"><a href="docs/media/production-foundation-2026-11-05/paused-squat-guide-beta.png"><img src="docs/media/production-foundation-2026-11-05/paused-squat-guide-beta.png" alt="Faceless paused squat guide with highlighted joints" width="230"></a><br>Movement guides</td>
 <td align="center" width="33%"><a href="docs/media/offline-mvp-2026-11-05/abstract-trainer-onboarding.png"><img src="docs/media/offline-mvp-2026-11-05/abstract-trainer-onboarding.png" alt="Abstract colour designs for personal trainer selection" width="230"></a><br>Your coach, your style</td>
 </tr></table>

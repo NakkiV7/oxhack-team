@@ -35,12 +35,12 @@ No faces, runtime AI, new simulators, Chrome, reset, paid dependencies or HPC jo
 - [x] Keep report methodology in optional disclosure where appropriate. Preserve measurement math and identifiers.
 
 ### Task 4 — integration and release
-- [ ] Register new sources semantically and increment next build. Run core/native/Watch checks using SSD and existing iPhone.
-- [ ] Review default and accessibility-size screenshots and Reduce Motion behavior; independent scoped review.
-- [ ] Compare protected artifact manifests. Archive/export/audit/upload and verify TestFlight state. Update evidence/priorities and push branch.
+- [x] Register new sources semantically and increment next build. Run core/native/Watch checks using SSD and existing iPhone.
+- [x] Review default and accessibility-size screenshots and Reduce Motion behavior; independent scoped review.
+- [x] Compare protected artifact manifests. Archive/export/audit/upload and verify TestFlight state. Update evidence/priorities and push branch.
 
 ## Builder decisions and verification
 
 The builder check found nothing important unanswered. Model selection is a local guidance preference; historical readings from another device are retained. One shared CompanionLink owns WCSession and the setup handshake. Image reuse preserves the workout style, with an added rail for supported squats. Source review found and resolved the missing rail and cached-receipt issues. Visual review removed duplicate optional-setup copy. Profile tests use a stable note identifier and now exercise an explicit keyboard Done/drag bar.
 
-393 core checks, 224 selected native checks and 23 selected UI journeys passed across integration/correction runs. Watch SDK checks and actual transport replay passed. Four StoreKit cases remain setup-blocked; physical Watch acceptance remains separate. Signed delivery is in progress.
+393 core checks, 224 selected native checks and 23 selected UI journeys passed across integration/correction runs. Watch SDK checks and actual transport replay passed. Four StoreKit cases remain setup-blocked; physical Watch acceptance remains separate. Signed delivery is complete: build21 is VALID and IN_BETA_TESTING internally and externally, with APPROVED beta review. Implementation c582616 is pushed; private release receipts are hash-verified on SSD.

@@ -1,6 +1,6 @@
 # UI and Watch setup verification — build 21
 
-5 November 2026. This continues the native Spottr overhaul on `codex/spottr-demo-consolidation`. Distribution and final screen results are recorded after verification below.
+5 November 2026. This continues the native Spottr overhaul on `codex/spottr-demo-consolidation`. Build21 is now approved and available for internal and external TestFlight testing.
 
 ## Consumer changes
 
@@ -44,3 +44,9 @@ The initial integrated result preserves three old profile-copy lookups failing. 
 Version **0.1 (21)**, phone and Watch. IPA **41,740,485 bytes**, SHA-256 `d3b060435823ee8da4d00b43879a6f166e48ad016949faef3dff2694d804970e`. Both strict signatures, HealthKit entitlements/profiles and binary/dSYM UUIDs pass. The Full-pose model is unchanged; all 99 MP3 files match source bytes. Local StoreKit configuration and private keys are absent from the delivered app.
 
 All 104 frozen release inputs (99 Swift files plus packaging inputs) remained unchanged through the final archive. Source hashes and signed-bundle receipts are retained privately. Apple validation completed with no errors. The final archive was rebuilt after the last keyboard/wording corrections; earlier candidate logs remain preserved. Archive, IPA, audit and verification evidence are on the Extreme SSD-backed development volume under `Releases/Spottr-21-*`.
+
+## Apple distribution
+
+Build/delivery ID `d7afbbf5-c15d-4301-8a4b-055d11b2a500` is **VALID**, with encryption declaration `false`. Internal and external states are both **IN_BETA_TESTING**, and beta review is **APPROVED**. Both existing beta groups contain build21 after assignment. The existing [TestFlight invitation](https://testflight.apple.com/join/f3MhePbf) is unchanged. Update both phone and Watch apps for the new setup protocol; older workout telemetry remains compatible. No public App Store release or paid transaction was submitted.
+
+Implementation commit `c582616abecdcd74e56983a4a7a81cde952f68f7` is pushed to `codex/spottr-demo-consolidation`. Private receipts are copied and hash-verified to `Releases/Spottr-21-Evidence` on the SSD-backed development volume. Original test failures, candidate logs and source evidence remain preserved, as do the two original untracked evidence directories.
