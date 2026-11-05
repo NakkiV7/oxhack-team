@@ -178,8 +178,8 @@ enum ProfileGeometry {
                 guard abs(g.x(knee)-g.x(hip))>t*0.35 else { return nil }
                 return g.limb(s,g.signal((g.y(hip)-g.y(knee))/(t*0.45)),ids)
             }
-            guard abs(g.y(knee)-g.y(hip))<t*0.2, let angle=g.joint(hip,knee,ankle) else { return nil }
-            return g.limb(s,g.signal((angle.angle-95)/70),ids,provenance:.normalizedJointExcursion)
+            guard abs(g.y(knee)-g.y(hip))<t*0.2, let angle=g.imageAngle(hip,knee,ankle) else { return nil }
+            return g.limb(s,g.signal((angle-95)/70),ids,provenance:.normalizedJointExcursion)
         case .reverseLunge, .forwardLunge, .splitSquat, .supportedSplitSquat, .lateralLunge, .assistedSquat:
             guard let bend=g.joint(hip,knee,ankle), g.y(ankle)>g.y(hip)+t*0.6 else { return nil }
             let spread=abs(g.x(ankle)-g.x(27+o))

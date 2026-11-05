@@ -252,3 +252,26 @@ func angularProfilesPreserveImageAspectAndMirroredVisibility(exercise: Exercise)
         #expect(counter.lastRepPhases == nil)
     }
 }
+
+@Test func fixedSeatedImageCannotCreateAnExtensionByTogglingWorldPoints() throws {
+    let seated=changed(standing,[(11,0.3,0.2),(12,0.34,0.2),(23,0.3,0.5),(24,0.34,0.5),
+        (25,0.55,0.5),(26,0.59,0.5),(27,0.55,0.8),(28,0.59,0.8)])
+    for mirror in [false,true] {
+        let side=mirror ? 1 : 0
+        var world=Array(repeating:PoseWorldPoint(x:0,y:0,z:0,confidence:0),count:33)
+        world[23+side] = .init(x:0,y:0,z:0,confidence:1)
+        world[25+side] = .init(x:0.3,y:0,z:0,confidence:1)
+        world[27+side] = .init(x:0.6,y:0,z:0,confidence:1)
+        var counter=RepCounter(exercise:.seatedKneeExtension)
+        for (t,useWorld) in [(0.0,false),(0.2,false),(0.6,true),(0.8,true),(1.2,false),(1.4,false)] {
+            let image=pose(seated,time:t,mirrored:mirror)
+            let frame=PoseFrame(time:t,width:image.width,height:image.height,points:image.points,worldPoints:useWorld ? world : nil)
+            let sample=try #require(PoseGeometry.measure(frame,exercise:.seatedKneeExtension))
+            #expect(sample.provenance == .normalizedJointExcursion)
+            #expect(sample.angle >= 160)
+            _ = counter.consume(sample)
+        }
+        #expect(counter.reps == 0)
+        #expect(counter.lastRepPhases == nil)
+    }
+}

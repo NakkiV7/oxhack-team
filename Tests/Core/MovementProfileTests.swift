@@ -37,8 +37,8 @@ import Testing
     #expect(counter.reps == 5)
     var interleaved = RepCounter(exercise: .standingKneeRaise)
     for (t,a) in [(0.0,170.0),(0.2,170),(0.6,130),(1,90),(1.1,90),(1.6,170),(1.8,170)] {
-        _ = interleaved.consume(.init(time:t, angle:a, side:0))
-        _ = interleaved.consume(.init(time:t + 0.01, angle:170, side:1))
+        _ = interleaved.consume(.init(time:t, angle:a, side:0, secondary:.init(angle:170,side:1)))
+        _ = interleaved.consume(.init(time:t + 0.01, angle:170, side:1, secondary:.init(angle:a,side:0)))
     }
     #expect(interleaved.reps == 1)
     var fused = RepCounter(exercise: .standingKneeRaise)
@@ -187,4 +187,33 @@ func seatedStartCannotCountWithoutAStableRangeAndContinuouslyWitnessedRise(reaso
     #expect(stand.reps == 1)
     #expect(stand.lastRepDuration == nil)
     #expect(stand.lastRepPhases == nil)
+}
+
+@Test(arguments: [0,1], ["wholeFrame","absentSecondary"])
+func missingObservationInterruptsEitherLimbTimingWithoutErasingWitnessedDepth(side: Int, loss: String) {
+    var counter=RepCounter(exercise:.standingBicepsCurl,initialReps:7)
+    for (t,a) in [(0.0,170.0),(0.2,170),(0.5,130),(0.8,90),(1,90)] {
+        _ = counter.consume(.init(time:t,angle:a,side:side,secondary:.init(angle:170,side:1-side)))
+    }
+    if loss == "wholeFrame" {
+        _ = counter.consume(.init(time:1.1,angle:.nan,confidence:0))
+    } else {
+        _ = counter.consume(.init(time:1.1,angle:170,side:1-side))
+    }
+    for t in [1.3,1.5] {
+        _ = counter.consume(.init(time:t,angle:170,side:side,secondary:.init(angle:170,side:1-side)))
+    }
+    #expect(counter.reps == 8)
+    #expect(counter.lastRepDuration != nil)
+    #expect(counter.lastRepPhases == nil)
+}
+
+@Test(arguments: [0,1])
+func continuouslyObservedBothLimbsRetainActualAngularPhases(side: Int) {
+    var counter=RepCounter(exercise:.standingBicepsCurl)
+    for (t,a) in [(0.0,170.0),(0.2,170),(0.5,130),(0.8,90),(1,90),(1.3,170),(1.5,170)] {
+        _ = counter.consume(.init(time:t,angle:a,side:side,secondary:.init(angle:170,side:1-side)))
+    }
+    #expect(counter.reps == 1)
+    #expect(counter.lastRepPhases != nil)
 }

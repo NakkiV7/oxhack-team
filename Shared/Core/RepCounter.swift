@@ -33,10 +33,16 @@ public struct RepCounter: Sendable {
         defer { lastSampleTime = sample.time }
         guard (0...1).contains(sample.side) else { resetMovement(); return .tracking }
         let primaryCue = consumeLimb(sample)
-        guard exercise.tracksAlternatingLimbs, let secondary = sample.secondary,
-              (0...1).contains(secondary.side), secondary.side != sample.side else { return primaryCue }
-        let otherCue = consumeLimb(.init(time: sample.time, angle: secondary.angle, confidence: secondary.confidence,
-            side: secondary.side, aligned: secondary.aligned, bodyAngle: secondary.bodyAngle, provenance: secondary.provenance))
+        guard exercise.tracksAlternatingLimbs else { return primaryCue }
+        let otherSide = 1 - sample.side
+        let otherSample: MovementSample
+        if let secondary = sample.secondary, secondary.side == otherSide {
+            otherSample = .init(time: sample.time, angle: secondary.angle, confidence: secondary.confidence,
+                side: secondary.side, aligned: secondary.aligned, bodyAngle: secondary.bodyAngle, provenance: secondary.provenance)
+        } else {
+            otherSample = .init(time: sample.time, angle: .nan, confidence: 0, side: otherSide)
+        }
+        let otherCue = consumeLimb(otherSample)
         return primaryCue == .controlled || otherCue == .controlled ? .controlled : primaryCue
     }
     private mutating func consumeLimb(_ sample: MovementSample) -> Cue {
