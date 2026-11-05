@@ -709,3 +709,41 @@ func configuredWatchRejectsUnsupportedCameraSourceClaims(exerciseID: String) thr
         else { #expect(run.holdCounter?.observedSeconds == earned) }
     }
 }
+
+@Test func configuredManualPauseResumeCannotAcknowledgeCameraIdentityRecovery() throws {
+    for id in ["squat", "plank"] {
+        let timed = id == "plank"
+        var run = try ConfigurableSession(plan: CoachSavedPlan.catalogue(exerciseID: id, sets: 1, target: 10, restSeconds: 0), availableSupport: [])
+        run.start(at: 0); _ = run.resetSet(source: .camera, at: 0); run.beginSet(at: 0)
+        for time in [0.0, 0.1, 0.2] {
+            run.consume(.init(time: time, angle: 170, holdQualification: .staticHold), generation: run.generation)
+        }
+        run.consume(.init(time: 0.3, angle: .nan, confidence: 0, observation: .multiplePeople), generation: run.generation)
+        _ = run.switchInput(source: .manual, at: 1)
+        if !timed { run.setReps(4) }
+        run.pause(at: 2); run.resume(at: 5)
+        #expect(run.elapsed(at: 6) == 3)
+        if timed { #expect(abs(run.measuredSeconds(at: 6) - 2.2) < 0.00001) }
+        _ = run.switchInput(source: .camera, at: 6)
+        let saved = timed ? run.measuredSeconds(at: 6) : Double(run.actualReps ?? 0)
+        #expect(run.cameraRecoveryState == .needsResume)
+        for time in stride(from: 6.0, through: 9.0, by: 0.1) {
+            run.consume(.init(time: time, angle: 170, holdQualification: .staticHold), generation: run.generation)
+        }
+        for (time, angle) in [(9.2,90.0),(9.4,90),(9.8,170),(10.0,170)] {
+            run.consume(.init(time: time, angle: angle, holdQualification: .staticHold), generation: run.generation)
+        }
+        #expect(run.cameraRecoveryState == .needsResume)
+        #expect((timed ? run.measuredSeconds(at: 10) : Double(run.actualReps ?? 0)) == saved)
+        run.resume(at: 11)
+        #expect(run.cameraRecoveryState == .waitingForClear)
+        for time in stride(from: 11.0, through: 13.3, by: 0.1) {
+            run.consume(.init(time: time, angle: 170, holdQualification: .staticHold), generation: run.generation)
+        }
+        #expect(run.cameraRecoveryState == .ready)
+        for (time, angle) in [(13.5,90.0),(13.7,90),(14.1,170),(14.3,170)] {
+            run.consume(.init(time: time, angle: angle, holdQualification: .staticHold), generation: run.generation)
+        }
+        #expect((timed ? run.measuredSeconds(at: 14.3) : Double(run.actualReps ?? 0)) > saved)
+    }
+}

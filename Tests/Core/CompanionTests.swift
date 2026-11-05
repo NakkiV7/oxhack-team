@@ -179,3 +179,49 @@ import Testing
     run.pause(at:3)
     #expect(CompanionSnapshot(session:run).pauseResumeTitle == "Resume")
 }
+
+@Test func quickManualPauseResumeCannotAcknowledgeCameraIdentityRecovery() {
+    var run = TrainingSession(); run.start(at: 0)
+    run.consume(.init(time: 0, angle: .nan, confidence: 0, observation: .multiplePeople), generation: run.generation)
+    run.switchInput(source: .manual, at: 1); run.setManualReps(4)
+    run.pause(at: 2); run.resume(at: 5)
+    #expect(run.actualReps == 4)
+    #expect(run.elapsed(at: 6) == 3)
+    run.switchInput(source: .camera, at: 6)
+    #expect(run.cameraRecoveryState == .needsResume)
+    #expect(CompanionSnapshot(session: run).pauseResumeTitle == "Resume camera")
+    for time in stride(from: 6.0, through: 9.0, by: 0.1) {
+        run.consume(.init(time: time, angle: 170), generation: run.generation)
+    }
+    for (time, angle) in [(9.2,90.0),(9.4,90),(9.8,170),(10.0,170)] {
+        run.consume(.init(time: time, angle: angle), generation: run.generation)
+    }
+    #expect(run.cameraRecoveryState == .needsResume)
+    #expect(run.actualReps == 4)
+    run.resume(at: 11)
+    #expect(run.cameraRecoveryState == .waitingForClear)
+    for time in stride(from: 11.0, through: 13.3, by: 0.1) {
+        run.consume(.init(time: time, angle: 170), generation: run.generation)
+    }
+    #expect(run.cameraRecoveryState == .ready)
+    for (time, angle) in [(13.5,90.0),(13.7,90),(14.1,170),(14.3,170)] {
+        run.consume(.init(time: time, angle: angle), generation: run.generation)
+    }
+    #expect(run.actualReps == 5)
+}
+
+@Test func importedVideoRecoveryStillRequiresAndAcceptsExplicitVisualResume() throws {
+    var run = TrainingSession(); run.start(at: 0); run.restartSet(source: .video, at: 0)
+    run.consume(.init(time: 1, angle: .nan, confidence: 0, observation: .multiplePeople), generation: run.generation)
+    #expect(run.cameraRecoveryState == .needsResume)
+    let now = Date(), snapshot = CompanionSnapshot(session: run)
+    #expect(snapshot.isFresh(at: now))
+    var companion = CompanionState(); companion.receive(snapshot, now: now)
+    let command = try #require(companion.command(.resume, now: now))
+    run.apply(command, at: 2)
+    #expect(run.cameraRecoveryState == .waitingForClear)
+    for time in stride(from: 2.0, through: 4.1, by: 0.1) {
+        run.consume(.init(time: time, angle: 170), generation: run.generation)
+    }
+    #expect(run.cameraRecoveryState == .ready)
+}

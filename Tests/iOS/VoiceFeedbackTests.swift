@@ -3,6 +3,31 @@ import XCTest
 
 @MainActor
 final class VoiceFeedbackTests: XCTestCase {
+    func testSpokenManualPauseResumeKeepsCameraAcknowledgementPending() async throws {
+        let spoken = RecoverySpokenRepInput()
+        let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { _ in })
+        let store = TrainingStore(voicePlayback: FakeVoicePlayback(), vision: vision, spokenReps: spoken)
+        store.repVoice.coach = nil; store.start(); store.hasInput = true
+        defer { store.finish(); store.cancelCoaching(); vision.stop() }
+        vision.onFrame?(.init(time: 1, width: 640, height: 480, points: [], observation: .multiplePeople), UIImage(), store.session.generation)
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertEqual(store.session.cameraRecoveryState, .needsResume)
+        store.switchToManualReps(); store.startSpokenReps()
+        XCTAssertTrue(spoken.isListening)
+        spoken.onCount?(4)
+        XCTAssertEqual(store.session.actualReps, 4)
+        store.pause(); store.resume(); store.camera()
+        XCTAssertEqual(store.session.cameraRecoveryState, .needsResume)
+        XCTAssertEqual(store.session.actualReps, 4)
+        for time in stride(from: 2.0, through: 5.0, by: 0.1) {
+            store.session.consume(.init(time: time, angle: 170), generation: store.session.generation)
+        }
+        XCTAssertEqual(store.session.cameraRecoveryState, .needsResume)
+        store.resume()
+        XCTAssertEqual(store.session.cameraRecoveryState, .waitingForClear)
+        XCTAssertEqual(store.session.actualReps, 4)
+    }
+
     func testAmbiguitySuspendsOnlyCameraCountingAndExplicitResumeRenewsCapture() async throws {
         let playback = FakeVoicePlayback()
         let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { _ in })
@@ -283,4 +308,14 @@ private final class FakeVoicePlayback: VoicePlayback {
     var stops = 0
     func speak(_ cue: VoiceCue) { spoken.append(cue) }
     func stop() { stops += 1 }
+}
+
+@MainActor private final class RecoverySpokenRepInput: SpokenRepListening {
+    var isListening = false
+    var message: String?
+    var onCount: (@MainActor (Int) -> Void)?
+    func start(initialCount: Int, onCount: @escaping @MainActor (Int) -> Void) {
+        self.onCount = onCount; isListening = true
+    }
+    func stop() { isListening = false }
 }

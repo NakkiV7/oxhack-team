@@ -168,7 +168,7 @@ public struct ConfigurableSession: Sendable {
     }
     public mutating func resume(at time: Double) {
         guard time.isFinite, phase == .paused || (phase == .active && cameraRecoveryState == .needsResume) else { return }
-        counter?.acknowledgeIdentityRecovery(); holdCounter?.acknowledgeIdentityRecovery()
+        if source == .camera { counter?.acknowledgeIdentityRecovery(); holdCounter?.acknowledgeIdentityRecovery() }
         if phase == .paused { activeStarted = time }
         phase = .active; generation = UUID(); cue = .ready
         if current.unit == .seconds && source == .manual { manualStarted = time }

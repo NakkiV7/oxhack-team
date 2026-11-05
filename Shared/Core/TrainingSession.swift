@@ -165,7 +165,7 @@ public struct TrainingSession: Sendable {
     }
     public mutating func resume(at time: Double) {
         guard time.isFinite, phase == .paused || (phase == .active && cameraRecoveryState == .needsResume) else { return }
-        counter.acknowledgeIdentityRecovery()
+        if [.camera, .video].contains(source) { counter.acknowledgeIdentityRecovery() }
         if phase == .paused { activeStarted = time }
         phase = .active; generation = UUID(); cue = .ready
     }

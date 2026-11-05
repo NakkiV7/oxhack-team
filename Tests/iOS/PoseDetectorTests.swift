@@ -104,7 +104,7 @@ import CryptoKit
 
 /// Opt-in private footage QA. Normal app tests never access source media.
 final class PublicVideoValidationTests: XCTestCase {
-    func testFrozenPublicVideosThroughNativeDetector() throws {
+    func testFrozenPublicVideosThroughNativeDetector() async throws {
         guard let path = ProcessInfo.processInfo.environment["SPOTTR_PUBLIC_VIDEO_CONFIG"] else { throw XCTSkip("Opt-in private public-video validation requires SPOTTR_PUBLIC_VIDEO_CONFIG; normal regression suites do not establish video accuracy") }
         let configURL = URL(fileURLWithPath: path)
         let config = try JSONDecoder().decode(VideoReplayConfig.self, from: Data(contentsOf: configURL))
@@ -144,7 +144,7 @@ final class PublicVideoValidationTests: XCTestCase {
             XCTAssertEqual(source.split, trial.split)
             XCTAssertEqual(source.sha256, trial.sourceSHA256)
             XCTAssertEqual(videoSHA(try Data(contentsOf: URL(fileURLWithPath: source.file))), source.sha256)
-            let result = try replay(trial, source: source, config: config, output: output)
+            let result = try await replay(trial, source: source, config: config, output: output)
             results.append(result)
             try videoWrite(["mode": "nativeEndToEnd", "modelSHA256": videoSHA(try Data(contentsOf: model)),
                 "sdk": "MediaPipeTasksVision 1.1.1", "config": String(decoding: Data(contentsOf: configURL), as: UTF8.self),
@@ -155,7 +155,7 @@ final class PublicVideoValidationTests: XCTestCase {
         XCTAssertGreaterThan(results.compactMap { $0["frames"] as? Int }.reduce(0,+), 0)
     }
 
-    private func replay(_ trial: VideoTrial, source: VideoSource, config: VideoReplayConfig, output: URL) throws -> [String: Any] {
+    private func replay(_ trial: VideoTrial, source: VideoSource, config: VideoReplayConfig, output: URL) async throws -> [String: Any] {
         let exercise = try XCTUnwrap(Exercise(rawValue: trial.exercise))
         if let window = config.sensitivityWindow {
             XCTAssertEqual(window.originalTrialID, trial.id); XCTAssertEqual(window.sourceSHA256, source.sha256)
@@ -165,7 +165,9 @@ final class PublicVideoValidationTests: XCTestCase {
         let startSeconds = config.sensitivityWindow?.startSeconds ?? trial.startSeconds
         let endSeconds = config.sensitivityWindow?.endSeconds ?? trial.endSeconds
         let asset = AVURLAsset(url: URL(fileURLWithPath: source.file))
-        let track = try XCTUnwrap(asset.tracks(withMediaType: .video).first)
+        let tracks = try await asset.loadTracks(withMediaType: .video)
+        let track = try XCTUnwrap(tracks.first)
+        let preferredTransform = try await track.load(.preferredTransform)
         let reader = try AVAssetReader(asset: asset)
         reader.timeRange = CMTimeRange(start: CMTime(seconds: startSeconds, preferredTimescale: 600000),
             end: CMTime(seconds: endSeconds, preferredTimescale: 600000))
@@ -197,7 +199,7 @@ final class PublicVideoValidationTests: XCTestCase {
                 if config.sampling == "minimumInterval" { nextTime = pts + 1/config.fps }
                 else { nextTime += (floor(max(0, pts-nextTime) * config.fps) + 1) / config.fps }
                 guard let pixels = CMSampleBufferGetImageBuffer(buffer) else { throw CocoaError(.coderInvalidValue) }
-                let transformed = CIImage(cvPixelBuffer: pixels).transformed(by: track.preferredTransform)
+                let transformed = CIImage(cvPixelBuffer: pixels).transformed(by: preferredTransform)
                 let normalized = transformed.transformed(by: CGAffineTransform(translationX: -transformed.extent.minX, y: -transformed.extent.minY))
                 let scale = min(1, min(Double(config.inputWidth ?? 640) / normalized.extent.width, Double(config.inputHeight ?? 640) / normalized.extent.height))
                 let bounded = normalized.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
@@ -246,7 +248,7 @@ final class PublicVideoValidationTests: XCTestCase {
             "quantity": quantity, "referenceQuantity": reference, "unit": trial.referenceUnit,
             "missedQuantity": max(0,reference-quantity), "extraQuantity": max(0,quantity-reference),
             "events": events, "completedLimbCycles": counter.completedLimbCycles, "provenanceFrames": provenanceCounts,
-            "preferredTransform": [track.preferredTransform.a,track.preferredTransform.b,track.preferredTransform.c,track.preferredTransform.d,track.preferredTransform.tx,track.preferredTransform.ty],
+            "preferredTransform": [preferredTransform.a,preferredTransform.b,preferredTransform.c,preferredTransform.d,preferredTransform.tx,preferredTransform.ty],
             "traceSHA256": videoSHA(try Data(contentsOf: traceURL))]
         result["expectedAutomaticQuantity"] = trial.expectedAutomaticQuantity
         result["firstPTS"] = firstPTS; result["lastPTS"] = lastPTS; result["firstEarnedPTS"] = firstEarnedPTS
