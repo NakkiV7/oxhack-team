@@ -32,6 +32,7 @@ final class WorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBu
     private(set) var state = State.idle { didSet { onState?(state) } }
     private let health = HKHealthStore()
     private let motion = CMMotionManager()
+    var motionAvailable: Bool { motion.isDeviceMotionAvailable }
     private let motionQueue = OperationQueue()
     private var workout: HKWorkoutSession?
     private var builder: HKLiveWorkoutBuilder?

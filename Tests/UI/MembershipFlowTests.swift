@@ -37,7 +37,7 @@ final class MembershipFlowTests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.buttons["profile-settings"].waitForExistence(timeout: 8))
         app.buttons["profile-settings"].tap()
-        let lessons = app.buttons["Film your exercises"]
+        let lessons = app.buttons["Movement guides"]
         for _ in 0..<8 where !lessons.isHittable { app.swipeUp() }
         lessons.tap()
         let guide = app.buttons["guide-pausedSquat"]

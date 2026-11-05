@@ -11,11 +11,11 @@ struct WeeklyProgressView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 24) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("This week").font(.system(size: 32, weight: .bold)).tracking(-1)
+                        Text("This week").font(.largeTitle.weight(.bold)).tracking(-1)
                         Text("\(week.interval.start.formatted(.dateTime.day().month(.abbreviated))) – \(week.interval.end.addingTimeInterval(-1).formatted(.dateTime.day().month(.abbreviated))), week so far")
                             .font(.caption).foregroundStyle(.secondary)
                     }
-                    HStack {
+                    AnalyticsValueGrid(minimumWidth: 96) {
                         Metric(value: "\(week.sessions.count)", title: "Sessions", symbol: "calendar")
                         Metric(value: "\(week.setCount)", title: "Sets", symbol: "square.3.layers.3d")
                         Metric(value: "\(week.reps)", title: "Reps", symbol: "repeat")
@@ -40,8 +40,8 @@ struct WeeklyProgressView: View {
                     if store.history.isEmpty {
                         VStack(spacing: 14) {
                             Image(systemName: "chart.xyaxis.line").font(.system(size: 34, weight: .light))
-                            Text("Your first session starts here.").font(.headline)
-                            Text("Finish a set to see your reps, time and effort in one place.")
+                            Text("Your first session starts here").font(.headline)
+                            Text("Finish a set to see your reps, time and effort in one place")
                                 .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
                         }.frame(maxWidth: .infinity).padding(24).background(Palette.surface, in: RoundedRectangle(cornerRadius: 22))
                     } else {
@@ -92,12 +92,18 @@ private struct ReportSessionCard: View {
                 Image(systemName: "arrow.up.right").font(.caption)
             }
             Text("\(report.setCount) \(report.setCount == 1 ? "set" : "sets"), \(report.reps) \(report.reps == 1 ? "rep" : "reps")").font(.title3.weight(.semibold))
-            HStack {
-                Text(report.date.formatted(date: .abbreviated, time: .shortened))
-                Spacer()
-                if report.holdSeconds > 0 { Text("\(Int(report.holdSeconds)) sec holds") }
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    Text(report.date.formatted(date: .abbreviated, time: .shortened))
+                    Spacer(minLength: 12)
+                    if report.holdSeconds > 0 { Text("\(Int(report.holdSeconds)) sec holds") }
+                }.fixedSize(horizontal: true, vertical: false)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(report.date.formatted(date: .abbreviated, time: .shortened))
+                    if report.holdSeconds > 0 { Text("\(Int(report.holdSeconds)) sec holds") }
+                }
             }.font(.caption).foregroundStyle(.secondary)
-            HStack(spacing: 8) {
+            AnalyticsValueGrid(minimumWidth: 90) {
                 ForEach([InputSource.camera, .manual, .video], id: \.rawValue) { source in
                     if report.sets.contains(where: { $0.source == source }) { ReportSourceBadge(source: source) }
                 }
@@ -114,6 +120,7 @@ struct SessionReportView: View {
     let previewEnabled: Bool
     let zones: HeartRateZoneConfiguration?
     @State private var sourcesExpanded: Bool
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     init(record: SessionRecord, profile: LocalProfile? = nil, history: [SessionRecord]? = nil, previewEnabled: Bool = false, zones: HeartRateZoneConfiguration? = nil) {
         self.record = record; self.profile = profile; self.history = history
         self.previewEnabled = previewEnabled; self.zones = zones; _sourcesExpanded = State(initialValue: previewEnabled)
@@ -123,10 +130,10 @@ struct SessionReportView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: 7) {
-                    Text(report.sets.isEmpty && !record.skippedSets.isEmpty ? "Session check-in" : report.category.rawValue).font(.system(size: 30, weight: .bold)).tracking(-0.8)
+                    Text(report.sets.isEmpty && !record.skippedSets.isEmpty ? "Session check-in" : report.category.rawValue).font(.largeTitle.weight(.bold)).tracking(-0.8)
                     Text(record.date.formatted(date: .long, time: .shortened)).font(.caption).foregroundStyle(.secondary)
                 }
-                HStack(alignment: .top, spacing: 16) {
+                AnalyticsValueGrid(minimumWidth: 96) {
                     ReportTotal(value: "\(report.reps)", title: "Reps")
                     if report.holdSeconds > 0 {
                         ReportTotal(value: "\(Int(report.holdSeconds))", title: "Hold seconds")
@@ -142,16 +149,21 @@ struct SessionReportView: View {
                         Text("Your sets").font(.headline)
                         ForEach(Array(report.sets.enumerated()), id: \.element.id) { index, set in
                             VStack(alignment: .leading, spacing: 9) {
-                                HStack(alignment: .top, spacing: 12) {
-                                    if let entry = ExerciseCatalog.find(set.exerciseID) {
-                                        ExerciseArtwork(entry: entry).frame(width: 52, height: 60).accessibilityHidden(true)
+                                let layout = dynamicTypeSize.isAccessibilitySize
+                                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+                                    : AnyLayout(HStackLayout(alignment: .top, spacing: 12))
+                                layout {
+                                    HStack(alignment: .top, spacing: 12) {
+                                        if let entry = ExerciseCatalog.find(set.exerciseID) {
+                                            ExerciseArtwork(entry: entry).frame(width: 52, height: 60).accessibilityHidden(true)
+                                        }
+                                        VStack(alignment: .leading, spacing: 5) {
+                                            Text(set.exerciseName).font(.headline)
+                                            Text("Set \(index + 1)").font(.caption).foregroundStyle(.secondary)
+                                            ReportSourceBadge(source: set.source, origin: set.quantityOrigin)
+                                        }
                                     }
-                                    VStack(alignment: .leading, spacing: 5) {
-                                        Text(set.exerciseName).font(.headline)
-                                        Text("Set \(index + 1)").font(.caption).foregroundStyle(.secondary)
-                                        ReportSourceBadge(source: set.source, origin: set.quantityOrigin)
-                                    }
-                                    Spacer(minLength: 0)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                                     Text(set.quantityText).font(.title2.weight(.semibold)).monospacedDigit()
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
@@ -178,7 +190,7 @@ struct SessionReportView: View {
                 if !record.skippedSets.isEmpty {
                     VStack(alignment: .leading, spacing: 14) {
                         Text("Skipped sets").font(.headline)
-                        Text("Planned steps you chose to skip. These are not completed sets and do not add reps, active time or XP.")
+                        Text("Skipped by choice · excluded from completed sets, reps, active time and XP")
                             .font(.caption).foregroundStyle(.secondary)
                         ForEach(record.skippedSets) { skipped in
                             VStack(alignment: .leading, spacing: 6) {
@@ -186,11 +198,9 @@ struct SessionReportView: View {
                                 Text("Planned set \(skipped.number), target \(skipped.target) \(skipped.unit == .reps ? (skipped.target == 1 ? "rep" : "reps") : "sec")")
                                     .font(.caption).foregroundStyle(.secondary)
                                 ReportSourceBadge(source: skipped.source)
-                                Text("Skipped by choice. Missing entries or observations do not prove no physical exercise occurred.")
-                                    .font(.caption).foregroundStyle(.secondary)
                             }
                         }
-                        Text("Skip details stay in local history and exports.").font(.caption).foregroundStyle(.secondary)
+                        Text("Saved in local history and exports. Unlogged activity isn’t included.").font(.caption).foregroundStyle(.secondary)
                     }.padding(20).background(Palette.surface, in: RoundedRectangle(cornerRadius: 22))
                         .accessibilityIdentifier("session-skipped-sets")
                 }
@@ -200,7 +210,7 @@ struct SessionReportView: View {
                 DisclosureGroup(previewEnabled ? "Data sources" : "How this is recorded", isExpanded: $sourcesExpanded) {
                     VStack(alignment: .leading, spacing: 10) {
                         if previewEnabled {
-                            Text("Preview history is synthetic and stored separately. This report uses only values in the selected record. Missing readings stay absent; a preview does not establish physical Watch or camera validation.")
+                            Text("Sample history is stored separately from your workouts. These values are examples, including any missing readings.")
                         }
                         Text("Camera counts are observations; manual reps are self-reported. Video results describe replayed footage.")
                         Text("Recorded time includes tracked sets, live manual set timers and logged hold durations. Bulk manual rep entries have no recorded duration.")
@@ -211,7 +221,7 @@ struct SessionReportView: View {
                     }.font(.caption).foregroundStyle(.secondary).padding(.top, 8)
                 }.font(.subheadline)
                 Label("Saved locally on this iPhone", systemImage: "iphone").font(.caption.weight(.semibold))
-                Text("History and its export remain available in Profile and settings. This website account does not sync workouts, video or health data.")
+                Text("View or export your history in Profile and settings. Your account does not sync workouts, video or Health data.")
                     .font(.caption).foregroundStyle(.secondary)
 
             }.padding(24)
@@ -225,10 +235,10 @@ private struct ReportTotal: View {
     let title: String
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(value).font(.system(size: 44, weight: .semibold, design: .rounded)).monospacedDigit()
-                .lineLimit(1).minimumScaleFactor(0.6)
+            Text(value).font(.system(.largeTitle, design: .rounded, weight: .semibold)).monospacedDigit()
+                .fixedSize(horizontal: false, vertical: true)
             Text(title).font(.caption).foregroundStyle(.secondary)
-        }.frame(maxWidth: .infinity, alignment: .leading)
+        }.frame(maxWidth: .infinity, alignment: .leading).accessibilityElement(children: .combine)
     }
 }
 
@@ -236,22 +246,22 @@ private struct ReportHighlightCard: View {
     let highlight: SessionHighlight
     private var title: String {
         switch highlight {
-        case .firstActivity: return "A starting point."
-        case .repBest: return "Your highest recorded set."
-        case .discomfort: return "Discomfort was recorded."
-        case .difficult: return "Review how it felt."
-        case .noActivity: return "No reps or holds recorded."
-        case .replay: return "Video review."
-        case .recorded: return "Your session, recorded."
+        case .firstActivity: return "A starting point"
+        case .repBest: return "Your highest recorded set"
+        case .discomfort: return "Discomfort recorded"
+        case .difficult: return "Review how it felt"
+        case .noActivity: return "No reps or holds recorded"
+        case .replay: return "Video review"
+        case .recorded: return "Session saved"
         }
     }
     private var detail: String {
         switch highlight {
-        case .firstActivity: return "Your first non-video activity in the history saved on this iPhone."
+        case .firstActivity: return "A starting point in your training history on this iPhone."
         case .repBest(let exerciseID, let source, let reps, let previous):
             let name = ExerciseCatalog.find(exerciseID)?.name ?? "Exercise"
-            let label = source == .manual ? "Manual self-report" : "Camera"
-            return "\(name), \(reps) reps, \(label). Earlier saved best for this exercise and source: \(previous) \(previous == 1 ? "rep" : "reps")."
+            let label = source == .manual ? "manually logged" : "camera counted"
+            return "\(name): \(reps) reps, \(label). Previous saved best with the same source: \(previous) \(previous == 1 ? "rep" : "reps")."
         case .discomfort: return "Give yourself time to recover. Your recorded work is below."
         case .difficult: return "You recorded difficulty with form or completing a set. Your sets and feedback are below."
         case .noActivity: return "Recorded time and any available sensor readings are shown below."
@@ -292,7 +302,7 @@ private struct ReportSourceBadge: View {
         }
     }
     var body: some View {
-        Text(title).font(.system(size: 10, weight: .semibold))
+        Text(title).font(.caption2.weight(.semibold))
             .foregroundStyle(source == .camera ? Palette.blue : Palette.muted)
             .padding(.horizontal, 8).padding(.vertical, 5)
             .background(source == .camera ? Palette.blue.opacity(0.07) : .white, in: Capsule())

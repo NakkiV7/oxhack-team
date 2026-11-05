@@ -295,17 +295,15 @@ struct ExerciseLibraryView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 25) {
-                    Text("Move with what you have.").font(.system(size: 28, weight: .bold)).tracking(-0.7)
-                    Text("Bodyweight exercises, with household support where shown. Every level is available to practise.")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                LazyVStack(alignment: .leading, spacing: 24) {
+                    ScreenHeading(title: "Find your movement")
                     ForEach(ExerciseFamily.allCases, id: \.self) { family in
                         let entries = ExerciseCatalog.all.filter {
                             $0.family == family && (search.isEmpty || "\($0.name) \($0.levelName)".localizedCaseInsensitiveContains(search))
                         }
                         if !entries.isEmpty {
                             VStack(alignment: .leading, spacing: 12) {
-                                Text(family.title).font(.headline)
+                                Text(family.title).font(.title3.bold()).accessibilityAddTraits(.isHeader)
                                 ForEach(entries) { entry in
                                     NavigationLink {
                                         ExerciseDetailView(store: store, entry: entry)
@@ -320,8 +318,8 @@ struct ExerciseLibraryView: View {
                                             }
                                             Spacer()
                                             Image(systemName: "chevron.right").font(.caption)
-                                        }.padding(13).background(Palette.surface, in: RoundedRectangle(cornerRadius: 17))
-                                    }.buttonStyle(.plain).accessibilityIdentifier("library-\(entry.id)")
+                                        }.padding(16).background(Palette.surface, in: RoundedRectangle(cornerRadius: 18))
+                                    }.buttonStyle(SpottrPressStyle()).accessibilityIdentifier("library-\(entry.id)")
                                 }
                             }
                         }
@@ -338,10 +336,10 @@ struct ExerciseArtwork: View {
     let entry: ExerciseEntry
     var body: some View {
         Group {
-            if entry.art.hasPrefix("stick-") {
-                StickFigureArtwork(exerciseID: entry.id)
-            } else if let exercise = entry.tracking, [Exercise.halfSquat, .supportedSquat, .wideSquat].contains(exercise) {
+            if let exercise = entry.tracking {
                 StickFigureArtwork(exercise: exercise)
+            } else if entry.art.hasPrefix("stick-") {
+                StickFigureArtwork(exerciseID: entry.id)
             } else if UIImage(named: entry.art) != nil {
                 Image(entry.art).resizable().scaledToFit()
             } else {

@@ -43,16 +43,31 @@ struct AnalyticsValue: View {
     }
 }
 
+struct AnalyticsValueGrid<Content: View>: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    var minimumWidth: CGFloat = 140
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        LazyVGrid(columns: dynamicTypeSize.isAccessibilitySize
+                  ? [GridItem(.flexible(), alignment: .leading)]
+                  : [GridItem(.adaptive(minimum: minimumWidth), spacing: 16, alignment: .leading)],
+                  alignment: .leading, spacing: 20) {
+            content
+        }
+    }
+}
+
 private struct WorkoutTimeCard: View {
     let analysis: WorkoutAnalytics
     var body: some View {
         AnalyticsCard(title: "Recorded work & rest", symbol: "clock") {
-            HStack(alignment: .top, spacing: 16) {
-                AnalyticsValue(title: "Recorded active time", value: analysis.activeSeconds > 0 ? clockText(analysis.activeSeconds) : "Not timed")
-                AnalyticsValue(title: "Recorded rest", value: analysis.restSeconds.map(clockText) ?? "Not recorded")
+            AnalyticsValueGrid {
+                AnalyticsValue(title: "Active time", value: analysis.activeSeconds > 0 ? clockText(analysis.activeSeconds) : "Not timed")
+                AnalyticsValue(title: "Rest", value: analysis.restSeconds.map(clockText) ?? "Not recorded")
             }
             if let ratio = analysis.workRestRatio {
-                Text("Work / rest ratio: \(ratio, format: .number.precision(.fractionLength(2))) : 1")
+                Text("Work / rest: \(ratio, format: .number.precision(.fractionLength(2))) : 1")
                     .font(.subheadline).monospacedDigit()
             }
             if let elapsed = analysis.elapsedSeconds {
@@ -61,13 +76,10 @@ private struct WorkoutTimeCard: View {
             } else {
                 Text("Session start and finish times weren’t recorded.").font(.caption).foregroundStyle(.secondary)
             }
-            Text("Only saved timers and rest are shown. Manual rep entries may be untimed.")
-                .font(.caption).foregroundStyle(.secondary)
             Divider()
             Label("Watch active energy", systemImage: "flame").font(.subheadline.weight(.semibold))
             if let energy = analysis.activeKilocalories {
                 AnalyticsValue(title: "Apple Watch estimate", value: energy.formatted(.number.precision(.fractionLength(0...1))) + " kcal")
-                Text("Watch estimates are counted once per recording.").font(.caption).foregroundStyle(.secondary)
             } else {
                 Text("No Watch active-energy readings recorded.").font(.subheadline).foregroundStyle(.secondary)
             }
@@ -75,6 +87,13 @@ private struct WorkoutTimeCard: View {
                 Text("\(analysis.energyResetCount) decreasing energy observations were flagged. They do not count as new recordings.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+            DisclosureGroup("About work & rest") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Only saved timers and rest are shown. Manual rep entries may be untimed.")
+                    Text("Watch energy estimates are counted once per recording. A lower reading is flagged rather than treated as a new recording.")
+                }.font(.caption).foregroundStyle(.secondary).padding(.top, 8)
+            }.font(.subheadline).frame(minHeight: 44)
+                .accessibilityIdentifier("workout-time-details")
         }.accessibilityIdentifier("workout-time-analysis")
     }
 }
@@ -88,7 +107,7 @@ private struct WorkoutHeartCard: View {
             if heart.samples.isEmpty {
                 Text("No Watch heart-rate readings recorded.").font(.subheadline).foregroundStyle(.secondary)
             } else {
-                HStack(alignment: .top) {
+                AnalyticsValueGrid {
                     if let average = heart.average { AnalyticsValue(title: "Time-weighted average", value: "\(Int(average.rounded())) bpm") }
                     if let minimum = heart.minimum, let maximum = heart.maximum {
                         AnalyticsValue(title: "Recorded range", value: "\(Int(minimum.rounded()))–\(Int(maximum.rounded())) bpm")
@@ -103,8 +122,12 @@ private struct WorkoutHeartCard: View {
                     } else {
                         Text("Coverage cannot be estimated from a single reading.")
                     }
-                    Text("\(heart.samples.count) readings · \(heart.gapCount) gaps. Nearby readings estimate observed time; pauses and longer gaps are left out.")
+                    Text("\(heart.samples.count) readings · \(heart.gapCount) gaps")
                 }.font(.caption).foregroundStyle(.secondary)
+                DisclosureGroup("About heart-rate coverage") {
+                    Text("Nearby readings estimate observed time. Averages weight intervals of at most 12 seconds, excluding known pauses. Longer gaps remain unknown.")
+                        .font(.caption).foregroundStyle(.secondary).padding(.top, 8)
+                }.font(.subheadline).frame(minHeight: 44)
             }
             if let configuration {
                 Divider()
@@ -117,10 +140,16 @@ private struct WorkoutHeartCard: View {
                             .foregroundStyle(Palette.blue).cornerRadius(4)
                     }.chartXAxisLabel("Observed seconds").frame(height: 160)
                     ForEach(heart.zones) { zone in
-                        HStack {
-                            Text("Band \(zone.id): \(Int(zone.lowerBPM.rounded()))–\(Int(zone.upperBPM.rounded())) bpm")
-                            Spacer()
-                            Text(clockText(zone.seconds)).monospacedDigit()
+                        ViewThatFits(in: .horizontal) {
+                            HStack {
+                                Text("Band \(zone.id): \(Int(zone.lowerBPM.rounded()))–\(Int(zone.upperBPM.rounded())) bpm")
+                                Spacer()
+                                Text(clockText(zone.seconds)).monospacedDigit()
+                            }.fixedSize(horizontal: true, vertical: false)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Band \(zone.id): \(Int(zone.lowerBPM.rounded()))–\(Int(zone.upperBPM.rounded())) bpm")
+                                Text(clockText(zone.seconds)).monospacedDigit()
+                            }
                         }.font(.caption)
                     }
                     Text("Below 50%: \(clockText(heart.belowZoneSeconds)) · Above configured maximum: \(clockText(heart.aboveMaximumSeconds))")
@@ -141,10 +170,10 @@ private struct WorkoutPaceCard: View {
     var body: some View {
         AnalyticsCard(title: "Camera rep pace", symbol: "metronome") {
             if let average = pace.averageSeconds {
-                HStack(alignment: .top) {
-                    AnalyticsValue(title: "Average recorded rep", value: "\(average.formatted(.number.precision(.fractionLength(1)))) sec")
+                AnalyticsValueGrid {
+                    AnalyticsValue(title: "Average rep", value: "\(average.formatted(.number.precision(.fractionLength(1)))) sec")
                     if let rate = pace.repRatePerMinute {
-                        AnalyticsValue(title: "Recorded rep rate", value: "\(rate.formatted(.number.precision(.fractionLength(1)))) / min")
+                        AnalyticsValue(title: "Rep rate", value: "\(rate.formatted(.number.precision(.fractionLength(1)))) / min")
                     }
                 }
                 Chart(Array(pace.durations.enumerated()), id: \.offset) { index, duration in
@@ -159,13 +188,15 @@ private struct WorkoutPaceCard: View {
                     Text("Rep-duration variation: \(variation.formatted(.number.precision(.fractionLength(1))))%")
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                Text("\(pace.timedReps) complete camera-timed reps. Manual entries, video replays and incomplete rep timings are excluded. Pace is not a form or strength score.")
+                Text("\(pace.timedReps) complete camera-timed reps")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 Text("Rep tempo was not recorded.").font(.subheadline).foregroundStyle(.secondary)
-                Text("Pace needs complete camera rep timings. Manual and video sets are left out.")
-                    .font(.caption).foregroundStyle(.secondary)
             }
+            DisclosureGroup("About rep pace") {
+                Text("Pace needs complete camera rep timings. Manual entries, video replays and incomplete timings are excluded. Pace does not measure form or strength.")
+                    .font(.caption).foregroundStyle(.secondary).padding(.top, 8)
+            }.font(.subheadline).frame(minHeight: 44)
         }.accessibilityIdentifier("workout-pace-analysis")
     }
 }
@@ -176,8 +207,8 @@ private struct WorkoutMotionCard: View {
         AnalyticsCard(title: "Wrist movement", symbol: "waveform.path") {
             Text("Apple Watch · Core Motion").font(.caption).foregroundStyle(.secondary)
             if let rms = motion.rmsAccelerationG, let peak = motion.peakAccelerationG {
-                HStack(alignment: .top) {
-                    AnalyticsValue(title: "Window-weighted RMS acceleration", value: rms.formatted(.number.precision(.fractionLength(2))) + " g")
+                AnalyticsValueGrid {
+                    AnalyticsValue(title: "RMS acceleration", value: rms.formatted(.number.precision(.fractionLength(2))) + " g")
                     AnalyticsValue(title: "Peak acceleration", value: peak.formatted(.number.precision(.fractionLength(2))) + " g")
                 }
                 AnalyticsSignalChart(samples: motion.accelerationSamples, unit: "g")
@@ -194,7 +225,7 @@ private struct WorkoutMotionCard: View {
                 Text("No Watch acceleration readings recorded.").font(.subheadline).foregroundStyle(.secondary)
             }
             if let rotation = motion.meanRotationRadiansPerSecond, let peak = motion.peakRotationRadiansPerSecond {
-                HStack(alignment: .top) {
+                AnalyticsValueGrid {
                     AnalyticsValue(title: "Mean angular speed", value: rotation.formatted(.number.precision(.fractionLength(2))) + " rad/s")
                     AnalyticsValue(title: "Peak angular speed", value: peak.formatted(.number.precision(.fractionLength(2))) + " rad/s")
                 }
@@ -203,15 +234,20 @@ private struct WorkoutMotionCard: View {
                 Text("No Watch rotation readings recorded.").font(.subheadline).foregroundStyle(.secondary)
             }
             if motion.windowCount > 0 {
-                Text("\(motion.windowCount) bounded windows · \(motion.sampleCount) samples · \(clockText(motion.observedSeconds)) observed")
+                Text("\(motion.windowCount) motion windows · \(motion.sampleCount) samples · \(clockText(motion.observedSeconds)) observed")
                     .font(.caption).foregroundStyle(.secondary)
                 if let variation = motion.variationPercent {
                     Text("Window RMS variation: \(variation.formatted(.number.precision(.fractionLength(1))))%")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
-            Text("Acceleration excludes gravity. Wrist motion does not measure your body’s speed or exercise technique. Missing periods stay unknown.")
-                .font(.caption).foregroundStyle(.secondary)
+            Text("Missing periods stay unknown.").font(.caption).foregroundStyle(.secondary)
+            DisclosureGroup("About wrist movement") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Acceleration excludes gravity. RMS acceleration combines motion windows using their sample counts. Rotation is angular speed in radians per second.")
+                    Text("Wrist motion does not measure your body’s speed or exercise technique. These are sampled Watch readings, not continuous raw motion.")
+                }.font(.caption).foregroundStyle(.secondary).padding(.top, 8)
+            }.font(.subheadline).frame(minHeight: 44)
         }.accessibilityIdentifier("workout-motion-analysis")
     }
 }
@@ -240,10 +276,10 @@ struct TrainingOverviewSection: View {
         VStack(alignment: .leading, spacing: 24) {
             AnalyticsCard(title: "Training trends", symbol: "chart.bar") {
                 if store.historyAvailable {
-                    HStack(alignment: .top) {
+                    AnalyticsValueGrid {
                         AnalyticsValue(title: "Training days this week", value: "\(dashboard.trainingDays)")
-                        AnalyticsValue(title: "Recorded sets", value: "\(dashboard.totalSets)")
-                        AnalyticsValue(title: "Recorded reps", value: "\(dashboard.totalReps)")
+                        AnalyticsValue(title: "Sets this week", value: "\(dashboard.totalSets)")
+                        AnalyticsValue(title: "Reps this week", value: "\(dashboard.totalReps)")
                     }
                     Chart(dashboard.days) { day in
                         BarMark(x: .value("Day", day.date, unit: .day), y: .value("Sets", day.setCount))
@@ -251,10 +287,10 @@ struct TrainingOverviewSection: View {
                     }.chartXAxis {
                         AxisMarks(values: .stride(by: .day)) { _ in AxisValueLabel(format: .dateTime.weekday(.narrow)) }
                     }.chartYAxisLabel("sets").frame(height: 135)
-                    Text("This calendar week. Only saved non-video activity counts; missing records do not prove inactivity.")
+                    Text("This calendar week · saved sessions, excluding video replays. Unlogged activity isn’t included.")
                         .font(.caption).foregroundStyle(.secondary)
                 } else {
-                    Text("Saved history is unavailable. Totals are not shown as zero.").font(.subheadline).foregroundStyle(.secondary)
+                    Text("Saved history is unavailable. Try again to see your totals.").font(.subheadline).foregroundStyle(.secondary)
                 }
             }.accessibilityIdentifier("insights-training-trends")
             if !dashboard.recentRecords.isEmpty, store.historyAvailable {
@@ -293,8 +329,12 @@ struct TrainingOverviewSection: View {
                 Text("No heart-rate trend or camera rep timings yet. Complete a session with those readings to see them here.")
                     .font(.subheadline).foregroundStyle(.secondary)
             }
-            Text("Each point is a separate saved session, up to the latest 20. Different exercises, input sources and observation coverage can affect comparisons. Open a report for its source and gaps.")
+            Text("Up to 20 recent sessions. Open a report for its source and coverage.")
                 .font(.caption).foregroundStyle(.secondary)
+            DisclosureGroup("About session comparisons") {
+                Text("Each point is a separate saved session. Different exercises, input sources and observation coverage can affect comparisons.")
+                    .font(.caption).foregroundStyle(.secondary).padding(.top, 8)
+            }.font(.subheadline).frame(minHeight: 44)
         }
     }
 }
@@ -302,14 +342,14 @@ struct TrainingOverviewSection: View {
 private struct HealthHistoryCard: View {
     let store: HealthDataStore
     var body: some View {
-        AnalyticsCard(title: "Optional Apple Health history", symbol: "heart.text.square") {
-            Text("Saved Health readings, separate from this workout. Check each reading’s date and source.")
+        AnalyticsCard(title: "Apple Health history", symbol: "heart.text.square") {
+            Text("Historical readings, separate from your workout measurements")
                 .font(.caption).foregroundStyle(.secondary)
             if let snapshot = store.snapshot {
-                Text("Snapshot read \(snapshot.asOf.formatted(date: .abbreviated, time: .shortened))")
+                Text("Updated \(snapshot.asOf.formatted(date: .abbreviated, time: .shortened))")
                     .font(.caption).foregroundStyle(.secondary)
                 if !snapshot.latestObservations.isEmpty {
-                    Text("Latest available observations").font(.subheadline.weight(.semibold))
+                    Text("Latest readings").font(.subheadline.weight(.semibold))
                     ForEach(snapshot.latestObservations) { observation in HealthHistoryRow(observation: observation) }
                 }
                 if !snapshot.dailyObservations.isEmpty {
@@ -327,11 +367,11 @@ private struct HealthHistoryCard: View {
             }
             Text(store.statusMessage).font(.caption).foregroundStyle(.secondary)
             NavigationLink("Health history & zone setup") { HealthSetupView(store: store) }
-                .font(.subheadline.weight(.semibold)).accessibilityIdentifier("insights-health-setup")
+                .font(.subheadline.weight(.semibold)).frame(minHeight: 44).accessibilityIdentifier("insights-health-setup")
             if store.hasRequestedAccess {
                 Button { Task { await store.refresh() } } label: {
                     Label("Refresh Health snapshot", systemImage: "arrow.clockwise")
-                }.font(.subheadline).disabled(store.isBusy)
+                }.font(.subheadline).frame(minHeight: 44).disabled(store.isBusy)
             }
         }.accessibilityIdentifier("insights-health-history")
     }
@@ -346,15 +386,25 @@ private struct HealthHistoryRow: View {
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(title).font(.subheadline.weight(.medium))
-                Spacer(minLength: 10)
-                Text(observation.value.formatted(.number.precision(.fractionLength(0...1))) + " " + observation.unit)
-                    .font(.subheadline.weight(.semibold)).monospacedDigit()
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(title).font(.subheadline.weight(.medium))
+                    Spacer(minLength: 10)
+                    readingValue
+                }.fixedSize(horizontal: true, vertical: false)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title).font(.subheadline.weight(.medium))
+                    readingValue
+                }
             }
             Text("\(observation.date.formatted(date: .abbreviated, time: .shortened)) · \(observation.source)")
                 .font(.caption).foregroundStyle(.secondary)
         }.padding(.vertical, 8).accessibilityElement(children: .combine)
+    }
+
+    private var readingValue: some View {
+        Text(observation.value.formatted(.number.precision(.fractionLength(0...1))) + " " + observation.unit)
+            .font(.subheadline.weight(.semibold)).monospacedDigit()
     }
 }
 

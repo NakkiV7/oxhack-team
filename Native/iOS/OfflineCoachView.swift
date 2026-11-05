@@ -4,13 +4,13 @@ struct OfflineCoachView: View {
     let store: TrainingStore
     let profile: LocalProfile?
     @State private var choice = "Start moving"
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let choices = ["Start moving", "Make it easier", "Build a routine", "Review my work"]
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    Text("Your coach").font(.system(size: 32, weight: .bold)).tracking(-1)
-                    Text("A little guidance for your next step.").foregroundStyle(.secondary)
+                    ScreenHeading(title: "Your coach")
                     if let playback = store.remoteVoice {
                         NavigationLink {
                             VoiceCoachSettingsView(playback: playback, cancelCoaching: store.cancelCoaching, repVoice: store.repVoice)
@@ -23,16 +23,19 @@ struct OfflineCoachView: View {
                                 }
                                 Spacer(); Image(systemName: "chevron.right")
                             }.padding(18).background(Palette.surface, in: RoundedRectangle(cornerRadius: 22))
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(SpottrPressStyle())
                     }
-                    Text("What would help today?").font(.title3.bold())
+                    Text("What would help today?").font(.title3.bold()).accessibilityAddTraits(.isHeader)
                     ForEach(choices, id: \.self) { item in
                         Button { choice = item } label: {
                             HStack {
                                 Text(item).font(.subheadline.weight(.semibold))
                                 Spacer(); Image(systemName: choice == item ? "checkmark.circle.fill" : "circle")
-                            }.padding(18).background(choice == item ? Palette.blue.opacity(0.08) : Palette.surface, in: RoundedRectangle(cornerRadius: 16))
-                        }.buttonStyle(.plain).accessibilityIdentifier("coach-option-\(item)")
+                            }.frame(minHeight: 44).padding(.horizontal, 18).padding(.vertical, 8)
+                                .background(choice == item ? Palette.blue.opacity(0.08) : Palette.surface, in: RoundedRectangle(cornerRadius: 18))
+                                .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(choice == item ? Palette.blue.opacity(0.4) : .clear, lineWidth: 1))
+                        }.buttonStyle(SpottrPressStyle()).accessibilityIdentifier("coach-option-\(item)")
+                            .accessibilityAddTraits(choice == item ? .isSelected : [])
                     }
                     guidance
                     if choice != "Review my work" {
@@ -47,14 +50,14 @@ struct OfflineCoachView: View {
                                     }
                                     Spacer(); Image(systemName: "chevron.right")
                                 }.padding(16).background(Palette.surface, in: RoundedRectangle(cornerRadius: 18))
-                            }.buttonStyle(.plain)
+                            }.buttonStyle(SpottrPressStyle())
                         }
                     }
                     CoachSummaryCard(history: store.history, kind: .weekly, profile: profile)
-                    Text("Choices and guidance are built into Spottr. Everything here runs on your iPhone.")
-                        .font(.caption).foregroundStyle(.secondary)
                 }.padding(24)
+                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: choice)
             }.background(.white).navigationTitle("Coach").navigationBarTitleDisplayMode(.inline)
+                .sensoryFeedback(.selection, trigger: choice)
         }
     }
     private var suggestions: [ExerciseEntry] {

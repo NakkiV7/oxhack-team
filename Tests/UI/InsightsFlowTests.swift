@@ -17,7 +17,7 @@ final class InsightsFlowTests: XCTestCase {
 
         // Calendar: today is a logged training day with its totals and sets.
         app.tabBars.buttons["Insights"].tap()
-        XCTAssertTrue(app.staticTexts["Insights."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Your progress"].waitForExistence(timeout: 5))
         app.segmentedControls["insights-section"].buttons["Calendar"].tap()   // the last section is remembered between launches
         let today = app.buttons["calendar-day-\(Calendar.current.component(.day, from: Date()))"]
         XCTAssertTrue(today.waitForExistence(timeout: 3))

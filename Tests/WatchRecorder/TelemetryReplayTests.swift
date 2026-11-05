@@ -77,7 +77,51 @@ import WatchConnectivity
         wire.isReachable = true
     }
 
+    static func setupProbeNeedsRealMatchingReplyAndPreservesLegacyMessages() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let link = CompanionLink(telemetryOutboxURL: directory.appendingPathComponent("setup-outbox.json"))
+        let wire = WCSession.default
+        wire.isReachable = true
+        link.setSetupMotionAvailability(false)
+        wire.messageReply = { payload in
+            var response: [String: Any] = [:]
+            link.session(wire, didReceiveMessage: payload, replyHandler: { response = $0 })
+            return response
+        }
+        link.requestSetupStatus()
+        precondition(link.setupConfirmation?.pendingSamples == 0)
+        precondition(link.setupConfirmation?.motionAvailable == false)
+        wire.messageReply = { _ in ["received": true] }
+        link.requestSetupStatus()
+        precondition(link.setupConfirmation == nil, "Legacy transport receipt is not a confirmed setup reply")
+        wire.messageReply = { payload in
+            var response: [String: Any] = [:]
+            link.session(wire, didReceiveMessage: payload, replyHandler: { response = $0 })
+            wire.isReachable = false
+            link.sessionReachabilityDidChange(wire)
+            return response
+        }
+        link.requestSetupStatus()
+        precondition(link.setupConfirmation == nil, "Reply received after disconnect cannot complete setup")
+        wire.messageReply = nil; wire.isReachable = true
+        var legacy = false
+        link.onRequest = { legacy = true }
+        var response: [String: Any] = [:]
+        link.session(wire, didReceiveMessage: ["request": true], replyHandler: { response = $0 })
+        precondition(legacy && response["received"] as? Bool == true)
+        precondition(link.lastDataReceivedAt == nil)
+        let sample = WatchTelemetry(sessionID: UUID(), sentAt: Date(), heartRate: nil, accelerationG: nil, rotationRadiansPerSecond: nil)
+        wire.receivedApplicationContext = ["telemetry": try JSONEncoder().encode(sample)]
+        link.session(wire, activationDidCompleteWith: .activated, error: nil)
+        precondition(link.lastDataReceivedAt == nil, "Cached launch context cannot claim a new telemetry arrival")
+        wire.receivedApplicationContext = [:]
+        link.session(wire, didReceiveMessage: ["telemetry": try JSONEncoder().encode(sample)])
+        precondition(link.lastDataReceivedAt != nil, "Only actual telemetry receipt records a data timestamp")
+    }
+
     static func main() throws {
+        try setupProbeNeedsRealMatchingReplyAndPreservesLegacyMessages()
         try durableBatchWaitsForPhonePersistenceAcknowledgement()
         var session = TrainingSession(); session.start(at: 0)
         let start = session.date, run = UUID(), link = CompanionLink(), wire = WCSession.default

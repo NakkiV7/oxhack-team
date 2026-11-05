@@ -61,6 +61,8 @@ struct TodayView: View {
     var healthStore: HealthDataStore? = nil
     @State private var libraryPresented = false
     @State private var rewardsPresented = false
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         NavigationStack {
@@ -69,9 +71,7 @@ struct TodayView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(Date.now.formatted(.dateTime.weekday(.wide).day().month(.wide)))
                             .font(.caption).foregroundStyle(.secondary)
-                        Text(greeting).font(.system(size: 32, weight: .bold)).tracking(-1)
-                        Text("Choose your movement. Start at your own pace.")
-                            .font(.subheadline).foregroundStyle(.secondary)
+                        ScreenHeading(title: greeting)
                     }
                     nextSession
                     Button(action: openPath) {
@@ -104,7 +104,7 @@ struct TodayView: View {
                 .navigationTitle("Today").navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button(action: showSettings) { Image(systemName: "person.crop.circle") }
+                        Button(action: showSettings) { Image(systemName: "slider.horizontal.3") }
                             .accessibilityLabel("Profile and settings").accessibilityIdentifier("profile-settings")
                     }
                 }
@@ -116,36 +116,54 @@ struct TodayView: View {
     private var nextSession: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Ready when you are").font(.caption.weight(.semibold)).foregroundStyle(Palette.blue)
-            HStack(alignment: .center, spacing: 18) {
-                VStack(alignment: .leading, spacing: 9) {
-                    Text(store.selectedExercise.title).font(.system(size: 28, weight: .bold)).tracking(-0.7)
-                        .accessibilityIdentifier("today-selected-exercise")
-                    Text("Start with this movement. Target \(store.selectedExercise.target) reps per set; stop when you need to.")
-                        .font(.subheadline).foregroundStyle(.secondary)
-                }.frame(maxWidth: .infinity, alignment: .leading)
-                StickFigureArtwork(exercise: store.selectedExercise).frame(width: 90, height: 120).accessibilityHidden(true)
+            if typeSize.isAccessibilitySize {
+                nextSessionDetails
+                StickFigureArtwork(exercise: store.selectedExercise).frame(height: 140).accessibilityHidden(true)
+            } else {
+                HStack(alignment: .center, spacing: 18) {
+                    nextSessionDetails
+                    StickFigureArtwork(exercise: store.selectedExercise).frame(width: 112, height: 140).accessibilityHidden(true)
+                }
             }
             PrimaryButton(title: "Start session", action: store.start).accessibilityIdentifier("today-start-session")
-            HStack(spacing: 18) {
+            exerciseChoiceLayout {
                 ForEach([Exercise.squat, .pushup], id: \.self) { exercise in
                     Button { store.selectedExercise = exercise } label: {
                         Label(exercise.title, systemImage: store.selectedExercise == exercise ? "checkmark.circle.fill" : "circle")
-                            .font(.caption.weight(.semibold)).padding(.vertical, 8)
-                    }.buttonStyle(.plain).foregroundStyle(Palette.blue)
+                            .font(.subheadline.weight(.semibold)).frame(minHeight: 44)
+                    }.buttonStyle(SpottrPressStyle()).foregroundStyle(Palette.blue)
                         .accessibilityLabel("Start with \(exercise.title)")
+                        .accessibilityAddTraits(store.selectedExercise == exercise ? .isSelected : [])
                 }
             }
             Button { libraryPresented = true } label: {
                 Label("Choose from the exercise library", systemImage: "square.grid.2x2")
                     .font(.subheadline.weight(.semibold)).padding(.vertical, 5)
             }.buttonStyle(.plain).foregroundStyle(Palette.blue).accessibilityIdentifier("today-library")
-        }.padding(22).background(Palette.surface, in: RoundedRectangle(cornerRadius: 25))
+        }.padding(22).background(Palette.surface, in: RoundedRectangle(cornerRadius: 24))
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: store.selectedExercise)
+            .sensoryFeedback(.selection, trigger: store.selectedExercise)
+    }
+
+    private var exerciseChoiceLayout: AnyLayout {
+        typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout(spacing: 18))
+    }
+
+    private var nextSessionDetails: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Text(store.selectedExercise.title).font(.title.bold()).tracking(-0.6)
+                .accessibilityIdentifier("today-selected-exercise")
+            Text("\(store.selectedExercise.target) reps per set")
+                .font(.subheadline).foregroundStyle(.secondary)
+        }.frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var weeklyRhythm: some View {
         let dashboard = TrainingDashboard(history: store.history, now: .now, calendar: store.rewards.ledger.calendar)
         return VStack(alignment: .leading, spacing: 16) {
-            Text("Your week, recorded").font(.headline)
+            Text("Your week").font(.title3.bold()).accessibilityAddTraits(.isHeader)
             if store.historyAvailable {
                 Text("\(dashboard.trainingDays) / \(profileStore.profile?.weeklyTarget ?? 3) training days this week")
                     .font(.subheadline).foregroundStyle(.secondary)
@@ -161,15 +179,21 @@ struct TodayView: View {
                             .accessibilityLabel("\(day.date.formatted(.dateTime.weekday(.wide))), \(day.setCount) recorded sets")
                     }
                 }
-                Text("\(dashboard.sessionCount) sessions · \(dashboard.totalSets) sets · \(dashboard.totalReps) reps")
-                    .font(.caption).foregroundStyle(.secondary)
-                Text("Saved activity only. Video reviews don’t count as training days.")
-                    .font(.caption2).foregroundStyle(.secondary)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 20) { weeklyTotals(dashboard) }
+                    VStack(alignment: .leading, spacing: 12) { weeklyTotals(dashboard) }
+                }
             } else {
                 Text("Saved history could not be read. Your weekly totals are unavailable.")
                     .font(.subheadline).foregroundStyle(.secondary)
             }
         }.accessibilityElement(children: .contain).accessibilityIdentifier("today-weekly-rhythm")
+    }
+
+    @ViewBuilder private func weeklyTotals(_ dashboard: TrainingDashboard) -> some View {
+        Text("\(dashboard.sessionCount) sessions")
+        Text("\(dashboard.totalSets) sets")
+        Text("\(dashboard.totalReps) reps")
     }
 
     @ViewBuilder private var recentReport: some View {
@@ -201,17 +225,15 @@ struct TodayView: View {
             HStack {
                 Image(systemName: "applewatch").font(.title2).foregroundStyle(Palette.blue)
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Apple Watch, optional").font(.headline)
-                    Text(store.watchReachable ? "Companion reachable now" : "Companion not reachable now")
+                    Text("Apple Watch").font(.headline)
+                    Text(store.watchReachable ? "Ready for live controls" : "Connect your Watch when you’re ready")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
-            Text("Phone training works on its own. Open setup to install the companion and check your connection.")
-                .font(.caption).foregroundStyle(.secondary)
             NavigationLink("Watch setup") { WatchSetupView() }
                 .font(.subheadline.weight(.semibold)).accessibilityIdentifier("today-watch-setup")
             if let healthStore {
-                NavigationLink("Optional Health history & heart-rate zones") { HealthSetupView(store: healthStore) }
+                NavigationLink("Health history & heart-rate zones") { HealthSetupView(store: healthStore) }
                     .font(.subheadline).accessibilityIdentifier("today-health-setup")
             }
         }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
@@ -220,6 +242,6 @@ struct TodayView: View {
 
     private var greeting: String {
         let name = profileStore.profile?.name ?? ""
-        return name.isEmpty ? "A little movement today." : "Ready when you are, \(name)."
+        return name.isEmpty ? "A little movement today" : "Ready when you are, \(name)"
     }
 }

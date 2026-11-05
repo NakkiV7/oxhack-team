@@ -12,6 +12,7 @@ public final class WCSession {
     public weak var delegate: WCSessionDelegate?
     public var activationState = WCSessionActivationState.activated
     public var isReachable = true
+    public var messageReply: (([String: Any]) -> [String: Any])?
     public var receivedApplicationContext: [String: Any] = [:]
     public private(set) var applicationContext: [String: Any] = [:]
     public private(set) var messages: [[String: Any]] = []
@@ -29,6 +30,6 @@ public final class WCSession {
     public func activate() {}
     public func updateApplicationContext(_ payload: [String: Any]) throws { applicationContext = payload }
     public func sendMessage(_ payload: [String: Any], replyHandler: (([String: Any]) -> Void)?, errorHandler: ((Error) -> Void)?) {
-        messages.append(payload); replyHandler?(["received": true])
+        messages.append(payload); replyHandler?(messageReply?(payload) ?? ["received": true])
     }
 }

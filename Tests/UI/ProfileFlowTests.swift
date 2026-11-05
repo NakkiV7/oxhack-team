@@ -7,13 +7,14 @@ final class ProfileFlowTests: XCTestCase {
         app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
         app.launch()
         app.buttons["profile-settings"].tap()
-        let checklist = app.buttons["Film your exercises"]
+        let checklist = app.buttons["Movement guides"]
         for _ in 0..<4 where !checklist.exists { app.swipeUp() }
         XCTAssertTrue(checklist.waitForExistence(timeout: 5))
         checklist.tap()
-        XCTAssertTrue(app.staticTexts["0 of 19 filmed · 0 local videos added"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Learn each movement"].waitForExistence(timeout: 3))
         app.buttons["filmed-wallPushup"].tap()
-        XCTAssertTrue(app.staticTexts["1 of 19 filmed · 0 local videos added"].exists)
+        XCTAssertTrue(app.buttons["filmed-wallPushup"].label.contains("not filmed"))
+        XCTAssertFalse(app.staticTexts["Your recording is saved"].exists)
         app.buttons["guide-wallPushup"].tap()
         XCTAssertTrue(app.staticTexts["Guide graphic"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.buttons["add-lesson-wallPushup"].exists)
@@ -23,7 +24,8 @@ final class ProfileFlowTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["500 MB total for lesson videos"].exists)
         XCTAssertTrue(app.staticTexts["Record the full cycle"].exists)
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssertTrue(app.staticTexts["1 of 19 filmed · 0 local videos added"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["filmed-wallPushup"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["filmed-wallPushup"].label.contains("not filmed"))
     }
 
     @MainActor func testLocalOnboardingRequiresAGoalAndCanBeRestartedWithoutErasingProfile() {
@@ -68,7 +70,7 @@ final class ProfileFlowTests: XCTestCase {
         let name = app.textFields["Your name (optional)"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         name.tap(); name.typeText("Synthetic Guest")
-        app.staticTexts["Saved on this iPhone. No account or sign-in is needed."].tap()
+        app.staticTexts["profile-local-note"].tap()
         app.steppers["weekly-training-target"].buttons["weekly-training-target-Increment"].tap()
         let mobility = app.buttons["goal-mobility"]
         for _ in 0..<4 where !mobility.isHittable { app.swipeUp() }
@@ -102,13 +104,22 @@ final class ProfileFlowTests: XCTestCase {
         app.buttons["profile-settings"].tap()
         let name = app.textFields["Your name (optional)"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
-        name.tap(); name.typeText("Synthetic")
+        name.tap()
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
-        app.staticTexts["Saved on this iPhone. No account or sign-in is needed."].tap()
+        name.typeText("Synthetic")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
+        app.staticTexts["profile-local-note"].tap()
         XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3))
         name.tap()
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
-        app.swipeDown()
+        let keyboardBar = app.otherElements["keyboard-dismiss-bar"]
+        XCTAssertTrue(keyboardBar.waitForExistence(timeout: 3))
+        keyboardBar.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25))
+            .press(forDuration: 0.05, thenDragTo: keyboardBar.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1.75)))
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3))
+        name.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
+        app.buttons["profile-keyboard-done"].tap()
         XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3))
         app.steppers["weekly-training-target"].buttons["weekly-training-target-Increment"].tap()
         XCTAssertTrue(app.staticTexts["4 training days"].exists)
@@ -125,7 +136,7 @@ final class ProfileFlowTests: XCTestCase {
         let name = app.textFields["Your name (optional)"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         name.tap(); name.typeText("Synthetic Guest")
-        app.staticTexts["Saved on this iPhone. No account or sign-in is needed."].tap()
+        app.staticTexts["profile-local-note"].tap()
         reveal(app.buttons["profile-measurements"], in: app)
         app.buttons["profile-measurements"].tap()
         let height = app.textFields["measurements-height"]

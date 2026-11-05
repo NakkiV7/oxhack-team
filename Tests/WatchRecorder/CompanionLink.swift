@@ -12,6 +12,8 @@ final class CompanionLink {
     func telemetryBatch(_ samples: [WatchTelemetry]) { batches.append(samples) }
     func flushTelemetry() { flushCount += 1 }
     func retryTelemetry() {}
+    private(set) var setupMotionAvailable: Bool?
+    func setSetupMotionAvailability(_ available: Bool) { setupMotionAvailable = available }
     func request() {}
     func command(_ command: CompanionCommand, completion: @escaping (Bool) -> Void) {
         commands.append(command); completion(true)

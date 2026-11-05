@@ -19,7 +19,7 @@ final class PatientOnboardingFlowTests: XCTestCase {
         continueAfterFailure=false
         let app=XCUIApplication();app.launchEnvironment["SPOTTR_DATA_NAMESPACE"]=UUID().uuidString;app.launch()
         app.buttons["profile-settings"].tap()
-        let guides=app.buttons["Film your exercises"]
+        let guides=app.buttons["Movement guides"]
         for _ in 0..<8 where !guides.isHittable { app.swipeUp() }
         XCTAssertTrue(guides.isHittable);guides.tap()
         XCTAssertTrue(app.buttons["guide-wallPushup"].waitForExistence(timeout:4))

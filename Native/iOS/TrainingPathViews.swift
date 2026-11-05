@@ -1,19 +1,18 @@
 import SwiftUI
 
-/// The Skills tab. Until a path is built it shows the existing challenge tree with a card to build one; afterwards it
-/// shows the personalised path, and the full tree stays one tap away under "All challenges".
+/// A local progression based on comfortable starting movements and completed training.
 struct PathSkillsView: View {
     @Bindable var store: TrainingStore
     var profile: LocalProfile? = nil
     var previewMode = false
     @State private var family = ExerciseFamily.push
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
         NavigationStack {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
-                        Text("Your next level").font(.system(size: 32, weight: .bold)).tracking(-1)
-                        Text("Small steps. New skills. Your pace.").foregroundStyle(.secondary)
+                        ScreenHeading(title: "Your next level", subtitle: "Build one skill at a time")
                         Picker("Training path", selection: $family) {
                             ForEach(ExerciseFamily.allCases, id: \.self) { Text($0.title).tag($0) }
                         }.pickerStyle(.menu).accessibilityIdentifier("skill-path-family")
@@ -29,18 +28,22 @@ struct PathSkillsView: View {
                                         pathNode(step, entry: entry).accessibilityLabel("Locked challenge. Complete the previous step to reveal it.")
                                     } else {
                                         NavigationLink { CatalogueWorkoutSetupView(store: store, entry: entry) } label: { pathNode(step, entry: entry) }
-                                            .buttonStyle(.plain).accessibilityIdentifier("skill-\(entry.id)")
+                                            .buttonStyle(SpottrPressStyle()).accessibilityIdentifier("skill-\(entry.id)")
                                     }
                                 }.frame(maxWidth: .infinity).id(entry.id)
                             }
                         }
                         Label("More challenges appear as you progress", systemImage: "lock.fill")
                             .font(.subheadline).foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.vertical, 24)
-                        Text("Starting skills come from your onboarding answers. Earned skills come from three goal sets over two days. Starting skills do not add workouts or XP.")
-                            .font(.caption).foregroundStyle(.secondary)
+                        DisclosureGroup("How skills unlock") {
+                            Text("Your starting point comes from the movements you said feel comfortable. Complete three goal sets over two days to earn a skill and reveal the next challenge.")
+                                .font(.subheadline).foregroundStyle(.secondary).padding(.top, 8)
+                        }.font(.subheadline.weight(.medium)).tint(Palette.blue)
                         NavigationLink("Browse every exercise") { ExerciseLibraryView(store: store) }.font(.subheadline.weight(.semibold))
                     }.padding(24)
+                        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: family)
                 }.background(.white).navigationTitle("Skills").navigationBarTitleDisplayMode(.inline)
+                    .sensoryFeedback(.selection, trigger: family)
             }
         }
     }

@@ -33,6 +33,7 @@ final class WatchStore {
 
     init(now: @escaping () -> Date = Date.init) {
         self.now = now
+        link.setSetupMotionAvailability(recorder.motionAvailable)
         link.onSnapshot = { [weak self] snapshot in Task { @MainActor in self?.receive(snapshot) } }
         link.onReachability = { [weak self] reachable in
             Task { @MainActor in self?.reachable = reachable; self?.link.request() }

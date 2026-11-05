@@ -16,6 +16,15 @@
 - Optional read-only Health history includes resting/walking heart rate, SDNN HRV, VO₂ max, one-minute recovery, oxygen saturation, respiratory rate and current-day steps/distance. Every reading has a date/source; old readings remain separate from workout metrics.
 - Onboarding and settings explain Watch installation and optional Health access. No age/max-HR default is invented and the user can enter a maximum or explicitly choose an adult age estimate.
 
+## UI and Watch setup added in build 21
+
+- Reused workout-style figures across onboarding and exercise previews, with a visible stable support for supported squats.
+- Shared headings, action feedback, restrained transitions and a lifecycle-aware onboarding demonstration which stops for Reduce Motion or inactive/off-screen views.
+- Clearer Today/Coach/Skills hierarchy, selected coach choices, adaptive report grids and an accessibility-size Insights menu.
+- Optional local Watch-family question, phone-only exit and real pairing/install/reachability/companion-response milestones.
+- Fresh nonce checks, bounded active polling, queue snapshots, separate data-arrival time and actual motion availability. Cached launch context cannot pretend to be new data.
+- Shorter consumer copy and optional measurement/installation details, while retaining provenance, gaps and errors.
+
 ## Next quick wins
 
 1. Favourites, repeat the last actual workout and a recent-exercises list to shorten setup.

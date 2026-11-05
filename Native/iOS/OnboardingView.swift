@@ -4,6 +4,7 @@ struct OnboardingView: View {
     let profileStore: NativeProfileStore
     var onComplete: () -> Void = {}
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var step = 0
     @State private var name: String
     @State private var weeklyTarget: Int
@@ -34,11 +35,18 @@ struct OnboardingView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                if step > 0 { Button { step -= 1 } label: { Image(systemName: "chevron.left") }.accessibilityLabel("Previous step") }
+                if step > 0 {
+                    Button { step -= 1 } label: {
+                        Image(systemName: "chevron.left").frame(width: 44, height: 44)
+                    }.accessibilityLabel("Previous step").buttonStyle(SpottrPressStyle())
+                }
                 Spacer()
-                Text("\(step + 1) of 6").font(.caption).foregroundStyle(.secondary)
-                if profileStore.profile != nil { Button("Cancel introduction") { dismiss() }.font(.caption) }
-            }.padding(.horizontal, 25).padding(.vertical, 17)
+                Text("\(step + 1) of 6").font(.subheadline.weight(.medium)).foregroundStyle(Palette.muted)
+                if profileStore.profile != nil {
+                    Button("Cancel introduction") { dismiss() }
+                        .font(.subheadline).frame(minHeight: 44).buttonStyle(SpottrPressStyle())
+                }
+            }.padding(.horizontal, 24).padding(.vertical, 8)
             ScrollView {
                 VStack(alignment: .leading, spacing: 23) {
                     if step == 0 { introduction }
@@ -49,16 +57,19 @@ struct OnboardingView: View {
                     if step == 5 { trainer }
                     if let issue = profileStore.loadError { Text(issue).font(.caption).foregroundStyle(Palette.red) }
                     if let error { Text(error).font(.callout).foregroundStyle(Palette.red).accessibilityAddTraits(.updatesFrequently) }
-                }.padding(.horizontal, 25).padding(.bottom, 20)
+                }.padding(.horizontal, 24).padding(.bottom, 24)
+                    .id(step).transition(.opacity)
             }.scrollDismissesKeyboard(.interactively)
+                .id(step)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: step)
             VStack(spacing: 12) {
                 PrimaryButton(title: step == 5 ? "Let’s get moving" : (step == 1 ? "Continue without setup" : "Continue")) { advance() }
                     .disabled(step == 2 && goals.isEmpty && !weightManagementGoal)
                     .opacity(step == 2 && goals.isEmpty && !weightManagementGoal ? 0.4 : 1)
                     .accessibilityIdentifier("onboarding-continue")
-                Text("A local profile on this iPhone. No account needed.")
+                Text("No account needed")
                     .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
-            }.padding(.horizontal, 25).padding(.vertical, 18)
+            }.padding(.horizontal, 24).padding(.vertical, 18)
         }.background(.white).foregroundStyle(Palette.ink).preferredColorScheme(.light)
             .sheet(isPresented: $measurementsPresented) {
                 MeasurementsSettingsView(measurements: bodyMeasurements, isIntroduction: true) { bodyMeasurements = $0 }
@@ -77,18 +88,21 @@ struct OnboardingView: View {
     private var introduction: some View {
         VStack(alignment: .leading, spacing: 22) {
             Text("spottr").font(.title3.weight(.bold)).tracking(-0.6)
-            StickFigureArtwork(exercise: .halfSquat).frame(maxWidth: .infinity).frame(height: 240).accessibilityHidden(true)
-            Text("Move a little.\nBuild from there.").font(.largeTitle.bold()).tracking(-1)
-            Text("Find a comfortable starting point, practise with clear feedback and see your progress over time.")
-                .font(.body).foregroundStyle(.secondary)
+            VStack(spacing: 8) {
+                MovementDemonstration(exercise: .halfSquat, isActive: optionalSetup == nil && !measurementsPresented)
+                    .frame(maxWidth: .infinity).frame(height: 224).accessibilityHidden(true)
+                Text("A comfortable squat").font(.caption.weight(.medium)).foregroundStyle(Palette.muted)
+            }.padding(.vertical, 16).frame(maxWidth: .infinity)
+                .background(Palette.surface, in: RoundedRectangle(cornerRadius: 24))
+            ScreenHeading(title: "Move a little.\nBuild from there.",
+                          subtitle: "Find a comfortable starting point, practise with clear feedback and see your progress over time.")
             Label("Your pace. One achievable step at a time.", systemImage: "figure.walk").font(.subheadline.weight(.medium))
         }
     }
 
     private var goalSelection: some View {
         VStack(alignment: .leading, spacing: 22) {
-            Text("What are you\nworking towards?").font(.largeTitle.bold()).tracking(-1)
-            Text("Choose one or more goals. You can change them whenever you like.").foregroundStyle(.secondary)
+            ScreenHeading(title: "What are you\nworking towards?", subtitle: "Choose one or more goals. You can change them whenever you like.")
             ProfileGoalPicker(goals: $goals)
             Toggle(isOn: $weightManagementGoal) {
                 VStack(alignment: .leading, spacing: 5) {
@@ -101,24 +115,27 @@ struct OnboardingView: View {
 
     private var optionalHealthSetup: some View {
         VStack(alignment: .leading, spacing: 22) {
-            Image(systemName: "applewatch").font(.system(size: 56)).foregroundStyle(Palette.blue).accessibilityHidden(true)
-            Text("Your Watch.\nYour choice.").font(.largeTitle.bold()).tracking(-1)
-            Text("Apple Health and Watch setup are optional. Every phone feature remains available when you skip this step.")
+            Image(systemName: "applewatch").font(.system(size: 44, weight: .regular))
+                .frame(width: 80, height: 80).background(Palette.surface, in: RoundedRectangle(cornerRadius: 24))
+                .accessibilityHidden(true)
+            ScreenHeading(title: "Your Watch\nYour choice")
+            Text("Connect your Watch for workout metrics, or continue with your iPhone.")
                 .foregroundStyle(.secondary).accessibilityIdentifier("onboarding-health-optional")
-            Button { optionalSetup = .health } label: { Label("Choose Apple Health data", systemImage: "heart.text.square") }
+            Button { optionalSetup = .health } label: { setupAction("Choose Apple Health data", symbol: "heart.text.square") }
+                .buttonStyle(SpottrPressStyle())
                 .accessibilityIdentifier("onboarding-health-setup")
-            Button { optionalSetup = .watch } label: { Label("Watch installation guide", systemImage: "applewatch") }
+            Button { optionalSetup = .watch } label: { setupAction("Connect Apple Watch", symbol: "applewatch") }
+                .buttonStyle(SpottrPressStyle())
                 .accessibilityIdentifier("onboarding-watch-guide")
-            Text("No Health data is requested until you choose it. Missing readings stay missing; your training history stays separate.")
-                .font(.caption).foregroundStyle(.secondary)
-            Text(healthStore.statusMessage).font(.caption).foregroundStyle(.secondary)
+            if healthStore.hasRequestedAccess {
+                Text(healthStore.statusMessage).font(.caption).foregroundStyle(.secondary)
+            }
         }.padding(.top, 20)
     }
 
     private var personalDetails: some View {
         VStack(alignment: .leading, spacing: 23) {
-            Text("Make it yours.").font(.largeTitle.bold()).tracking(-1)
-            Text("Start with a rhythm you can make time for.").foregroundStyle(.secondary)
+            ScreenHeading(title: "Make it yours", subtitle: "Start with a rhythm you can make time for.")
             VStack(alignment: .leading, spacing: 9) {
                 Text("What should we call you?").font(.subheadline.weight(.medium))
                 TextField("Your name (optional)", text: $name).textContentType(.givenName)
@@ -152,8 +169,7 @@ struct OnboardingView: View {
 
     private var comfortableMovements: some View {
         VStack(alignment: .leading, spacing: 24) {
-            Text("Where do you feel comfortable?").font(.largeTitle.bold()).tracking(-1)
-            Text("Choose the hardest movement you can comfortably repeat. Unsure is a good place to start too.").foregroundStyle(.secondary)
+            ScreenHeading(title: "Where do you feel comfortable?", subtitle: "Choose the hardest movement you can comfortably repeat. Unsure is a good place to start too.")
             ForEach([ExerciseFamily.push, .legs], id: \.self) { family in
                 VStack(alignment: .leading, spacing: 12) {
                     Text(family.title).font(.headline)
@@ -170,10 +186,12 @@ struct OnboardingView: View {
                                     Spacer()
                                     Image(systemName: comfortableExercises.contains(id) ? "checkmark.circle.fill" : "circle")
                                 }.padding(13).background(Palette.surface, in: RoundedRectangle(cornerRadius: 16))
-                            }.buttonStyle(.plain).accessibilityIdentifier("comfortable-\(id)")
+                            }.buttonStyle(SpottrPressStyle()).accessibilityIdentifier("comfortable-\(id)")
+                                .accessibilityValue(comfortableExercises.contains(id) ? "Selected" : "Not selected")
                         }
                     }
-                    Button("Not sure yet") { comfortableExercises.subtract(ids) }.font(.subheadline)
+                    Button("Not sure yet") { comfortableExercises.subtract(ids) }
+                        .font(.subheadline).frame(minHeight: 44).buttonStyle(SpottrPressStyle())
                 }
             }
             Text("Your starting skills will be marked on your path. They don’t add workouts, camera results or XP.").font(.caption).foregroundStyle(.secondary)
@@ -182,12 +200,21 @@ struct OnboardingView: View {
 
     private var trainer: some View {
         VStack(alignment: .leading, spacing: 22) {
-            Text("Find your voice").font(.largeTitle.bold()).tracking(-1)
-            Text("Pick the coach and style you enjoy. You can change both later.").foregroundStyle(.secondary)
+            ScreenHeading(title: "Find your voice", subtitle: "Pick the coach and style you enjoy. You can change both later.")
             TrainerSelection()
             Toggle("Voice feedback during workouts", isOn: $audioEnabled)
             Text("No faces or avatars. Just a voice and clear movement guidance.").font(.caption).foregroundStyle(.secondary)
         }.padding(.top, 16)
+    }
+
+    private func setupAction(_ title: String, symbol: String) -> some View {
+        HStack(spacing: 12) {
+            Label(title, systemImage: symbol).multilineTextAlignment(.leading)
+            Spacer(minLength: 8)
+            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).accessibilityHidden(true)
+        }.font(.body.weight(.semibold)).foregroundStyle(Palette.blue)
+            .padding(16).frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
+            .background(Palette.surface, in: RoundedRectangle(cornerRadius: 18))
     }
 
     private func advance() {
@@ -223,7 +250,7 @@ struct ProfileGoalPicker: View {
                             .foregroundStyle(goals.contains(goal) ? Palette.blue : Palette.muted)
                     }.padding(17).foregroundStyle(Palette.ink)
                         .background(goals.contains(goal) ? Palette.blue.opacity(0.07) : Palette.surface, in: RoundedRectangle(cornerRadius: 17))
-                }.buttonStyle(.plain).accessibilityLabel(goal.title)
+                }.buttonStyle(SpottrPressStyle()).accessibilityLabel(goal.title)
                     .accessibilityValue(goals.contains(goal) ? "Selected" : "Not selected")
                     .accessibilityIdentifier("goal-\(goal.rawValue)")
             }

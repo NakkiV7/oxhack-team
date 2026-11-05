@@ -29,14 +29,50 @@ enum Palette {
 
 struct PrimaryButton: View {
     let title: String
-    var symbol = "arrow.up.right"
+    var symbol = "arrow.right"
     let action: () -> Void
     var body: some View {
         Button(action: action) {
-            HStack { Text(title); Spacer(); Image(systemName: symbol) }
-                .font(.system(size: 16, weight: .semibold)).padding(19)
-                .foregroundStyle(.white).background(Palette.blue, in: RoundedRectangle(cornerRadius: 15))
-        }.buttonStyle(.plain).accessibilityLabel(title)
+            HStack { Text(title).fixedSize(horizontal: false, vertical: true); Spacer(); Image(systemName: symbol) }
+                .font(.body.weight(.semibold)).padding(19)
+                .frame(minHeight: 54).contentShape(RoundedRectangle(cornerRadius: 18))
+                .foregroundStyle(.white).background(Palette.blue, in: RoundedRectangle(cornerRadius: 18))
+        }.buttonStyle(SpottrPressStyle()).accessibilityLabel(title)
+    }
+}
+
+struct SpottrPressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.isEnabled) private var isEnabled
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(!isEnabled ? 0.45 : configuration.isPressed ? 0.82 : 1)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: configuration.isPressed)
+    }
+}
+
+struct ScreenHeading: View {
+    let title: String
+    var subtitle: String? = nil
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).font(.largeTitle.bold()).tracking(-0.8)
+                .fixedSize(horizontal: false, vertical: true).accessibilityAddTraits(.isHeader)
+            if let subtitle {
+                Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+struct SpottrCard<Content: View>: View {
+    @ViewBuilder let content: Content
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) { content }
+            .padding(20).frame(maxWidth: .infinity, alignment: .leading)
+            .background(Palette.surface, in: RoundedRectangle(cornerRadius: 24))
     }
 }
 

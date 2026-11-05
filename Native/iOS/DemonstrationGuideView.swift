@@ -31,11 +31,10 @@ struct DemonstrationGuideView: View {
     var body: some View {
         List {
             Section {
-                Text("Your filming checklist").font(.title2.bold())
-                Text("\(library.recordedIDs.count) of \(ExerciseDemonstrationGuide.all.count) filmed, \(library.importedCount) local videos added")
-                    .font(.subheadline).foregroundStyle(.secondary)
-                Text("Film each exercise when you’re ready. Add your own recording to see it beside the guide graphic.")
-                    .font(.subheadline)
+                ScreenHeading(title: "Learn each movement", subtitle: "Explore a guide or add your own private recording")
+                if library.importedCount > 0 {
+                    Text("\(library.importedCount) personal recordings").font(.subheadline).foregroundStyle(.secondary)
+                }
                 if let error = error ?? library.loadError { Text(error).font(.caption).foregroundStyle(Palette.red) }
             }
             Section("All exercises") {
@@ -47,6 +46,7 @@ struct DemonstrationGuideView: View {
                         } label: {
                             Image(systemName: library.recordedIDs.contains(guide.id) ? "checkmark.square.fill" : "square")
                                 .font(.title3).foregroundStyle(library.recordedIDs.contains(guide.id) ? Palette.green : Palette.muted)
+                                .frame(width: 44, height: 44)
                         }.buttonStyle(.plain)
                             .accessibilityLabel("Mark \(guide.name) as \(library.recordedIDs.contains(guide.id) ? "not filmed" : "filmed")")
                             .accessibilityIdentifier("filmed-\(guide.id)")
@@ -55,7 +55,7 @@ struct DemonstrationGuideView: View {
                         } label: {
                             VStack(alignment: .leading, spacing: 5) {
                                 Text(guide.name).font(.subheadline.weight(.medium))
-                                Text(library.url(for: guide.id) == nil ? "Recording guide" : "Local lesson video added")
+                                Text(library.url(for: guide.id) == nil ? "Movement guide" : "Your recording is saved")
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                         }.accessibilityIdentifier("guide-\(guide.id)")
@@ -66,7 +66,7 @@ struct DemonstrationGuideView: View {
                 Text("Videos are stored privately on this iPhone. Filmed is your own checklist; these lesson clips don’t create workout records.")
                     .font(.caption).foregroundStyle(.secondary)
             }
-        }.navigationTitle("Film your exercises").navigationBarTitleDisplayMode(.inline)
+        }.navigationTitle("Movement guides").navigationBarTitleDisplayMode(.inline)
             .onAppear { library.reload() }
     }
 }

@@ -133,8 +133,9 @@ struct ProfileSettingsView: View {
                 }
                 Section {
                     Label("Local profile", systemImage: "person.crop.circle").font(.headline)
-                    Text("Saved on this iPhone. No account or sign-in is needed.").font(.caption).foregroundStyle(.secondary)
+                    Text("Your details stay on this iPhone").font(.caption).foregroundStyle(.secondary)
                         .contentShape(Rectangle()).onTapGesture { editingName = false }
+                        .accessibilityIdentifier("profile-local-note")
                     if let issue = profileStore.loadError { Text(issue).font(.caption).foregroundStyle(Palette.red) }
                     TextField("Your name (optional)", text: Binding(get: { name }, set: { name = $0; queueSave() }))
                         .textContentType(.givenName).textInputAutocapitalization(.words).focused($editingName)
@@ -153,28 +154,23 @@ struct ProfileSettingsView: View {
                 }
                 Section {
                     Button("Save profile") { editingName = false; save() }.disabled(goals.isEmpty).accessibilityIdentifier("save-profile")
-                    Text("Valid changes save automatically. You can also save now or retry a failed save.")
-                        .font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Your trainer") {
                     NavigationLink("Voice and coaching style") {
                         VoiceCoachSettingsView(playback: RemoteVoicePlayback(offlineOnly: true), cancelCoaching: {})
                     }
-                    Text("Your trainer works offline. Voice feedback is always your choice.").font(.caption).foregroundStyle(.secondary)
                 }
-                Section("Apple Health & Watch (optional)") {
+                Section("Apple Health & Watch") {
                     NavigationLink { HealthSetupView(store: healthStore) } label: {
                         Label("Health readings & heart rate zones", systemImage: "heart.text.square")
                     }.accessibilityIdentifier("profile-health-setup")
                     NavigationLink { WatchSetupView() } label: {
-                        Label("Watch installation & connection", systemImage: "applewatch")
+                        Label("Connect Apple Watch", systemImage: "applewatch")
                     }.accessibilityIdentifier("profile-watch-setup")
-                    Text("Use only the data you choose. Your phone training, local profile and Apple membership work independently.")
-                        .font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Exercise lessons") {
                     NavigationLink { DemonstrationGuideView() } label: {
-                        Label("Film your exercises", systemImage: "video")
+                        Label("Movement guides", systemImage: "figure.flexibility")
                     }
                 }
                 Section("Optional measurements") {
@@ -187,7 +183,7 @@ struct ProfileSettingsView: View {
                     if profileStore.loadError != nil {
                         Text("Save or reset the unreadable profile before changing measurements.").font(.caption).foregroundStyle(Palette.red)
                     }
-                    Text("Private on this iPhone. Measurements don’t change challenges, XP or Coach requests.")
+                    Text("Optional measurements stay on this iPhone")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Your training") {
@@ -254,8 +250,16 @@ struct ProfileSettingsView: View {
                         .accessibilityIdentifier("profile-account-separation")
                 }
             }
-            .scrollContentBackground(.hidden).scrollDismissesKeyboard(.immediately)
+            .scrollContentBackground(.hidden).scrollDismissesKeyboard(.interactively)
             .background { Color.white.contentShape(Rectangle()).onTapGesture { editingName = false } }.tint(Palette.blue)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if editingName {
+                    KeyboardDismissBar(identifier: "profile-keyboard-done") {
+                        editingName = false
+                        _ = flushPendingSave()
+                    }
+                }
+            }
             .onDisappear { _ = flushPendingSave() }
             .navigationTitle("Profile & settings").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") {

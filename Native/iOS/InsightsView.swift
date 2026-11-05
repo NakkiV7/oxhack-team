@@ -13,28 +13,48 @@ struct InsightsView: View {
     var previewMode = false
     var healthStore: HealthDataStore? = nil
     @AppStorage("insights.section") private var section = Section.overview.rawValue
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Insights.").font(.system(size: 32, weight: .bold)).tracking(-1)
-                        Text("Your training, looked back on.").font(.subheadline).foregroundStyle(.secondary)
+                    ScreenHeading(title: "Your progress")
+                    if typeSize.isAccessibilitySize {
+                        Menu {
+                            Picker("Insights section", selection: $section) {
+                                ForEach(Section.allCases) { Text($0.rawValue).tag($0.rawValue) }
+                            }
+                        } label: {
+                            HStack {
+                                Text(section).font(.headline)
+                                Spacer(); Image(systemName: "chevron.up.chevron.down")
+                            }.padding(16).frame(minHeight: 48)
+                                .background(Palette.surface, in: RoundedRectangle(cornerRadius: 16))
+                        }.accessibilityIdentifier("insights-section-selector")
+                    } else {
+                        Picker("Insights section", selection: $section) {
+                            ForEach(Section.allCases) { Text($0.rawValue).tag($0.rawValue) }
+                        }.pickerStyle(.segmented).accessibilityIdentifier("insights-section")
                     }
-                    Picker("Insights section", selection: $section) {
-                        ForEach(Section.allCases) { Text($0.rawValue).tag($0.rawValue) }
-                    }.pickerStyle(.segmented).accessibilityIdentifier("insights-section")
-                    switch Section(rawValue: section) ?? .calendar {
-                    case .overview: TrainingOverviewSection(store: store, profile: profile, healthStore: healthStore)
-                    case .calendar: CalendarSection(store: store, profile: profile, previewMode: previewMode, zones: healthStore?.zones)
-                    case .reports: ReportsSection(store: store, profile: profile, zones: healthStore?.zones)
-                    case .weekly: WeeklySection(store: store, profile: profile, previewMode: previewMode)
-                    case .research: ResearchSection()
-                    }
+                    sectionContent
+                        .transition(.opacity)
                 }.padding(24)
+                    .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: section)
             }
             .background(.white).navigationTitle("Insights").navigationBarTitleDisplayMode(.inline)
+            .sensoryFeedback(.selection, trigger: section)
+        }
+    }
+
+    @ViewBuilder private var sectionContent: some View {
+        switch Section(rawValue: section) ?? .overview {
+        case .overview: TrainingOverviewSection(store: store, profile: profile, healthStore: healthStore)
+        case .calendar: CalendarSection(store: store, profile: profile, previewMode: previewMode, zones: healthStore?.zones)
+        case .reports: ReportsSection(store: store, profile: profile, zones: healthStore?.zones)
+        case .weekly: WeeklySection(store: store, profile: profile, previewMode: previewMode)
+        case .research: ResearchSection()
         }
     }
 }

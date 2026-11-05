@@ -226,7 +226,16 @@ import CoreMotion
         store.stopLocalRecording(); await settle()
     }
 
+    @MainActor static func setupReadsExistingMotionAvailabilityWithoutStartingSensors() {
+        let before = CMMotionManager.created.count
+        let store = WatchStore()
+        expect(CMMotionManager.created.count == before + 1, "Setup reuses the recorder motion manager")
+        expect(store.link.setupMotionAvailable == CMMotionManager.created.last?.isDeviceMotionAvailable, "Actual Watch motion availability reaches the companion link")
+        expect(CMMotionManager.created.dropFirst(before).allSatisfy { !$0.isDeviceMotionActive }, "Setup never starts motion collection")
+    }
+
     @MainActor static func main() async {
+        setupReadsExistingMotionAvailabilityWithoutStartingSensors()
         await explicitPhonePauseDuringStartupSurvivesCollectionCompletion()
         await localStopFlushesItsBoundSessionBeforeClearingValues()
         await heartRateCallbacksCannotRegressOrInventAValidReading()
@@ -236,6 +245,6 @@ import CoreMotion
         await energyOnlyTelemetryPreservesTheCumulativeObservationAndResetsForANewSession()
         await olderEnergyCannotReplaceTheLatestEstimateButCorrectionsCanLowerIt()
         if failures > 0 { print("Watch store: \(failures) failures"); exit(1) }
-        print("Watch store: 8 behavioral cases passed (SDK/link doubles; no device acceptance)")
+        print("Watch store: 9 behavioral cases passed (SDK/link doubles; no device acceptance)")
     }
 }

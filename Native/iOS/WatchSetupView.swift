@@ -48,9 +48,9 @@ struct HealthSetupView: View {
 
     private var healthAccess: some View {
         Section("Apple Health is optional") {
-            Text("Choose existing resting/walking heart rate, SDNN heart rate variability, cardio fitness, one-minute recovery, oxygen, respiration, steps and walking/running distance when available.")
+            Text("Show optional heart, recovery and activity readings from Apple Health")
                 .font(.subheadline)
-            Text("Readings stay in memory on this iPhone. They are not uploaded, saved in your training history or treated as live workout measurements.")
+            Text("Historical readings stay separate from your recorded workouts")
                 .font(.caption).foregroundStyle(.secondary)
             if !store.hasRequestedAccess {
                 Text("Not requested. No Apple Health readings are loaded.")
@@ -65,9 +65,14 @@ struct HealthSetupView: View {
                     .disabled(store.isBusy).accessibilityIdentifier("health-refresh")
                 Button("Stop showing Apple Health") { store.disconnect() }
                     .accessibilityIdentifier("health-disconnect")
-                Text("Review Spottr’s sharing permissions in the Health app. Completing a permission request does not tell Spottr which read permissions you granted.")
-                    .font(.caption).foregroundStyle(.secondary)
             }
+            DisclosureGroup("Readings & privacy") {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Choose resting/walking heart rate, SDNN heart rate variability, cardio fitness, one-minute recovery, oxygen, respiration, steps and walking/running distance when available.")
+                    Text("Readings stay in memory on this iPhone. They are not uploaded or added to training history.")
+                    Text("Review sharing permissions in the Health app. Spottr cannot tell which read permissions you granted; missing data can have several causes.")
+                }.font(.caption).foregroundStyle(.secondary).padding(.top, 8)
+            }.accessibilityIdentifier("health-data-details")
             if store.isBusy { ProgressView("Reading Apple Health…") }
         }
     }
@@ -89,8 +94,12 @@ struct HealthSetupView: View {
             Button("Use an age-based estimate") { estimateMaximum() }.accessibilityIdentifier("health-estimate-maximum")
             if store.zones != nil { Button("Remove zone configuration") { store.clearZones(); maximum = ""; age = ""; zoneError = nil } }
             if let zoneError { Text(zoneError).font(.caption).foregroundStyle(Palette.red).accessibilityIdentifier("health-zone-error") }
-            Text("Five descriptive bands use 50–60–70–80–90–100% of your maximum. The optional 220-minus-age estimate is imprecise and is not a measured maximum or a workout target. These are Spottr’s bands, separate from Apple’s zone settings. Your chosen basis stays on this iPhone.")
+            Text("An age estimate is imprecise. It is not a measured maximum or a workout target.")
                 .font(.caption).foregroundStyle(.secondary)
+            DisclosureGroup("How zones are calculated") {
+                Text("Five descriptive bands use 50–60–70–80–90–100% of your maximum. The optional estimate uses 220 minus age. These are Spottr’s bands, separate from Apple’s zones. Your chosen basis stays on this iPhone.")
+                    .font(.caption).foregroundStyle(.secondary).padding(.top, 8)
+            }.accessibilityIdentifier("health-zone-details")
         }
     }
 
@@ -123,51 +132,132 @@ struct HealthSetupView: View {
 }
 
 struct WatchSetupView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var store = WatchSetupStore()
+    @State private var showInstallation = false
+    private var checksActive: Bool { scenePhase == .active && store.selectedModel != .noWatch }
+
     var body: some View {
-        Form {
-            Section("Optional companion") {
-                Label("Your phone works without a Watch", systemImage: "applewatch")
-                Text("A compatible Apple Watch can supply real workout readings. Missing sensors or permissions never become invented values.")
-                    .font(.subheadline).foregroundStyle(.secondary)
-            }
-            Section("Install the current TestFlight beta") {
-                Text("1. Install the available Spottr beta on the iPhone paired with your Watch.")
-                Text("2. In TestFlight, open Spottr’s page, then App Details in the Information section. If a compatible Watch app is offered, use its Install or Update button.")
-                Text("3. You can also open the iPhone Watch app → My Watch → Available Apps, then tap Install next to Spottr if it appears.")
-                Text("4. Open Spottr on both devices. Review the Health permissions shown on the Watch when you choose to record a workout.")
-                Link("Open Spottr in TestFlight", destination: URL(string: "https://testflight.apple.com/join/f3MhePbf")!)
-                Text("Apple controls compatible builds and available testing places. If no Watch app is offered, continue on your iPhone and check the current beta in TestFlight.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Section("Connection status") {
-                TimelineView(.periodic(from: .now, by: 5)) { _ in
-                    Text(connectionText).accessibilityIdentifier("watch-setup-status")
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                ScreenHeading(title: "Connect your Watch", subtitle: "Optional. Your iPhone works on its own.")
+                modelChoice
+                if store.selectedModel == .noWatch {
+                    SpottrCard {
+                        Text(store.selectedModel.sensorExplanation).accessibilityIdentifier("watch-phone-only")
+                        PrimaryButton(title: "Continue on iPhone", symbol: "iphone") { dismiss() }
+                    }
+                } else {
+                    connection
+                    if store.presentation.needsInstallation { installation }
+                    workoutAccess
+                    if !store.presentation.needsInstallation { installation }
                 }
-                Text("This is pairing, installation and reachability information, not confirmation of Health permissions, a started recording or sensor accuracy. Keep the apps open and the devices nearby for live controls.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Section("After public release") {
-                Text("Once Spottr is publicly available, its compatible Watch app can also be installed through Apple’s Watch App Store or the iPhone Watch app. This beta does not confirm public App Store availability.")
-                    .font(.subheadline).foregroundStyle(.secondary)
-                Link("Apple’s Watch installation guide", destination: URL(string: "https://support.apple.com/guide/watch/get-apps-apd99e3c6a68/watchos")!)
-            }
+            }.padding(24)
         }
         .navigationTitle("Watch setup").navigationBarTitleDisplayMode(.inline).tint(Palette.blue)
+        .task(id: checksActive) {
+            guard checksActive else { return }
+            store.checkConnection()
+            while !Task.isCancelled {
+                store.refreshConnection()
+                do { try await Task.sleep(for: .seconds(3)) } catch { return }
+            }
+        }
     }
 
-    private var connectionText: String {
-        guard WCSession.isSupported() else { return "Watch connectivity is not available on this device." }
-        let session = WCSession.default
-        let status = WatchSetupStatus.evaluate(supported: true, activated: session.activationState == .activated,
-                                              paired: session.isPaired, installed: session.isWatchAppInstalled,
-                                              reachable: session.isReachable)
-        switch status {
-        case .unsupported: return "Watch connectivity is not available on this device."
-        case .notReady: return "Connection status is not ready. Open Spottr on your iPhone and Watch, then return."
-        case .notPaired: return "No paired Apple Watch is reported by this iPhone."
-        case .notInstalled: return "A Watch is paired, but Spottr is not reported as installed on it."
-        case .installedOffline: return "Spottr is installed on your paired Watch. It is not reachable for live controls right now."
-        case .reachable: return "Spottr on your paired Watch is reachable right now."
+    private var modelChoice: some View {
+        SpottrCard {
+            Text("Which Watch do you have?").font(.title3.bold())
+            Text("Choose a model, or leave it as Not sure").font(.subheadline).foregroundStyle(.secondary)
+            ForEach(WatchModelPreference.allCases, id: \.self) { model in
+                Button {
+                    store.select(model)
+                } label: {
+                    HStack(spacing: 12) {
+                        Text(model.title).frame(maxWidth: .infinity, alignment: .leading)
+                        Image(systemName: store.selectedModel == model ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(store.selectedModel == model ? Palette.blue : Palette.muted)
+                    }.frame(minHeight: 44).contentShape(Rectangle())
+                }
+                .buttonStyle(SpottrPressStyle())
+                .foregroundStyle(Palette.ink)
+                .accessibilityAddTraits(store.selectedModel == model ? [.isSelected] : [])
+                .accessibilityIdentifier("watch-model-\(model.rawValue)")
+            }
+            if store.selectedModel != .noWatch {
+                Text(store.selectedModel.sensorExplanation).font(.subheadline).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("watch-model-guidance")
+            }
+        }
+    }
+
+    private var connection: some View {
+        SpottrCard {
+            Text("Connection").font(.title3.bold())
+            Text(store.presentation.summary).font(.subheadline).accessibilityIdentifier("watch-setup-status")
+            ForEach(store.presentation.milestones) { milestone in
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: milestone.isComplete ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(milestone.isComplete ? Palette.green : Palette.muted)
+                        .font(.title3).accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(milestone.title).font(.subheadline.weight(.semibold))
+                        Text(milestone.detail).font(.caption).foregroundStyle(.secondary)
+                    }.fixedSize(horizontal: false, vertical: true)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(milestone.title), \(milestone.isComplete ? "complete" : "waiting"). \(milestone.detail)")
+                .accessibilityIdentifier("watch-step-\(milestone.id)")
+            }
+            PrimaryButton(title: "Check connection", symbol: "arrow.clockwise") { store.checkConnection() }
+                .accessibilityIdentifier("watch-check-connection")
+            if let date = store.presentation.lastCheckedAt {
+                Text("Last checked \(date.formatted(date: .abbreviated, time: .shortened))")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Text(store.presentation.queueText ?? "Check the companion to see pending Watch data")
+                .font(.subheadline).accessibilityIdentifier("watch-queue-status")
+            if let date = store.presentation.lastDataReceivedAt {
+                Text("Last Watch data received \(date.formatted(date: .abbreviated, time: .shortened))")
+                    .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("watch-last-data")
+            } else {
+                Text("Last Watch data received: not available").font(.caption).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("watch-last-data")
+            }
+        }.animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: store.presentation.milestones)
+    }
+
+    private var workoutAccess: some View {
+        SpottrCard {
+            Text("Record a workout").font(.title3.bold())
+            Text("Start a workout on iPhone, then choose Record on Watch. Review workout access on your Watch when asked.")
+                .font(.subheadline)
+            Text("Heart rate, active energy and movement appear when available. A connection check does not grant Health access.")
+                .font(.subheadline).foregroundStyle(.secondary)
+            Text(store.presentation.motionText).font(.caption).foregroundStyle(.secondary)
+                .accessibilityIdentifier("watch-motion-availability")
+        }
+    }
+
+    private var installation: some View {
+        SpottrCard {
+            DisclosureGroup("Install Spottr on your Watch", isExpanded: $showInstallation) {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("1. Install the current Spottr beta on the iPhone paired with your Watch.")
+                    Text("2. Open the iPhone Watch app → My Watch → Available Apps. Tap Install next to Spottr if it appears.")
+                    Text("3. In TestFlight, you can also open Spottr → App Details. Use Install or Update if a compatible Watch app is offered.")
+                    Text("4. Open Spottr on both devices and keep them nearby. Return here and check the connection.")
+                    Link("Open Spottr in TestFlight", destination: URL(string: "https://testflight.apple.com/join/f3MhePbf")!)
+                        .frame(minHeight: 44, alignment: .leading)
+                    Text("If no Watch app is offered, continue on iPhone and check for a compatible beta later.")
+                        .foregroundStyle(.secondary)
+                    Link("Apple’s Watch installation guide", destination: URL(string: "https://support.apple.com/guide/watch/get-apps-apd99e3c6a68/watchos")!)
+                        .frame(minHeight: 44, alignment: .leading)
+                }.font(.subheadline).padding(.top, 12)
+            }.accessibilityIdentifier("watch-installation-guide")
         }
     }
 }
