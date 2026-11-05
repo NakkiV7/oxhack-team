@@ -1,3 +1,4 @@
+import AVFoundation
 import XCTest
 @testable import Spottr
 
@@ -5,6 +6,128 @@ import XCTest
 final class RemoteVoicePlaybackTests: XCTestCase {
     private let baseURL = URL(string: "http://127.0.0.1:8788")!
     private let wall = Date(timeIntervalSince1970: 1_792_915_200)
+
+    func testOriginalCoachesPlayBundledRecordingsInsteadOfSystemSpeechOrNetworking() throws {
+        let local = SilentLocalVoice()
+        var recordings: [Data] = []
+        let playback = RemoteVoicePlayback(local: local, offlineOnly: true,
+            defaults: UserDefaults(suiteName: UUID().uuidString)!,
+            client: { XCTFail("Offline coaching cannot access the gateway"); throw TestFailure.invalid },
+            makeAudio: { recordings.append($0); return SilentRemoteAudio(onPlay: {}) }, uptime: { 2 })
+        for coach in [VoiceCoachPreference.maya, .leo] {
+            try playback.select(coach)
+            playback.speak(cue())
+            playback.stop()
+        }
+        XCTAssertTrue(local.spoken.isEmpty, "Original coaches must use their natural recordings")
+        XCTAssertEqual(recordings.count, 2)
+        if recordings.count == 2 { XCTAssertNotEqual(recordings[0], recordings[1]) }
+    }
+
+    func testNaturalCoachingRotatesEightPhrasesAndUsesTheSelectedStyle() throws {
+        let defaults = UserDefaults(suiteName: UUID().uuidString)!
+        defaults.set("gentle", forKey: "trainer.tone")
+        var recordings: [Data] = []
+        let playback = RemoteVoicePlayback(local: SilentLocalVoice(), offlineOnly: true, defaults: defaults,
+            makeAudio: { recordings.append($0); return SilentRemoteAudio(onPlay: {}) }, uptime: { 2 })
+        for _ in 0..<9 { playback.speak(cue(reason: .steadyRhythm)) }
+        XCTAssertEqual(recordings.count, 9)
+        if recordings.count == 9 {
+            XCTAssertEqual(Set(recordings.prefix(8)).count, 8)
+            XCTAssertEqual(recordings.first, recordings.last)
+        }
+        defaults.set("direct", forKey: "trainer.tone")
+        playback.speak(cue(reason: .steadyRhythm))
+        XCTAssertEqual(recordings.count, 10)
+        if recordings.count == 10 { XCTAssertNotEqual(recordings[0], recordings[9]) }
+        playback.stop()
+    }
+
+    func testNaturalTrackingSentenceFinishesAfterItsDeadlineAndStopCanInterrupt() {
+        var time = 2.0
+        var outputs: [SilentRemoteAudio] = []
+        var plays = 0
+        let local = SilentLocalVoice()
+        let playback = RemoteVoicePlayback(local: local, offlineOnly: true,
+            defaults: UserDefaults(suiteName: UUID().uuidString)!, makeAudio: { _ in
+                let output = SilentRemoteAudio(onPlay: { plays += 1 })
+                outputs.append(output)
+                return output
+            }, uptime: { time })
+        let controller = VoiceCuePlaybackController(playback: playback)
+        let tracking = cue(reason: .tracking)
+        let context = VoiceCueContext(sessionID: tracking.sessionID, generation: tracking.generation, phase: .active)
+        controller.update(context: context, event: tracking, enabled: true, now: time)
+        time = 9
+        controller.update(context: context, event: cue(session: tracking.sessionID, generation: tracking.generation,
+            expiry: 12, reason: .alignment), enabled: true, now: time)
+        XCTAssertEqual(plays, 1)
+        XCTAssertEqual(outputs.first?.stops, 0)
+        let staleCompletion = outputs.first?.onFinish
+        staleCompletion?()
+        XCTAssertEqual(controller.completedTrackingPrompt?.id, tracking.id)
+        let secondTracking = cue(session: tracking.sessionID, generation: tracking.generation, expiry: 12, reason: .tracking)
+        controller.update(context: context, event: secondTracking, enabled: true, now: time)
+        let stop = cue(session: tracking.sessionID, generation: tracking.generation, kind: .coaching(.stop), expiry: nil)
+        controller.update(context: context, event: stop, enabled: true, now: time)
+        XCTAssertEqual(plays, 3)
+        XCTAssertEqual(outputs.count, 3)
+        if outputs.count == 3 {
+            XCTAssertEqual(outputs[1].stops, 1)
+            staleCompletion?()
+            XCTAssertEqual(outputs[2].stops, 0, "An old completion cannot cancel a new safety cue")
+            controller.update(context: context, event: stop, enabled: false, now: time)
+            XCTAssertEqual(outputs[2].stops, 1)
+        }
+        XCTAssertTrue(local.spoken.isEmpty)
+    }
+
+    func testNaturalRecordingPreparationCannotExtendFreshnessAndMissingSafetyUsesLocalSpeech() {
+        var time = 2.0
+        var plays = 0
+        var decodingFails = false
+        let local = SilentLocalVoice()
+        let playback = RemoteVoicePlayback(local: local, offlineOnly: true,
+            defaults: UserDefaults(suiteName: UUID().uuidString)!, makeAudio: { _ in
+                if decodingFails { throw TestFailure.invalid }
+                time = 9
+                return SilentRemoteAudio(onPlay: { plays += 1 })
+            }, uptime: { time })
+        playback.speak(cue(reason: .alignment))
+        XCTAssertEqual(plays, 0)
+        XCTAssertTrue(local.spoken.isEmpty)
+        decodingFails = true
+        playback.speak(cue(kind: .coaching(.stop), expiry: nil))
+        XCTAssertEqual(local.spoken.count, 1)
+        XCTAssertEqual(local.spoken.first?.kind, .coaching(.stop))
+        XCTAssertEqual(local.spoken.first?.reason, .discomfort)
+        XCTAssertTrue(local.spoken.first?.text.contains("Stop") == true)
+    }
+
+    func testNaturalVoiceUsesSpokenPlaybackAudioSession() throws {
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.ambient, mode: .default)
+        let playback = RemoteVoicePlayback(offlineOnly: true,
+            defaults: UserDefaults(suiteName: UUID().uuidString)!, uptime: { 2 })
+        defer { playback.stop() }
+        playback.speak(cue(reason: .alignment))
+        XCTAssertEqual(session.category, .playback)
+        XCTAssertEqual(session.mode, .spokenAudio)
+        XCTAssertTrue(session.categoryOptions.contains(.duckOthers))
+    }
+
+    func testAudioActivationCannotStartExpiredNaturalCue() throws {
+        var time = 2.0
+        var plays = 0
+        let output = SilentRemoteAudio(onPlay: { plays += 1 }, onPrepare: { time = 9 })
+        let local = SilentLocalVoice()
+        let playback = RemoteVoicePlayback(local: local, offlineOnly: true,
+            defaults: UserDefaults(suiteName: UUID().uuidString)!, makeAudio: { _ in output }, uptime: { time })
+        playback.speak(cue(reason: .alignment))
+        XCTAssertEqual(plays, 0, "Session activation must not extend the cue's starting deadline")
+        XCTAssertEqual(output.stops, 1, "An expired prepared output must release its audio session")
+        XCTAssertTrue(local.spoken.isEmpty)
+    }
 
     func testArnoldIsAvailableOfflineAndLocalRequiresExplicitSelection() throws {
         let local = SilentLocalVoice()
@@ -372,8 +495,8 @@ final class RemoteVoicePlaybackTests: XCTestCase {
         let formatter = ISO8601DateFormatter(); formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter.string(from: date)
     }
-    private func cue(session: UUID = UUID(), generation: UUID = UUID(), kind: VoiceCue.Kind = .coaching(.form), expiry: Double? = 6, text: String = "Keep your whole body in view.") -> VoiceCue {
-        .init(id: UUID(), sessionID: session, generation: generation, text: text, kind: kind, issuedAt: 0, expiresAt: expiry)
+    private func cue(session: UUID = UUID(), generation: UUID = UUID(), kind: VoiceCue.Kind = .coaching(.form), expiry: Double? = 6, text: String = "Keep your whole body in view.", reason: CoachingReason? = nil) -> VoiceCue {
+        .init(id: UUID(), sessionID: session, generation: generation, text: text, kind: kind, issuedAt: 0, expiresAt: expiry, reason: reason)
     }
     private func reply(_ request: URLRequest, mutate: (([String: String]) -> [String: String])? = nil) throws -> (Data, URLResponse) {
         let body: Data
@@ -403,7 +526,11 @@ private final class SilentRemoteAudio: VoiceAudioOutput {
     var onFinish: (() -> Void)?
     var stops = 0
     let onPlay: () -> Void
-    init(onPlay: @escaping () -> Void) { self.onPlay = onPlay }
+    let onPrepare: () throws -> Void
+    init(onPlay: @escaping () -> Void, onPrepare: @escaping () throws -> Void = {}) {
+        self.onPlay = onPlay; self.onPrepare = onPrepare
+    }
+    func prepare() throws { try onPrepare() }
     func play() -> Bool { onPlay(); return true }
     func stop() { stops += 1 }
 }

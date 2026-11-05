@@ -120,8 +120,13 @@ private final class VoiceRedirectBlocker: NSObject, URLSessionTaskDelegate {
 @MainActor
 protocol VoiceAudioOutput: AnyObject {
     var onFinish: (() -> Void)? { get set }
+    func prepare() throws
     func play() -> Bool
     func stop()
+}
+
+extension VoiceAudioOutput {
+    func prepare() throws {}
 }
 
 @MainActor @Observable
@@ -191,8 +196,33 @@ final class RemoteVoicePlayback: VoicePlayback {
             if preference == .arnold {
                 previewCueID = cue.id; arnoldPlayback.speak(cue); return
             }
-            let reason = cue.reason ?? .steadyRhythm
+            let reason: CoachingReason = cue.kind == .coaching(.stop) ? .discomfort : (cue.reason ?? .steadyRhythm)
             let text = cueLibrary.next(reason: reason, tone: tone)
+            if preference == .maya || preference == .leo {
+                do {
+                    guard let index = TrainerCueLibrary.lines(reason: reason, tone: tone).firstIndex(of: text),
+                          let url = Bundle.main.url(forResource: "\(reason.rawValue)-\(index + 1)", withExtension: "mp3",
+                              subdirectory: "DemoVoice/\(preference.rawValue)/\(tone.rawValue)") else {
+                        throw CocoaError(.fileNoSuchFile)
+                    }
+                    let player = try makeAudio(Data(contentsOf: url, options: .mappedIfSafe))
+                    try player.prepare()
+                    guard cue.kind == .coaching(.stop) || (cue.expiresAt.map { $0 > uptime() } ?? false) else {
+                        player.stop(); complete(token: token); return
+                    }
+                    player.onFinish = { [weak self] in self?.complete(token: token) }
+                    output = player
+                    guard player.play() else { throw CocoaError(.fileReadCorruptFile) }
+                } catch {
+                    if cue.kind == .coaching(.stop) {
+                        output?.onFinish = nil; output?.stop(); output = nil
+                        localCueID = cue.id
+                        local.speak(.init(id: cue.id, sessionID: cue.sessionID, generation: cue.generation,
+                            text: text, kind: cue.kind, issuedAt: cue.issuedAt, expiresAt: cue.expiresAt, reason: reason))
+                    } else { complete(token: token, error: error) }
+                }
+                return
+            }
             if let system = local as? LocalVoicePlayback {
                 system.preferredGender = preference == .local ? nil : (preference == .maya ? .female : .male)
                 system.rate = tone == .gentle ? 0.43 : tone == .direct ? 0.50 : 0.47
@@ -245,8 +275,9 @@ final class RemoteVoicePlayback: VoicePlayback {
                     complete(token: token); return
                 }
                 let player = try makeAudio(audio)
+                try player.prepare()
                 guard active?.token == token, preference == voice, uptime().isFinite, uptime() >= now, uptime() < deadline else {
-                    complete(token: token); return
+                    player.stop(); complete(token: token); return
                 }
                 player.onFinish = { [weak self] in self?.complete(token: token) }
                 output = player
@@ -281,14 +312,27 @@ final class RemoteVoicePlayback: VoicePlayback {
 private final class SystemVoiceAudioOutput: NSObject, VoiceAudioOutput, AVAudioPlayerDelegate {
     var onFinish: (() -> Void)?
     private let player: AVAudioPlayer
+    private var audioSessionActive = false
     init(data: Data) throws {
         player = try AVAudioPlayer(data: data)
         super.init()
         guard player.format.sampleRate == 22_050, player.duration.isFinite, player.duration > 0, player.duration <= 66 else { throw RemoteVoiceError.invalidResponse }
         player.delegate = self; player.prepareToPlay()
     }
+    func prepare() throws {
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.playback, mode: .spokenAudio, options: .duckOthers)
+        try session.setActive(true)
+        audioSessionActive = true
+    }
     func play() -> Bool { player.play() }
-    func stop() { player.stop() }
+    func stop() {
+        player.stop()
+        if audioSessionActive {
+            audioSessionActive = false
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
+    }
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) { finished(ObjectIdentifier(player)) }
     nonisolated func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) { finished(ObjectIdentifier(player)) }
     private nonisolated func finished(_ identity: ObjectIdentifier) {

@@ -17,6 +17,8 @@ This records the earlier build 18 checkpoint. The later production-foundation up
 
 ## Audio status
 
+**Build 22 candidate update:** renewed restricted authoring access succeeded. Maya and Leo now have 144 natural bundled recordings across three styles, using 3,658 credits within the approved 10,000-credit cap. [Current audio evidence](evidence/natural-coach-voices-2026-11-05.md). The paragraph below records the earlier build 19 checkpoint.
+
 Original Maya and Leo coaches currently use the iPhone's installed speech voices with three styles and a rotating phrase bank. They are not ElevenLabs recordings. Existing authoring credentials returned HTTP 400/401 and the restricted key is expired. No new synthesis, key creation, purchase or upgrade was performed. Existing Arnold and Goggins-inspired bundled recordings remain available. Identity/authenticity/endorsement is not claimed.
 
 Renewed authoring access is needed to generate the new bundled human-like recordings. Once generated they must be reviewed for pronunciation, correct instruction, peak loudness and licensing, then imported into the same offline playback interface. No API key belongs in the app.
@@ -44,7 +46,7 @@ Software tests are not a claim of physical counting accuracy. Test each selected
 5. Local reminders with chosen training days and quiet hours.
 6. Export a concise progress PDF or CSV that a patient can choose to share with a trainer or GP.
 7. Optional dated weight entries and a rolling trend, distinct from exercise energy. Never estimate weight loss from rep counts.
-8. Bundle reviewed ElevenLabs recordings for every original coach/style/event combination, with several phrasings, normalised loudness and no immediate repeat.
+8. Listen to the new build 22 Maya/Leo recordings on physical phones, check all three styles and audio routes, and add an offline voice preview. Recording authoring, bundling, level checks and phrase rotation are implemented.
 9. Accessibility presets for larger controls, reduced animation and audio-only instructions.
 10. A tester feedback screen that exports device/build, chosen exercise, observed vs corrected counts and an optional user-selected video. No silent health/video uploads.
 

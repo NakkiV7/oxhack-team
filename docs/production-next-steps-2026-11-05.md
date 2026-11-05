@@ -34,7 +34,7 @@
 5. Chosen training days, quiet-hours reminders and Watch rest-completion haptics.
 6. A compact PDF report and richer CSV export chosen by the user, with observed coverage, zones and manual/camera provenance.
 7. Optional dated weight entries with a rolling trend, keeping weight change separate from exercise-energy estimates.
-8. Offline audio previews and more reviewed, normalized recordings for each original coach/style/event. Authoring credentials must work before promising ElevenLabs audio.
+8. Add offline audio previews and perform physical listening/route checks. Build 22 now bundles 144 natural Maya/Leo recordings across three styles, with normalised levels and rotation; authoring access is verified.
 9. Accessibility presets for larger controls, reduced motion, stronger contrast and fewer simultaneous instructions.
 10. An optional feedback bundle containing build/device, exercise and expected/recorded counts. Attachments must be explicitly chosen; no automatic health/video uploads.
 

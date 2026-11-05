@@ -1,0 +1,800 @@
+{
+  "coach": "maya",
+  "provider": "ElevenLabs",
+  "model": "eleven_v4",
+  "playback": "bundled offline",
+  "clips": [
+    {
+      "name": "gentle/discomfort-1",
+      "text": "Stop here. Take a comfortable rest. If pain continues, seek advice.",
+      "bytes": 44556,
+      "sha256": "23ecc64a19580c1f233ed8e17d46335a4f93234ed83b6b0bf8553e9bb62ece00",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 5.478685
+      }
+    },
+    {
+      "name": "gentle/tracking-1",
+      "text": "I lost sight of the movement. Your reps are saved. Move back into view when you are ready.",
+      "bytes": 39750,
+      "sha256": "d95230fb1e17426f1ceabbce645a3fce09f6df558ec71f1c4bed890755061de8",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 4.874875
+      }
+    },
+    {
+      "name": "gentle/tracking-2",
+      "text": "Your count is safe. Give the camera a clear side view so we can continue.",
+      "bytes": 34525,
+      "sha256": "372c1eab0c9e5b4a4c321a559ce9c5815418a49f50dcd839caf070fab735cf19",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 4.208571
+      }
+    },
+    {
+      "name": "gentle/alignment-1",
+      "text": "Keep a comfortable straight line through your body.",
+      "bytes": 21777,
+      "sha256": "74de0882a13514fe5385ef462470af489b875b16beeb4dcba12b5573812d6a9c",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.63102
+      }
+    },
+    {
+      "name": "gentle/alignment-2",
+      "text": "Reset your position, then continue with control.",
+      "bytes": 26793,
+      "sha256": "5860a8f95b31b470fdc496776a6991bc7555e960a1395f3891aee1c9e7f304e7",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.241315
+      }
+    },
+    {
+      "name": "gentle/targetReached-1",
+      "text": "You reached your target. Finish when you are ready.",
+      "bytes": 22822,
+      "sha256": "a78c84c914887d5b75002e2eac40c445ef73bdf67ca454321206c43d7df78b7a",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.765624
+      }
+    },
+    {
+      "name": "gentle/targetReached-2",
+      "text": "Target reached. You can end this set and recover.",
+      "bytes": 26166,
+      "sha256": "dc82eff884a7bcb95143d4a0782b900c6a67700ede03fd6835868da3de32f470",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.169796
+      }
+    },
+    {
+      "name": "gentle/restReminder-1",
+      "text": "Take your time to recover before the next set.",
+      "bytes": 21359,
+      "sha256": "25527ebbdc3ab6e33d118585ed77afb6afec4866e1eb29aa65d36be8b494611e",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.562132
+      }
+    },
+    {
+      "name": "gentle/restReminder-2",
+      "text": "Relax your shoulders and breathe comfortably.",
+      "bytes": 25539,
+      "sha256": "2543abb3f27fa4719de81a8dd12e3eb33ed81f8de2fbfbdcb80350ce81ff988b",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.089252
+      }
+    },
+    {
+      "name": "gentle/restReminder-3",
+      "text": "Let your breathing settle. The next set can wait.",
+      "bytes": 25121,
+      "sha256": "182a26ce566d4f3f57171cd71976ccf3af39dd9a4c09c1ad58fce569183e8893",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.048118
+      }
+    },
+    {
+      "name": "gentle/workoutCompleted-1",
+      "text": "You made time to move today. Well done.",
+      "bytes": 22613,
+      "sha256": "f72ae92cf01259661979b7c9e7121489dfe768a97513420efaf5c22dbc2f8c37",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.719184
+      }
+    },
+    {
+      "name": "gentle/workoutCompleted-2",
+      "text": "Session complete. Every bit of practice adds up.",
+      "bytes": 27420,
+      "sha256": "df5df82f4f2d7aebcd8ce5db4981c376cc9392dadfff6120508d8cc9b4854bf1",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.341497
+      }
+    },
+    {
+      "name": "gentle/workoutCompleted-3",
+      "text": "Your work is saved. See you next time.",
+      "bytes": 18643,
+      "sha256": "45fedbb4bec890b6716e1a0760dc18a5a817f82a87fbe20d1429b1d0a69c7937",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.241814
+      }
+    },
+    {
+      "name": "gentle/slowerRep-1",
+      "text": "Your last rep took longer. Take a break whenever you need.",
+      "bytes": 27002,
+      "sha256": "9218442aea4bd8bd2f41ef73e25397833bee6ff446b58dac292d68c55f544744",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.273787
+      }
+    },
+    {
+      "name": "gentle/slowerRep-2",
+      "text": "Keep the movement comfortable. There is no need to rush.",
+      "bytes": 29301,
+      "sha256": "beeed95502fd8e512c9f2d65d88db86c7b348c684f8867cd699feb6f9fdfa953",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.554785
+      }
+    },
+    {
+      "name": "gentle/slowerRep-3",
+      "text": "A steadier pace is fine. Finish the set if you need a rest.",
+      "bytes": 29928,
+      "sha256": "0e0194af0f5b3c731b4fc760b315b87ba7d75ea5d33afb2d925c82b2cc316fdc",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.645442
+      }
+    },
+    {
+      "name": "gentle/steadyRhythm-1",
+      "text": "One comfortable rep at a time.",
+      "bytes": 18016,
+      "sha256": "76e2ef77686aa9d88364771b37190a49f9c10f59ce826dceaf1b6e065612bc40",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.149478
+      }
+    },
+    {
+      "name": "gentle/steadyRhythm-2",
+      "text": "You are doing well. Keep breathing.",
+      "bytes": 23240,
+      "sha256": "254bee4e2b7ad9815e2ac83a525a3490bcf2fb6357a971f1c48cee9d3e176ff9",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.817098
+      }
+    },
+    {
+      "name": "gentle/steadyRhythm-3",
+      "text": "Find the pace that feels right for you.",
+      "bytes": 19270,
+      "sha256": "48dedb9e398466f9b8a1c46aceafa8ea019dfc60a055484987d901562c8aa896",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.312426
+      }
+    },
+    {
+      "name": "gentle/steadyRhythm-4",
+      "text": "A small step is still progress.",
+      "bytes": 20733,
+      "sha256": "14223f5891996be09f83137d2b3532e6e304dceb46e2e3660275d25cf53e7c1d",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.504535
+      }
+    },
+    {
+      "name": "gentle/steadyRhythm-5",
+      "text": "Take all the time you need.",
+      "bytes": 14672,
+      "sha256": "2edfa4a756f1476266a8bd464d49d57180879f2dfa2be2bf0e188722407924e3",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 1.733515
+      }
+    },
+    {
+      "name": "gentle/steadyRhythm-6",
+      "text": "Stay relaxed as you move.",
+      "bytes": 16135,
+      "sha256": "e2585326a733531eae27ffdb6bf7a3a8f3a0e92600e60b663b18dc7dca1f0217",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 1.932426
+      }
+    },
+    {
+      "name": "gentle/steadyRhythm-7",
+      "text": "You can rest whenever you need.",
+      "bytes": 15926,
+      "sha256": "3cf3576daf53ed9d5a26afb03717030def2e6bea97894df43d8be9f02210c873",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 1.896281
+      }
+    },
+    {
+      "name": "gentle/steadyRhythm-8",
+      "text": "Nice and easy. Keep that control.",
+      "bytes": 20733,
+      "sha256": "409b24fc428a1495ce4b06906bc7c1e2c81181ff0026b64d936f4f753fa29c88",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.484626
+      }
+    },
+    {
+      "name": "encouraging/discomfort-1",
+      "text": "Stop here. Take a comfortable rest. If pain continues, seek advice.",
+      "bytes": 43093,
+      "sha256": "1a0bb454253f2aaa62a0b2112fa724abf3a180374792dc7878f54e89fe78c117",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 5.295238
+      }
+    },
+    {
+      "name": "encouraging/tracking-1",
+      "text": "I lost sight of the movement. Your reps are saved. Move back into view when you are ready.",
+      "bytes": 39750,
+      "sha256": "5f00c7a480572af2031e676e036d06d6808f38144321df571a23faac2d70f5ba",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 4.866531
+      }
+    },
+    {
+      "name": "encouraging/tracking-2",
+      "text": "Your count is safe. Give the camera a clear side view so we can continue.",
+      "bytes": 34525,
+      "sha256": "267b4dd50905f49877f52f498e0e0b7aad8b876516435087b23451fe372557a4",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 4.207846
+      }
+    },
+    {
+      "name": "encouraging/alignment-1",
+      "text": "Keep a comfortable straight line through your body.",
+      "bytes": 21777,
+      "sha256": "ad05b5456025f063a1fdf622b6af7e7573da156b8d755555e6cfb2ab189ea50e",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.637415
+      }
+    },
+    {
+      "name": "encouraging/alignment-2",
+      "text": "Reset your position, then continue with control.",
+      "bytes": 26793,
+      "sha256": "b40c1fb0d4021712a1f301ca464560f6f1b0fe34378e5b4147c05bb4257579f6",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.241315
+      }
+    },
+    {
+      "name": "encouraging/targetReached-1",
+      "text": "You reached your target. Finish when you are ready.",
+      "bytes": 23031,
+      "sha256": "80ed672ac51d3e0bdd21ed5b3a0180ea9e2a9c1c1f123b6a8b4dee8b6ce10f6a",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.771519
+      }
+    },
+    {
+      "name": "encouraging/targetReached-2",
+      "text": "Target reached. You can end this set and recover.",
+      "bytes": 26166,
+      "sha256": "c60fe1a6233c5daea9ffe6db3b3f6557826ae3769c782cdb8b34438447320af8",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.16322
+      }
+    },
+    {
+      "name": "encouraging/restReminder-1",
+      "text": "Take your time to recover before the next set.",
+      "bytes": 21150,
+      "sha256": "f878834dd641a0289596108a5c37ee84568fee25fb94b00495f4e19fe4e316b2",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.557098
+      }
+    },
+    {
+      "name": "encouraging/restReminder-2",
+      "text": "Relax your shoulders and breathe comfortably.",
+      "bytes": 25539,
+      "sha256": "c90c36b925ef013872a43389b37198bca6b3dcd07b8d8cde75bc9ec2ee8fb9a1",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.100317
+      }
+    },
+    {
+      "name": "encouraging/restReminder-3",
+      "text": "Let your breathing settle. The next set can wait.",
+      "bytes": 25121,
+      "sha256": "022c38a7fbf50f9dae27057d54db25ef316a933bffdd765b8b22f9abb725e733",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.054331
+      }
+    },
+    {
+      "name": "encouraging/workoutCompleted-1",
+      "text": "You made time to move today. Well done.",
+      "bytes": 22613,
+      "sha256": "2a753a0c361addddb81086a68b45cede2fdc8ab2973464ff656f5c2b51967fbd",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.725624
+      }
+    },
+    {
+      "name": "encouraging/workoutCompleted-2",
+      "text": "Session complete. Every bit of practice adds up.",
+      "bytes": 27629,
+      "sha256": "11f8ca7178aafbaaa9146f152f2b6bc052e0b46f07dbc5c4db32d97c4458ee13",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.362041
+      }
+    },
+    {
+      "name": "encouraging/workoutCompleted-3",
+      "text": "Your work is saved. See you next time.",
+      "bytes": 18643,
+      "sha256": "3311da7f6c19fde757562d6ef68c2573f7d4b40c1dc7d6199f119a4921948ecc",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.236871
+      }
+    },
+    {
+      "name": "encouraging/slowerRep-1",
+      "text": "Your last rep took longer. Take a break whenever you need.",
+      "bytes": 27002,
+      "sha256": "039b5c97b6afa611c571b9faace7c490b6928706101d0716ab617f3b16297eba",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.277415
+      }
+    },
+    {
+      "name": "encouraging/slowerRep-2",
+      "text": "Keep the movement comfortable. There is no need to rush.",
+      "bytes": 29092,
+      "sha256": "0f2daee6ce5327bf240a9bb9661230417c4ec65eaea9925b04ae345ccd198d18",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.549433
+      }
+    },
+    {
+      "name": "encouraging/slowerRep-3",
+      "text": "A steadier pace is fine. Finish the set if you need a rest.",
+      "bytes": 29928,
+      "sha256": "31a33a11fc10837a8dac6cbbc656177ae646a0c1d74557baa72d7e35101e61fd",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.640272
+      }
+    },
+    {
+      "name": "encouraging/steadyRhythm-1",
+      "text": "That is good control. Keep it going.",
+      "bytes": 23031,
+      "sha256": "3c2b0591e60a15edee338a5917012dc08d8d7748c3c07e188a65a07c9709707f",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.783673
+      }
+    },
+    {
+      "name": "encouraging/steadyRhythm-2",
+      "text": "You are building a steady rhythm.",
+      "bytes": 17807,
+      "sha256": "ed7980300ad4bda874fd98c473796ea74200e33f56d67600410a38af8c21dc92",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.134694
+      }
+    },
+    {
+      "name": "encouraging/steadyRhythm-3",
+      "text": "Each rep is another bit of practice.",
+      "bytes": 19061,
+      "sha256": "2a8060ca753fc05bc016044a0bf7942332073f185293f5602ebb00d7753307ff",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.283356
+      }
+    },
+    {
+      "name": "encouraging/steadyRhythm-4",
+      "text": "You showed up. Keep moving at your pace.",
+      "bytes": 24076,
+      "sha256": "cc7c19faa3affa3fd33a32de4f7ac5f5865b4fd98f6557d91cf467174734095b",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.918776
+      }
+    },
+    {
+      "name": "encouraging/steadyRhythm-5",
+      "text": "Good effort. Stay with that smooth movement.",
+      "bytes": 26375,
+      "sha256": "e17217e800bd5947161e0cfbd458fa303b991266de2c4cdab39ab7726da3f636",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.209342
+      }
+    },
+    {
+      "name": "encouraging/steadyRhythm-6",
+      "text": "You have found your rhythm.",
+      "bytes": 13418,
+      "sha256": "4887635c1bddb6d21062f72beb2ed1b9ee9feff79115623fb7ea6e437e0805fc",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 1.584036
+      }
+    },
+    {
+      "name": "encouraging/steadyRhythm-7",
+      "text": "Keep breathing. You are doing well.",
+      "bytes": 22195,
+      "sha256": "485cbe14929a8d3c4be5019925ad3feba132a992d50c1f062f22e085d2fda2ab",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.678231
+      }
+    },
+    {
+      "name": "encouraging/steadyRhythm-8",
+      "text": "That is another step forward.",
+      "bytes": 17807,
+      "sha256": "a8414b9e3e46317bb809c216abc621e00fdf1b6e5220c5c63d7d3b7ae3f16b70",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.123673
+      }
+    },
+    {
+      "name": "direct/discomfort-1",
+      "text": "Stop here. Take a comfortable rest. If pain continues, seek advice.",
+      "bytes": 43093,
+      "sha256": "ae911a019e37cda110cac4dc6a1dbc43f34f5db3dcafa87359f62c2ae79d3e87",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 5.298277
+      }
+    },
+    {
+      "name": "direct/tracking-1",
+      "text": "I lost sight of the movement. Your reps are saved. Move back into view when you are ready.",
+      "bytes": 39750,
+      "sha256": "a1bcabe6de3961a4375b23a7ae9404be5c05e5148387023880e9d19f141dc385",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 4.87746
+      }
+    },
+    {
+      "name": "direct/tracking-2",
+      "text": "Your count is safe. Give the camera a clear side view so we can continue.",
+      "bytes": 34316,
+      "sha256": "5fece7e2c755ae44ce53b02722b8b8ac18e7dc47e8f224afc4e961bf3fd02e15",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 4.203311
+      }
+    },
+    {
+      "name": "direct/alignment-1",
+      "text": "Keep a comfortable straight line through your body.",
+      "bytes": 21777,
+      "sha256": "dab9162f267bde8ce507af582c3de2c803969845ba050ee7adc28e9744247b0f",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.637868
+      }
+    },
+    {
+      "name": "direct/alignment-2",
+      "text": "Reset your position, then continue with control.",
+      "bytes": 26793,
+      "sha256": "93293887e9ae712dc8db26789c68f7474d437b709ca1fc15653aa4069034c9aa",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.241406
+      }
+    },
+    {
+      "name": "direct/targetReached-1",
+      "text": "You reached your target. Finish when you are ready.",
+      "bytes": 22822,
+      "sha256": "b78ed48dbcb3550cf1ad1b7258e649bb79997d6a81825533353eb6f0b5c7d85e",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.765578
+      }
+    },
+    {
+      "name": "direct/targetReached-2",
+      "text": "Target reached. You can end this set and recover.",
+      "bytes": 26166,
+      "sha256": "1df34923c74f09a2c97b274b9e9bb3258c3e9ed857d8f15a6d35f0195d54ea3b",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.171519
+      }
+    },
+    {
+      "name": "direct/restReminder-1",
+      "text": "Take your time to recover before the next set.",
+      "bytes": 21359,
+      "sha256": "c7789eb275d3c84e13b22e5af0ffd9fb0d407a78fdf6636741957903f7217e9b",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.562132
+      }
+    },
+    {
+      "name": "direct/restReminder-2",
+      "text": "Relax your shoulders and breathe comfortably.",
+      "bytes": 25539,
+      "sha256": "15eb34ac55a73441e19117464e64749e12afd18ba488434f429e38b65c7086e0",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.089478
+      }
+    },
+    {
+      "name": "direct/restReminder-3",
+      "text": "Let your breathing settle. The next set can wait.",
+      "bytes": 25121,
+      "sha256": "6f1b716fe98c13950aeed190af78915431781f91ce8850ac2e41512c87878529",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.044807
+      }
+    },
+    {
+      "name": "direct/workoutCompleted-1",
+      "text": "You made time to move today. Well done.",
+      "bytes": 22613,
+      "sha256": "3024f4f767cfa2bf4f595d140226dd91ec4a55facd44e14d3032204ce6bc50dd",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.720998
+      }
+    },
+    {
+      "name": "direct/workoutCompleted-2",
+      "text": "Session complete. Every bit of practice adds up.",
+      "bytes": 27629,
+      "sha256": "49d517e28d45afb16cbe5e4d4268b3e15626203f2ba9a61c19169c57445db0f9",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.357324
+      }
+    },
+    {
+      "name": "direct/workoutCompleted-3",
+      "text": "Your work is saved. See you next time.",
+      "bytes": 18643,
+      "sha256": "055b41c505c54c3d06259822307f7edf717702308482af9739caf21f054718c3",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.24
+      }
+    },
+    {
+      "name": "direct/slowerRep-1",
+      "text": "Your last rep took longer. Take a break whenever you need.",
+      "bytes": 27002,
+      "sha256": "ec2c315b590b9b68a86e17f3487d238d673fa1484a0745ef5ef80a43ced6fc10",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.269615
+      }
+    },
+    {
+      "name": "direct/slowerRep-2",
+      "text": "Keep the movement comfortable. There is no need to rush.",
+      "bytes": 29301,
+      "sha256": "9967d49c5bb691df66dac06056825d289baa87104b2a51165f236675f589b130",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.554785
+      }
+    },
+    {
+      "name": "direct/slowerRep-3",
+      "text": "A steadier pace is fine. Finish the set if you need a rest.",
+      "bytes": 29928,
+      "sha256": "1c39544316e561fe07e8b1958a2710584f9402f259a5bbf8844c9bedf6fc7f16",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 3.64263
+      }
+    },
+    {
+      "name": "direct/steadyRhythm-1",
+      "text": "Stay focused. Keep your reps controlled.",
+      "bytes": 21986,
+      "sha256": "7f07dd3f1b646b0e24dfd64c738cacaba90196ff9036912dfb59b595c69c8c0a",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.64898
+      }
+    },
+    {
+      "name": "direct/steadyRhythm-2",
+      "text": "Keep the same smooth pace.",
+      "bytes": 16553,
+      "sha256": "23b5d4e1e528df662bb6a84536c4c80c5dc67566a031de1eaf7e29ef5a26c769",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 1.966485
+      }
+    },
+    {
+      "name": "direct/steadyRhythm-3",
+      "text": "Control the lowering and the return.",
+      "bytes": 18434,
+      "sha256": "f1cfc92bab18d3e0f94fe85cec08192be287008e4146306bbf42fa5094fe118e",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.211927
+      }
+    },
+    {
+      "name": "direct/steadyRhythm-4",
+      "text": "Breathe out as you press or rise.",
+      "bytes": 22195,
+      "sha256": "26bf344ab204adbee6a48d818dbe942a734aff3c96ae2daaaaa2075717f73ce2",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.666621
+      }
+    },
+    {
+      "name": "direct/steadyRhythm-5",
+      "text": "Make the next rep a controlled one.",
+      "bytes": 16762,
+      "sha256": "4d842c78d7bf9bbb105cd98c9bb756ed0fb700f96380788cd12695ab492ba599",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 1.987438
+      }
+    },
+    {
+      "name": "direct/steadyRhythm-6",
+      "text": "Stay steady. Finish with good control.",
+      "bytes": 23449,
+      "sha256": "c7dc792c904face9d366aac2e7b9078e7697fd3eefe13c15a7a40c43b47d07d0",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.831338
+      }
+    },
+    {
+      "name": "direct/steadyRhythm-7",
+      "text": "Keep your position strong and comfortable.",
+      "bytes": 19688,
+      "sha256": "3deb9e88c4963348b98fcadfa8e3cc4f4c413beccc1622c4b76ce78c3c80111f",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.373696
+      }
+    },
+    {
+      "name": "direct/steadyRhythm-8",
+      "text": "Focus on the movement in front of you.",
+      "bytes": 17180,
+      "sha256": "8bb441e8ebf46fb35791ee8f317cc35bdddf47782461230fe6bcbe6a103db372",
+      "decode": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "durationSeconds": 2.05619
+      }
+    }
+  ]
+}

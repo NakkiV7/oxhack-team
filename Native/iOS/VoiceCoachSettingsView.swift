@@ -58,8 +58,8 @@ struct TrainerSelection: View {
     }
     private func detail(_ voice: VoiceCoachPreference) -> String {
         switch voice {
-        case .maya: return "Female voice with varied local coaching"
-        case .leo: return "Male voice with varied local coaching"
+        case .maya: return "Warm female voice with natural offline coaching"
+        case .leo: return "Calm male voice with natural offline coaching"
         case .arnold, .david: return "Optional inspired voice pack with offline rep audio"
         case .local: return "Your iPhone’s default speaking voice"
         }
@@ -102,7 +102,7 @@ struct VoiceCoachSettingsView: View {
                         }))
                         Text("Optional rep packs use the bundled Arnold or Goggins recordings. Turn them off for coaching only.").font(.caption).foregroundStyle(.secondary)
                     }
-                    Text("All workout speech runs offline. Original voices currently use the voices installed on your iPhone. No text, video or health data is sent to a voice service.")
+                    Text("Coach recordings play offline. Local voice uses your iPhone’s speaking voice. No workout text, video or health data is sent to a voice service.")
                         .font(.caption).foregroundStyle(.secondary)
                 }.padding(24)
             }.background(.white).navigationTitle("Your trainer").navigationBarTitleDisplayMode(.inline)
