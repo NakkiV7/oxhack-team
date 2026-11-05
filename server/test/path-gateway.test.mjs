@@ -3,6 +3,7 @@ import { once } from 'node:events';
 import test from 'node:test';
 import { createGateway } from '../src/gateway.mjs';
 import { pathCatalog } from '../src/path-contracts.mjs';
+import { catalog } from '../src/contracts.mjs';
 
 const env = { SPOTTR_GATEWAY_TOKEN: 'test-token', GEMINI_API_KEY: 'test-key', GEMINI_MODEL: 'gemini-test' };
 const post = data => ({ method: 'POST', headers: { authorization: 'Bearer test-token', 'content-type': 'application/json' }, body: JSON.stringify(data) });
@@ -152,6 +153,8 @@ test('new routes keep bearer authentication and the catalogue stays in step with
   t.after(() => new Promise(resolve => server.close(resolve)));
   const response = await fetch(`http://127.0.0.1:${server.address().port}/v1/path-proposal`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(pathInput) });
   assert.equal(response.status, 401);
-  assert.equal(pathCatalog.length, 19);
-  assert.deepEqual(pathCatalog.filter(item => item.tracked).map(item => item.id).sort(), ['pushup', 'squat']);
+  assert.equal(new Set(pathCatalog.map(item => item.id)).size, pathCatalog.length);
+  assert.deepEqual(pathCatalog.map(item => ({ id: item.id, unit: item.unit, tracked: item.tracked })),
+    catalog.map(item => ({ id: item.id, unit: item.unit, tracked: item.cameraTracking })));
+  assert.ok(pathCatalog.some(item => item.id === 'seatedKneeExtension' && !item.tracked));
 });

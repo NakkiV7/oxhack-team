@@ -96,9 +96,11 @@ test('chat supplies server-owned camera and manual capabilities without inventin
     try { return [JSON.parse(part.text)]; } catch { return []; }
   }).find(part => part.appCapabilities)?.appCapabilities;
   assert.ok(metadata, 'Gemini needs server-owned app capabilities to answer product questions without personal facts');
-  assert.deepEqual(metadata.exercises.filter(item => item.cameraTracking).map(item => item.id).sort(), ['pushup', 'squat']);
+  assert.deepEqual(metadata.exercises.filter(item => item.cameraTracking).map(item => item.id).sort(),
+    ['closeGripPushup', 'halfSquat', 'inclinePushup', 'kneePushup', 'pausedPushup', 'pausedSquat',
+      'pushup', 'squat', 'supportedSquat', 'tempoPushup', 'tempoSquat', 'wallPushup', 'wideSquat']);
   assert.equal(metadata.exercises.find(item => item.id === 'pushup').name, 'Push-ups');
-  assert.equal(metadata.exercises.find(item => item.id === 'wallPushup').cameraTracking, false);
+  assert.equal(metadata.exercises.find(item => item.id === 'wallPushup').cameraTracking, true);
   assert.equal(metadata.exercises.find(item => item.id === 'wallPushup').unit, 'reps');
   assert.equal(metadata.exercises.find(item => item.id === 'plank').cameraTracking, false);
   assert.equal(metadata.exercises.find(item => item.id === 'plank').unit, 'seconds');
@@ -207,7 +209,12 @@ test('native empty-history proposals pass the provider grammar boundary without 
   assert.equal(outbound.generationConfig.maxOutputTokens, 2048);
   const context = JSON.parse(outbound.contents.at(-1).parts.at(-1).text);
   assert.deepEqual(context.facts, nativeInput.facts);
-  assert.equal(context.permittedExercises.length, 15);
+  assert.ok(context.permittedExercises.every(item => item.support === null));
+  assert.ok(context.permittedExercises.some(item => item.id === 'birdDog'));
+  assert.ok(context.permittedExercises.some(item => item.id === 'tempoSquat'));
+  assert.ok(!context.permittedExercises.some(item => item.id === 'wallPushup'));
+  assert.ok(!context.permittedExercises.some(item => item.id === 'supportedSquat'));
+  assert.equal(new Set(context.permittedExercises.map(item => item.id)).size, context.permittedExercises.length);
   assert.deepEqual(context.limits, { maxExercises: 12, maxSets: 5, maxReps: 30, maxHoldSeconds: 120, maxRestSeconds: 600, maxTotalSets: 24 });
 });
 
