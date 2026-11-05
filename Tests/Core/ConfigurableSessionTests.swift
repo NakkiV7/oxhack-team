@@ -410,7 +410,7 @@ private func configuredCycle(_ run: inout ConfigurableSession, from offset: Doub
     #expect(legacy.configured?.source == nil)
 }
 
-@Test(arguments: ["deadBug", "plank"])
+@Test(arguments: ["catCow", "plank"])
 func configuredWatchRejectsUnsupportedCameraSourceClaims(exerciseID: String) throws {
     let unit = exerciseID == "plank" ? "seconds" : "reps"
     var run = try ConfigurableSession(plan: customPlan("""

@@ -40,7 +40,7 @@ import Testing
 }
 
 @Test func allVariantsRetainWitnessedDepthAcrossShortOcclusionOnly() {
-    for exercise in Exercise.allCases {
+    for exercise in Exercise.allCases.filter({ !$0.isTimed }) {
         var counter = RepCounter(exercise: exercise)
         for (t,a) in [(0.0,170.0),(0.2,170),(0.6,exercise.bottomAngle),(0.8,exercise.bottomAngle)] {
             _ = counter.consume(.init(time: t, angle: a))

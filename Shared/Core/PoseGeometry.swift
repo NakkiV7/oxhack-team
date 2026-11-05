@@ -9,27 +9,49 @@ public struct PosePoint: Sendable {
     }
 }
 
+public struct PoseWorldPoint: Sendable {
+    public let x: Double
+    public let y: Double
+    public let z: Double
+    public let confidence: Double
+    public init(x: Double, y: Double, z: Double, confidence: Double) {
+        self.x = x; self.y = y; self.z = z; self.confidence = confidence
+    }
+}
+
 public struct PoseFrame: Sendable {
     public let time: Double
     public let width: Double
     public let height: Double
     public let points: [PosePoint]
-    public init(time: Double, width: Double, height: Double, points: [PosePoint]) {
+    public let worldPoints: [PoseWorldPoint]?
+    public init(time: Double, width: Double, height: Double, points: [PosePoint], worldPoints: [PoseWorldPoint]? = nil) {
+        self.worldPoints = worldPoints
         self.time = time; self.width = width; self.height = height; self.points = points
     }
 }
 
 public enum PoseGeometry {
     public static func measure(_ frame: PoseFrame, exercise: Exercise, preferredSide: Int? = nil, allowSideFallback: Bool = true) -> MovementSample? {
-        guard frame.width.isFinite, frame.height.isFinite, frame.width > 0, frame.height > 0,
+        guard frame.time.isFinite, frame.width.isFinite, frame.height.isFinite, frame.width > 0, frame.height > 0,
               frame.points.count == 33 else { return nil }
+        guard preferredSide == nil || (0...1).contains(preferredSide!) else { return nil }
+        if !exercise.isSquat && !exercise.isPushup {
+            return ProfileGeometry.measure(frame, exercise: exercise, preferredSide: preferredSide, allowSideFallback: allowSideFallback)
+        }
+        let geometry = ImagePose(frame)
         let sides = allowSideFallback ? [preferredSide ?? 0, (preferredSide ?? 0) == 0 ? 1 : 0] : [preferredSide ?? 0]
         for side in sides {
             let indices = exercise.isSquat ? [23, 25, 27] : [11, 13, 15, 23]
             var points = indices.map { frame.points[$0 + side] }
             guard points.allSatisfy({ valid($0) }) else { continue }
             let positions = points.map { ($0.x * frame.width, $0.y * frame.height) }
-            guard let angle = angle(positions[0], positions[1], positions[2]) else { continue }
+            guard let measurement = geometry.joint(indices[0] + side, indices[1] + side, indices[2] + side) else { continue }
+            let angle = measurement.angle
+            if exercise.isSquat {
+                guard geometry.upright(side), geometry.view(.side,side) else { continue }
+                points.append(frame.points[11 + side])
+            }
             var aligned = true
             var bodyAngle: Double?
             if !exercise.isSquat {
@@ -59,7 +81,7 @@ public enum PoseGeometry {
 
             }
             return .init(time: frame.time, angle: angle, confidence: points.map(\.confidence).min() ?? 0,
-                         side: side, aligned: aligned, bodyAngle: bodyAngle)
+                         side: side, aligned: aligned, bodyAngle: bodyAngle, provenance: measurement.provenance)
         }
         return nil
     }

@@ -11,11 +11,11 @@ import Testing
     }
 }
 
-@Test func manualAlternativesKeepTheirOwnIdentityAndCountingUnit() throws {
+@Test func expandedTrackedAlternativesRetainManualLoggingIdentityAndCountingUnit() throws {
     for (id, unit) in [("widePushup", ExerciseEntry.Unit.reps), ("diamondPushup", .reps),
                        ("wallSit", .seconds), ("calfRaise", .reps), ("birdDog", .reps), ("seatedKneeExtension", .reps)] {
         let entry = try #require(ExerciseCatalog.find(id))
-        #expect(entry.tracking == nil)
+        #expect(entry.tracking?.rawValue == id)
         #expect(entry.unit == unit)
         let record = try LoggedWorkout.make(exerciseID: id, count: entry.goal, sets: 1)
         let set = try #require(WorkoutReport(record: record).sets.first)

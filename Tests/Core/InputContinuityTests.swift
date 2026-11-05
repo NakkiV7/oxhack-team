@@ -47,7 +47,7 @@ import Testing
 }
 
 @Test func inputChangesRejectNonFiniteTimeAndUnsupportedCamera() throws {
-    let plan = try CoachSavedPlan.catalogue(exerciseID: "plank", sets: 1, target: 20, restSeconds: 30, availableSupport: [])
+    let plan = try CoachSavedPlan.catalogue(exerciseID: "catCow", sets: 1, target: 6, restSeconds: 30, availableSupport: [])
     var run = try ConfigurableSession(plan: plan, availableSupport: [])
     run.start(at: 0)
     let invalidCamera = run.switchInput(source: .camera, at: 1)
