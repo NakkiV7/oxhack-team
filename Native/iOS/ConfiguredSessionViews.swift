@@ -67,7 +67,7 @@ private struct ConfiguredLiveSetView: View {
                         inputControl(run)
                         preview(run)
                         Text(run.current.entry.instruction).font(.headline)
-                        Label(run.quantityOrigin(at: store.now) == .mixed ? "Camera + manual quantity" : run.source == .camera ? "Camera observation" : (run.current.unit == .seconds ? "Manual hold, active timer" : "Manual self-report"), systemImage: run.source == .camera ? "camera" : "hand.tap")
+                        Label(run.quantitySourcePresentation(at: store.now).title, systemImage: run.quantitySourcePresentation(at: store.now).symbol)
                             .font(.caption.weight(.medium)).foregroundStyle(.secondary)
                         Text(status(run)).font(.subheadline).accessibilityIdentifier("configured-status")
                         if run.source == .camera, run.hasStarted {

@@ -347,3 +347,63 @@ extension ConfiguredWorkoutFlowTests {
         }
     }
 }
+
+extension ConfiguredWorkoutFlowTests {
+    func testManualTimerTargetNeverBecomesObservedTargetWhenSwitchingToCamera() async throws {
+        let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { _ in })
+        let store = TrainingStore(historyURL: cameraHistoryURL(), vision: vision)
+        defer { store.pause(); store.finish() }
+        store.startPlan(try CoachSavedPlan.catalogue(exerciseID: "plank", sets: 1, target: 1, restSeconds: 30), availableSupport: [])
+        store.beginConfiguredSet()
+        try await Task.sleep(for: .milliseconds(1100))
+        XCTAssertTrue(store.selectConfiguredInput(.phoneCamera))
+        let run = try XCTUnwrap(store.configured)
+        let start = store.now
+        let manualSeconds = run.measuredSeconds(at: start)
+        XCTAssertGreaterThanOrEqual(manualSeconds, 1)
+        XCTAssertEqual(run.quantityOrigin(at: start), .activeTimer)
+        XCTAssertEqual(run.quantitySourcePresentation(at: start).title, "Manual hold, active timer")
+        XCTAssertNotEqual(store.coachingEvent?.decision.reason, .targetReached, "Selecting camera cannot relabel the manual target.")
+        for index in 0...1 {
+            let time = start + Double(index)*0.2
+            vision.onFrame?(qualifiedPlankFrame(at: time), UIImage(), run.generation)
+            for _ in 0..<100 where store.frame?.time != time { try await Task.sleep(for: .milliseconds(1)) }
+            XCTAssertEqual(store.frame?.time, time)
+            store.coachingTick(at: time)
+            XCTAssertEqual(store.configured?.holdCounter?.observedSeconds ?? -1, Double(index)*0.2, accuracy: 0.00001)
+            XCTAssertEqual(store.configured?.measuredSeconds(at: time) ?? -1, manualSeconds + Double(index)*0.2, accuracy: 0.00001)
+            XCTAssertEqual(store.configured?.quantityOrigin(at: time), index == 0 ? .activeTimer : .mixed)
+            XCTAssertEqual(store.configured?.quantitySourcePresentation(at: time).title, index == 0 ? "Manual hold, active timer" : "Camera + manual quantity")
+            XCTAssertNotEqual(store.coachingEvent?.decision.reason, .targetReached)
+            XCTAssertFalse(store.coachingEvent?.decision.facts.contains(where: { $0.contains("observed seconds") }) ?? false)
+        }
+    }
+
+    func testCameraOnlyTimedTargetStillProducesObservedSecondsFact() async throws {
+        let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { _ in })
+        let store = TrainingStore(historyURL: cameraHistoryURL(), vision: vision)
+        defer { store.pause(); store.finish() }
+        store.startPlan(try CoachSavedPlan.catalogue(exerciseID: "plank", sets: 1, target: 1, restSeconds: 30), availableSupport: [])
+        XCTAssertTrue(store.selectConfiguredInput(.phoneCamera)); store.beginConfiguredSet()
+        let run = try XCTUnwrap(store.configured)
+        let start = store.now
+        for index in 0...6 {
+            let time = start + Double(index)*0.2
+            vision.onFrame?(qualifiedPlankFrame(at: time), UIImage(), run.generation)
+            for _ in 0..<100 where store.frame?.time != time { try await Task.sleep(for: .milliseconds(1)) }
+            XCTAssertEqual(store.frame?.time, time)
+        }
+        store.coachingTick(at: start+2)
+        XCTAssertEqual(store.configured?.quantityOrigin(at: start+2), .cameraObserved)
+        XCTAssertEqual(store.coachingEvent?.decision.reason, .targetReached)
+        XCTAssertTrue(store.coachingEvent?.decision.facts.contains(where: { $0.contains("observed seconds") }) ?? false)
+    }
+
+    private func qualifiedPlankFrame(at time: Double) -> PoseFrame {
+        var points = Array(repeating: PosePoint(x: 0, y: 0, confidence: 0), count: 33)
+        for (i,x,y) in [(11,0.3,0.4),(12,0.32,0.43),(13,0.3,0.6),(14,0.32,0.63),(15,0.5,0.6),(16,0.52,0.63),(23,0.6,0.4),(24,0.62,0.43),(25,0.75,0.4),(26,0.77,0.43),(27,0.9,0.4),(28,0.92,0.43)] {
+            points[i] = .init(x: x, y: y, confidence: 1)
+        }
+        return .init(time: time, width: 1000, height: 1000, points: points)
+    }
+}

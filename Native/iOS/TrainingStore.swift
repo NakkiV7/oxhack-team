@@ -167,7 +167,7 @@ final class TrainingStore {
         remoteVoice?.exercise = trackingExercise
         defer { coachingVoice.update(context: context, event: coachingEvent, enabled: voiceFeedbackEnabled, now: time) }
         guard time.isFinite else { return }
-        let mixedOrManual = configured.map { [.mixed, .selfReport].contains($0.quantityOrigin(at: time)) } ?? false
+        let mixedOrManual = configured.map { [.mixed, .selfReport, .activeTimer].contains($0.quantityOrigin(at: time)) } ?? false
         let reps = mixedOrManual ? 0 : (configured?.actualReps ?? session.actualReps ?? 0)
         let milestone = consumePreviewRep(context: context, reps: reps, time: time)
         repVoiceTick(context: context, reps: reps, clean: (configured?.cue ?? session.cue) == .controlled, at: time)
@@ -221,7 +221,7 @@ final class TrainingStore {
             target: configured?.current.target ?? session.exercise.target,
             stopReason: stopReason, source: configured?.source ?? source,
             encouragementEnabled: !previewMode && voiceFeedbackEnabled && remoteVoice != nil && !repVoiceEnabled,
-            trackingPromptFinished: trackingFinished, measuredSeconds: !mixedOrManual && configured?.current.unit == .seconds ? configured?.measuredSeconds(at: time) : nil
+            trackingPromptFinished: trackingFinished, measuredSeconds: configured?.quantityOrigin(at: time) == .cameraObserved ? configured?.measuredSeconds(at: time) : nil
         ))
         // Rep counting replaces the preview's "steady rhythm" encouragement while it is on, as it does outside preview.
         let previewEncouragement = previewMode && milestone && voiceFeedbackEnabled && remoteVoice?.preference == .arnold && !repVoiceEnabled &&

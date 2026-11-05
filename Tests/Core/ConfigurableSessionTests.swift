@@ -654,3 +654,29 @@ func configuredWatchRejectsUnsupportedCameraSourceClaims(exerciseID: String) thr
     let corrupt = try JSONDecoder().decode(CompanionSnapshot.self, from: JSONSerialization.data(withJSONObject: json))
     #expect(!corrupt.isFresh(at: now))
 }
+
+@Test func timedQuantityLabelFollowsEarnedOriginAcrossInputChanges() throws {
+    let plan = try customPlan("""
+    {"exerciseID":"plank","sets":1,"target":1,"unit":"seconds","restSeconds":30}
+    """)
+    var manual = try ConfigurableSession(plan: plan, availableSupport: [])
+    manual.start(at: 0); manual.beginSet(at: 0)
+    manual.switchInput(source: .camera, at: 2)
+    #expect(manual.measuredSeconds(at: 2) == 2)
+    #expect(manual.quantitySourcePresentation(at: 2).title == "Manual hold, active timer")
+    #expect(manual.quantitySourcePresentation(at: 2).symbol == "hand.tap")
+    manual.consume(.init(time: 2, angle: 170, confidence: 1, provenance: .posture, holdQualification: .staticHold), generation: manual.generation)
+    #expect(manual.quantitySourcePresentation(at: 2).title == "Manual hold, active timer")
+    manual.consume(.init(time: 2.2, angle: 170, confidence: 1, provenance: .posture, holdQualification: .staticHold), generation: manual.generation)
+    #expect(manual.quantitySourcePresentation(at: 2.2).title == "Camera + manual quantity")
+
+    var camera = try ConfigurableSession(plan: plan, availableSupport: [])
+    camera.start(at: 0); camera.resetSet(source: .camera, at: 0); camera.beginSet(at: 0)
+    for time in [0.0, 0.2, 0.4] { camera.consume(.init(time: time, angle: 170, confidence: 1, provenance: .posture, holdQualification: .staticHold), generation: camera.generation) }
+    camera.switchInput(source: .manual, at: 1)
+    #expect(camera.quantityOrigin(at: 1) == .cameraObserved)
+    #expect(camera.quantitySourcePresentation(at: 1).title == "Camera observation")
+    #expect(camera.quantitySourcePresentation(at: 1).symbol == "camera")
+    #expect(camera.quantitySourcePresentation(at: 1.1).title == "Camera + manual quantity")
+    #expect(abs(camera.measuredSeconds(at: 1.1) - 0.5) < 0.00001)
+}

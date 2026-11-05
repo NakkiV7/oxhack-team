@@ -75,6 +75,19 @@ public struct ConfigurableSession: Sendable {
         if manual && camera { return .mixed }
         return current.unit == .seconds ? (camera ? .cameraObserved : .activeTimer) : (manual ? .selfReport : nil)
     }
+    public func quantitySourcePresentation(at time: Double) -> (title: String, symbol: String) {
+        let hasQuantity = current.unit == .seconds ? measuredSeconds(at: time) > 0 : (actualReps ?? 0) > 0
+        if hasQuantity {
+            switch quantityOrigin(at: time) {
+            case .mixed: return ("Camera + manual quantity", "camera")
+            case .activeTimer: return ("Manual hold, active timer", "hand.tap")
+            case .selfReport: return ("Manual self-report", "hand.tap")
+            case .cameraObserved, nil: return ("Camera observation", "camera")
+            }
+        }
+        // Before any work is earned, describe the selected input.
+        return source == .camera ? ("Camera observation", "camera") : (current.unit == .seconds ? "Manual hold, active timer" : "Manual self-report", "hand.tap")
+    }
     public func restElapsed(at time: Double) -> Double? {
         guard phase == .rest, time.isFinite, let restStarted else { return nil }
         return max(0, time - restStarted)
