@@ -9,7 +9,7 @@ struct SpottrWatchApp: App {
                 .task {
                     while !Task.isCancelled {
                         store.tick()
-                        try? await Task.sleep(for: .seconds(2))
+                        try? await Task.sleep(for: .seconds(1))
                     }
                 }
         }
@@ -31,6 +31,8 @@ struct WatchTrainingView: View {
                         vitals(snapshot, now: context.date).tag(Page.vitals)
                     }.tabViewStyle(.verticalPage)
                         .containerBackground(.black, for: .tabView)
+                } else if store.recordingBusy {
+                    disconnectedRecording(now: context.date)
                 } else {
                     ScrollView {
                         VStack(spacing: 12) {
@@ -56,6 +58,31 @@ struct WatchTrainingView: View {
                      : "Finish this session and save your completed work on iPhone.")
             }
     }
+    private func disconnectedRecording(now: Date) -> some View {
+        ScrollView {
+            VStack(spacing: 12) {
+                Image(systemName: "applewatch.radiowaves.left.and.right").font(.largeTitle)
+                Text(store.recordingState.message).font(.headline)
+                Text(store.recordingState == .recording
+                     ? "iPhone session state is unavailable. Established Watch collection continues; phone controls wait for a fresh connection."
+                     : store.recordingState == .paused
+                     ? "Watch collection is paused. Open iPhone to confirm the current session state."
+                     : "Open iPhone for current session controls. Watch workout status is shown above.")
+                    .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                if let heart = store.heart?.heartRate(at: now) {
+                    Label("\(Int(heart.rounded())) BPM", systemImage: "heart.fill").foregroundStyle(.red)
+                }
+                Text(store.telemetryStatusText).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                Button("Reconnect") { store.link.request() }.buttonStyle(.bordered)
+                if store.recordingState != .saving {
+                    Button("Stop Watch recording", systemImage: "stop.circle") { store.stopLocalRecording() }
+                        .buttonStyle(.bordered).tint(.orange).accessibilityIdentifier("watch-stop-local-recording")
+                    Text("Your iPhone session stays open.").font(.caption2).foregroundStyle(.secondary)
+                }
+            }.padding(.horizontal, 12)
+        }.accessibilityIdentifier("watch-disconnected-recording")
+    }
+
     private func metrics(_ snapshot: CompanionSnapshot, now: Date) -> some View {
         VStack(spacing: 4) {
             HStack(spacing: 4) {
@@ -128,6 +155,12 @@ struct WatchTrainingView: View {
                     if !store.reachable { Text("Open iPhone to reconnect.").font(.caption2).foregroundStyle(.secondary) }
                 }
                 recordingControl(snapshot)
+                if store.recordingBusy, store.recordingState != .saving {
+                    Button("Stop Watch recording", systemImage: "stop.circle") { store.stopLocalRecording() }
+                        .buttonStyle(.bordered).tint(.orange).accessibilityIdentifier("watch-stop-local-recording")
+                    Text("Stops Watch collection. Your iPhone session stays open.").font(.caption2).foregroundStyle(.secondary)
+                }
+                Text(store.telemetryStatusText).font(.caption2).foregroundStyle(.secondary)
                 if store.recording, store.heart?.heartRate(at: now) == nil {
                     Text("No recent heart-rate reading. Check Watch fit and Health access.")
                         .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
@@ -146,9 +179,17 @@ struct WatchTrainingView: View {
                 let energy = store.activeEnergy.flatMap { $0.isValid(at: now) && now.timeIntervalSince($0.asOf) <= 12 ? $0.kilocalories : nil }
                 Label(energy.map { "\(Int($0.rounded())) active kcal" } ?? "No recent energy", systemImage: "flame")
                     .font(.body).foregroundStyle(.orange)
-                metric("Acceleration", reading: store.acceleration, unit: "g", now: now)
-                metric("Rotation", reading: store.rotation, unit: "rad/s", now: now)
+                metric("Instant wrist acceleration", reading: store.acceleration, unit: "g", now: now)
+                metric("Instant angular speed", reading: store.rotation, unit: "rad/s", now: now)
+                if let window = store.latestMotionWindow, (-2...12).contains(now.timeIntervalSince(window.end)) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Wrist window · \(window.sampleCount) samples").font(.caption2).foregroundStyle(.secondary)
+                        Text(String(format: "RMS %.2f g · peak %.2f g", window.rmsAccelerationG, window.peakAccelerationG)).font(.caption)
+                        Text(String(format: "Mean %.2f rad/s", window.meanRotationRadiansPerSecond)).font(.caption)
+                    }
+                }
                 Text(store.recordingState.message).font(.caption2).foregroundStyle(.secondary)
+                Text(store.telemetryStatusText).font(.caption2).foregroundStyle(.secondary)
                 Text("Energy is cumulative for this Watch recording. Missing or old readings stay blank.")
                     .font(.caption2).foregroundStyle(.secondary)
                 if !store.recordingBusy { recordingControl(snapshot) }

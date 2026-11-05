@@ -10,6 +10,8 @@ final class OfflineMVPFlowTests: XCTestCase {
         let next = app.buttons["onboarding-continue"]
         XCTAssertTrue(next.waitForExistence(timeout: 8))
         next.tap()
+        XCTAssertTrue(app.staticTexts["onboarding-health-optional"].waitForExistence(timeout: 3))
+        next.tap()
         XCTAssertTrue(app.switches["goal-weightManagement"].exists)
         next.tap()
         next.tap()

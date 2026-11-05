@@ -92,11 +92,13 @@ struct ProfileSettingsView: View {
     @State private var error: String?
     @State private var persistence: ProfileDraftPersistence
     @State private var membership = MembershipStore()
+    @State private var healthStore: HealthDataStore
     @FocusState private var editingName: Bool
 
     init(profileStore: NativeProfileStore, history: [SessionRecord],
          exportData: @escaping () throws -> URL, resetHistory: @escaping () throws -> Void,
-         rewards: NativeRewardsStore? = nil, historyAvailable: Bool = true, workspace: PreviewWorkspace? = nil) {
+         rewards: NativeRewardsStore? = nil, historyAvailable: Bool = true, workspace: PreviewWorkspace? = nil,
+         healthStore: HealthDataStore? = nil) {
         self.profileStore = profileStore
         self.history = history
         self.exportData = exportData
@@ -104,6 +106,7 @@ struct ProfileSettingsView: View {
         self.rewards = rewards
         self.historyAvailable = historyAvailable
         self.workspace = workspace
+        _healthStore = State(initialValue: healthStore ?? HealthDataStore())
         _persistence = State(initialValue: ProfileDraftPersistence(store: profileStore))
         _name = State(initialValue: profileStore.profile?.name ?? "")
         _weeklyTarget = State(initialValue: profileStore.profile?.weeklyTarget ?? 3)
@@ -158,6 +161,16 @@ struct ProfileSettingsView: View {
                         VoiceCoachSettingsView(playback: RemoteVoicePlayback(offlineOnly: true), cancelCoaching: {})
                     }
                     Text("Your trainer works offline. Voice feedback is always your choice.").font(.caption).foregroundStyle(.secondary)
+                }
+                Section("Apple Health & Watch (optional)") {
+                    NavigationLink { HealthSetupView(store: healthStore) } label: {
+                        Label("Health readings & heart rate zones", systemImage: "heart.text.square")
+                    }.accessibilityIdentifier("profile-health-setup")
+                    NavigationLink { WatchSetupView() } label: {
+                        Label("Watch installation & connection", systemImage: "applewatch")
+                    }.accessibilityIdentifier("profile-watch-setup")
+                    Text("Use only the data you choose. Your phone training, local profile and Apple membership work independently.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Exercise lessons") {
                     NavigationLink { DemonstrationGuideView() } label: {
@@ -250,7 +263,7 @@ struct ProfileSettingsView: View {
                 if flushPendingSave() { dismiss() }
             } } }
             .sheet(item: $introduction, onDismiss: reloadDraft) { _ in
-                OnboardingView(profileStore: profileStore, onComplete: reloadDraft)
+                OnboardingView(profileStore: profileStore, healthStore: healthStore, onComplete: reloadDraft)
             }
             .sheet(isPresented: $rewardsPresented) {
                 if let rewards { TrainingRewardsSettingsView(store: rewards) }

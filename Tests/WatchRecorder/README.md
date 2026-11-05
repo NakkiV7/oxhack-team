@@ -1,59 +1,27 @@
-# Watch recorder and control behavior
+# Watch recorder, durable telemetry and controls
 
-Run `bash Tests/WatchRecorder/run.sh` from the repository root on a Mac with Swift.
-The script compiles the actual recorder/store and shared types against small
-test-only HealthKit, CoreMotion, WatchKit and companion-link boundaries in a temporary directory.
-It never imports Apple's HealthKit implementation, accesses health data, uses a
-physical device, or changes the Xcode project. Temporary outputs are removed.
+Run `bash Tests/WatchRecorder/run.sh` and `bash Tests/WatchRecorder/replay.sh` from the repository root on a Mac with Swift. Scratch, compiler module caches, runtime temporary files and copied shared sources live under `/Volumes/Spottr Development/watch-telemetry-tests` by default; `SPOTTR_WATCH_TEST_ROOT` can select another scratch root. Each runner removes only its own generated temporary directory. Copying shared sources prevents another worker's edits from changing a source file during compilation.
 
-Eleven recorder cases exercise authorization/start/collection/save states,
-active/paused collection failure, cancellation during authorization/startup,
-workout-write denial and explicit retry, queued motion rejection and old-builder
-callback isolation. Recording and motion begin only after collection succeeds;
-stopping startup discards its unfinished HealthKit workout. Read denial cannot be
-inferred from a missing heart-rate or energy sample. Energy checks use independent
-energy-only/combined callbacks, cumulative `sumQuantity` in kilocalories and the
-actual statistics `endDate`. They reject missing totals, invalid values/dates,
-future/pre-run observations, pending/paused collection and old builders. Repeated
-totals are not added; pause/resume retains the recording UUID, a new builder uses
-a new UUID, and a lower genuine revision is retained.
+These runners compile the actual recorder/store/link and shared types against test-only SDK boundaries. They do not access Health data, pair a Watch, use a simulator, change the native project or validate physical device behavior.
 
-Six store cases verify that End session requires an explicit, current-generation
-confirmation, Cancel sends nothing, stale confirmation cannot end a replacement
-context, and pending/paused recording sends no telemetry. An injected clock also
-checks that an expired retained snapshot pauses the recorder, replaying that same
-timestamp cannot resume recording or restart motion, and an equal timestamp with
-a changed phase has no side effects. A newer fresh active snapshot can resume.
-The default clock remains the current date; no waiting or wall-clock changes are
-needed by these checks. Energy-only telemetry retains its original cumulative
-value/date without inventing HR or adding repeated ticks. Pausing blocks sending;
-changing the phone session or explicitly starting a new recording clears cached
-energy. An older same-run callback cannot replace a newer as-of observation before
-the next tick; equal/newer-as-of corrections may lower the value. The optional
-energy field is local history/report data; the core v1 cloud
-projection omits it and Coach facts remain unchanged. Those separate core contract
-tests are not executed by this runner.
+## Recorder and store checks
 
-The Watch uses a black system tab container with separate metrics and controls,
-native vertical paging and fresh heart rate in red. Manual missing reps remain
-an em dash, with the compact `Manual · iPhone` instruction. Root's native build
-and simulator inspection must separately check small/Ultra layouts, large type,
-vertical swipe navigation, disconnected controls and end confirmation. Physical
-Digital Crown, sensor availability, permission sheets and saving remain device
-acceptance checks; this SDK-double runner cannot establish them.
-These controlled boundary tests do not establish real Watch/HealthKit behavior;
-native compilation and physical callback acceptance remain separate checks.
+The additive telemetry round trip retains motion windows and still decodes legacy packets with the window absent. Twelve recorder cases cover authorization, successful collection before recording, active/paused collection failure, pending cancellation, explicit retry, stale callbacks, cumulative energy, original units and timestamp mapping. New motion coverage verifies ten-hertz samples contribute to each bounded window and the final partial window flushes before pause or end. Resume retains the recording UUID; replacement recordings use another UUID. Queued callbacks cannot add measurements after stop.
 
-The additional recorder case checks gravity-removed acceleration magnitude in g,
-rotation magnitude in rad/s, and mapping of a Core Motion boot-relative timestamp
-to the shared measurement date. The additional store case reproduces an older
-HealthKit HR callback replacing a newer one before a tick, then verifies the fix,
-equal-date corrections and rejection of invalid HR without fabricating a reading.
+Eight store cases cover command confirmation, generation changes, recording startup, explicit phone pause, ordering/corrections, final flushing and disconnection. An explicit phone pause during startup still applies after collection completes. An established Watch recording continues when the phone snapshot becomes stale; stale snapshots cannot authorize commands or apply phase changes. A separate local stop flushes values with their original session ID before clearing transient values and does not send an iPhone finish command. Phone pause/end and a new accepted session still apply their explicit transitions. Paused collection emits its final flush and then stops publishing cached telemetry.
 
-Run `bash Tests/WatchRecorder/replay.sh` for actual CompanionLink encoding and
-receiving against a test-only WCSession delivery boundary. It replays context/live
-duplicates, out-of-order/foreign/expired envelopes, malformed JSON, disconnect and
-stale retained context through real session ownership, history/export and reports.
-Both tracking and configured workout paths are covered. This is synthetic software
-evidence, not physical Bluetooth, HealthKit, pairing or WatchConnectivity acceptance.
-See `docs/watch-sensor-report-acceptance.md` for units, limitations and human gates.
+Motion windows expose sample count, first/last sample dates, acceleration RMS/peak in g and angular-speed mean/peak in radians per second. Windows are bounded by one second or ten samples, with gaps above 0.3 seconds starting another window. Duplicate/backward sample times do not get counted twice. Invalid samples break the window. A final single-sample window has equal start/end and supplies no duration coverage. No linear speed, repetitions, force, HRV or physiological readiness is inferred from wrist motion.
+
+## Durable delivery checks
+
+The replay uses real CompanionLink serialization, receiving, session ownership, local history/export and report code. Existing context/live behavior remains covered. A 35-sample backlog creates batches of 30 and 5 even while unreachable. WC transfer completion alone leaves samples queued. Stable batch IDs survive retries and file reload. Only an application `telemetryAck` removes the matching sealed batch. Root's phone consumer acknowledges after durable inbox/history persistence; a retryable phone save failure sends no ACK. A permanent foreign/deleted/invalid-lifetime rejection sends `accepted:false` and surfaces a rejection notice.
+
+The outbox stores at most 7,200 samples, with explicit cumulative local-queue eviction counts. Sealed batches remain immutable. Atomic persistence errors preserve previous durable contents. Full batches are queued normally; partial batches flush on finalization or activation/reachability. At most four telemetry batch transfers are outstanding. Completed but unacknowledged batches wait at least 30 seconds before ordinary retry; activation/reachability can request another attempt. Malformed data, payloads over 256 KiB and batches over 60 samples do not enter application batch handling.
+
+The public compatible batch callback is `onTelemetryBatch`; `onDurableTelemetryBatch` additionally supplies a stable UUID. The compatible callback does not imply persistence and is not automatically acknowledged. ACKs use queued WC user info, so failed ACK delivery is repaired when the Watch retries the same data and the phone acknowledges its already-durable copy.
+
+## Limits and acceptance
+
+A window still being accumulated can be lost if the Watch process terminates before flushing. Storage exhaustion or a corrupt queue blocks new durable writes and shows an error; data that could not be written may be missing. Overflow explicitly removes oldest local queue entries, and the 7,200-packet limit is approximately two hours at one packet per second; final/health-only packets can shorten that span. Queue writes and sensor/background delivery have not been profiled on hardware.
+
+Watch measurements made after an offline phone session's recorded lifetime can be rejected by the phone's bounded import rules. Permanent rejections deliberately remove those packets from the Watch queue. The queue is not a HealthKit workout backup. Native builds, pairing, actual radio/background delivery, storage pressure, authorization sheets, battery cost, sensor accuracy, Crown/navigation, small/Ultra layouts and large type remain separate device acceptance checks.

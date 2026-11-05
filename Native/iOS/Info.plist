@@ -14,6 +14,8 @@
 <key>NSCameraUsageDescription</key><string>Spottr uses your camera to count reps and show movement cues on this iPhone. Video stays on your device.</string>
 <key>NSMicrophoneUsageDescription</key><string>Spottr listens for rep numbers only when you choose spoken counting. Audio is processed on this iPhone.</string>
 <key>NSSpeechRecognitionUsageDescription</key><string>Spottr recognises rep numbers on this iPhone when you enable spoken counting. Manual entry is always available.</string>
+<key>NSHealthShareUsageDescription</key><string>When you choose Apple Health, Spottr reads existing resting and walking heart rate, SDNN heart rate variability, cardio fitness, heart rate recovery, blood oxygen, respiratory rate, steps and walking/running distance to show dated summaries on this iPhone. These readings are optional and are not uploaded or added to recorded workouts.</string>
+<key>NSHealthUpdateUsageDescription</key><string>Spottr’s companion Apple Watch app saves a strength workout to Apple Health only when you choose to record it. The iPhone reads optional Health summaries.</string>
 <key>NSLocalNetworkUsageDescription</key><string>Spottr connects to your local workout gateway.</string>
 <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
 <key>UIUserInterfaceStyle</key><string>Light</string>

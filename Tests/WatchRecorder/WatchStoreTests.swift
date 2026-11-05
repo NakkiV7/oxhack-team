@@ -56,7 +56,7 @@ import CoreMotion
         await settle()
     }
 
-    @MainActor static func staleDuplicateCannotResumeAPausedRecorder() async {
+    @MainActor static func disconnectionKeepsEstablishedRecordingButNeverEnablesStaleCommands() async {
         var now = Date()
         let store = WatchStore(now: { now })
         var session = TrainingSession(); session.start(at: 0)
@@ -74,14 +74,17 @@ import CoreMotion
 
         now = now.addingTimeInterval(11)
         store.tick()
-        expect(store.recordingState == .paused && !motion.isDeviceMotionActive, "Expired phone state pauses collection")
+        expect(store.recordingState == .recording && motion.isDeviceMotionActive, "Expired phone state does not pause an established recording")
         let sampleCount = store.link.samples.count
         store.link.onSnapshot?(active)
         await settle()
-        expect(store.recordingState == .paused, "Replaying the retained stale timestamp cannot resume recording")
-        expect(!motion.isDeviceMotionActive, "Stale replay cannot restart motion between ticks")
+        expect(store.recordingState == .recording, "Replaying stale phone state does not relabel recording")
+        expect(motion.isDeviceMotionActive, "Established motion capture continues while the phone is stale")
         store.tick()
-        expect(store.link.samples.count == sampleCount, "Stale replay cannot publish telemetry")
+        expect(store.link.samples.count > sampleCount, "Telemetry keeps the original recording session while disconnected")
+        store.reachable = true
+        store.command(.pause)
+        expect(store.link.commands.isEmpty, "A stale phone snapshot cannot authorize a command")
 
         let fresh = CompanionSnapshot(session: session, sentAt: now)
         store.link.onSnapshot?(fresh)
@@ -111,11 +114,12 @@ import CoreMotion
         expect(store.activeEnergy?.kilocalories == 5 && store.activeEnergy?.asOf == date, "Store retains actual energy and statistics timestamp")
         expect(store.link.samples.count == 2 && store.link.samples.allSatisfy { $0.activeEnergy == store.activeEnergy }, "Energy-only telemetry carries the same cumulative observation without summing ticks")
         expect(store.link.samples.allSatisfy { $0.heartRate == nil }, "Energy availability cannot create heart-rate data")
-        let count = store.link.samples.count
         session.pause(at: 1)
         store.link.onSnapshot?(CompanionSnapshot(session: session, sentAt: Date().addingTimeInterval(0.001)))
-        await settle(); store.tick()
-        expect(store.link.samples.count == count, "Paused store does not send cached energy")
+        await settle()
+        let count = store.link.samples.count
+        store.tick()
+        expect(store.link.samples.count == count, "Paused store does not send cached energy after its final flush")
         var next = TrainingSession(); next.start(at: 0)
         store.link.onSnapshot?(CompanionSnapshot(session: next, sentAt: Date().addingTimeInterval(0.002)))
         await settle()
@@ -182,14 +186,56 @@ import CoreMotion
         store.recorder.end(); await settle()
     }
 
+    @MainActor static func localStopFlushesItsBoundSessionBeforeClearingValues() async {
+        var now = Date()
+        let store = WatchStore(now: { now })
+        var session = TrainingSession(); session.start(at: 0)
+        store.link.onSnapshot?(CompanionSnapshot(session: session, sentAt: now)); await settle()
+        store.record(); await settle()
+        guard let builder = HKWorkoutSession.created.last?.liveBuilder else { expect(false, "Recorder starts"); return }
+        builder.collectionCompletion?(true, nil); await settle()
+        let energy = ActiveEnergy(recordingID: UUID(), kilocalories: 4, asOf: now)
+        store.activeEnergy = energy
+        now = now.addingTimeInterval(20)
+        store.tick()
+        expect(store.recordingState == .recording, "The established workout survives phone timeout")
+        let batchesBefore = store.link.batches.count
+        store.stopLocalRecording()
+        expect(store.link.batches.count > batchesBefore, "A local stop durably enqueues the final observed values")
+        expect(store.link.batches.last?.last?.sessionID == session.id && store.link.batches.last?.last?.activeEnergy == energy,
+               "Final flush keeps the original session and measured cumulative energy")
+        expect(store.link.flushCount > 0 && store.activeEnergy == nil && store.heart == nil, "Final batch flush occurs before transient readings clear")
+        expect(store.link.commands.isEmpty, "Local Watch stop does not fabricate an iPhone finish command")
+        await settle()
+    }
+
+    @MainActor static func explicitPhonePauseDuringStartupSurvivesCollectionCompletion() async {
+        let store = WatchStore()
+        var session = TrainingSession(); session.start(at: 0)
+        store.link.onSnapshot?(CompanionSnapshot(session: session)); await settle()
+        store.record(); await settle()
+        guard let builder = HKWorkoutSession.created.last?.liveBuilder, let motion = CMMotionManager.created.last else {
+            expect(false, "Pending collection exists"); return
+        }
+        session.pause(at: 1)
+        store.link.onSnapshot?(CompanionSnapshot(session: session, sentAt: Date().addingTimeInterval(0.001)))
+        await settle()
+        builder.collectionCompletion?(true, nil); await settle()
+        expect(store.recordingState == .paused && !motion.isDeviceMotionActive,
+               "Explicit phone pause during startup must not be undone by successful collection completion")
+        store.stopLocalRecording(); await settle()
+    }
+
     @MainActor static func main() async {
+        await explicitPhonePauseDuringStartupSurvivesCollectionCompletion()
+        await localStopFlushesItsBoundSessionBeforeClearingValues()
         await heartRateCallbacksCannotRegressOrInventAValidReading()
         await endingRequiresConfirmationAndRejectsChangedContext()
         await pendingCollectionDoesNotClaimRecordingOrSendTelemetry()
-        await staleDuplicateCannotResumeAPausedRecorder()
+        await disconnectionKeepsEstablishedRecordingButNeverEnablesStaleCommands()
         await energyOnlyTelemetryPreservesTheCumulativeObservationAndResetsForANewSession()
         await olderEnergyCannotReplaceTheLatestEstimateButCorrectionsCanLowerIt()
         if failures > 0 { print("Watch store: \(failures) failures"); exit(1) }
-        print("Watch store: 6 behavioral cases passed (SDK/link doubles; no device acceptance)")
+        print("Watch store: 8 behavioral cases passed (SDK/link doubles; no device acceptance)")
     }
 }

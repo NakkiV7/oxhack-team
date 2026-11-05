@@ -27,6 +27,7 @@ final class WorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBu
     var onHeart: ((SensorReading) -> Void)?
     var onEnergy: ((ActiveEnergy) -> Void)?
     var onMotion: ((SensorReading, SensorReading) -> Void)?
+    var onMotionWindow: ((WatchMotionWindow) -> Void)?
     var onState: ((State) -> Void)?
     private(set) var state = State.idle { didSet { onState?(state) } }
     private let health = HKHealthStore()
@@ -37,6 +38,7 @@ final class WorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBu
     private var generation = UUID()
     private var capture = WatchCaptureLifecycle()
     private var lastMotion = Date.distantPast
+    private var motionAccumulator: WatchMotionAccumulator?
 
     func start() {
         guard !state.isBusy else { return }
@@ -45,6 +47,7 @@ final class WorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBu
         #else
         guard workout == nil, HKHealthStore.isHealthDataAvailable() else { state = .unavailable; return }
         let token = capture.start(); generation = token
+        motionAccumulator = WatchMotionAccumulator(recordingID: token)
         state = .requestingAccess
         health.requestAuthorization(toShare: [.workoutType()], read: [HKQuantityType(.heartRate), HKQuantityType(.activeEnergyBurned)]) { [weak self] success, error in
             Task { @MainActor in
@@ -102,13 +105,21 @@ final class WorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBu
             let sampledAt = Date(timeIntervalSinceNow: data.timestamp - ProcessInfo.processInfo.systemUptime)
             Task { @MainActor in
                 guard let self, self.capture.acceptsMotion(for: token, stream: stream, measuredAt: sampledAt),
-                      self.workout != nil, Date().timeIntervalSince(self.lastMotion) >= 1 else { return }
-                self.lastMotion = Date()
+                      self.workout != nil else { return }
+                if let window = self.motionAccumulator?.append(accelerationG: magnitude, rotationRadiansPerSecond: angularSpeed, at: sampledAt) {
+                    self.onMotionWindow?(window)
+                }
+                guard magnitude.isFinite, angularSpeed.isFinite, sampledAt.timeIntervalSince(self.lastMotion) >= 1 else { return }
+                self.lastMotion = sampledAt
                 self.onMotion?(.init(value: magnitude, date: sampledAt), .init(value: angularSpeed, date: sampledAt))
             }
         }
     }
+    private func flushMotion() {
+        if let window = motionAccumulator?.flush() { onMotionWindow?(window) }
+    }
     func pause() {
+        flushMotion()
         capture.pause(); workout?.pause(); motion.stopDeviceMotionUpdates()
         if state == .recording { state = .paused }
     }
@@ -122,6 +133,7 @@ final class WorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBu
     func end() {
         guard state.isBusy, state != .saving else { return }
         let collected = state.isRecording
+        flushMotion()
         capture.end(); motion.stopDeviceMotionUpdates()
         guard let workout, let builder else { state = .idle; return }
         let token = generation

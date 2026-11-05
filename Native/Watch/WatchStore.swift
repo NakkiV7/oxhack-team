@@ -16,13 +16,36 @@ final class WatchStore {
     var recordingBusy: Bool { recordingState.isBusy }
     let link = CompanionLink()
     let recorder = WorkoutRecorder()
+    var latestMotionWindow: WatchMotionWindow?
+    var telemetryDeliveryStatus = WatchTelemetryDeliveryStatus()
+    private var recordingSessionID: UUID?
+    private var lastMotionPublication: Date?
     private let now: () -> Date
+    var telemetryStatusText: String {
+        if let message = telemetryDeliveryStatus.message { return message }
+        if telemetryDeliveryStatus.droppedSamples > 0 {
+            return "Queue limit reached: \(telemetryDeliveryStatus.droppedSamples) samples removed from local storage."
+        }
+        return telemetryDeliveryStatus.pendingSamples > 0
+            ? "\(telemetryDeliveryStatus.pendingSamples) Watch samples waiting for iPhone."
+            : "Watch data queue is up to date."
+    }
 
     init(now: @escaping () -> Date = Date.init) {
         self.now = now
         link.onSnapshot = { [weak self] snapshot in Task { @MainActor in self?.receive(snapshot) } }
         link.onReachability = { [weak self] reachable in
             Task { @MainActor in self?.reachable = reachable; self?.link.request() }
+        }
+        link.onTelemetryDeliveryStatus = { [weak self] status in
+            Task { @MainActor in self?.telemetryDeliveryStatus = status }
+        }
+        telemetryDeliveryStatus = link.telemetryDeliveryStatus
+        recorder.onMotionWindow = { [weak self] window in
+            guard let self else { return }
+            self.latestMotionWindow = window
+            self.publishTelemetry(window: window)
+            self.lastMotionPublication = self.now()
         }
         recorder.onHeart = { [weak self] reading in
             guard let self, reading.heartRate(at: self.now()) != nil else { return }
@@ -49,7 +72,9 @@ final class WatchStore {
         if pendingFinish?.sessionID != snapshot.sessionID || pendingFinish?.generation != snapshot.generation { pendingFinish = nil }
         if previous?.sessionID != snapshot.sessionID { stopRecording() }
         if snapshot.configured == nil, snapshot.reps > (previous?.reps ?? 0) { WKInterfaceDevice.current().play(.click) }
-        if snapshot.phase == .paused { recorder.pause() }
+        if snapshot.phase == .paused, recordingBusy, recordingState != .paused, recordingState != .saving {
+            recorder.pause(); publishTelemetry(); link.flushTelemetry()
+        }
         if snapshot.phase == .active || snapshot.phase == .rest { recorder.resume() }
         if snapshot.phase == .finished || snapshot.phase == .idle { stopRecording() }
     }
@@ -77,15 +102,32 @@ final class WatchStore {
         guard let snapshot = state.snapshot, snapshot.isFresh(at: now()), [.active, .rest].contains(snapshot.phase) else { return }
         guard !recordingBusy else { return }
         heart = nil; acceleration = nil; rotation = nil; activeEnergy = nil
+        recordingSessionID = snapshot.sessionID; lastMotionPublication = nil; latestMotionWindow = nil
         recorder.start()
     }
     private func stopRecording() {
-        recorder.end(); heart = nil; acceleration = nil; rotation = nil; activeEnergy = nil
+        recorder.end()
+        publishTelemetry(); link.flushTelemetry()
+        recordingSessionID = nil; lastMotionPublication = nil; latestMotionWindow = nil
+        heart = nil; acceleration = nil; rotation = nil; activeEnergy = nil
+    }
+    func stopLocalRecording() {
+        stopRecording()
+        status = "Watch recording stopped. Your iPhone session is unchanged."
+    }
+    private func publishTelemetry(window: WatchMotionWindow? = nil, includeEmpty: Bool = false) {
+        guard let recordingSessionID else { return }
+        guard includeEmpty || heart != nil || activeEnergy != nil || acceleration != nil || rotation != nil || window != nil else { return }
+        let sample = WatchTelemetry(sessionID: recordingSessionID, sentAt: now(), heartRate: heart,
+                                    accelerationG: acceleration, rotationRadiansPerSecond: rotation,
+                                    activeEnergy: activeEnergy, motionWindow: window)
+        link.telemetryBatch([sample])
+        link.telemetry(sample)
     }
     func tick() {
-        guard let snapshot = state.snapshot, snapshot.isFresh(at: now()) else { recorder.pause(); return }
+        link.retryTelemetry()
         guard recordingState == .recording else { return }
-        link.telemetry(.init(sessionID: snapshot.sessionID, heartRate: heart, accelerationG: acceleration,
-                             rotationRadiansPerSecond: rotation, activeEnergy: activeEnergy))
+        if let lastMotionPublication, now().timeIntervalSince(lastMotionPublication) < 1.2 { return }
+        publishTelemetry(includeEmpty: true)
     }
 }

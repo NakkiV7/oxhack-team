@@ -6,6 +6,12 @@ final class ReleasePackagingTests: XCTestCase {
         let purpose = Bundle.main.object(forInfoDictionaryKey: "NSLocalNetworkUsageDescription") as? String
         XCTAssertEqual(purpose, "Spottr connects to your local workout gateway.")
     }
+    func testHealthEnabledHostDeclaresReadAndWorkoutSavePurposes() throws {
+        for key in ["NSHealthShareUsageDescription", "NSHealthUpdateUsageDescription"] {
+            let purpose = try XCTUnwrap(Bundle.main.object(forInfoDictionaryKey: key) as? String)
+            XCTAssertFalse(purpose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
+    }
     func testHostAndWatchDeclareAuditedExemptEncryption() throws {
         XCTAssertEqual(Bundle.main.object(forInfoDictionaryKey: "ITSAppUsesNonExemptEncryption") as? Bool, false)
         let watch = Bundle.main.bundleURL.appendingPathComponent("Watch/SpottrWatch.app/Info.plist")

@@ -13,16 +13,7 @@ final class InsightsFlowTests: XCTestCase {
         app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
         app.launch()
 
-        // Log one manual workout so today has training: 3 sets of 8 wall push-ups.
-        app.tabBars.buttons["Skills"].tap()
-        app.buttons["skill-wallPushup"].tap()
-        XCTAssertTrue(app.staticTexts["Wall push-ups"].waitForExistence(timeout: 5))
-        app.buttons["Log manually"].tap()
-        XCTAssertTrue(app.textFields["Reps per set"].waitForExistence(timeout: 3))
-        app.buttons["Save workout"].tap()
-        XCTAssertTrue(app.staticTexts["Workout saved"].waitForExistence(timeout: 5))
-        app.buttons["Done"].tap()
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        logWallPushupsForUITest(app)
 
         // Calendar: today is a logged training day with its totals and sets.
         app.tabBars.buttons["Insights"].tap()

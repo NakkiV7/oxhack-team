@@ -53,7 +53,7 @@ resource(project, unit, 'StoreKit/Spottr.storekit')
     config.build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = 'com.omarchoudhry.' + target.name.downcase
     config.build_settings['GENERATE_INFOPLIST_FILE'] = 'YES'
     config.build_settings['MARKETING_VERSION'] = '0.1'
-    config.build_settings['CURRENT_PROJECT_VERSION'] = '19'
+    config.build_settings['CURRENT_PROJECT_VERSION'] = '20'
     config.build_settings['CODE_SIGN_STYLE'] = 'Automatic'
     config.build_settings['SWIFT_EMIT_LOC_STRINGS'] = 'NO'
     config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'YES'
@@ -61,6 +61,7 @@ resource(project, unit, 'StoreKit/Spottr.storekit')
 end
 app.build_configurations.each do |config|
   config.build_settings['INFOPLIST_FILE'] = 'Native/iOS/Info.plist'
+  config.build_settings['CODE_SIGN_ENTITLEMENTS'] = 'Native/iOS/Spottr.entitlements'
   config.build_settings['TARGETED_DEVICE_FAMILY'] = '1'
   config.build_settings['OTHER_LDFLAGS'] = ['$(inherited)', '-all_load', '-lc++', '-lsqlite3']
 end
@@ -99,7 +100,7 @@ Dir['Native/Vendor/*.xcframework'].sort.each do |path|
     embedded.settings = { 'ATTRIBUTES' => ['CodeSignOnCopy', 'RemoveHeadersOnCopy'] }
   end
 end
-%w[Accelerate AVFoundation CoreMedia AudioToolbox CoreGraphics CoreImage CoreVideo QuartzCore Vision Speech].each do |name|
+%w[Accelerate AVFoundation CoreMedia AudioToolbox CoreGraphics CoreImage CoreVideo QuartzCore Vision Speech HealthKit].each do |name|
   app.add_system_framework(name)
 end
 app.add_dependency(watch)

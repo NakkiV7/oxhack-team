@@ -265,7 +265,41 @@ import CoreMotion
         recorder.end(); await until { recorder.state == .saved }
     }
 
+    @MainActor static func motionWindowsIncludeTenHertzSamplesAndFlushBeforePauseOrEnd() async {
+        let recorder = WorkoutRecorder()
+        var windows: [WatchMotionWindow] = []
+        recorder.onMotionWindow = { windows.append($0) }
+        let before = HKWorkoutSession.created.count
+        recorder.start(); await until { HKWorkoutSession.created.count == before + 1 }
+        HKWorkoutSession.created.last!.liveBuilder.collectionCompletion?(true, nil)
+        await until { recorder.state == .recording }
+        let motion = CMMotionManager.created.last!, uptime = ProcessInfo.processInfo.systemUptime
+        expect(motion.deviceMotionUpdateInterval == 0.1, "Motion is sampled at ten hertz")
+        for index in 0..<11 {
+            motion.deliverQueuedSample(.init(acceleration: .init(x: index % 2 == 0 ? 1 : 3, y: 0, z: 0),
+                                             rotation: .init(x: Double(index), y: 0, z: 0), timestamp: uptime + Double(index) / 10))
+            for _ in 0..<20 { await Task.yield() }
+        }
+        expect(windows.count == 1 && windows.first?.sampleCount == 10, "The summary contains all ten samples, not the once-per-second last instant")
+        if let first = windows.first {
+            expect(abs(first.rmsAccelerationG - sqrt(5)) < 1e-9 && first.peakAccelerationG == 3, "RMS and peak reflect the whole sampled window")
+        }
+        recorder.pause()
+        expect(windows.count == 2 && windows.last?.sampleCount == 1, "Pause flushes the last partial window before invalidating motion")
+        let oldRun = windows.first?.recordingID
+        recorder.resume()
+        motion.deliverQueuedSample(.init(timestamp: ProcessInfo.processInfo.systemUptime + 2))
+        for _ in 0..<20 { await Task.yield() }
+        recorder.end()
+        expect(windows.count == 3 && windows.last?.recordingID == oldRun, "Local stop flushes the resumed partial window with the same recording identity")
+        motion.deliverQueuedSample(.init(timestamp: ProcessInfo.processInfo.systemUptime + 3))
+        for _ in 0..<20 { await Task.yield() }
+        expect(windows.count == 3, "A queued sample cannot recreate a window after stop")
+        await until { recorder.state == .saved }
+    }
+
     @MainActor static func main() async {
+        await motionWindowsIncludeTenHertzSamplesAndFlushBeforePauseOrEnd()
         await motionUsesAppleUnitsAndBootRelativeSampleTime()
         await recordingWaitsForSuccessfulCollectionAndTracksPause()
         await cancelledAuthorizationCannotRelabelIdleOrBeginAWorkout()
@@ -278,6 +312,6 @@ import CoreMotion
         await invalidAndMissingEnergyNeverBecomeAnEstimate()
         await energyIdentitySurvivesResumeButRejectsStoppedOrReplacedBuilders()
         if failures > 0 { print("Watch recorder: \(failures) failures"); exit(1) }
-        print("Watch recorder: 11 behavioral cases passed (SDK doubles; no HealthKit/device acceptance)")
+        print("Watch recorder: 12 behavioral cases passed (SDK doubles; no HealthKit/device acceptance)")
     }
 }

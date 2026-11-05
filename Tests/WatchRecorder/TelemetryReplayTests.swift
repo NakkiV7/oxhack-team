@@ -3,7 +3,82 @@ import WatchConnectivity
 
 // Synthetic values shaped like the recorder's Apple-origin measurements, never physiology evidence.
 @main struct TelemetryReplayTests {
+    static func durableBatchWaitsForPhonePersistenceAcknowledgement() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let corruptURL = directory.appendingPathComponent("corrupt-outbox.json"), wire = WCSession.default
+        try Data("interrupted file".utf8).write(to: corruptURL)
+        let unavailable = CompanionLink(telemetryOutboxURL: corruptURL)
+        precondition(unavailable.telemetryDeliveryStatus.message != nil)
+        unavailable.session(wire, didReceiveUserInfo: ["telemetryAck": UUID().uuidString, "accepted": true])
+        precondition(unavailable.telemetryDeliveryStatus.message != nil,
+                     "An unrelated ACK cannot hide an unreadable durable queue")
+        let url = directory.appendingPathComponent("watch-outbox.json")
+        let link = CompanionLink(telemetryOutboxURL: url), owner = UUID()
+        wire.isReachable = false
+        let samples = (0..<35).map { WatchTelemetry(sessionID: owner, sentAt: Date(timeIntervalSince1970: Double($0)),
+            heartRate: nil, accelerationG: nil, rotationRadiansPerSecond: nil) }
+        link.telemetryBatch(samples)
+        precondition(link.telemetryDeliveryStatus.pendingSamples == 35, "Queued delivery cannot pretend phone persistence happened")
+        let batches = wire.transfers.filter { $0.userInfo["telemetryBatch"] != nil }
+        precondition(batches.count == 2, "Unreachable Watch still queues bounded background batches")
+        for transfer in batches {
+            let decoded = try JSONDecoder().decode([WatchTelemetry].self, from: transfer.userInfo["telemetryBatch"] as! Data)
+            precondition(decoded.count <= 30)
+        }
+        let first = batches[0], firstID = first.userInfo["telemetryBatchID"] as! String
+        wire.complete(first)
+        link.session(wire, didFinish: first, error: nil)
+        precondition(link.telemetryDeliveryStatus.pendingSamples == 35, "WC delivery alone must not delete durable data")
+        let count = wire.transfers.count
+        link.flushTelemetry()
+        precondition(wire.transfers.count == count, "A successful delivery waits for ACK with a bounded cooldown")
+        link.sessionReachabilityDidChange(wire)
+        precondition(wire.transfers.last?.userInfo["telemetryBatchID"] as? String == firstID, "Unacknowledged delivery retries the same stable batch identity")
+        link.session(wire, didReceiveUserInfo: ["telemetryAck": firstID, "accepted": true])
+        precondition(link.telemetryDeliveryStatus.pendingSamples == 5)
+        link.session(wire, didReceiveUserInfo: ["telemetryAck": firstID, "accepted": true])
+        precondition(link.telemetryDeliveryStatus.pendingSamples == 5, "Duplicate ACK cannot remove another batch")
+        let secondID = batches[1].userInfo["telemetryBatchID"] as! String
+        link.session(wire, didReceiveUserInfo: ["telemetryAck": secondID, "accepted": false])
+        precondition(link.telemetryDeliveryStatus.pendingSamples == 0 && link.telemetryDeliveryStatus.message != nil,
+                     "A permanent phone rejection removes only its batch and stays visible")
+        for transfer in wire.outstandingUserInfoTransfers {
+            wire.complete(transfer); link.session(wire, didFinish: transfer, error: nil)
+        }
+        link.telemetryBatch([samples[0]]); link.flushTelemetry()
+        let retryTransfer = wire.transfers.last!, retryID = retryTransfer.userInfo["telemetryBatchID"] as! String
+        wire.complete(retryTransfer)
+        link.session(wire, didFinish: retryTransfer, error: NSError(domain: "synthetic-link", code: 1))
+        precondition(link.telemetryDeliveryStatus.pendingSamples == 1 && link.telemetryDeliveryStatus.message != nil,
+                     "Transport failure retains durable samples and surfaces retry status")
+        link.session(wire, activationDidCompleteWith: .activated, error: nil)
+        precondition(wire.transfers.last?.userInfo["telemetryBatchID"] as? String == retryID,
+                     "Activation retries the original failed batch identity")
+        link.session(wire, didReceiveUserInfo: ["telemetryAck": retryID, "accepted": true])
+        precondition(link.telemetryDeliveryStatus.pendingSamples == 0 && link.telemetryDeliveryStatus.message != nil,
+                     "A later successful ACK must not silently erase an earlier permanent rejection notice")
+        var durable: [(UUID, [WatchTelemetry])] = [], compatibility: [[WatchTelemetry]] = []
+        link.onDurableTelemetryBatch = { durable.append(($0, $1)) }
+        link.onTelemetryBatch = { compatibility.append($0) }
+        link.session(wire, didReceiveUserInfo: first.userInfo)
+        precondition(durable.count == 1 && durable.first?.0.uuidString == firstID && durable.first?.1 == Array(samples.prefix(30)))
+        precondition(compatibility.isEmpty, "Durable consumer has one explicit ownership path")
+        link.onDurableTelemetryBatch = nil
+        link.session(wire, didReceiveUserInfo: first.userInfo)
+        precondition(compatibility.count == 1)
+        let oversized = try JSONEncoder().encode(Array(repeating: samples[0], count: 61))
+        link.session(wire, didReceiveUserInfo: ["telemetryBatch": oversized, "telemetryBatchID": UUID().uuidString])
+        link.session(wire, didReceiveUserInfo: ["telemetryBatch": Data("broken".utf8)])
+        precondition(compatibility.count == 1, "Malformed and oversized batches never enter application history handling")
+        link.acknowledgeTelemetryBatch(UUID(uuidString: firstID)!)
+        precondition(wire.transfers.last?.userInfo["telemetryAck"] as? String == firstID)
+        wire.isReachable = true
+    }
+
     static func main() throws {
+        try durableBatchWaitsForPhonePersistenceAcknowledgement()
         var session = TrainingSession(); session.start(at: 0)
         let start = session.date, run = UUID(), link = CompanionLink(), wire = WCSession.default
         var receiveAt = start

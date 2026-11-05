@@ -157,11 +157,14 @@ final class SkillsFlowTests: XCTestCase {
         app.launch()
         app.buttons["onboarding-continue"].tap()
         app.buttons["onboarding-continue"].tap()
+        app.buttons["onboarding-continue"].tap()
         let baseline = app.buttons["onboarding-baseline"]
         for _ in 0..<4 where !baseline.isHittable { app.swipeUp() }
         XCTAssertTrue(baseline.waitForExistence(timeout: 3))
         baseline.tap()
         app.buttons["Some practice"].tap()
+        app.buttons["onboarding-continue"].tap()
+        app.buttons["onboarding-continue"].tap()
         app.buttons["onboarding-continue"].tap()
         app.tabBars.buttons["Skills"].tap()
         XCTAssertTrue(app.staticTexts["Practice ideas · Some practice"].waitForExistence(timeout: 3))

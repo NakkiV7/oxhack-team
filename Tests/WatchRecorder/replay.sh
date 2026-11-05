@@ -1,13 +1,18 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-replay_dir="$(mktemp -d "${TMPDIR:-/tmp}/spottr-watch-replay.XXXXXX")"
+watch_test_root="${SPOTTR_WATCH_TEST_ROOT:-/Volumes/Spottr Development/watch-telemetry-tests}"
+mkdir -p "$watch_test_root"
+replay_dir="$(mktemp -d "$watch_test_root/replay.XXXXXX")"
+mkdir -p "$replay_dir/tmp"
+export TMPDIR="$replay_dir/tmp/"
+cp -R Shared/Core "$replay_dir/Core"
 trap 'rm -rf "$replay_dir"' EXIT
-swiftc -swift-version 5 -emit-module -emit-library -module-name WatchConnectivity \
+swiftc -module-cache-path "$replay_dir/module-cache" -swift-version 5 -emit-module -emit-library -module-name WatchConnectivity \
   Tests/WatchRecorder/WatchConnectivity.swift -emit-module-path "$replay_dir/WatchConnectivity.swiftmodule" \
   -o "$replay_dir/libWatchConnectivity.dylib"
-swiftc -swift-version 5 -parse-as-library -I "$replay_dir" -L "$replay_dir" \
+swiftc -module-cache-path "$replay_dir/module-cache" -swift-version 5 -parse-as-library -I "$replay_dir" -L "$replay_dir" \
   -lWatchConnectivity -Xlinker -rpath -Xlinker "$replay_dir" \
-  Shared/Core/*.swift Shared/Apple/CompanionLink.swift Tests/WatchRecorder/TelemetryReplayTests.swift \
+  "$replay_dir"/Core/*.swift Shared/Apple/CompanionLink.swift Tests/WatchRecorder/TelemetryReplayTests.swift \
   -o "$replay_dir/replay-tests"
 "$replay_dir/replay-tests"

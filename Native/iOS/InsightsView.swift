@@ -1,16 +1,18 @@
 import SwiftUI
+import Charts
 
 /// One tab for looking back: the training calendar, every session report, the weekly review and the research library.
 /// Uses recorded history on this phone without generated summaries.
 struct InsightsView: View {
     enum Section: String, CaseIterable, Identifiable {
-        case calendar = "Calendar", reports = "Reports", weekly = "Weekly", research = "Research"
+        case overview = "Overview", calendar = "Calendar", reports = "Reports", weekly = "Weekly", research = "Research"
         var id: String { rawValue }
     }
     @Bindable var store: TrainingStore
     var profile: LocalProfile? = nil
     var previewMode = false
-    @AppStorage("insights.section") private var section = Section.calendar.rawValue
+    var healthStore: HealthDataStore? = nil
+    @AppStorage("insights.section") private var section = Section.overview.rawValue
 
     var body: some View {
         NavigationStack {
@@ -24,8 +26,9 @@ struct InsightsView: View {
                         ForEach(Section.allCases) { Text($0.rawValue).tag($0.rawValue) }
                     }.pickerStyle(.segmented).accessibilityIdentifier("insights-section")
                     switch Section(rawValue: section) ?? .calendar {
-                    case .calendar: CalendarSection(store: store, profile: profile, previewMode: previewMode)
-                    case .reports: ReportsSection(store: store, profile: profile)
+                    case .overview: TrainingOverviewSection(store: store, profile: profile, healthStore: healthStore)
+                    case .calendar: CalendarSection(store: store, profile: profile, previewMode: previewMode, zones: healthStore?.zones)
+                    case .reports: ReportsSection(store: store, profile: profile, zones: healthStore?.zones)
                     case .weekly: WeeklySection(store: store, profile: profile, previewMode: previewMode)
                     case .research: ResearchSection()
                     }
@@ -42,6 +45,7 @@ private struct CalendarSection: View {
     @Bindable var store: TrainingStore
     let profile: LocalProfile?
     let previewMode: Bool
+    var zones: HeartRateZoneConfiguration? = nil
     @State private var month = Date.now
     @State private var selected: Date? = Calendar.current.startOfDay(for: .now)
     /// Sample days keep the calendar full for presentations; real training always shows as itself.
@@ -92,7 +96,7 @@ private struct CalendarSection: View {
                 }.font(.caption).foregroundStyle(.secondary).buttonStyle(.plain) }
             }.padding(18).background(Palette.surface, in: RoundedRectangle(cornerRadius: 25))
 
-            if let selected { DayDetail(date: selected, records: history.filter { calendar.isDate($0.date, inSameDayAs: selected) }, profile: profile, history: history) }
+            if let selected { DayDetail(date: selected, records: history.filter { calendar.isDate($0.date, inSameDayAs: selected) }, profile: profile, history: history, zones: zones) }
 
             HStack(spacing: 10) {
                 Tile(value: "\(streaks.current)", unit: streaks.current == 1 ? "day" : "days", title: "Current streak")
@@ -145,10 +149,11 @@ private struct DayDetail: View {
     let records: [SessionRecord]
     let profile: LocalProfile?
     let history: [SessionRecord]
+    var zones: HeartRateZoneConfiguration? = nil
     var body: some View {
         let reports = records.map(WorkoutReport.init(record:)).filter { !$0.sets.isEmpty }.sorted { $0.date < $1.date }
         let sets = reports.flatMap(\.sets).filter { $0.source != .video }
-        let heart = reports.compactMap(\.heartRate.average)
+        let heart = WorkoutAnalytics.averageHeartRate(in: records)
         let sample = records.contains { TrainingCalendar.isSample($0.id) }
         VStack(alignment: .leading, spacing: 14) {
             HStack {
@@ -168,8 +173,8 @@ private struct DayDetail: View {
                     Tile(value: "\(sets.reduce(0) { $0 + $1.reps })", unit: "reps", title: "Total")
                     let active = sets.reduce(0) { $0 + $1.activeSeconds }
                     Tile(value: active > 0 ? clockText(active) : "—", unit: "", title: active > 0 ? "Active time" : "Not timed")
-                    Tile(value: heart.isEmpty ? "—" : "\(Int((heart.reduce(0, +) / Double(heart.count)).rounded()))", unit: heart.isEmpty ? "" : "bpm",
-                         title: heart.isEmpty ? "No Watch readings" : "Avg Watch HR")
+                    Tile(value: heart.map { "\(Int($0.rounded()))" } ?? "—", unit: heart == nil ? "" : "bpm",
+                         title: heart == nil ? "No Watch intervals" : "Time-weighted HR")
                 }
                 VStack(alignment: .leading, spacing: 8) {
                     Text("\(sets.count) \(sets.count == 1 ? "set" : "sets")").font(.caption.weight(.bold)).foregroundStyle(.secondary).textCase(.uppercase)
@@ -185,7 +190,7 @@ private struct DayDetail: View {
                     }
                 }
                 ForEach(records.filter { !$0.sets.isEmpty || !$0.loggedSets.isEmpty }) { record in
-                    NavigationLink { SessionReportView(record: record, profile: profile, history: history) } label: {
+                    NavigationLink { SessionReportView(record: record, profile: profile, history: history, zones: zones) } label: {
                         Label("Open the \(record.date.formatted(date: .omitted, time: .shortened)) \(sample ? "sample" : "session") report", systemImage: "doc.text")
                             .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, alignment: .leading)
                     }.foregroundStyle(Palette.blue)
@@ -212,7 +217,7 @@ private struct Heatmap: View {
                         .accessibilityLabel("\(date.formatted(date: .abbreviated, time: .omitted)): \(reps) reps")
                 }
             }
-            HStack { Text("Rest").font(.caption2).foregroundStyle(.secondary); Spacer(); Text("More reps").font(.caption2).foregroundStyle(.secondary) }
+            HStack { Text("No reps recorded").font(.caption2).foregroundStyle(.secondary); Spacer(); Text("More reps").font(.caption2).foregroundStyle(.secondary) }
         }.padding(18).background(Palette.surface.opacity(0.5), in: RoundedRectangle(cornerRadius: 22))
     }
 }
@@ -222,6 +227,7 @@ private struct Heatmap: View {
 private struct ReportsSection: View {
     @Bindable var store: TrainingStore
     let profile: LocalProfile?
+    var zones: HeartRateZoneConfiguration? = nil
     var body: some View {
         let records = store.history.filter { !$0.sets.isEmpty || !$0.loggedSets.isEmpty }.sorted { $0.date > $1.date }
         VStack(alignment: .leading, spacing: 10) {
@@ -230,7 +236,7 @@ private struct ReportsSection: View {
             }
             ForEach(records) { record in
                 let report = WorkoutReport(record: record)
-                NavigationLink { SessionReportView(record: record, profile: profile, history: store.history) } label: {
+                NavigationLink { SessionReportView(record: record, profile: profile, history: store.history, zones: zones) } label: {
                     HStack(spacing: 14) {
                         Image(systemName: report.sets.contains { $0.source == .camera } ? "camera.fill" : "hand.tap.fill")
                             .foregroundStyle(.white).frame(width: 40, height: 40)

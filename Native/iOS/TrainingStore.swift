@@ -43,6 +43,11 @@ final class TrainingStore {
     var watchReachable = false
     private(set) var reportedDiscomfort = false
     private let historyStore: HistoryStore
+    private let watchInbox: WatchTelemetryInbox
+    private var timelineSessionID: UUID?
+    private var phaseTimeline: [WorkoutPhaseMark] = []
+    private var finishedWallTime: Date?
+    private(set) var archiveDataWarning: String?
     let rewards: NativeRewardsStore
     private let rewardDefaults: UserDefaults
     private let persistsVoicePreferences: Bool
@@ -304,6 +309,7 @@ final class TrainingStore {
         let namespace = ProcessInfo.processInfo.environment["SPOTTR_DATA_NAMESPACE"].flatMap(UUID.init(uuidString:))
         let folder = namespace.map { root.appendingPathComponent($0.uuidString) } ?? root
         historyStore = HistoryStore(url: historyURL ?? folder.appendingPathComponent("history.json"))
+        watchInbox = WatchTelemetryInbox(url: historyStore.url.deletingLastPathComponent().appendingPathComponent("watch-inbox.json"))
         rewards = rewardsStore ?? NativeRewardsStore(url: historyStore.url.deletingLastPathComponent().appendingPathComponent("rewards.json"))
         if !previewMode, defaults.string(forKey: RepVoicePlayer.defaultsKey) == nil,
            remoteVoice?.preference == .maya || remoteVoice?.preference == .leo { repVoice.coach = nil }
@@ -342,6 +348,12 @@ final class TrainingStore {
                 else { self.session.receiveTelemetry(telemetry) }
             }
         }
+        companion.onDurableTelemetryBatch = { [weak self] id, samples in
+            Task { @MainActor in self?.receiveDurableTelemetry(id: id, samples: samples) }
+        }
+        companion.onTelemetryBatch = { [weak self] samples in
+            Task { @MainActor in self?.receiveDurableTelemetry(id: UUID(), samples: samples) }
+        }
         companion.onReachability = { [weak self] reachable in
             Task { @MainActor in self?.watchReachable = reachable; self?.publish() }
         }
@@ -349,6 +361,7 @@ final class TrainingStore {
     }
 
     func publish() {
+        markWorkoutPhase()
         if let configured { companion.publish(CompanionSnapshot(session: configured, at: now)) }
         else { companion.publish(CompanionSnapshot(session: session)) }
     }
@@ -565,6 +578,7 @@ final class TrainingStore {
         coachingTick(at: time)
     }
     func save() {
+        markWorkoutPhase()
         if let configured {
             guard configured.phase == .finished, !configured.completed.isEmpty || !configured.skippedSets.isEmpty else { return }
             persist(configured.record); return
@@ -573,12 +587,16 @@ final class TrainingStore {
     }
     func persist(_ record: SessionRecord, completedAt: Date = Date()) {
         var before = history
+        let saved: SessionRecord
         do {
             if !historyAvailable { before = try historyStore.load() }
-            history = try historyStore.save(record).reversed(); historyAvailable = true; error = nil
+            saved = try recordWithWatchArchive(record)
+            history = try historyStore.save(saved).reversed(); historyAvailable = true; error = nil
+            do { try watchInbox.remove(sessionID: saved.id); archiveDataWarning = nil }
+            catch { archiveDataWarning = "Workout saved. Some Watch readings are waiting to finish syncing." }
         } catch { self.error = "Couldn’t save this session. Try again."; return }
         do {
-            try rewards.award(record: record, before: before, history: history, completedAt: completedAt)
+            try rewards.award(record: saved, before: before, history: history, completedAt: completedAt)
         } catch { self.error = "Workout saved. Training rewards couldn’t be updated." }
         refreshRewards(at: completedAt)
     }
@@ -591,6 +609,68 @@ final class TrainingStore {
         } catch {
             if self.error == nil { self.error = "Training rewards couldn’t be updated. Your saved workouts are unchanged." }
         }
+    }
+    private func markWorkoutPhase() {
+        let id = configured?.id ?? session.id
+        if timelineSessionID != id {
+            timelineSessionID = id; phaseTimeline = []; finishedWallTime = nil
+        }
+        guard phaseTimeline.last?.phase != sessionPhase else { return }
+        let date = Date()
+        phaseTimeline.append(WorkoutPhaseMark(date: date, phase: sessionPhase))
+        if sessionPhase == .finished, finishedWallTime == nil { finishedWallTime = date }
+    }
+    private func recordWithWatchArchive(_ record: SessionRecord) throws -> SessionRecord {
+        let owned = record.id == timelineSessionID
+        var result = SessionRecord(id: record.id, date: record.date, sets: record.sets, telemetry: record.telemetry,
+            loggedSets: record.loggedSets, skippedSets: record.skippedSets,
+            endedAt: record.endedAt ?? (owned && sessionPhase == .finished ? finishedWallTime : nil),
+            timeline: record.timeline.isEmpty && owned ? phaseTimeline : record.timeline)
+        let pending = try watchInbox.samples(for: record.id)
+        for offset in stride(from: 0, to: pending.count, by: 60) {
+            result = try WatchTelemetryImporter.merge(Array(pending[offset..<min(offset+60,pending.count)]), into: result, through: Date(), allowsOpenSession: owned && sessionPhase != .finished)
+        }
+        return result
+    }
+    func receiveDurableTelemetry(id: UUID, samples: [WatchTelemetry]) {
+        guard let sessionID = samples.first?.sessionID, !samples.isEmpty else { companion.acknowledgeTelemetryBatch(id, accepted: false); return }
+        guard historyAvailable else { archiveDataWarning = "Watch sync is waiting for saved history to become available."; return }
+        let saved = history.first { $0.id == sessionID }
+        let current = configured?.record ?? session.record
+        let open = saved == nil && current.id == sessionID && [.active,.paused,.rest].contains(sessionPhase)
+        guard let record = saved ?? (open ? current : nil) else { companion.acknowledgeTelemetryBatch(id, accepted: false); return }
+        let merged: SessionRecord
+        do { merged = try WatchTelemetryImporter.merge(samples, into: record, through: Date(), allowsOpenSession: open) }
+        catch { companion.acknowledgeTelemetryBatch(id, accepted: false); return }
+        let dates = Set(samples.map(\.sentAt))
+        let normalized = merged.telemetry.filter { dates.contains($0.sentAt) }
+        guard !normalized.isEmpty else { companion.acknowledgeTelemetryBatch(id, accepted: false); return }
+        do {
+            try watchInbox.store(id: id, samples: normalized)
+            if open {
+                if configured != nil { try configured?.receiveArchivedTelemetry(normalized) }
+                else { try session.receiveArchivedTelemetry(normalized) }
+            } else {
+                let enriched = try recordWithWatchArchive(merged)
+                history = try historyStore.save(enriched).reversed()
+                try watchInbox.remove(sessionID: sessionID)
+            }
+            archiveDataWarning = nil
+            companion.acknowledgeTelemetryBatch(id)
+        } catch { archiveDataWarning = "Some Watch readings are waiting to sync. They haven’t changed your recorded reps or sets. Try again when storage is available." }
+    }
+    func retryWatchArchive() {
+        guard historyAvailable else { return }
+        for record in history where record.endedAt != nil {
+            do {
+                guard !(try watchInbox.samples(for: record.id)).isEmpty else { continue }
+                let enriched = try recordWithWatchArchive(record)
+                history = try historyStore.save(enriched).reversed()
+                try watchInbox.remove(sessionID: record.id)
+            } catch { archiveDataWarning = "Watch readings are still waiting to sync. Check available storage and try again."; return }
+        }
+        archiveDataWarning = nil
+        companion.request()
     }
     func exportHistory() throws -> URL {
         var exportDirectory = historyStore.url.appendingPathExtension("exports")
@@ -605,7 +685,9 @@ final class TrainingStore {
     }
     func clearHistory() throws {
         guard sessionPhase == .idle || sessionPhase == .finished else { throw DataControlError.workoutInProgress }
+        try watchInbox.clear()
         try historyStore.clear()
+        archiveDataWarning = nil
         history = []
         historyAvailable = true
         error = nil

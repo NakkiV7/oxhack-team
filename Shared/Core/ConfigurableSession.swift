@@ -190,6 +190,10 @@ public struct ConfigurableSession: Sendable {
         guard time.isFinite, phase != .idle, phase != .finished else { return }
         activeStarted = nil; phase = .finished; generation = UUID()
     }
+    public mutating func receiveArchivedTelemetry(_ samples: [WatchTelemetry], now: Date = Date()) throws {
+        guard [.active, .paused, .rest].contains(phase) else { throw WatchTelemetryImportError.lifetime }
+        telemetry = try WatchTelemetryImporter.merge(samples, into: record, through: now, allowsOpenSession: true).telemetry
+    }
     public mutating func receiveTelemetry(_ sample: WatchTelemetry, now: Date = Date()) {
         guard [.active, .paused, .rest].contains(phase), sample.sessionID == id else { return }
         let age = now.timeIntervalSince(sample.sentAt)

@@ -8,6 +8,14 @@
 - An accessible Cloudflare landing site with current local-candidate screenshots, abstract generated icons, support, privacy, terms and deletion instructions.
 - Optional passwordless website accounts with a passkey plus mandatory Authenticator or single-use backup-code second factor. Training and Health data remain local to the app.
 
+## Watch and reporting added in build 20
+
+- Today now prioritises a real session action, weekly recorded work, a recent session report and optional Watch/Health setup.
+- Reports calculate time-weighted heart rate, observed coverage and gaps, five optional maximum-HR zones, cumulative active energy, recorded work/rest and camera rep-duration variability. Pauses and restarted Watch recordings break chart lines.
+- The Watch records windowed wrist acceleration/rotation summaries and persists bounded telemetry until the phone acknowledges saving it. An established workout keeps recording through a stale phone link; controls still require a current phone session.
+- Optional read-only Health history includes resting/walking heart rate, SDNN HRV, VO₂ max, one-minute recovery, oxygen saturation, respiratory rate and current-day steps/distance. Every reading has a date/source; old readings remain separate from workout metrics.
+- Onboarding and settings explain Watch installation and optional Health access. No age/max-HR default is invented and the user can enter a maximum or explicitly choose an adult age estimate.
+
 ## Next quick wins
 
 1. Favourites, repeat the last actual workout and a recent-exercises list to shorten setup.
@@ -15,11 +23,19 @@
 3. An explicit post-set count correction that preserves original camera evidence and marks corrected totals as self-report.
 4. Local workout checkpoints and a clear resume/discard choice after process termination.
 5. Chosen training days, quiet-hours reminders and Watch rest-completion haptics.
-6. Progress CSV/PDF export chosen by the user, with observed coverage and manual/camera provenance.
+6. A compact PDF report and richer CSV export chosen by the user, with observed coverage, zones and manual/camera provenance.
 7. Optional dated weight entries with a rolling trend, keeping weight change separate from exercise-energy estimates.
 8. Offline audio previews and more reviewed, normalized recordings for each original coach/style/event. Authoring credentials must work before promising ElevenLabs audio.
 9. Accessibility presets for larger controls, reduced motion, stronger contrast and fewer simultaneous instructions.
 10. An optional feedback bundle containing build/device, exercise and expected/recorded counts. Attachments must be explicitly chosen; no automatic health/video uploads.
+
+## Watch priorities for the next device-testing pass
+
+1. Compare simultaneous Watch and report readings, elapsed time, energy and pause behavior on hardware.
+2. Exercise offline delivery, app restarts, queue overflow and denied permissions. The durable queue does not restore an unfinished phone workout after process termination.
+3. Profile battery and storage during a long offline workout before changing telemetry sampling or persistence frequency.
+4. Validate motion repeatability across wrists, Watch fits and exercises. Wrist acceleration is not body speed, range of motion or a form score.
+5. Consider an observed post-set heart-rate recovery calculation only with sufficient timestamped readings and an explicit stationary recovery period. Existing Health recovery history is a separate Apple measurement.
 
 ## Measurement before more models
 

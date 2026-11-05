@@ -24,6 +24,24 @@ public struct ActiveEnergy: Codable, Equatable, Sendable {
     }
 }
 
+public struct WatchMotionWindow: Codable, Equatable, Sendable {
+    public let recordingID: UUID
+    public let start: Date
+    public let end: Date
+    public let sampleCount: Int
+    public let rmsAccelerationG: Double
+    public let peakAccelerationG: Double
+    public let meanRotationRadiansPerSecond: Double
+    public let peakRotationRadiansPerSecond: Double
+    public init(recordingID: UUID, start: Date, end: Date, sampleCount: Int, rmsAccelerationG: Double,
+                peakAccelerationG: Double, meanRotationRadiansPerSecond: Double, peakRotationRadiansPerSecond: Double) {
+        self.recordingID = recordingID; self.start = start; self.end = end; self.sampleCount = sampleCount
+        self.rmsAccelerationG = rmsAccelerationG; self.peakAccelerationG = peakAccelerationG
+        self.meanRotationRadiansPerSecond = meanRotationRadiansPerSecond
+        self.peakRotationRadiansPerSecond = peakRotationRadiansPerSecond
+    }
+}
+
 public struct WatchTelemetry: Codable, Equatable, Sendable {
     public let sessionID: UUID
     public let sentAt: Date
@@ -31,9 +49,19 @@ public struct WatchTelemetry: Codable, Equatable, Sendable {
     public let accelerationG: SensorReading?
     public let rotationRadiansPerSecond: SensorReading?
     public let activeEnergy: ActiveEnergy?
-    public init(sessionID: UUID, sentAt: Date = Date(), heartRate: SensorReading?, accelerationG: SensorReading?, rotationRadiansPerSecond: SensorReading?, activeEnergy: ActiveEnergy? = nil) {
+    public let motionWindow: WatchMotionWindow?
+    public init(sessionID: UUID, sentAt: Date = Date(), heartRate: SensorReading?, accelerationG: SensorReading?, rotationRadiansPerSecond: SensorReading?, activeEnergy: ActiveEnergy? = nil, motionWindow: WatchMotionWindow? = nil) {
         self.sessionID = sessionID; self.sentAt = sentAt; self.heartRate = heartRate
         self.accelerationG = accelerationG; self.rotationRadiansPerSecond = rotationRadiansPerSecond
-        self.activeEnergy = activeEnergy
+        self.activeEnergy = activeEnergy; self.motionWindow = motionWindow
+    }
+}
+
+public struct WatchTelemetryDeliveryStatus: Equatable, Sendable {
+    public let pendingSamples: Int
+    public let droppedSamples: Int
+    public let message: String?
+    public init(pendingSamples: Int = 0, droppedSamples: Int = 0, message: String? = nil) {
+        self.pendingSamples = pendingSamples; self.droppedSamples = droppedSamples; self.message = message
     }
 }

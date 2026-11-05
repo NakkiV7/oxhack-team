@@ -47,10 +47,13 @@ public struct SessionRecord: Codable, Identifiable, Equatable, Sendable {
     public let telemetry: [WatchTelemetry]
     public let loggedSets: [LoggedSet]
     public let skippedSets: [SkippedSet]
-    public init(id: UUID, date: Date, sets: [SetRecord], telemetry: [WatchTelemetry] = [], loggedSets: [LoggedSet] = [], skippedSets: [SkippedSet] = []) {
+    public let endedAt: Date?
+    public let timeline: [WorkoutPhaseMark]
+    public init(id: UUID, date: Date, sets: [SetRecord], telemetry: [WatchTelemetry] = [], loggedSets: [LoggedSet] = [], skippedSets: [SkippedSet] = [], endedAt: Date? = nil, timeline: [WorkoutPhaseMark] = []) {
         self.id = id; self.date = date; self.sets = sets; self.telemetry = telemetry; self.loggedSets = loggedSets; self.skippedSets = skippedSets
+        self.endedAt = endedAt; self.timeline = timeline
     }
-    private enum CodingKeys: String, CodingKey { case id, date, sets, telemetry, loggedSets, skippedSets }
+    private enum CodingKeys: String, CodingKey { case id, date, sets, telemetry, loggedSets, skippedSets, endedAt, timeline }
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         id = try values.decode(UUID.self, forKey: .id)
@@ -59,6 +62,8 @@ public struct SessionRecord: Codable, Identifiable, Equatable, Sendable {
         telemetry = try values.decodeIfPresent([WatchTelemetry].self, forKey: .telemetry) ?? []
         loggedSets = try values.decodeIfPresent([LoggedSet].self, forKey: .loggedSets) ?? []
         skippedSets = try values.decodeIfPresent([SkippedSet].self, forKey: .skippedSets) ?? []
+        endedAt = try values.decodeIfPresent(Date.self, forKey: .endedAt)
+        timeline = try values.decodeIfPresent([WorkoutPhaseMark].self, forKey: .timeline) ?? []
     }
     public var setCount: Int { sets.count + loggedSets.count }
     public var reps: Int { sets.reduce(0) { $0 + $1.reps } + loggedSets.reduce(0) { $0 + $1.reps } }
@@ -91,6 +96,10 @@ public struct TrainingSession: Sendable {
         counter = RepCounter(exercise: firstExercise)
     }
     public var record: SessionRecord { .init(id: id, date: date, sets: sets, telemetry: telemetry) }
+    public mutating func receiveArchivedTelemetry(_ samples: [WatchTelemetry], now: Date = Date()) throws {
+        guard [.active, .paused, .rest].contains(phase) else { throw WatchTelemetryImportError.lifetime }
+        telemetry = try WatchTelemetryImporter.merge(samples, into: record, through: now, allowsOpenSession: true).telemetry
+    }
     public mutating func receiveTelemetry(_ sample: WatchTelemetry, now: Date = Date()) {
         guard [.active, .paused, .rest].contains(phase), sample.sessionID == id else { return }
         let age = now.timeIntervalSince(sample.sentAt)

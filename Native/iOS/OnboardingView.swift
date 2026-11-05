@@ -15,10 +15,13 @@ struct OnboardingView: View {
     @State private var bodyMeasurements: LocalBodyMeasurements?
     @State private var measurementsPresented = false
     @State private var error: String?
+    @State private var healthStore: HealthDataStore
+    @State private var optionalSetup: OptionalSetup?
 
-    init(profileStore: NativeProfileStore, onComplete: @escaping () -> Void = {}) {
+    init(profileStore: NativeProfileStore, healthStore: HealthDataStore? = nil, onComplete: @escaping () -> Void = {}) {
         self.profileStore = profileStore
         self.onComplete = onComplete
+        _healthStore = State(initialValue: healthStore ?? HealthDataStore())
         _name = State(initialValue: profileStore.profile?.name ?? "")
         _weeklyTarget = State(initialValue: profileStore.profile?.weeklyTarget ?? 3)
         _goals = State(initialValue: profileStore.profile?.goals ?? [.strength])
@@ -33,24 +36,25 @@ struct OnboardingView: View {
             HStack {
                 if step > 0 { Button { step -= 1 } label: { Image(systemName: "chevron.left") }.accessibilityLabel("Previous step") }
                 Spacer()
-                Text("\(step + 1) of 5").font(.caption).foregroundStyle(.secondary)
+                Text("\(step + 1) of 6").font(.caption).foregroundStyle(.secondary)
                 if profileStore.profile != nil { Button("Cancel introduction") { dismiss() }.font(.caption) }
             }.padding(.horizontal, 25).padding(.vertical, 17)
             ScrollView {
                 VStack(alignment: .leading, spacing: 23) {
                     if step == 0 { introduction }
-                    if step == 1 { goalSelection }
-                    if step == 2 { personalDetails }
-                    if step == 3 { comfortableMovements }
-                    if step == 4 { trainer }
+                    if step == 1 { optionalHealthSetup }
+                    if step == 2 { goalSelection }
+                    if step == 3 { personalDetails }
+                    if step == 4 { comfortableMovements }
+                    if step == 5 { trainer }
                     if let issue = profileStore.loadError { Text(issue).font(.caption).foregroundStyle(Palette.red) }
                     if let error { Text(error).font(.callout).foregroundStyle(Palette.red).accessibilityAddTraits(.updatesFrequently) }
                 }.padding(.horizontal, 25).padding(.bottom, 20)
             }.scrollDismissesKeyboard(.interactively)
             VStack(spacing: 12) {
-                PrimaryButton(title: step == 4 ? "Let’s get moving" : "Continue") { advance() }
-                    .disabled(step == 1 && goals.isEmpty && !weightManagementGoal)
-                    .opacity(step == 1 && goals.isEmpty && !weightManagementGoal ? 0.4 : 1)
+                PrimaryButton(title: step == 5 ? "Let’s get moving" : (step == 1 ? "Continue without setup" : "Continue")) { advance() }
+                    .disabled(step == 2 && goals.isEmpty && !weightManagementGoal)
+                    .opacity(step == 2 && goals.isEmpty && !weightManagementGoal ? 0.4 : 1)
                     .accessibilityIdentifier("onboarding-continue")
                 Text("A local profile on this iPhone. No account needed.")
                     .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
@@ -58,6 +62,15 @@ struct OnboardingView: View {
         }.background(.white).foregroundStyle(Palette.ink).preferredColorScheme(.light)
             .sheet(isPresented: $measurementsPresented) {
                 MeasurementsSettingsView(measurements: bodyMeasurements, isIntroduction: true) { bodyMeasurements = $0 }
+            }
+            .sheet(item: $optionalSetup) { setup in
+                NavigationStack {
+                    Group {
+                        if setup == .health { HealthSetupView(store: healthStore) }
+                        else { WatchSetupView() }
+                    }
+                    .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { optionalSetup = nil } } }
+                }
             }
     }
 
@@ -83,6 +96,22 @@ struct OnboardingView: View {
                     Text("Build a movement habit and track your activity.").font(.caption).foregroundStyle(.secondary)
                 }
             }.padding(17).background(Palette.surface, in: RoundedRectangle(cornerRadius: 17)).accessibilityIdentifier("goal-weightManagement")
+        }.padding(.top, 20)
+    }
+
+    private var optionalHealthSetup: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            Image(systemName: "applewatch").font(.system(size: 56)).foregroundStyle(Palette.blue).accessibilityHidden(true)
+            Text("Your Watch.\nYour choice.").font(.largeTitle.bold()).tracking(-1)
+            Text("Apple Health and Watch setup are optional. Every phone feature remains available when you skip this step.")
+                .foregroundStyle(.secondary).accessibilityIdentifier("onboarding-health-optional")
+            Button { optionalSetup = .health } label: { Label("Choose Apple Health data", systemImage: "heart.text.square") }
+                .accessibilityIdentifier("onboarding-health-setup")
+            Button { optionalSetup = .watch } label: { Label("Watch installation guide", systemImage: "applewatch") }
+                .accessibilityIdentifier("onboarding-watch-guide")
+            Text("No Health data is requested until you choose it. Missing readings stay missing; your training history stays separate.")
+                .font(.caption).foregroundStyle(.secondary)
+            Text(healthStore.statusMessage).font(.caption).foregroundStyle(.secondary)
         }.padding(.top, 20)
     }
 
@@ -162,7 +191,7 @@ struct OnboardingView: View {
     }
 
     private func advance() {
-        guard step == 4 else { step += 1; return }
+        guard step == 5 else { step += 1; return }
         do {
             try profileStore.save(LocalProfile(name: name, weeklyTarget: weeklyTarget, goals: goals.isEmpty ? [.stamina] : goals,
                                                baselineAbility: baselineAbility, bodyMeasurements: bodyMeasurements,
@@ -171,6 +200,8 @@ struct OnboardingView: View {
             dismiss()
         } catch { self.error = error.localizedDescription }
     }
+
+    private enum OptionalSetup: String, Identifiable { case health, watch; var id: String { rawValue } }
 }
 
 struct ProfileGoalPicker: View {

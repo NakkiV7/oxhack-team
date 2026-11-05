@@ -2,6 +2,10 @@
 @_exported import Foundation
 public protocol WCSessionDelegate: AnyObject {}
 public enum WCSessionActivationState { case notActivated, activated }
+public final class WCSessionUserInfoTransfer {
+    public let userInfo: [String: Any]
+    public init(userInfo: [String: Any]) { self.userInfo = userInfo }
+}
 public final class WCSession {
     public static let `default` = WCSession()
     public static func isSupported() -> Bool { true }
@@ -11,6 +15,16 @@ public final class WCSession {
     public var receivedApplicationContext: [String: Any] = [:]
     public private(set) var applicationContext: [String: Any] = [:]
     public private(set) var messages: [[String: Any]] = []
+    public private(set) var outstandingUserInfoTransfers: [WCSessionUserInfoTransfer] = []
+    public private(set) var transfers: [WCSessionUserInfoTransfer] = []
+    public func transferUserInfo(_ payload: [String: Any]) -> WCSessionUserInfoTransfer {
+        let transfer = WCSessionUserInfoTransfer(userInfo: payload)
+        outstandingUserInfoTransfers.append(transfer); transfers.append(transfer)
+        return transfer
+    }
+    public func complete(_ transfer: WCSessionUserInfoTransfer) {
+        outstandingUserInfoTransfers.removeAll { $0 === transfer }
+    }
     public init() {}
     public func activate() {}
     public func updateApplicationContext(_ payload: [String: Any]) throws { applicationContext = payload }
