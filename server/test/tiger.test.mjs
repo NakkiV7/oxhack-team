@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createTigerStore } from '../src/tiger.mjs';
 import { createGateway } from '../src/gateway.mjs';
+import { sessionRecord } from '../src/tiger-contracts.mjs';
 import { catalog } from '../src/contracts.mjs';
 import { once } from 'node:events';
 import { spawnSync } from 'node:child_process';
@@ -252,14 +253,14 @@ test('Tiger round-trips ordered mixed camera and manual plan sets with exact obs
 
 test('Tiger rejects unsupported camera timing provenance, mismatched counts and invalid durations before database access', async () => {
   const camera = { id: 'f17e0000-0000-4000-8000-000000000025', exerciseID: 'squat', reps: 2, seconds: 0, source: 'camera', reason: 'voluntary', repDurations: [1, 2] };
-  const variant = catalog.find(exercise => exercise.unit === 'reps' && !['squat', 'pushup'].includes(exercise.id));
+  const variant = catalog.find(exercise => exercise.unit === 'reps' && !exercise.cameraTracking);
   assert.ok(variant);
   const invalid = [
     { ...camera, source: 'manual' }, { ...camera, source: 'video' },
     { ...camera, quantityOrigin: 'selfReport' }, { ...camera, exerciseID: variant.id },
     { ...camera, exerciseID: 'plank', reps: 0, seconds: 30, repDurations: [] },
-    { ...camera, seconds: 1 }, { ...camera, repDurations: [1] }, { ...camera, repDurations: [1, 2, 3] },
-    { ...camera, reps: 0 }, { ...camera, reps: 201, repDurations: Array(201).fill(1) },
+    { ...camera, seconds: 1 }, { ...camera, repDurations: [1, 2, 3] },
+    { ...camera, reps: 0 }, { ...camera, reps: 100001, repDurations: [] },
     ...[0, -1, 0.5999, 15.0001, NaN, Infinity, -Infinity, '1', null].map(value => ({ ...camera, repDurations: [value, 2] })),
     { ...camera, repDurations: '1,2' }, { ...camera, untrustedTiming: [1, 2] }
   ];
@@ -267,4 +268,30 @@ test('Tiger rejects unsupported camera timing provenance, mismatched counts and 
   const store = createTigerStore({ installationID, pool: { connect: async () => { connections += 1; throw Error('must not connect'); } } });
   for (const set of invalid) await assert.rejects(store.ingest({ installationID, record: { ...record, loggedSets: [set] } }), error => error.status === 422);
   assert.equal(connections, 0);
+});
+
+test('camera timed and mixed observed quantities retain strict units and bounds', () => {
+  const base = { id: 'f17e0000-0000-4000-8000-000000000031', date: '2026-11-05T12:00:00Z', sets: [], loggedSets: [] };
+  const hold = { id: 'f17e0000-0000-4000-8000-000000000032', exerciseID: 'plank', reps: 0, seconds: 1.5, activeSeconds: 30, source: 'camera', reason: 'voluntary', quantityOrigin: 'cameraObserved' };
+  assert.equal(sessionRecord.safeParse({ ...base, loggedSets: [hold] }).success, true);
+  assert.equal(sessionRecord.safeParse({ ...base, loggedSets: [{ ...hold, source: 'manual', quantityOrigin: 'mixed' }] }).success, true);
+  for (const bad of [{ ...hold, seconds: 31 }, { ...hold, reps: 2 }, { ...hold, exerciseID: 'catCow' }, { ...hold, quantityOrigin: 'activeTimer' }, { ...hold, injected: true }]) {
+    assert.equal(sessionRecord.safeParse({ ...base, loggedSets: [bad] }).success, false);
+  }
+});
+
+test('camera counts above manual entry limit and partial measured cycle durations survive validation', () => {
+  const base = { id: 'f17e0000-0000-4000-8000-000000000041', date: '2026-11-05T12:00:00Z', sets: [], loggedSets: [] };
+  const camera = { id: 'f17e0000-0000-4000-8000-000000000042', exerciseID: 'sitToStand', reps: 317, seconds: 0, activeSeconds: 700, source: 'camera', reason: 'voluntary', repDurations: [1.4, 1.6] };
+  assert.equal(sessionRecord.safeParse({ ...base, loggedSets: [camera] }).success, true);
+  assert.equal(sessionRecord.safeParse({ ...base, loggedSets: [{ ...camera, source: 'manual', quantityOrigin: 'selfReport', repDurations: null }] }).success, false);
+  assert.equal(sessionRecord.safeParse({ ...base, loggedSets: [{ ...camera, reps: 1 }] }).success, false);
+});
+
+test('new quantity origins cannot bypass reserve target or camera capability rules', () => {
+  const base = { id: 'f17e0000-0000-4000-8000-000000000051', date: '2026-11-05T12:00:00Z', sets: [], loggedSets: [] };
+  const hold = { id: 'f17e0000-0000-4000-8000-000000000052', exerciseID: 'plank', reps: 0, seconds: 2, activeSeconds: 30, source: 'camera', reason: 'voluntary', quantityOrigin: 'cameraObserved' };
+  for (const bad of [{ ...hold, reserve: 2 }, { ...hold, source: 'manual', quantityOrigin: 'mixed', reserve: 2 }, { ...hold, quantityOrigin: null }, { ...hold, source: 'manual', quantityOrigin: 'mixed', exerciseID: 'squat', seconds: 0, reps: 2, target: 201 }, { ...hold, exerciseID: 'catCow', seconds: 0, reps: 2, quantityOrigin: null }]) {
+    assert.equal(sessionRecord.safeParse({ ...base, loggedSets: [bad] }).success, false);
+  }
 });

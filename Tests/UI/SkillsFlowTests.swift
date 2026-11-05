@@ -234,8 +234,7 @@ final class SkillsFlowTests: XCTestCase {
         let app = XCUIApplication()
         app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
         app.launch()
-        app.buttons["Exercise library"].tap()
-        app.buttons["library-plank"].tap()
+        openPlankLibraryForTask3(app)
         XCTAssertTrue(app.staticTexts["Forearm plank"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.buttons["Start hold timer"].exists)
         app.buttons["Log manually"].tap()
@@ -247,8 +246,7 @@ final class SkillsFlowTests: XCTestCase {
         let app = XCUIApplication()
         app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
         app.launch()
-        app.buttons["Exercise library"].tap()
-        app.buttons["library-plank"].tap()
+        openPlankLibraryForTask3(app)
         app.buttons["Start hold timer"].tap()
         XCTAssertTrue(app.staticTexts["Ready when you are"].waitForExistence(timeout: 3))
         app.buttons["Start hold"].tap()
@@ -266,4 +264,39 @@ final class SkillsFlowTests: XCTestCase {
         app.buttons["Save workout"].tap()
         XCTAssertTrue(app.staticTexts["Workout saved"].waitForExistence(timeout: 3))
     }
+}
+
+extension SkillsFlowTests {
+    @MainActor func testTimedCatalogueWorkoutOffersCameraWithZeroObservedQuantityBeforeStart() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
+        app.launch()
+        openPlankLibraryForTask3(app)
+        let setup = app.buttons["catalogue-workout-setup"]
+        for _ in 0..<8 where !setup.isHittable { app.swipeUp() }
+        setup.tap()
+        XCTAssertTrue(app.textFields["catalogue-target"].waitForExistence(timeout: 4))
+        app.buttons["catalogue-workout-start"].tap()
+        let input = app.buttons["configured-input-menu"]
+        XCTAssertTrue(input.waitForExistence(timeout: 4)); input.tap()
+        app.buttons["configured-input-phoneCamera"].tap()
+        XCTAssertTrue(app.buttons["configured-start"].exists)
+        XCTAssertEqual(app.staticTexts["configured-quantity"].label, "00:00")
+        XCTAssertFalse(app.textFields["configured-reps"].exists)
+        let attachment = XCTAttachment(screenshot: app.screenshot()); attachment.name = "Timed camera ready"; attachment.lifetime = .keepAlways; add(attachment)
+    }
+}
+
+@MainActor private func openPlankLibraryForTask3(_ app: XCUIApplication) {
+    app.tabBars.buttons["Today"].tap()
+    let library = app.buttons["today-library"]
+    for _ in 0..<8 where !library.isHittable { app.swipeUp() }
+    XCTAssertTrue(library.isHittable); library.tap()
+    let search = app.searchFields.firstMatch
+    XCTAssertTrue(search.waitForExistence(timeout: 4)); search.tap(); search.typeText("Forearm plank")
+    if app.keyboards.buttons["Search"].exists { app.keyboards.buttons["Search"].tap() }
+    let plank = app.buttons["library-plank"]
+    for _ in 0..<4 where !plank.isHittable { app.swipeUp() }
+    XCTAssertTrue(plank.isHittable); plank.tap()
 }

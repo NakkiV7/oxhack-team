@@ -106,7 +106,7 @@ struct WatchTrainingView: View {
                 }.accessibilityIdentifier("watch-quantity")
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("Quantity and target")
-                    .accessibilityValue(quantity(snapshot) == "—" ? "No count entered. Target \(snapshot.target) reps." : "\(quantity(snapshot)) of \(snapshot.target) \(snapshot.configured?.unit == .seconds ? "seconds" : "reps")")
+                    .accessibilityValue(quantity(snapshot) == "—" ? "No quantity entered. Target \(snapshot.target) \(snapshot.configured?.unit == .seconds ? "seconds" : "reps")." : "\(quantity(snapshot)) of \(snapshot.target) \(snapshot.configured?.unit == .seconds ? "seconds" : "reps")")
                 HStack(spacing: 6) {
                     let heartRate = store.heart?.heartRate(at: now)
                     Label(heartRate.map { "\(Int($0.rounded())) BPM" } ?? "— BPM", systemImage: "heart.fill")
@@ -234,7 +234,7 @@ struct WatchTrainingView: View {
         guard let configured = snapshot.configured else {
             return snapshot.source == .manual && snapshot.reps == 0 ? "—" : "\(snapshot.reps)"
         }
-        if configured.unit == .seconds { return "\(Int(configured.activeSeconds))" }
+        if configured.unit == .seconds { return configured.displaySeconds.map { "\(Int($0))" } ?? "—" }
         if configured.source == .camera { return "\(snapshot.reps)" }
         return configured.enteredReps.map(String.init) ?? "—"
     }
@@ -242,14 +242,14 @@ struct WatchTrainingView: View {
         if let manual = snapshot.manualRepInstruction { return manual }
         guard let configured = snapshot.configured else {
             if snapshot.phase == .rest { return "Take a breather." }
-            return shortCue(snapshot.cue)
+            return snapshot.exercise.map { MovementFeedback.text(snapshot.cue, exercise: $0) } ?? shortCue(snapshot.cue)
         }
         if configured.stoppedForDiscomfort { return "Stop here. Finish this session and recover." }
         if configured.currentWasSkipped == true { return "Set skipped. Check in on iPhone." }
         if snapshot.phase == .rest { return "Rest \(Int(configured.restElapsed ?? 0)) s, suggested \(configured.restTarget) s" }
         if !configured.hasStarted { return "Start when ready." }
         if snapshot.phase == .paused { return "Paused. Resume when you’re ready." }
-        if configured.source == .camera { return shortCue(snapshot.cue) }
+        if configured.source == .camera, let exercise = Exercise(rawValue: configured.exerciseID) { return MovementFeedback.text(snapshot.cue, exercise: exercise) }
         return configured.unit == .reps ? "Enter reps on iPhone." : "Hold timer running."
     }
     private func shortCue(_ cue: Cue) -> String {

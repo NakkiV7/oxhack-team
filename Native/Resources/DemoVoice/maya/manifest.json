@@ -17,35 +17,35 @@
     },
     {
       "name": "gentle/tracking-1",
-      "text": "I lost sight of the movement. Your reps are saved. Move back into view when you are ready.",
-      "bytes": 39750,
-      "sha256": "d95230fb1e17426f1ceabbce645a3fce09f6df558ec71f1c4bed890755061de8",
+      "text": "I lost sight of the movement. Your progress is saved. Move back into view when you are ready.",
+      "bytes": 44138,
+      "sha256": "63a53670062941ce25298d7d3490603f840359346582bc7e14f2220bca3c9ead",
       "decode": {
         "sampleRate": 22050,
         "channels": 1,
-        "durationSeconds": 4.874875
+        "durationSeconds": 5.409478
       }
     },
     {
       "name": "gentle/tracking-2",
-      "text": "Your count is safe. Give the camera a clear side view so we can continue.",
-      "bytes": 34525,
-      "sha256": "372c1eab0c9e5b4a4c321a559ce9c5815418a49f50dcd839caf070fab735cf19",
+      "text": "Your progress is safe. Give the camera a clear view of the movement so we can continue.",
+      "bytes": 38078,
+      "sha256": "380671740986fed66f4ec4a16a23fb6aec3d29eaa8454e3c1cdc508a5f53bc6a",
       "decode": {
         "sampleRate": 22050,
         "channels": 1,
-        "durationSeconds": 4.208571
+        "durationSeconds": 4.664082
       }
     },
     {
       "name": "gentle/alignment-1",
-      "text": "Keep a comfortable straight line through your body.",
-      "bytes": 21777,
-      "sha256": "74de0882a13514fe5385ef462470af489b875b16beeb4dcba12b5573812d6a9c",
+      "text": "Check your starting position. Keep the movement comfortable and controlled.",
+      "bytes": 34107,
+      "sha256": "20429482e4b0185b647e23f45d3e8adfaa65c8e3bcb69fa725ae83b8eef1b498",
       "decode": {
         "sampleRate": 22050,
         "channels": 1,
-        "durationSeconds": 2.63102
+        "durationSeconds": 4.176871
       }
     },
     {
@@ -281,35 +281,35 @@
     },
     {
       "name": "encouraging/tracking-1",
-      "text": "I lost sight of the movement. Your reps are saved. Move back into view when you are ready.",
-      "bytes": 39750,
-      "sha256": "5f00c7a480572af2031e676e036d06d6808f38144321df571a23faac2d70f5ba",
+      "text": "I lost sight of the movement. Your progress is saved. Move back into view when you are ready.",
+      "bytes": 43929,
+      "sha256": "83b2951ea8bb8d5af5ffaec87c4eaec05a7a02f041ce664d7cf25319adffde52",
       "decode": {
         "sampleRate": 22050,
         "channels": 1,
-        "durationSeconds": 4.866531
+        "durationSeconds": 5.399274
       }
     },
     {
       "name": "encouraging/tracking-2",
-      "text": "Your count is safe. Give the camera a clear side view so we can continue.",
-      "bytes": 34525,
-      "sha256": "267b4dd50905f49877f52f498e0e0b7aad8b876516435087b23451fe372557a4",
+      "text": "Your progress is safe. Give the camera a clear view of the movement so we can continue.",
+      "bytes": 38078,
+      "sha256": "c89de4c7f0ce08ea02f78e9a8af44416e4702ee8d500d4d4e02fcc128317bc2e",
       "decode": {
         "sampleRate": 22050,
         "channels": 1,
-        "durationSeconds": 4.207846
+        "durationSeconds": 4.657188
       }
     },
     {
       "name": "encouraging/alignment-1",
-      "text": "Keep a comfortable straight line through your body.",
-      "bytes": 21777,
-      "sha256": "ad05b5456025f063a1fdf622b6af7e7573da156b8d755555e6cfb2ab189ea50e",
+      "text": "Check your starting position. Keep the movement comfortable and controlled.",
+      "bytes": 34107,
+      "sha256": "35f9d982c278eed59ad604409d953e039df0bba55c8b92d98aca81895db0ed8d",
       "decode": {
         "sampleRate": 22050,
         "channels": 1,
-        "durationSeconds": 2.637415
+        "durationSeconds": 4.175737
       }
     },
     {
@@ -545,35 +545,35 @@
     },
     {
       "name": "direct/tracking-1",
-      "text": "I lost sight of the movement. Your reps are saved. Move back into view when you are ready.",
-      "bytes": 39750,
-      "sha256": "a1bcabe6de3961a4375b23a7ae9404be5c05e5148387023880e9d19f141dc385",
+      "text": "I lost sight of the movement. Your progress is saved. Move back into view when you are ready.",
+      "bytes": 43929,
+      "sha256": "11c2e5f407642a35302ccf98f6a4a28456fa4f875b9bb6381eb6718306af71ac",
       "decode": {
         "sampleRate": 22050,
         "channels": 1,
-        "durationSeconds": 4.87746
+        "durationSeconds": 5.404308
       }
     },
     {
       "name": "direct/tracking-2",
-      "text": "Your count is safe. Give the camera a clear side view so we can continue.",
-      "bytes": 34316,
-      "sha256": "5fece7e2c755ae44ce53b02722b8b8ac18e7dc47e8f224afc4e961bf3fd02e15",
+      "text": "Your progress is safe. Give the camera a clear view of the movement so we can continue.",
+      "bytes": 38078,
+      "sha256": "7259ba3f4a4ad5e698651e43573b3fc096d342ff2eeff8735c37ac19beb7b866",
       "decode": {
         "sampleRate": 22050,
         "channels": 1,
-        "durationSeconds": 4.203311
+        "durationSeconds": 4.663356
       }
     },
     {
       "name": "direct/alignment-1",
-      "text": "Keep a comfortable straight line through your body.",
-      "bytes": 21777,
-      "sha256": "dab9162f267bde8ce507af582c3de2c803969845ba050ee7adc28e9744247b0f",
+      "text": "Check your starting position. Keep the movement comfortable and controlled.",
+      "bytes": 34107,
+      "sha256": "d0262faeedc5e4bd4d35edfc885d447866339a768b5bd4bcbf67440cc169db4a",
       "decode": {
         "sampleRate": 22050,
         "channels": 1,
-        "durationSeconds": 2.637868
+        "durationSeconds": 4.178413
       }
     },
     {

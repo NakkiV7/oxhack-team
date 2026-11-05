@@ -119,7 +119,14 @@ final class PoseDetector {
             PosePoint(x: Double($0.x), y: Double($0.y),
                       confidence: min($0.visibility?.doubleValue ?? 0, $0.presence?.doubleValue ?? 0))
         } : []
-        return PoseFrame(time: time, width: image.size.width, height: image.size.height, points: points)
+        let world: [PoseWorldPoint]? = result.landmarks.count == 1 && result.worldLandmarks.count == 1 && points.count == 33 && result.worldLandmarks[0].count == 33 ? result.worldLandmarks[0].enumerated().map { index, landmark in
+            PoseWorldPoint(x: Double(landmark.x), y: Double(landmark.y), z: Double(landmark.z),
+                confidence: min(points[index].confidence, landmark.visibility?.doubleValue ?? points[index].confidence))
+        } : nil
+        let validWorld = world.flatMap { values in
+            values.allSatisfy { [$0.x,$0.y,$0.z].allSatisfy { $0.isFinite && abs($0) <= 5 } && $0.confidence.isFinite && (0...1).contains($0.confidence) } ? values : nil
+        }
+        return PoseFrame(time: time, width: image.size.width, height: image.size.height, points: points, worldPoints: validWorld)
     }
 }
 

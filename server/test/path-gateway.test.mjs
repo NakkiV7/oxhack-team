@@ -24,13 +24,13 @@ const pathInput = {
   generationID: 'path-1', goal: 'squat',
   answers: { band: 'beginner', focus: 'learn', coachingStyle: 'encouraging', minutesPerSession: 20, sessionsPerWeek: 3 },
   exercises: [
-    { id: 'gluteBridge', capability: 'practiceLog', allowedPrerequisites: [], maxTarget: 18 },
+    { id: 'gluteBridge', capability: 'cameraCounting', allowedPrerequisites: [], maxTarget: 18 },
     { id: 'squat', capability: 'cameraAssessment', allowedPrerequisites: ['gluteBridge'], maxTarget: 18 },
-    { id: 'reverseLunge', capability: 'practiceLog', allowedPrerequisites: ['squat', 'singleLegBalance'], maxTarget: 12 },
-    { id: 'splitSquat', capability: 'practiceLog', allowedPrerequisites: ['reverseLunge'], maxTarget: 12 },
-    { id: 'assistedSquat', capability: 'practiceLog', allowedPrerequisites: ['splitSquat', 'hipFlexorStretch'], maxTarget: 8 },
-    { id: 'singleLegBalance', capability: 'practiceLog', allowedPrerequisites: [], maxTarget: 30 },
-    { id: 'hipFlexorStretch', capability: 'practiceLog', allowedPrerequisites: [], maxTarget: 45 }
+    { id: 'reverseLunge', capability: 'cameraCounting', allowedPrerequisites: ['squat', 'singleLegBalance'], maxTarget: 12 },
+    { id: 'splitSquat', capability: 'cameraCounting', allowedPrerequisites: ['reverseLunge'], maxTarget: 12 },
+    { id: 'assistedSquat', capability: 'cameraCounting', allowedPrerequisites: ['splitSquat', 'hipFlexorStretch'], maxTarget: 8 },
+    { id: 'singleLegBalance', capability: 'cameraTiming', allowedPrerequisites: [], maxTarget: 30 },
+    { id: 'hipFlexorStretch', capability: 'cameraTiming', allowedPrerequisites: [], maxTarget: 45 }
   ],
   allowedStarts: ['gluteBridge'], ruleStart: 'gluteBridge'
 };
@@ -156,5 +156,12 @@ test('new routes keep bearer authentication and the catalogue stays in step with
   assert.equal(new Set(pathCatalog.map(item => item.id)).size, pathCatalog.length);
   assert.deepEqual(pathCatalog.map(item => ({ id: item.id, unit: item.unit, tracked: item.tracked })),
     catalog.map(item => ({ id: item.id, unit: item.unit, tracked: item.cameraTracking })));
-  assert.ok(pathCatalog.some(item => item.id === 'seatedKneeExtension' && !item.tracked));
+  assert.ok(pathCatalog.some(item => item.id === 'seatedKneeExtension' && item.tracked));
+});
+
+test('path capability claims must match counting timing and fixed assessment support', async t => {
+  const { request, calls } = await serve(t, () => ({}));
+  const forged = { ...pathInput, exercises: pathInput.exercises.map(item => ({ ...item, capability: 'cameraAssessment' })) };
+  assert.equal((await request('/v1/path-proposal', forged)).status, 422);
+  assert.equal(calls.length, 0);
 });

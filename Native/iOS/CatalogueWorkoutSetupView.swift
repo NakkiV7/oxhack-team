@@ -37,7 +37,7 @@ struct CatalogueWorkoutSetupView: View {
                 }
             }
             Section {
-                Text("Start and end each set when you’re ready. Log the reps you complete; hold time runs only while your set is active.")
+                Text("Start and end each set when you’re ready. Camera seconds require visible movement or posture. Manual timers run only while the set is active.")
                     .font(.caption).foregroundStyle(.secondary)
                 if entry.tracking != nil {
                     Text("You can choose the iPhone camera before starting a set.")

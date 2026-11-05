@@ -188,13 +188,13 @@ private struct WorkoutPaceCard: View {
                     Text("Rep-duration variation: \(variation.formatted(.number.precision(.fractionLength(1))))%")
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                Text("\(pace.timedReps) complete camera-timed reps")
+                Text("\(pace.timedReps) of \(pace.recordedCameraReps) camera reps have complete timings")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 Text("Rep tempo was not recorded.").font(.subheadline).foregroundStyle(.secondary)
             }
             DisclosureGroup("About rep pace") {
-                Text("Pace needs complete camera rep timings. Manual entries, video replays and incomplete timings are excluded. Pace does not measure form or strength.")
+                Text("Pace uses only available complete cycle timings. Untimed cycles, manual entries and video replays are excluded. The coverage count shows how many recorded camera reps have timings. Pace does not measure form or strength.")
                     .font(.caption).foregroundStyle(.secondary).padding(.top, 8)
             }.font(.subheadline).frame(minHeight: 44)
         }.accessibilityIdentifier("workout-pace-analysis")

@@ -1,43 +1,125 @@
-<?xml version='1.0' encoding='UTF-8'?>
-<Scheme LastUpgradeVersion='1600' version='1.3'>
-   <BuildAction parallelizeBuildables='YES' buildImplicitDependencies='YES'>
+<?xml version="1.0" encoding="UTF-8"?>
+<Scheme
+   LastUpgradeVersion = "1600"
+   version = "1.3">
+   <BuildAction
+      parallelizeBuildables = "YES"
+      buildImplicitDependencies = "YES">
       <BuildActionEntries>
-         <BuildActionEntry buildForTesting='YES' buildForRunning='YES' buildForProfiling='YES' buildForArchiving='YES' buildForAnalyzing='YES'>
-            <BuildableReference BuildableIdentifier='primary' BlueprintIdentifier='44CCFCF38A3D8E8B7B024E4E' BuildableName='Spottr.app' BlueprintName='Spottr' ReferencedContainer='container:Spottr.xcodeproj'> </BuildableReference>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "009A6B80F1BA03B00557B57C"
+               BuildableName = "Spottr.app"
+               BlueprintName = "Spottr"
+               ReferencedContainer = "container:Spottr.xcodeproj">
+            </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
-   <TestAction buildConfiguration='Debug' selectedDebuggerIdentifier='Xcode.DebuggerFoundation.Debugger.LLDB' selectedLauncherIdentifier='Xcode.DebuggerFoundation.Launcher.LLDB' shouldUseLaunchSchemeArgsEnv='YES'>
+   <TestAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      shouldUseLaunchSchemeArgsEnv = "YES">
       <MacroExpansion>
-         <BuildableReference BuildableIdentifier='primary' BlueprintIdentifier='44CCFCF38A3D8E8B7B024E4E' BuildableName='Spottr.app' BlueprintName='Spottr' ReferencedContainer='container:Spottr.xcodeproj'> </BuildableReference>
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "009A6B80F1BA03B00557B57C"
+            BuildableName = "Spottr.app"
+            BlueprintName = "Spottr"
+            ReferencedContainer = "container:Spottr.xcodeproj">
+         </BuildableReference>
       </MacroExpansion>
       <Testables>
-         <TestableReference skipped='NO' useTestSelectionWhitelist='YES'>
-            <BuildableReference BuildableIdentifier='primary' BlueprintIdentifier='693D3967CA39FC3B957A97FB' BuildableName='SpottrTests.xctest' BlueprintName='SpottrTests' ReferencedContainer='container:Spottr.xcodeproj'> </BuildableReference>
+         <TestableReference
+            skipped = "NO"
+            useTestSelectionWhitelist = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "589213B946B042B9C9A0E436"
+               BuildableName = "SpottrTests.xctest"
+               BlueprintName = "SpottrTests"
+               ReferencedContainer = "container:Spottr.xcodeproj">
+            </BuildableReference>
             <SelectedTests>
-               <Test Identifier='MembershipStoreKitTests'> </Test>
+               <Test
+                  Identifier = "MembershipStoreKitTests">
+               </Test>
             </SelectedTests>
          </TestableReference>
-         <TestableReference skipped='NO' useTestSelectionWhitelist='YES'>
-            <BuildableReference BuildableIdentifier='primary' BlueprintIdentifier='2B94AF615AD73C670CC936EC' BuildableName='SpottrUITests.xctest' BlueprintName='SpottrUITests' ReferencedContainer='container:Spottr.xcodeproj'> </BuildableReference>
+         <TestableReference
+            skipped = "NO"
+            useTestSelectionWhitelist = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "82437FEFD18B112F736272AD"
+               BuildableName = "SpottrUITests.xctest"
+               BlueprintName = "SpottrUITests"
+               ReferencedContainer = "container:Spottr.xcodeproj">
+            </BuildableReference>
             <SelectedTests>
-               <Test Identifier='MembershipFlowTests'> </Test>
+               <Test
+                  Identifier = "MembershipFlowTests">
+               </Test>
             </SelectedTests>
          </TestableReference>
       </Testables>
-      <StoreKitConfigurationFileReference identifier='../../StoreKit/Spottr.storekit'> </StoreKitConfigurationFileReference>
+      <StoreKitConfigurationFileReference
+         identifier = "../../StoreKit/Spottr.storekit">
+      </StoreKitConfigurationFileReference>
    </TestAction>
-   <LaunchAction buildConfiguration='Debug' selectedDebuggerIdentifier='Xcode.DebuggerFoundation.Debugger.LLDB' selectedLauncherIdentifier='Xcode.DebuggerFoundation.Launcher.LLDB' launchStyle='0' useCustomWorkingDirectory='NO' ignoresPersistentStateOnLaunch='NO' debugDocumentVersioning='YES' debugServiceExtension='internal' allowLocationSimulation='YES'>
-      <BuildableProductRunnable runnableDebuggingMode='0'>
-         <BuildableReference BuildableIdentifier='primary' BlueprintIdentifier='44CCFCF38A3D8E8B7B024E4E' BuildableName='Spottr.app' BlueprintName='Spottr' ReferencedContainer='container:Spottr.xcodeproj'> </BuildableReference>
+   <LaunchAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      launchStyle = "0"
+      useCustomWorkingDirectory = "NO"
+      ignoresPersistentStateOnLaunch = "NO"
+      debugDocumentVersioning = "YES"
+      debugServiceExtension = "internal"
+      allowLocationSimulation = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "009A6B80F1BA03B00557B57C"
+            BuildableName = "Spottr.app"
+            BlueprintName = "Spottr"
+            ReferencedContainer = "container:Spottr.xcodeproj">
+         </BuildableReference>
       </BuildableProductRunnable>
-      <StoreKitConfigurationFileReference identifier='../../StoreKit/Spottr.storekit'> </StoreKitConfigurationFileReference>
+      <StoreKitConfigurationFileReference
+         identifier = "../../StoreKit/Spottr.storekit">
+      </StoreKitConfigurationFileReference>
    </LaunchAction>
-   <ProfileAction buildConfiguration='Release' shouldUseLaunchSchemeArgsEnv='YES' savedToolIdentifier='' useCustomWorkingDirectory='NO' debugDocumentVersioning='YES'>
-      <BuildableProductRunnable runnableDebuggingMode='0'>
-         <BuildableReference BuildableIdentifier='primary' BlueprintIdentifier='44CCFCF38A3D8E8B7B024E4E' BuildableName='Spottr.app' BlueprintName='Spottr' ReferencedContainer='container:Spottr.xcodeproj'> </BuildableReference>
+   <ProfileAction
+      buildConfiguration = "Release"
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      savedToolIdentifier = ""
+      useCustomWorkingDirectory = "NO"
+      debugDocumentVersioning = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "009A6B80F1BA03B00557B57C"
+            BuildableName = "Spottr.app"
+            BlueprintName = "Spottr"
+            ReferencedContainer = "container:Spottr.xcodeproj">
+         </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
-   <AnalyzeAction buildConfiguration='Debug'> </AnalyzeAction>
-   <ArchiveAction buildConfiguration='Release' revealArchiveInOrganizer='YES'> </ArchiveAction>
+   <AnalyzeAction
+      buildConfiguration = "Debug">
+   </AnalyzeAction>
+   <ArchiveAction
+      buildConfiguration = "Release"
+      revealArchiveInOrganizer = "YES">
+   </ArchiveAction>
 </Scheme>

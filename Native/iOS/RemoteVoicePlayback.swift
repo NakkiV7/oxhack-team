@@ -141,6 +141,7 @@ final class RemoteVoicePlayback: VoicePlayback {
     private let local: VoicePlayback
     private let offlineOnly: Bool
     private let defaults: UserDefaults
+    var exercise: Exercise?
     private var cueLibrary = TrainerCueLibrary()
     var tone: TrainerTone { TrainerTone(rawValue: defaults.string(forKey: "trainer.tone") ?? "") ?? .encouraging }
     private let previewPlayback: VoicePlayback?
@@ -208,7 +209,7 @@ final class RemoteVoicePlayback: VoicePlayback {
                 previewCueID = cue.id; arnoldPlayback.speak(cue); return
             }
             let reason: CoachingReason = cue.kind == .coaching(.stop) ? .discomfort : (cue.reason ?? .steadyRhythm)
-            let text = cueLibrary.next(reason: reason, tone: tone)
+            let text = cueLibrary.next(reason: reason, tone: tone, exercise: exercise)
             if preference == .maya || preference == .leo {
                 do {
                     guard let index = TrainerCueLibrary.lines(reason: reason, tone: tone).firstIndex(of: text),

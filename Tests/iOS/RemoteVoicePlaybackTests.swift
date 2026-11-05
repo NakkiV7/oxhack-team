@@ -584,3 +584,22 @@ private final class SilentRemoteAudio: VoiceAudioOutput {
     func play() -> Bool { onPlay(); return true }
     func stop() { stops += 1 }
 }
+
+extension RemoteVoicePlaybackTests {
+    func testGenericMovementFilteringKeepsTheOriginalMP3VariantNumbers() throws {
+        for exercise in [Exercise.plank, .frontArmRaise] {
+            let defaults = UserDefaults(suiteName: UUID().uuidString)!
+            defaults.set("direct", forKey: "trainer.tone")
+            var recordings: [Data] = []
+            let playback = RemoteVoicePlayback(local: SilentLocalVoice(), offlineOnly: true, defaults: defaults,
+                makeAudio: { recordings.append($0); return SilentRemoteAudio(onPlay: {}) }, uptime: { 2 })
+            playback.exercise = exercise
+            for _ in 0..<4 { playback.speak(cue(reason: .steadyRhythm)) }
+            let expected = try [2,6,7,8].map { number in
+                try Data(contentsOf: XCTUnwrap(Bundle.main.url(forResource: "steadyRhythm-\(number)", withExtension: "mp3", subdirectory: "DemoVoice/maya/direct")))
+            }
+            XCTAssertEqual(recordings, expected)
+            playback.stop()
+        }
+    }
+}

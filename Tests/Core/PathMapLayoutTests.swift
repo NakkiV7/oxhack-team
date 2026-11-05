@@ -34,3 +34,9 @@ import Testing
     #expect(horizontal.positions["kneePushup"]!.x < horizontal.positions["pushup"]!.x && horizontal.width > horizontal.height)
     #expect(PathMapLayout.make(path: path) == map)   // same path, same picture
 }
+
+@Test func expandingCameraSupportPreservesExistingPathPresentationRoles() {
+    let path = TrainingPathRules.fallback(survey: PathSurvey(goal: .pushup, abilityKey: "new"))
+    #expect(PathMapLayout.role(of: PathNode(id: "wallPushup", why: "Existing foundation"), in: path) == .milestone)
+    #expect(PathMapLayout.role(of: PathNode(id: "gluteBridge", why: "Existing practice"), in: path) == .standard)
+}

@@ -30,12 +30,16 @@ public struct ConfigurableSession: Sendable {
     public private(set) var stoppedForDiscomfort = false
     public private(set) var telemetry: [WatchTelemetry] = []
     public private(set) var source: InputSource = .manual
+    public private(set) var holdCounter: PoseHoldCounter?
     public private(set) var counter: RepCounter?
     public private(set) var cue: Cue = .ready
     public private(set) var repDurations: [Double] = []
     private var activeStarted: Double?
     private var accumulated = 0.0
     private var includesManualReps = false
+    private var manualSeconds = 0.0
+    private var manualStarted: Double?
+    private var includesCameraReps = false
     private var restStarted: Double?
     private var restBefore: Double?
     public var current: WorkoutStep { steps[index] }
@@ -62,13 +66,22 @@ public struct ConfigurableSession: Sendable {
     public func elapsed(at time: Double) -> Double {
         accumulated + max(0, time - (activeStarted ?? time))
     }
+    public func measuredSeconds(at time: Double) -> Double {
+        (holdCounter?.observedSeconds ?? 0) + manualSeconds + max(0, time - (manualStarted ?? time))
+    }
+    public func quantityOrigin(at time: Double) -> LoggedSet.QuantityOrigin? {
+        let manual = current.unit == .seconds ? manualSeconds + max(0, time - (manualStarted ?? time)) > 0 : includesManualReps
+        let camera = current.unit == .seconds ? (holdCounter?.observedSeconds ?? 0) > 0 : includesCameraReps
+        if manual && camera { return .mixed }
+        return current.unit == .seconds ? (camera ? .cameraObserved : .activeTimer) : (manual ? .selfReport : nil)
+    }
     public func restElapsed(at time: Double) -> Double? {
         guard phase == .rest, time.isFinite, let restStarted else { return nil }
         return max(0, time - restStarted)
     }
     public func canEndSet(at time: Double) -> Bool {
         guard hasStarted, phase == .active || phase == .paused, time.isFinite else { return false }
-        return current.unit == .reps ? (actualReps ?? 0) > 0 : elapsed(at: time) >= 1
+        return current.unit == .reps ? (actualReps ?? 0) > 0 : measuredSeconds(at: time) >= 1
     }
     public mutating func start(at time: Double) {
         guard phase == .idle, time.isFinite else { return }
@@ -79,13 +92,16 @@ public struct ConfigurableSession: Sendable {
         if let restStarted { restBefore = max(0, time - restStarted) }
         restStarted = nil
         hasStarted = true; activeStarted = time; generation = UUID()
+        if current.unit == .seconds && source == .manual { manualStarted = time }
     }
     @discardableResult public mutating func resetSet(source: InputSource, at time: Double) -> Bool {
         guard time.isFinite, phase == .active || phase == .paused, !stoppedForDiscomfort,
               source == .manual || (source == .camera && trackingExercise != nil) else { return false }
         self.source = source
-        counter = source == .camera ? trackingExercise.map { RepCounter(exercise: $0) } : nil
+        counter = source == .camera && current.unit == .reps ? trackingExercise.map { RepCounter(exercise: $0) } : nil
+        holdCounter = source == .camera && current.unit == .seconds ? trackingExercise.map { PoseHoldCounter(exercise: $0) } : nil
         hasStarted = false; manualReps = nil; activeStarted = nil; accumulated = 0
+        manualSeconds = 0; manualStarted = nil; includesManualReps = false; includesCameraReps = false
         repDurations = []; cue = .ready; phase = .active; generation = UUID()
         return true
     }
@@ -94,46 +110,62 @@ public struct ConfigurableSession: Sendable {
               source == .manual || (source == .camera && trackingExercise != nil) else { return false }
         guard hasStarted else { return resetSet(source: source, at: time) }
         let count = actualReps ?? 0
-        if self.source == .manual && count > 0 { includesManualReps = true }
+        if let manualStarted { manualSeconds += max(0, time - manualStarted) }
+        manualStarted = current.unit == .seconds && source == .manual && phase == .active ? time : nil
+        holdCounter?.resetContinuity()
+        if current.unit == .seconds && holdCounter == nil, let exercise = trackingExercise, source == .camera { holdCounter = PoseHoldCounter(exercise: exercise) }
         self.source = source
-        counter = source == .camera ? trackingExercise.map { RepCounter(exercise: $0, initialReps: count) } : nil
-        manualReps = count > 0 ? count : nil
+        counter = source == .camera && current.unit == .reps ? trackingExercise.map { RepCounter(exercise: $0, initialReps: count) } : nil
+        manualReps = source == .manual && count > 0 ? count : nil
         generation = UUID(); cue = phase == .paused ? .paused : .ready
         return true
     }
     public mutating func consume(_ sample: MovementSample, generation: UUID) {
-        guard source == .camera, phase == .active, hasStarted, generation == self.generation,
-              var counter else { return }
+        guard source == .camera, phase == .active, hasStarted, generation == self.generation else { return }
+        if current.unit == .seconds {
+            cue = holdCounter?.consume(sample) ?? .tracking
+            return
+        }
+        guard var counter else { return }
         let previous = counter.reps
         let movementCue = counter.consume(sample)
+        if counter.reps > previous { includesCameraReps = true }
         if counter.reps > previous, let duration = counter.lastRepDuration { repDurations.append(duration) }
         cue = movementCue != .tracking && sample.bodyLine == .adjust ? .alignment : movementCue
         self.counter = counter
     }
     public mutating func setReps(_ value: Int?) {
         guard source == .manual, current.unit == .reps, phase == .active || phase == .paused else { return }
+        if let value, value == manualReps { return }
         manualReps = value.flatMap { (1...200).contains($0) ? $0 : nil }
+        if manualReps != nil { includesManualReps = true }
     }
     public mutating func pause(at time: Double) {
         guard phase == .active, hasStarted, time.isFinite else { return }
+        if let manualStarted { manualSeconds += max(0, time - manualStarted) }
+        manualStarted = nil
         accumulated = elapsed(at: time); activeStarted = nil; phase = .paused; generation = UUID()
-        counter?.resetMovement(); cue = .paused
+        counter?.resetMovement(); holdCounter?.resetContinuity(); cue = .paused
     }
     public mutating func resume(at time: Double) {
         guard phase == .paused, time.isFinite else { return }
         activeStarted = time; phase = .active; generation = UUID(); cue = .ready
+        if current.unit == .seconds && source == .manual { manualStarted = time }
     }
     @discardableResult public mutating func endSet(at time: Double, reason: StopReason = .voluntary) -> Bool {
         guard canEndSet(at: time) else { return false }
         let seconds = elapsed(at: time)
+        let manualQuantity = current.unit == .seconds ? manualSeconds + max(0, time - (manualStarted ?? time)) > 0 : includesManualReps
+        let cameraQuantity = current.unit == .seconds ? (holdCounter?.observedSeconds ?? 0) > 0 : includesCameraReps
+        let origin = quantityOrigin(at: time)
         completed.append(.init(id: UUID(), exerciseID: current.exerciseID,
             reps: current.unit == .reps ? (actualReps ?? 0) : 0,
-            seconds: current.unit == .seconds ? seconds : 0, source: includesManualReps ? .manual : source, reason: reason,
+            seconds: current.unit == .seconds ? measuredSeconds(at: time) : 0, source: manualQuantity ? .manual : (cameraQuantity ? .camera : source), reason: reason,
             number: current.number, target: current.target, activeSeconds: seconds,
-            restSecondsBefore: restBefore, quantityOrigin: source == .camera && !includesManualReps ? nil : (current.unit == .seconds ? .activeTimer : .selfReport),
-            repDurations: source == .camera && !includesManualReps ? repDurations : nil))
+            restSecondsBefore: restBefore, quantityOrigin: origin,
+            repDurations: current.unit == .reps && cameraQuantity && !manualQuantity ? repDurations : nil))
         if reason == .discomfort { stoppedForDiscomfort = true }
-        restStarted = time; activeStarted = nil; accumulated = 0; phase = .rest; generation = UUID()
+        restStarted = time; activeStarted = nil; manualStarted = nil; accumulated = 0; phase = .rest; generation = UUID()
         return true
     }
     public var currentWasSkipped: Bool {
@@ -141,7 +173,7 @@ public struct ConfigurableSession: Sendable {
     }
     public func canSkipSet(at time: Double) -> Bool {
         guard time.isFinite, phase == .active || phase == .paused, !stoppedForDiscomfort else { return false }
-        return current.unit == .reps ? (actualReps ?? 0) == 0 : !hasStarted || elapsed(at: time) == 0
+        return current.unit == .reps ? (actualReps ?? 0) == 0 : !hasStarted || measuredSeconds(at: time) == 0
     }
     @discardableResult public mutating func skipSet(at time: Double) -> Bool {
         guard canSkipSet(at: time) else { return false }
@@ -171,7 +203,7 @@ public struct ConfigurableSession: Sendable {
         guard phase == .rest, time.isFinite, !stoppedForDiscomfort else { return }
         guard index + 1 < steps.count else { phase = .finished; generation = UUID(); return }
         index += 1; hasStarted = false; manualReps = nil; phase = .active; generation = UUID()
-        source = .manual; counter = nil; cue = .ready; repDurations = []; restBefore = nil; includesManualReps = false
+        source = .manual; counter = nil; holdCounter = nil; manualSeconds = 0; manualStarted = nil; includesCameraReps = false; cue = .ready; repDurations = []; restBefore = nil; includesManualReps = false
     }
     public mutating func feedback(reserve: Int?, reason: StopReason) {
         guard phase == .rest, !completed.isEmpty,

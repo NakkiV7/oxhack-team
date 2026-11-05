@@ -60,6 +60,7 @@ public struct MotionAnalysis: Sendable {
     public let rotationSamples: [ReportSample]
 }
 public struct RepPaceAnalysis: Sendable {
+    public let recordedCameraReps: Int
     public let timedReps: Int
     public let averageSeconds: Double?
     public let fastestSeconds: Double?
@@ -166,10 +167,11 @@ public struct WorkoutAnalytics: Sendable {
         return sqrt(values.reduce(0) { $0+pow($1-mean,2) }/Double(values.count))/mean*100
     }
     private static func paceAnalysis(_ sets:[ReportSet]) -> RepPaceAnalysis {
-        let measured=sets.filter { $0.source == .camera && $0.reps > 0 && $0.repDurations.count == $0.reps }
+        let camera=sets.filter { $0.source == .camera && $0.reps > 0 }
+        let measured=camera.filter { !$0.repDurations.isEmpty && $0.repDurations.count <= $0.reps }
         let values=measured.flatMap(\.repDurations)
         let average=values.isEmpty ? nil : values.reduce(0,+)/Double(values.count)
-        return RepPaceAnalysis(timedReps:values.count,averageSeconds:average,fastestSeconds:values.min(),slowestSeconds:values.max(),variabilityPercent:Set(measured.map(\.exerciseID)).count==1 ? coefficient(values):nil,repRatePerMinute:average.flatMap { $0 > 0 ? 60/$0:nil },durations:values)
+        return RepPaceAnalysis(recordedCameraReps:camera.reduce(0) { $0+$1.reps },timedReps:values.count,averageSeconds:average,fastestSeconds:values.min(),slowestSeconds:values.max(),variabilityPercent:Set(measured.map(\.exerciseID)).count==1 ? coefficient(values):nil,repRatePerMinute:average.flatMap { $0 > 0 ? 60/$0:nil },durations:values)
     }
     private static func motionAnalysis(_ record:SessionRecord,report:WorkoutReport) -> MotionAnalysis {
         let candidates=record.telemetry.compactMap { message -> WatchMotionWindow? in

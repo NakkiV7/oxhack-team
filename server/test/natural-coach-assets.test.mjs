@@ -39,3 +39,18 @@ test('both original coaches have complete offline recordings for every coaching 
     }
   }
 });
+
+test('tracking and alignment recordings use view and quantity neutral transcripts', async () => {
+  const expected = {
+    'tracking-1': 'I lost sight of the movement. Your progress is saved. Move back into view when you are ready.',
+    'tracking-2': 'Your progress is safe. Give the camera a clear view of the movement so we can continue.',
+    'alignment-1': 'Check your starting position. Keep the movement comfortable and controlled.'
+  };
+  for (const coach of ['maya', 'leo']) {
+    const manifest = JSON.parse(await readFile(new URL(`../../Native/Resources/DemoVoice/${coach}/manifest.json`, import.meta.url), 'utf8'));
+    for (const clip of manifest.clips) {
+      const text = expected[clip.name.split('/')[1]];
+      if (text) assert.equal(clip.text, text);
+    }
+  }
+});

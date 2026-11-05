@@ -125,7 +125,7 @@ struct LiveSetView: View {
                     Image(systemName: store.session.phase == .paused ? "pause" : "arrow.down")
                         .padding(12).background(Palette.surface, in: RoundedRectangle(cornerRadius: 12))
                     VStack(alignment: .leading, spacing: 7) {
-                        Text(store.source == .manual ? "Enter the reps you actually complete." : (store.coachingEvent?.decision.text ?? store.session.cue.text))
+                        Text(store.source == .manual ? "Enter the reps you actually complete." : (store.coachingEvent?.decision.text ?? MovementFeedback.text(store.session.cue, exercise: store.session.exercise)))
                             .font(.system(size: 19, weight: .semibold)).fixedSize(horizontal: false, vertical: true)
                             .accessibilityIdentifier("coaching-cue")
                         Text(store.session.phase == .paused ? "Your set is on hold." : "\(store.session.exercise.guide)").font(.caption).foregroundStyle(.secondary)

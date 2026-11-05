@@ -18,7 +18,7 @@ import Testing
 
 @Test func filmingDirectionsIdentifyBothSidesAndUsefulViewsWithoutClaimingTrackingCoverage() throws {
     let bilateralTakes: Set<String> = ["reverseLunge", "splitSquat", "assistedSquat", "deadBug", "sidePlank",
-        "stepJack", "highKnees", "mountainClimber", "hipFlexorStretch", "singleLegBalance", "birdDog", "seatedKneeExtension"]
+        "stepJack", "highKnees", "mountainClimber", "hipFlexorStretch", "singleLegBalance", "birdDog", "seatedKneeExtension", "forwardLunge", "lateralLunge", "supportedSplitSquat", "standingKneeRaise", "seatedMarch", "standingHipAbduction", "standingHipExtension", "kneeSidePlank", "tandemBalance", "frontArmRaise", "lateralArmRaise", "standingBicepsCurl"]
     let guides = ExerciseDemonstrationGuide.all
     #expect(Set(guides.filter(\.requiresBothSides).map(\.exerciseID)) == bilateralTakes)
     #expect(guides.filter(\.requiresBothSides).allSatisfy { $0.sideInstructions.contains("both") })
@@ -36,4 +36,12 @@ import Testing
     #expect(try #require(ExerciseDemonstrationGuide.find("highKnees")).takeInstructions.contains("alternating"))
     #expect(try #require(ExerciseDemonstrationGuide.find("wallPushup")).support == "Wall")
     #expect(try #require(ExerciseDemonstrationGuide.find("pushup")).support == nil)
+}
+
+@Test func everyCameraGuideUsesItsActualProfileViewAndSpecificPhases() throws {
+    for entry in ExerciseCatalog.all {
+        let guide = try #require(ExerciseDemonstrationGuide.find(entry.id))
+        if let exercise = entry.tracking { #expect(guide.cameraAngle.rawValue == exercise.cameraView.rawValue) }
+        #expect(!guide.phases.contains("Show the full movement"), "Missing movement-specific guide: \(entry.id)")
+    }
 }

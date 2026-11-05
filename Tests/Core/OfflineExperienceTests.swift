@@ -77,3 +77,30 @@ import Testing
     let recovered = counter.consume("one two three four five six")
     #expect(recovered == 6)
 }
+
+@Test func genericTrackingAndAlignmentRecordingsSuitAllMovementViewsAndQuantities() {
+    for tone in TrainerTone.allCases {
+        #expect(TrainerCueLibrary.lines(reason: .tracking, tone: tone) == ["I lost sight of the movement. Your progress is saved. Move back into view when you are ready.", "Your progress is safe. Give the camera a clear view of the movement so we can continue."])
+        #expect(TrainerCueLibrary.lines(reason: .alignment, tone: tone).first == "Check your starting position. Keep the movement comfortable and controlled.")
+    }
+}
+
+@Test func genericEncouragementKeepsOriginalRecordingIdentityForTimedAndRaisingFamilies() {
+    for tone in TrainerTone.allCases {
+        var bank = TrainerCueLibrary()
+        for _ in 0..<16 {
+            let text = bank.next(reason: .steadyRhythm, tone: tone, exercise: .plank)
+            #expect(!text.lowercased().contains("rep"))
+            #expect(!text.lowercased().contains("lowering"))
+            #expect(!text.lowercased().contains("press"))
+            #expect(TrainerCueLibrary.lines(reason: .steadyRhythm, tone: tone).contains(text))
+        }
+    }
+}
+
+@Test func startingSpokenEntryNeverClampsAnExistingCameraQuantity() {
+    var counter = SpokenRepCounter(initialCount: 317)
+    #expect(counter.count == 317)
+    #expect(counter.consume("one") == nil)
+    #expect(counter.count == 317)
+}

@@ -12,23 +12,29 @@ const trackedSet = z.strictObject({
   reserve: quantity(20).int().nullable().optional(), reason, restSecondsBefore: z.number().nonnegative().nullable().optional(), repDurations: z.array(quantity(600)).max(200).nullable().optional()
 });
 const loggedSet = z.strictObject({
-  id: z.uuid(), exerciseID: z.enum(catalog.map(item => item.id)), reps: quantity(200).int(),
+  id: z.uuid(), exerciseID: z.enum(catalog.map(item => item.id)), reps: quantity(100000).int(),
   seconds: quantity(86400), source, reason,
   number: z.number().int().min(1).max(10).nullable().optional(),
   target: z.number().int().min(1).max(600).nullable().optional(),
   activeSeconds: quantity(86400).nullable().optional(),
   restSecondsBefore: z.number().finite().nonnegative().nullable().optional(),
   reserve: quantity(3).int().nullable().optional(),
-  quantityOrigin: z.enum(['selfReport', 'activeTimer']).nullable().optional(),
-  repDurations: z.array(z.number().finite().min(0.6).max(15)).max(200).nullable().optional()
+  quantityOrigin: z.enum(['selfReport', 'activeTimer', 'cameraObserved', 'mixed']).nullable().optional(),
+  repDurations: z.array(z.number().finite().min(0.6).max(15)).max(100000).nullable().optional()
 }).refine(set => {
   const exercise = catalog.find(exercise => exercise.id === set.exerciseID);
   if (!exercise || (exercise.unit === 'reps' ? set.seconds !== 0 : set.reps !== 0)) return false;
-  if (set.quantityOrigin != null && set.source !== 'manual') return false;
-  if (set.repDurations != null && (set.source !== 'camera' || !['squat', 'pushup'].includes(set.exerciseID)
-    || set.repDurations.length !== set.reps)) return false;
   if (set.target != null && set.target > (exercise.unit === 'reps' ? 200 : 600)) return false;
   if (exercise.unit === 'seconds' && set.reserve != null) return false;
+  if (set.source === 'camera' && (!exercise.cameraTracking || (exercise.unit === 'seconds' && set.quantityOrigin !== 'cameraObserved'))) return false;
+  if (set.quantityOrigin === 'cameraObserved') {
+    return set.source === 'camera' && exercise.cameraTracking && exercise.unit === 'seconds' && set.activeSeconds != null && set.seconds <= set.activeSeconds && set.repDurations == null;
+  }
+  if (set.quantityOrigin != null && set.source !== 'manual') return false;
+  if (set.quantityOrigin === 'mixed') return exercise.cameraTracking && set.repDurations == null && (exercise.unit === 'reps' || (set.activeSeconds != null && set.seconds <= set.activeSeconds));
+  if (set.source === 'manual' && set.quantityOrigin !== 'mixed' && set.reps > 200) return false;
+  if (set.repDurations != null && (set.source !== 'camera' || !exercise.cameraTracking || exercise.unit !== 'reps'
+    || set.repDurations.length > set.reps)) return false;
   if (set.quantityOrigin === 'activeTimer') return exercise.unit === 'seconds' && set.activeSeconds != null && set.activeSeconds === set.seconds;
   return set.seconds <= 600;
 });

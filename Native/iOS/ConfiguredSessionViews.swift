@@ -54,7 +54,7 @@ private struct ConfiguredLiveSetView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
                         HStack(alignment: .firstTextBaseline) {
-                            Text(run.current.unit == .seconds ? clockText(run.elapsed(at: store.now)) : run.actualReps.map(String.init) ?? "—")
+                            Text(run.current.unit == .seconds ? clockText(Double(store.configuredDisplayedSeconds)) : run.actualReps.map(String.init) ?? "—")
                                 .font(.system(size: 66, weight: .semibold, design: .rounded)).monospacedDigit()
                                 .accessibilityIdentifier("configured-quantity")
                             Text("/ \(run.current.target) \(run.current.unit == .seconds ? "sec" : (run.current.target == 1 ? "rep" : "reps"))").foregroundStyle(.secondary)
@@ -67,15 +67,15 @@ private struct ConfiguredLiveSetView: View {
                         inputControl(run)
                         preview(run)
                         Text(run.current.entry.instruction).font(.headline)
-                        Label(run.source == .camera ? "Camera observation" : (run.current.unit == .seconds ? "Manual hold, active timer" : "Manual self-report"), systemImage: run.source == .camera ? "camera" : "hand.tap")
+                        Label(run.quantityOrigin(at: store.now) == .mixed ? "Camera + manual quantity" : run.source == .camera ? "Camera observation" : (run.current.unit == .seconds ? "Manual hold, active timer" : "Manual self-report"), systemImage: run.source == .camera ? "camera" : "hand.tap")
                             .font(.caption.weight(.medium)).foregroundStyle(.secondary)
                         Text(status(run)).font(.subheadline).accessibilityIdentifier("configured-status")
                         if run.source == .camera, run.hasStarted {
                             Text(store.visionState.message).font(.caption).foregroundStyle(.secondary)
-                            Text(store.coachingEvent?.decision.text ?? run.cue.text)
+                            Text(store.coachingEvent?.decision.text ?? run.trackingExercise.map { MovementFeedback.text(run.cue, exercise: $0) } ?? run.cue.text)
                                 .font(.headline).foregroundStyle(Palette.coaching(store.coachingEvent?.decision, cue: run.cue))
                                 .accessibilityIdentifier("configured-coaching-cue")
-                            Text("Observed reps stay separate from your target. End this set yourself.")
+                            Text("Observed \(run.current.unit == .seconds ? "seconds" : "reps") stay separate from your target. End this set yourself.")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                         if run.source == .manual, run.hasStarted, run.current.unit == .reps {
@@ -147,6 +147,23 @@ private struct ConfiguredLiveSetView: View {
         }
     }
     private func preview(_ run: ConfigurableSession) -> some View {
+        ConfiguredCapturePreview(store: store, run: run)
+    }
+
+    private func status(_ run: ConfigurableSession) -> String {
+        if !run.hasStarted {
+            return run.source == .camera ? "Get your full body in view, then Start to open the selected camera. Preparation time is left out." : "Get into position, then start. Preparation time is left out."
+        }
+        if run.phase == .paused { return "Your set is paused. Resume when you’re ready, or change input while keeping your work." }
+        if run.current.unit == .seconds { return run.source == .camera ? "Only visible, qualified movement earns seconds. Missing camera intervals do not count. End the set yourself." : "The manual timer runs while active. Pause whenever you stop. End the set yourself." }
+        return run.source == .camera ? "Keep your full body visible for camera form tracking." : "Complete your reps, enter the actual count, then end this set."
+    }
+}
+
+private struct ConfiguredCapturePreview: View {
+    @Bindable var store: TrainingStore
+    let run: ConfigurableSession
+    var body: some View {
         ZStack {
             Palette.surface
             if run.source == .camera, run.hasStarted, run.phase == .active,
@@ -162,15 +179,6 @@ private struct ConfiguredLiveSetView: View {
             }
         }.frame(maxWidth: .infinity).frame(height: 250).clipShape(RoundedRectangle(cornerRadius: 23))
             .accessibilityLabel(run.current.entry.name)
-    }
-
-    private func status(_ run: ConfigurableSession) -> String {
-        if !run.hasStarted {
-            return run.source == .camera ? "Get your full body in view, then Start to open the selected camera. Preparation time is left out." : "Get into position, then start. Preparation time is left out."
-        }
-        if run.phase == .paused { return "Your set is paused. Resume when you’re ready, or change input while keeping your work." }
-        if run.current.unit == .seconds { return "Only active hold seconds count. Pause whenever you stop holding. End the set yourself." }
-        return run.source == .camera ? "Keep your full body visible for camera form tracking." : "Complete your reps, enter the actual count, then end this set."
     }
 }
 
@@ -288,7 +296,7 @@ private struct ConfiguredFinishedView: View {
                     ForEach(run.completed) { set in
                         VStack(alignment: .leading, spacing: 7) {
                             Text("\(ExerciseCatalog.find(set.exerciseID)?.name ?? set.exerciseID), Set \(set.number ?? 1)").font(.headline)
-                            Text("\(set.seconds > 0 ? "\(Int(set.seconds)) sec" : "\(set.reps) \(set.reps == 1 ? "rep" : "reps")"), \(set.source == .camera ? "camera observation" : (set.quantityOrigin == .activeTimer ? "active hold timer" : "manual self-report"))")
+                            Text("\(set.seconds > 0 ? "\(Int(set.seconds)) sec" : "\(set.reps) \(set.reps == 1 ? "rep" : "reps")"), \(set.quantityOrigin == .mixed ? "camera + manual" : (set.source == .camera ? "camera observation" : (set.quantityOrigin == .activeTimer ? "active hold timer" : "manual self-report")))")
                                 .font(.subheadline)
                             Text(set.reason.title).font(.caption).foregroundStyle(.secondary)
                             if let rest = set.restSecondsBefore { Text("\(Int(rest)) sec recorded rest before this set").font(.caption).foregroundStyle(.secondary) }

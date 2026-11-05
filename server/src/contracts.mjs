@@ -23,7 +23,7 @@ if (!catalog.length || new Set(catalog.map(item => item.id)).size !== catalog.le
 
 export const appCapabilities = {
   exercises: catalog.map(({ id, name, unit, cameraTracking }) => ({ id, name, unit, cameraTracking })),
-  inputRules: 'Camera tracking is available only for entries with cameraTracking true. Other rep exercises use manual self-report; seconds exercises use an active hold timer. Camera support does not extend to untracked variants.',
+  inputRules: 'Camera tracking is available only for entries with cameraTracking true. Tracked reps use camera counting and tracked seconds use observed posture or activity time. Manual reps use manual self-report. Manual seconds use an active timer; missing camera intervals never earn time. Camera support does not extend to untracked variants.',
   setControl: 'Custom workout sets require explicit Start and End set. Reaching the target does not automatically end the set.',
   voiceFeedback: 'Local spoken camera cues are optional and off until enabled by the user for the workout.'
 };

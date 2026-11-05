@@ -32,6 +32,8 @@ public struct ReportSet: Identifiable, Sendable {
     public let restSecondsBefore: Double?
     public let quantityOrigin: LoggedSet.QuantityOrigin?
     public var sourceLabel: String {
+        if quantityOrigin == .mixed { return "Camera + manual" }
+        if quantityOrigin == .cameraObserved { return "Camera observed seconds" }
         if quantityOrigin == .activeTimer { return "Manual hold timer" }
         switch source {
         case .manual: return "Manual self-report"
@@ -151,14 +153,16 @@ public struct WorkoutReport: Identifiable, Sendable {
     }
 
     private static func recordedRepDurations(for set: SetRecord) -> [Double] {
-        guard let durations = set.repDurations, set.reps > 0, durations.count == set.reps,
+        guard let durations = set.repDurations, set.reps > 0,
+              durations.count <= set.reps,
               durations.allSatisfy({ $0.isFinite && (0.6...15).contains($0) }) else { return [] }
         return durations
     }
     private static func recordedRepDurations(for set: LoggedSet) -> [Double] {
         guard set.source == .camera, Exercise(rawValue: set.exerciseID) != nil,
               set.seconds == 0, set.quantityOrigin == nil,
-              let durations = set.repDurations, set.reps > 0, durations.count == set.reps,
+              let durations = set.repDurations, set.reps > 0,
+              durations.count <= set.reps,
               durations.allSatisfy({ $0.isFinite && (0.6...15).contains($0) }) else { return [] }
         return durations
     }

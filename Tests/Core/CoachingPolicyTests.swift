@@ -409,3 +409,23 @@ extension CoachingPolicyTests {
         XCTAssertNil(policy.evaluate(input(now: 20, reps: 1, duration: 3, encouragementEnabled: true)))
     }
 }
+
+extension CoachingPolicyTests {
+    func testTimedExerciseNeverTurnsRepShapedInputIntoRepTargetOrRhythmClaims() {
+        var policy = CoachingPolicy()
+        let result = policy.evaluate(input(now: 1, reps: 20, duration: 2, target: 20, exercise: .plank))
+        XCTAssertNil(result)
+    }
+}
+
+extension CoachingPolicyTests {
+    func testObservedSecondsReachTimedTargetWithoutRepFacts() {
+        var policy = CoachingPolicy()
+        let value = CoachingInput(sessionID: UUID(), generation: UUID(), phase: .active, now: 30, exercise: .plank, repCount: 0, lastRepDuration: nil, cue: .hold, heartRate: [], wallTime: Date(), restElapsed: nil, target: 20, stopReason: nil, measuredSeconds: 20.5)
+        let decision = policy.evaluate(value)
+        XCTAssertEqual(decision?.reason, .targetReached)
+        XCTAssertTrue(decision?.facts.first?.contains("20 observed seconds") == true)
+        XCTAssertFalse(decision?.facts.contains { $0.contains("reps") } == true)
+        XCTAssertNil(policy.evaluate(value))
+    }
+}

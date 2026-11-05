@@ -22,7 +22,13 @@ final class TrainingStore {
         }
     }
     var session = TrainingSession()
-    private(set) var configured: ConfigurableSession?
+    @ObservationIgnored private var configuredStorage: ConfigurableSession?
+    private var configuredRevision = 0
+    private(set) var configured: ConfigurableSession? {
+        get { _ = configuredRevision; return configuredStorage }
+        set { configuredStorage = newValue; configuredRevision += 1 }
+    }
+    var configuredDisplayedSeconds: Int { Int(max(0, configured?.measuredSeconds(at: now) ?? 0)) }
     private(set) var configuredInput: ConfiguredInput = .manual
     var sessionPhase: SessionPhase { configured?.phase ?? session.phase }
     var presented = false { didSet { if oldValue && !presented { cancelCoaching() } } }
@@ -158,9 +164,11 @@ final class TrainingStore {
         guard appActive else { cancelCoaching(); return }
         let time = time ?? now
         let context = feedbackContext
+        remoteVoice?.exercise = trackingExercise
         defer { coachingVoice.update(context: context, event: coachingEvent, enabled: voiceFeedbackEnabled, now: time) }
         guard time.isFinite else { return }
-        let reps = configured?.actualReps ?? session.actualReps ?? 0
+        let mixedOrManual = configured.map { [.mixed, .selfReport].contains($0.quantityOrigin(at: time)) } ?? false
+        let reps = mixedOrManual ? 0 : (configured?.actualReps ?? session.actualReps ?? 0)
         let milestone = consumePreviewRep(context: context, reps: reps, time: time)
         repVoiceTick(context: context, reps: reps, clean: (configured?.cue ?? session.cue) == .controlled, at: time)
         if context.phase == .finished {
@@ -206,14 +214,14 @@ final class TrainingStore {
         guard let exercise = trackingExercise else { return }
         let decision = coachingPolicy.evaluate(.init(
             sessionID: context.sessionID, generation: context.generation, phase: context.phase,
-            now: time, exercise: exercise, repCount: configured?.actualReps ?? session.actualReps ?? 0,
+            now: time, exercise: exercise, repCount: reps,
             lastRepDuration: configured == nil ? session.counter.lastRepDuration : configured?.counter?.lastRepDuration, cue: policyCue,
             heartRate: recentHeartRate(at: wallTime), wallTime: wallTime,
             restElapsed: restElapsed,
             target: configured?.current.target ?? session.exercise.target,
             stopReason: stopReason, source: configured?.source ?? source,
             encouragementEnabled: !previewMode && voiceFeedbackEnabled && remoteVoice != nil && !repVoiceEnabled,
-            trackingPromptFinished: trackingFinished
+            trackingPromptFinished: trackingFinished, measuredSeconds: !mixedOrManual && configured?.current.unit == .seconds ? configured?.measuredSeconds(at: time) : nil
         ))
         // Rep counting replaces the preview's "steady rhythm" encouragement while it is on, as it does outside preview.
         let previewEncouragement = previewMode && milestone && voiceFeedbackEnabled && remoteVoice?.preference == .arnold && !repVoiceEnabled &&
@@ -261,7 +269,7 @@ final class TrainingStore {
 
     /// Rep counting replaces the occasional "steady rhythm" encouragement while it is on, so lines never double up.
     private var repVoiceEnabled: Bool {
-        voiceFeedbackEnabled && repVoice.coach != nil && (configured?.source ?? source) == .camera && !reportedDiscomfort
+        trackingExercise?.isTimed != true && voiceFeedbackEnabled && repVoice.coach != nil && (configured?.source ?? source) == .camera && !reportedDiscomfort
     }
 
     /// Speaks the count on each camera-counted rep (a line every third clean rep), a start line when a camera set begins
@@ -412,6 +420,7 @@ final class TrainingStore {
 
     var now: Double { ProcessInfo.processInfo.systemUptime }
     func start() {
+        guard !selectedExercise.isTimed else { error = "Start timed exercises from the exercise library."; return }
         defer { publish() }
         remoteVoice?.reloadPreferences()
         configured = nil
@@ -516,8 +525,11 @@ final class TrainingStore {
         preferredSide = sample?.side ?? preferredSide
         if configured != nil {
             let previousReps = configured?.actualReps, previousCue = configured?.cue
-            configured?.consume(sample ?? .init(time: frame.time, angle: .nan, confidence: 0), generation: generation)
-            if previousReps != configured?.actualReps || previousCue != configured?.cue { coachingTick(); publish() }
+            let previousSeconds = configuredDisplayedSeconds
+            configuredStorage?.consume(sample ?? .init(time: frame.time, angle: .nan, confidence: 0), generation: generation)
+            if previousReps != configured?.actualReps || previousCue != configured?.cue || previousSeconds != configuredDisplayedSeconds {
+                configuredRevision += 1; coachingTick(); publish()
+            }
             return
         }
         let previousReps = session.counter.reps, previousCue = session.cue
@@ -550,7 +562,7 @@ final class TrainingStore {
     }
     func endSet() {
         if let run = configured {
-            let quantity = run.current.unit == .reps ? Double(run.actualReps ?? 0) : run.elapsed(at: now)
+            let quantity = run.current.unit == .reps ? Double(run.actualReps ?? 0) : run.measuredSeconds(at: now)
             guard configured?.endSet(at: now, reason: quantity >= Double(run.current.target) ? .target : .voluntary) == true else { return }
             stopCapture(); frame = nil; image = nil; preferredSide = nil
             transitionCoaching(); coachingTick(); publish(); return

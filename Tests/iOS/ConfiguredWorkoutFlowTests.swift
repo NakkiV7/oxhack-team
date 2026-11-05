@@ -225,7 +225,7 @@ extension ConfiguredWorkoutFlowTests {
     func testUnsupportedExerciseCannotCaptureAndPhoneFailureAllowsExplicitManualFallback() async throws {
         let vision = VisionWorker(cameraAvailable: { false }, requestAccess: { _ in XCTFail("Unavailable camera must not request access") })
         let store = TrainingStore(historyURL: cameraHistoryURL(), vision: vision)
-        store.startPlan(try cameraPlan(exerciseID: "deadBug"), availableSupport: ["Wall"])
+        store.startPlan(try cameraPlan(exerciseID: "catCow"), availableSupport: ["Wall"])
         XCTAssertFalse(store.selectConfiguredInput(.phoneCamera))
         store.finish()
         store.startPlan(try cameraPlan(), availableSupport: [])
@@ -284,4 +284,66 @@ private final class ConfiguredRecordingVoice: VoicePlayback {
     var stops = 0
     func speak(_ cue: VoiceCue) { spoken.append(cue) }
     func stop() { stops += 1 }
+}
+
+extension ConfiguredWorkoutFlowTests {
+    func testCameraHoldFramesAdvanceDisplayedSecondsWithoutRepChangesAndExcludeMissingFrames() async throws {
+        let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { _ in })
+        let store = TrainingStore(historyURL: cameraHistoryURL(), vision: vision)
+        store.startPlan(try CoachSavedPlan.catalogue(exerciseID: "plank", sets: 1, target: 20, restSeconds: 30), availableSupport: [])
+        XCTAssertTrue(store.selectConfiguredInput(.phoneCamera)); store.beginConfiguredSet()
+        let generation = try XCTUnwrap(store.configured?.generation)
+        var points = Array(repeating: PosePoint(x: 0, y: 0, confidence: 0), count: 33)
+        for (i,x,y) in [(11,0.3,0.4),(12,0.32,0.43),(13,0.3,0.6),(14,0.32,0.63),(15,0.5,0.6),(16,0.52,0.63),(23,0.6,0.4),(24,0.62,0.43),(25,0.75,0.4),(26,0.77,0.43),(27,0.9,0.4),(28,0.92,0.43)] {
+            points[i] = .init(x: x, y: y, confidence: 1)
+        }
+        let start = store.now
+        for i in 0...7 {
+            let time = start + Double(i)*0.2
+            vision.onFrame?(.init(time: time, width: 1000, height: 1000, points: points), UIImage(), generation)
+            for _ in 0..<100 where store.frame?.time != time { try await Task.sleep(for: .milliseconds(1)) }
+        }
+        XCTAssertEqual(store.configured?.measuredSeconds(at: start+30) ?? -1, 1.4, accuracy: 0.00001)
+        XCTAssertEqual(store.configuredDisplayedSeconds, 1)
+        vision.onFrame?(.init(time: start+2, width: 1000, height: 1000, points: []), UIImage(), generation)
+        for _ in 0..<100 where store.frame?.time != start+2 { try await Task.sleep(for: .milliseconds(1)) }
+        XCTAssertEqual(store.configured?.measuredSeconds(at: start+30) ?? -1, 1.4, accuracy: 0.00001)
+        XCTAssertEqual(store.configured?.actualReps, nil)
+        store.pause(); store.finish()
+    }
+}
+
+extension ConfiguredWorkoutFlowTests {
+    func testNativeFrameBoundaryPreservesBothLimbSamplesAndProxyProvenance() async throws {
+        for exercise in [Exercise.standingBicepsCurl, .gluteBridge, .sitToStand] {
+            let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { _ in })
+            let store = TrainingStore(historyURL: cameraHistoryURL(), vision: vision)
+            let support = Set(ExerciseCatalog.find(exercise.rawValue)?.support.map { [$0] } ?? [])
+            store.startPlan(try CoachSavedPlan.catalogue(exerciseID: exercise.rawValue, sets: 1, target: 8, restSeconds: 30, availableSupport: support), availableSupport: support)
+            XCTAssertTrue(store.selectConfiguredInput(.phoneCamera)); store.beginConfiguredSet()
+            let generation = try XCTUnwrap(store.configured?.generation)
+            let timeline: [(Double,Double)] = exercise == .sitToStand ? [(0,100),(0.2,100),(0.5,140),(0.8,170),(1,170)] : [(0,170),(0.2,170),(0.4,140),(0.6,90),(0.8,90),(1.2,170),(1.4,170)]
+            for (time, angle) in timeline {
+                var points = Array(repeating: PosePoint(x: 0,y: 0,confidence: 0), count: 33)
+                for side in 0...1 {
+                    let offset = Double(side)*0.02
+                    func put(_ index: Int, _ x: Double, _ y: Double) { points[index+side] = .init(x:x+offset,y:y,confidence:1) }
+                    if exercise == .standingBicepsCurl {
+                        put(11,0.4,0.2); put(13,0.4,0.4); put(15,0.4+sin(angle * .pi/180)*0.2,0.4-cos(angle * .pi/180)*0.2); put(23,0.4,0.65)
+                    } else if exercise == .gluteBridge {
+                        put(11,0.15,0.7); put(23,0.45,angle < 100 ? 0.5 : 0.7); put(25,0.65,0.5); put(27,0.75,0.8)
+                    } else {
+                        put(11,0.4,0.1); put(23,0.4,0.3); put(25,0.4,0.55); put(27,0.4+sin(angle * .pi/180)*0.25,0.55-cos(angle * .pi/180)*0.25)
+                    }
+                }
+                vision.onFrame?(.init(time:time,width:1000,height:1000,points:points), UIImage(), generation)
+                for _ in 0..<100 where store.frame?.time != time { try await Task.sleep(for: .milliseconds(1)) }
+            }
+            XCTAssertEqual(store.configured?.actualReps, exercise == .standingBicepsCurl ? 2 : 1, exercise.rawValue)
+            if exercise == .standingBicepsCurl { XCTAssertNotNil(store.configured?.counter?.lastRepPhases) }
+            else { XCTAssertNil(store.configured?.counter?.lastRepPhases) }
+            if exercise == .sitToStand { XCTAssertTrue(store.configured?.repDurations.isEmpty == true) }
+            store.pause(); store.finish()
+        }
+    }
 }

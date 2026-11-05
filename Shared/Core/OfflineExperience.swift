@@ -72,7 +72,7 @@ public struct QuantitativeInsights: Sendable {
 
 public struct SpokenRepCounter: Sendable {
     public private(set) var count: Int
-    public init(initialCount: Int = 0) { count = max(0, min(200, initialCount)) }
+    public init(initialCount: Int = 0) { count = max(0, initialCount) }
     public mutating func consume(_ transcript: String) -> Int? {
         let words = transcript.lowercased().split { !$0.isLetter && !$0.isNumber }.map(String.init)
         let units = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"]
@@ -109,8 +109,8 @@ public struct TrainerCueLibrary: Sendable {
     public static func lines(reason: CoachingReason, tone: TrainerTone) -> [String] {
         switch reason {
         case .discomfort: return ["Stop here. Take a comfortable rest. If pain continues, seek advice."]
-        case .tracking: return ["I lost sight of the movement. Your reps are saved. Move back into view when you are ready.", "Your count is safe. Give the camera a clear side view so we can continue."]
-        case .alignment: return ["Keep a comfortable straight line through your body.", "Reset your position, then continue with control."]
+        case .tracking: return ["I lost sight of the movement. Your progress is saved. Move back into view when you are ready.", "Your progress is safe. Give the camera a clear view of the movement so we can continue."]
+        case .alignment: return ["Check your starting position. Keep the movement comfortable and controlled.", "Reset your position, then continue with control."]
         case .targetReached: return ["You reached your target. Finish when you are ready.", "Target reached. You can end this set and recover."]
         case .restReminder: return ["Take your time to recover before the next set.", "Relax your shoulders and breathe comfortably.", "Let your breathing settle. The next set can wait."]
         case .workoutCompleted: return ["You made time to move today. Well done.", "Session complete. Every bit of practice adds up.", "Your work is saved. See you next time."]
@@ -123,9 +123,13 @@ public struct TrainerCueLibrary: Sendable {
             }
         }
     }
-    public mutating func next(reason: CoachingReason, tone: TrainerTone) -> String {
+    public mutating func next(reason: CoachingReason, tone: TrainerTone, exercise: Exercise? = nil) -> String {
         let key = reason.rawValue + tone.rawValue
-        let lines = Self.lines(reason: reason, tone: tone)
+        let original = Self.lines(reason: reason, tone: tone)
+        let needsGeneric = exercise.map { !$0.isSquat && !$0.isPushup } ?? false
+        let lines = needsGeneric && reason == .steadyRhythm ? original.filter { text in
+            !["rep", "lowering", "press"].contains { text.lowercased().contains($0) }
+        } : original
         let index = indices[key, default: 0] % lines.count
         indices[key] = index + 1
         return lines[index]

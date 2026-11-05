@@ -40,6 +40,8 @@ public struct ConfiguredCompanionSnapshot: Codable, Sendable {
     public let stepIndex: Int
     public let totalSteps: Int
     public let enteredReps: Int?
+    public let measuredSeconds: Double?
+    public var displaySeconds: Double? { measuredSeconds ?? (source == .camera ? nil : activeSeconds) }
     public let activeSeconds: Double
     public let restElapsed: Double?
     public let restTarget: Int
@@ -90,7 +92,7 @@ public struct CompanionSnapshot: Codable, Sendable {
         self.sentAt = sentAt
         configured = .init(exerciseID: session.current.exerciseID, unit: session.current.unit,
             totalSets: session.current.totalSets, stepIndex: session.index + 1, totalSteps: session.steps.count,
-            enteredReps: session.manualReps, activeSeconds: activeSeconds,
+            enteredReps: session.manualReps, measuredSeconds: session.current.unit == .seconds ? ((session.phase == .rest || session.phase == .finished) ? ended?.seconds ?? 0 : session.measuredSeconds(at: time)) : nil, activeSeconds: activeSeconds,
             restElapsed: session.restElapsed(at: time), restTarget: session.current.restSeconds,
             hasStarted: session.hasStarted, canEndSet: session.canEndSet(at: time),
             stoppedForDiscomfort: session.stoppedForDiscomfort, currentWasSkipped: session.currentWasSkipped, source: session.source)
@@ -98,19 +100,25 @@ public struct CompanionSnapshot: Codable, Sendable {
     public func isFresh(at now: Date) -> Bool {
         let age = now.timeIntervalSince(sentAt)
         guard age >= -5, age <= 10, reps >= 0, (1...1000).contains(target) else { return false }
-        guard let configured else { return exercise != nil && (1...3).contains(setNumber) }
+        guard let configured else { return exercise != nil && exercise?.isTimed == false && (1...3).contains(setNumber) }
         guard configured.source != .video else { return false }
         if configured.currentWasSkipped == true {
             guard phase == .rest, reps == 0, configured.activeSeconds == 0,
                   !configured.hasStarted, !configured.canEndSet, !configured.stoppedForDiscomfort else { return false }
         }
         if configured.source == .camera {
-            guard Exercise(rawValue: configured.exerciseID) != nil, configured.unit == .reps,
+            guard let exercise = Exercise(rawValue: configured.exerciseID), exercise.isTimed == (configured.unit == .seconds),
+                  configured.unit != .seconds || configured.measuredSeconds != nil,
                   configured.enteredReps == nil else { return false }
         }
+        if configured.source == .camera && configured.unit == .seconds && configured.canEndSet {
+            guard configured.hasStarted, phase == .active || phase == .paused, (configured.measuredSeconds ?? 0) >= 1 else { return false }
+        }
+        guard configured.measuredSeconds == nil || configured.unit == .seconds else { return false }
         return ExerciseCatalog.find(configured.exerciseID)?.unit == configured.unit
             && (1...10).contains(configured.totalSets) && (1...configured.totalSets).contains(setNumber)
             && (1...120).contains(configured.totalSteps) && (1...configured.totalSteps).contains(configured.stepIndex)
+            && (configured.measuredSeconds.map { $0.isFinite && (0...86400).contains($0) && $0 <= configured.activeSeconds + 0.001 } ?? true)
             && configured.activeSeconds.isFinite && (0...86400).contains(configured.activeSeconds)
             && (configured.restElapsed.map { $0.isFinite && $0 >= 0 && $0 < Double(Int.max) } ?? true)
     }

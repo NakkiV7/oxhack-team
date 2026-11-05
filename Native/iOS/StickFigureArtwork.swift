@@ -19,7 +19,7 @@ struct StickFigureArtwork: View {
     }
     var body: some View {
         Group {
-            if let exercise {
+            if let exercise, !MovementIllustration.usesVector(exercise) {
                 Image(MovementIllustration.assetName(for: exercise, phase: phase))
                     .resizable().scaledToFit()
                     .background {
@@ -59,73 +59,29 @@ struct StickFigureArtwork: View {
 
     private var manualFigure: some View {
         Canvas { context, size in
-            let figure = Color(white: 0.14)
-            let edging = Color(white: 0.83)
-            let joint = Color(red: 0, green: 0.9, blue: 0.55)
-            let basePoints: [CGPoint] = [
-                .init(x: 0.19, y: 0.35), .init(x: 0.27, y: 0.4), .init(x: 0.56, y: 0.48),
-                .init(x: 0.72, y: 0.54), .init(x: 0.9, y: 0.61),
-                .init(x: 0.25, y: 0.61), .init(x: 0.44, y: 0.7)
-            ]
-            let manualPoints: [CGPoint]?
-            switch exerciseID {
-            case "wallSit": manualPoints = [.init(x: 0.35, y: 0.13), .init(x: 0.35, y: 0.28), .init(x: 0.35, y: 0.58), .init(x: 0.68, y: 0.58), .init(x: 0.68, y: 0.87), .init(x: 0.48, y: 0.46), .init(x: 0.61, y: 0.55)]
-            case "calfRaise": manualPoints = [.init(x: 0.45, y: 0.12), .init(x: 0.45, y: 0.28), .init(x: 0.45, y: 0.53), .init(x: 0.47, y: 0.69), .init(x: 0.54, y: 0.83), .init(x: 0.65, y: 0.4), .init(x: 0.82, y: 0.36)]
-            case "seatedKneeExtension": manualPoints = [.init(x: 0.3, y: 0.13), .init(x: 0.3, y: 0.28), .init(x: 0.3, y: 0.58), .init(x: 0.59, y: 0.58), .init(x: 0.86, y: 0.58), .init(x: 0.42, y: 0.43), .init(x: 0.51, y: 0.55)]
-            case "birdDog": manualPoints = [.init(x: 0.22, y: 0.36), .init(x: 0.32, y: 0.46), .init(x: 0.57, y: 0.46), .init(x: 0.61, y: 0.69), .init(x: 0.78, y: 0.71), .init(x: 0.3, y: 0.61), .init(x: 0.3, y: 0.76)]
-            default: manualPoints = nil
-            }
-            let points = manualPoints ?? basePoints
+            let pose = MovementFigure.pose(for: exerciseID, phase: phase)
             let side = min(size.width, size.height)
-            let origin = CGPoint(x: (size.width - side) / 2, y: (size.height - side) / 2)
-            func p(_ i: Int) -> CGPoint { .init(x: origin.x + points[i].x * side, y: origin.y + points[i].y * side) }
-            if ["wallSit", "calfRaise"].contains(exerciseID) {
-                var support = Path()
-                let x = origin.x + side * (exerciseID == "wallSit" ? 0.25 : 0.85)
-                support.move(to: .init(x: x, y: origin.y + side * 0.12))
-                support.addLine(to: .init(x: x, y: origin.y + side * 0.92))
-                context.stroke(support, with: .color(Palette.muted.opacity(0.5)), style: .init(lineWidth: side * 0.025, lineCap: .round))
+            let origin = CGPoint(x: (size.width-side)/2, y: (size.height-side)/2)
+            func point(_ p: MovementFigure.Point) -> CGPoint { .init(x: origin.x+p.x*side, y: origin.y+p.y*side) }
+            func stroke(_ points: [MovementFigure.Point], color: Color, width: CGFloat) {
+                guard let first = points.first else { return }
+                var path = Path(); path.move(to: point(first))
+                for p in points.dropFirst() { path.addLine(to: point(p)) }
+                context.stroke(path, with: .color(color), style: .init(lineWidth: side*width, lineCap: .round, lineJoin: .round))
             }
-            func segment(_ start: CGPoint, _ end: CGPoint, color: Color, width: CGFloat, outlined: Bool = false) {
-                var line = Path()
-                line.move(to: .init(x: origin.x + start.x * side, y: origin.y + start.y * side))
-                line.addLine(to: .init(x: origin.x + end.x * side, y: origin.y + end.y * side))
-                if outlined {
-                    context.stroke(line, with: .color(edging), style: .init(lineWidth: width + side * 0.022, lineCap: .round))
-                }
-                context.stroke(line, with: .color(color), style: .init(lineWidth: width, lineCap: .round))
+            stroke([.init(0.06,0.95),.init(0.94,0.95)], color: Palette.muted.opacity(0.2), width: 0.012)
+            for support in pose.supports { stroke(support, color: Color(white: 0.65), width: 0.025) }
+            for bone in MovementFigure.bones {
+                let points = bone.map { pose.points[$0] }
+                stroke(points, color: Color(white: 0.83), width: 0.073)
+                stroke(points, color: Color(white: 0.14), width: 0.052)
             }
-            segment(.init(x: 0.08, y: 0.93), .init(x: 0.92, y: 0.93), color: Palette.muted.opacity(0.18), width: max(1, side * 0.012))
-            if exerciseID == "seatedKneeExtension" {
-                for (a, b) in [(CGPoint(x: 0.22, y: 0.64), CGPoint(x: 0.56, y: 0.64)), (.init(x: 0.25, y: 0.64), .init(x: 0.25, y: 0.89)), (.init(x: 0.52, y: 0.64), .init(x: 0.52, y: 0.89))] {
-                    segment(a, b, color: Palette.muted.opacity(0.45), width: max(2, side * 0.025))
-                }
+            for index in MovementFigure.highlightedIndices(for: exerciseID) {
+                let p = point(pose.points[index])
+                context.fill(Path(ellipseIn: CGRect(x:p.x-side*0.022,y:p.y-side*0.022,width:side*0.044,height:side*0.044)), with: .color(Palette.green))
             }
-            if exerciseID == "birdDog" {
-                for (a, b) in [(points[1], CGPoint(x: 0.06, y: 0.4)), (points[2], CGPoint(x: 0.9, y: 0.37))] {
-                    segment(a, b, color: figure, width: max(3, side * 0.05), outlined: true)
-                }
-            }
-            if exerciseID == "calfRaise" {
-                segment(points[4], .init(x: 0.65, y: 0.91), color: figure, width: max(3, side * 0.05), outlined: true)
-            }
-            if ["widePushup", "diamondPushup"].contains(exerciseID) {
-                let wrist = CGPoint(x: exerciseID == "widePushup" ? 0.63 : 0.4, y: 0.72)
-                segment(points[1], .init(x: 0.45, y: 0.58), color: figure, width: max(3, side * 0.045), outlined: true)
-                segment(.init(x: 0.45, y: 0.58), wrist, color: figure, width: max(3, side * 0.045), outlined: true)
-            }
-            for (a,b) in [(0,1),(1,2),(2,3),(3,4),(1,5),(5,6)] {
-                var line = Path(); line.move(to: p(a)); line.addLine(to: p(b))
-                context.stroke(line, with: .color(edging), style: .init(lineWidth: max(4, side * 0.09), lineCap: .round, lineJoin: .round))
-                context.stroke(line, with: .color(figure), style: .init(lineWidth: max(3, side * 0.065), lineCap: .round, lineJoin: .round))
-            }
-            let head = p(0), radius = side * 0.075
-            context.fill(Path(ellipseIn: .init(x: head.x - radius, y: head.y - radius, width: radius * 2, height: radius * 2)), with: .color(figure))
-            let keyJoints = [1,2,3,4,5,6]
-            for i in keyJoints {
-                let point = p(i), r = max(2, side * 0.025)
-                context.fill(Path(ellipseIn: .init(x: point.x-r, y: point.y-r, width: r*2, height: r*2)), with: .color(joint))
-            }
+            let head = point(pose.points[0])
+            context.fill(Path(ellipseIn: CGRect(x:head.x-side*0.047,y:head.y-side*0.047,width:side*0.094,height:side*0.094)), with: .color(Color(white:0.14)))
         }
     }
 }

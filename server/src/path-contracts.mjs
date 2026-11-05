@@ -17,8 +17,8 @@ export const pathCatalog = source.split('\n').filter(line => line.includes('.ini
 const ids = pathCatalog.map(item => item.id);
 const byID = Object.fromEntries(pathCatalog.map(item => [item.id, item]));
 const exerciseID = z.enum(ids);
-// Only movements with a camera tracker can be assessed; the rest of the catalogue is practice until a tracker is trained.
-const trackedID = z.enum(pathCatalog.filter(item => item.tracked).map(item => item.id));
+// Only the two fixed-contract movements can be assessed; counting and observed timing are separate capabilities.
+const trackedID = z.enum(['squat', 'pushup']);
 const unique = list => new Set(list).size === list.length;
 
 // ---------- path proposal ----------
@@ -35,7 +35,7 @@ export const pathRequest = z.strictObject({
   // The exercises this person can use (equipment and left-out movements already removed by the app).
   exercises: z.array(z.strictObject({
     id: exerciseID,
-    capability: z.enum(['cameraAssessment', 'cameraCounting', 'practiceLog']),
+    capability: z.enum(['cameraAssessment', 'cameraCounting', 'cameraTiming', 'practiceLog']),
     allowedPrerequisites: z.array(exerciseID).max(6),
     maxTarget: z.number().int().min(1).max(200)
   })).min(1).max(ids.length),
@@ -47,6 +47,7 @@ export const pathRequest = z.strictObject({
   const usable = data.exercises.map(item => item.id);
   return unique(usable) && usable.includes(data.goal) && data.allowedStarts.every(id => usable.includes(id)) && unique(data.allowedStarts)
     && data.allowedStarts.includes(data.ruleStart) && data.exercises.every(item => item.allowedPrerequisites.every(id => usable.includes(id) && id !== item.id))
+    && data.exercises.every(item => item.capability === (['squat', 'pushup'].includes(item.id) ? 'cameraAssessment' : byID[item.id].tracked ? (byID[item.id].unit === 'seconds' ? 'cameraTiming' : 'cameraCounting') : 'practiceLog'))
     && data.exercises.every(item => item.maxTarget <= Math.ceil(byID[item.id].goal * 1.5));
 });
 
@@ -88,7 +89,7 @@ export function pathOutputContract(data) {
   });
 }
 
-const pathInstruction = 'Build one personalised training path from the supplied exercises only. Rules: 4 to 6 nodes; node id is the exercise id; the main chain follows the goal family in level order and includes the goal exercise; goalNode is the last step of the main chain, its highest level, which may be beyond the goal exercise; prerequisites only from each exercise\'s allowedPrerequisites or a lower level of the same family; at most one optional node, which no other node lists as a prerequisite, and whose supports names the node it helps; start must be ruleStart unless focus is learn or the band is unsure, and always one of allowedStarts; route lists node ids from start to goalNode where each node lists the previous one as a prerequisite; practiceTarget stays within maxTarget and at most the person\'s sessionsPerWeek. Write why (one sentence each) in the requested coaching style. For a node whose capability is practiceLog, say plainly that camera tracking is not trained for it yet. rationale: two sentences on why the route fits the answers. startReason: one sentence. emphasis: one sentence matching focus. No links, timelines, medical claims or promises of results. If repair lists errors from a previous attempt, fix exactly those.';
+const pathInstruction = 'Build one personalised training path from the supplied exercises only. Rules: 4 to 6 nodes; node id is the exercise id; the main chain follows the goal family in level order and includes the goal exercise; goalNode is the last step of the main chain, its highest level, which may be beyond the goal exercise; prerequisites only from each exercise\'s allowedPrerequisites or a lower level of the same family; at most one optional node, which no other node lists as a prerequisite, and whose supports names the node it helps; start must be ruleStart unless focus is learn or the band is unsure, and always one of allowedStarts; route lists node ids from start to goalNode where each node lists the previous one as a prerequisite; practiceTarget stays within maxTarget and at most the person\'s sessionsPerWeek. Write why (one sentence each) in the requested coaching style. For a node whose capability is practiceLog, say plainly that camera tracking is unavailable for it. rationale: two sentences on why the route fits the answers. startReason: one sentence. emphasis: one sentence matching focus. No links, timelines, medical claims or promises of results. If repair lists errors from a previous attempt, fix exactly those.';
 
 // ---------- coaching cue between baseline and retry ----------
 const contract = z.strictObject({

@@ -1,7 +1,7 @@
 import Foundation
 
 public struct LoggedSet: Codable, Identifiable, Equatable, Sendable {
-    public enum QuantityOrigin: String, Codable, Sendable { case selfReport, activeTimer }
+    public enum QuantityOrigin: String, Codable, Sendable { case selfReport, activeTimer, cameraObserved, mixed }
     public let id: UUID
     public let exerciseID: String
     public let reps: Int

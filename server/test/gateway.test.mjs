@@ -96,16 +96,16 @@ test('chat supplies server-owned camera and manual capabilities without inventin
     try { return [JSON.parse(part.text)]; } catch { return []; }
   }).find(part => part.appCapabilities)?.appCapabilities;
   assert.ok(metadata, 'Gemini needs server-owned app capabilities to answer product questions without personal facts');
-  assert.deepEqual(metadata.exercises.filter(item => item.cameraTracking).map(item => item.id).sort(),
-    ['closeGripPushup', 'halfSquat', 'inclinePushup', 'kneePushup', 'pausedPushup', 'pausedSquat',
-      'pushup', 'squat', 'supportedSquat', 'tempoPushup', 'tempoSquat', 'wallPushup', 'wideSquat']);
+  assert.equal(metadata.exercises.length, 53);
+  assert.equal(metadata.exercises.filter(item => item.cameraTracking).length, 52);
+  assert.deepEqual(metadata.exercises.filter(item => !item.cameraTracking).map(item => item.id), ['catCow']);
   assert.equal(metadata.exercises.find(item => item.id === 'pushup').name, 'Push-ups');
   assert.equal(metadata.exercises.find(item => item.id === 'wallPushup').cameraTracking, true);
   assert.equal(metadata.exercises.find(item => item.id === 'wallPushup').unit, 'reps');
-  assert.equal(metadata.exercises.find(item => item.id === 'plank').cameraTracking, false);
+  assert.equal(metadata.exercises.find(item => item.id === 'plank').cameraTracking, true);
   assert.equal(metadata.exercises.find(item => item.id === 'plank').unit, 'seconds');
   assert.match(metadata.inputRules, /manual self-report/);
-  assert.match(metadata.inputRules, /active hold timer/);
+  assert.match(metadata.inputRules, /observed posture or activity time/);
   assert.match(metadata.setControl, /explicit Start/i);
   assert.match(metadata.voiceFeedback, /off.*enabled/i);
   assert.deepEqual(JSON.parse(outbound.contents.at(-1).parts.at(-1).text).facts, []);

@@ -230,6 +230,7 @@ final class PreviewRepCueTests: XCTestCase {
     private func poseFrame(exercise: Exercise, time: Double, angle: Double) -> PoseFrame {
         var points = Array(repeating: PosePoint(x: 0, y: 0, confidence: 0), count: 33)
         if exercise == .squat {
+            points[11] = .init(x: 0.5, y: 0.05, confidence: 1)
             points[23] = .init(x: 0.5, y: 0.25, confidence: 1)
             points[25] = .init(x: 0.5, y: 0.5, confidence: 1)
             points[27] = .init(x: 0.5 + sin(angle * .pi / 180) * 0.25,

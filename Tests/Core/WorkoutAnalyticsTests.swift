@@ -113,3 +113,11 @@ private func timedSet(_ exercise:Exercise = .squat, source:InputSource = .camera
     let long=analyticRecord([(0,200),(10,200),(15,200)],end:20)
     #expect(WorkoutAnalytics.averageHeartRate(in:[short,long])==175)
 }
+
+@Test func paceRetainsOnlyTheMeasuredSubsetWhenOtherCyclesHaveNoDuration() {
+    let set = LoggedSet(id: UUID(), exerciseID: "sitToStand", reps: 3, seconds: 0, source: .camera, reason: .voluntary, repDurations: [1.4,1.6])
+    let analysis = WorkoutAnalytics(record: .init(id: UUID(), date: Date(), sets: [], loggedSets: [set]))
+    #expect(analysis.pace.timedReps == 2)
+    #expect(analysis.pace.averageSeconds == 1.5)
+    #expect(analysis.pace.variabilityPercent == nil)
+}

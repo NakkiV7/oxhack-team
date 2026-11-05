@@ -288,10 +288,10 @@ func reportRejectsInvalidOrIncompleteRecordedTempo(durations: [Double]) {
     #expect(report.timedRepCount == 2)
 }
 
-@Test func configuredCameraTimingsRequireSupportedSourceAndCompleteValidObservationArray() {
+@Test func configuredCameraTimingsRequireSupportedSourceAndValidObservedSubset() {
     let cases: [(InputSource, String, Int, [Double]?, LoggedSet.QuantityOrigin?, Int)] = [
         (.camera, "squat", 2, [1, 2], nil, 2),
-        (.camera, "pushup", 2, [1], nil, 0),
+        (.camera, "pushup", 2, [1], nil, 1),
         (.camera, "wallPushup", 2, [1, 2], nil, 2),
         (.manual, "squat", 2, [1, 2], .selfReport, 0),
         (.video, "squat", 2, [1, 2], nil, 0),
@@ -341,4 +341,18 @@ func reportRejectsInvalidOrIncompleteRecordedTempo(durations: [Double]) {
     #expect(report.energyTimeline.map(\.recordingID) == [run, run, run, nextRun])
     #expect(report.activeEnergy.map(\.kilocalories) == [4.5, 1])
     #expect(WorkoutReport(record: .init(id: id, date: start, sets: [])).energyTimeline.isEmpty)
+}
+
+@Test func firstStandAbsenceDoesNotDiscardLaterMeasuredCycleDurations() {
+    let set = LoggedSet(id: UUID(), exerciseID: "sitToStand", reps: 3, seconds: 0, source: .camera, reason: .voluntary, repDurations: [1.4, 1.6])
+    let report = WorkoutReport(record: .init(id: UUID(), date: Date(), sets: [], loggedSets: [set]))
+    #expect(report.timedRepCount == 2)
+    #expect(report.averageRepSeconds == 1.5)
+}
+
+@Test func onlyAvailableMeasuredDurationsContributeToObservedRhythm() {
+    let set = LoggedSet(id: UUID(), exerciseID: "standingBicepsCurl", reps: 2, seconds: 0, source: .camera, reason: .voluntary, repDurations: [1.2])
+    let report = WorkoutReport(record: .init(id: UUID(), date: Date(), sets: [], loggedSets: [set]))
+    #expect(report.timedRepCount == 1)
+    #expect(report.averageRepSeconds == 1.2)
 }

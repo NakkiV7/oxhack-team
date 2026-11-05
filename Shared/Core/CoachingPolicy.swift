@@ -9,6 +9,7 @@ public struct CoachingInput: Sendable, Equatable {
     public let phase: SessionPhase
     public let now: Double
     public let exercise: Exercise
+    public let measuredSeconds: Double?
     public let repCount: Int
     public let lastRepDuration: Double?
     public let cue: Cue
@@ -24,13 +25,13 @@ public struct CoachingInput: Sendable, Equatable {
     public init(sessionID: UUID, generation: UUID, phase: SessionPhase, now: Double, exercise: Exercise,
                 repCount: Int, lastRepDuration: Double?, cue: Cue, heartRate: [SensorReading], wallTime: Date,
                 restElapsed: Double?, target: Int, stopReason: StopReason?, source: InputSource = .camera, encouragementEnabled: Bool = false,
-                trackingPromptFinished: Bool = false) {
+                trackingPromptFinished: Bool = false, measuredSeconds: Double? = nil) {
         self.sessionID = sessionID; self.generation = generation; self.phase = phase; self.now = now
         self.exercise = exercise; self.repCount = repCount; self.lastRepDuration = lastRepDuration
         self.cue = cue; self.heartRate = heartRate; self.wallTime = wallTime
         self.restElapsed = restElapsed; self.target = target; self.stopReason = stopReason; self.source = source
         self.encouragementEnabled = encouragementEnabled
-        self.trackingPromptFinished = trackingPromptFinished
+        self.trackingPromptFinished = trackingPromptFinished; self.measuredSeconds = measuredSeconds
     }
 }
 
@@ -117,11 +118,19 @@ public struct CoachingPolicy: Sendable {
         if input.cue == .tracking || input.cue == .alignment {
             guard input.cue != lastFormCue || (input.cue == .tracking && input.trackingPromptFinished) else { return nil }
             lastFormCue = input.cue; lastOrdinaryAt = input.now
-            return .init(text: input.cue.text, priority: .form,
+            return .init(text: MovementFeedback.text(input.cue, exercise: input.exercise), priority: .form,
                          reason: input.cue == .tracking ? .tracking : .alignment,
                          facts: [input.cue == .tracking ? "Camera tracking is incomplete." : "Camera detected a body alignment change."] + Self.heartRateFacts(input), elapsed: nil)
         }
         lastFormCue = nil
+        if input.exercise.isTimed {
+            guard let seconds = input.measuredSeconds, seconds.isFinite, seconds >= Double(input.target), input.target > 0, !targetHandled else { return nil }
+            targetHandled = true
+            guard input.now - (lastOrdinaryAt ?? -.infinity) >= 10 else { return nil }
+            lastOrdinaryAt = input.now
+            return .init(text: "You reached your planned time. You can end the set here.", priority: .pacing, reason: .targetReached,
+                         facts: ["\(Int(seconds)) observed seconds recorded; planned target \(input.target) seconds."], elapsed: nil)
+        }
         if isNewRep, input.target > 0, input.repCount >= input.target, !targetHandled {
             targetHandled = true
             guard input.now - (lastOrdinaryAt ?? -.infinity) >= 10 else { return nil }

@@ -15,6 +15,10 @@ final class PoseDetectorTests: XCTestCase {
         let image = try XCTUnwrap(UIImage(contentsOfFile: url.path))
         let result = try detector.detect(image, at: 0)
         XCTAssertEqual(result.points.count, 33)
+        #if !SPOTTR_EXPERIMENTAL_PRESAGE
+        XCTAssertEqual(result.worldPoints?.count, 33)
+        XCTAssertTrue(result.worldPoints?.allSatisfy { $0.x.isFinite && $0.y.isFinite && $0.z.isFinite && (0...1).contains($0.confidence) } == true)
+        #endif
         XCTAssertGreaterThan(result.points.filter { $0.confidence > 0.6 }.count, 10)
         let blank = UIGraphicsImageRenderer(size: CGSize(width: 480, height: 640)).image { context in
             UIColor.white.setFill(); context.fill(CGRect(x: 0, y: 0, width: 480, height: 640))
@@ -70,6 +74,7 @@ final class TrackingContinuityFlowTests: XCTestCase {
         var points = Array(repeating: PosePoint(x: 0, y: 0, confidence: 0), count: 33)
         for side in sides {
             let x = 0.4 + Double(side) * 0.1
+            points[11 + side] = .init(x: x, y: 0.05, confidence: 1)
             points[23 + side] = .init(x: x, y: 0.25, confidence: 1)
             points[25 + side] = .init(x: x, y: 0.5, confidence: 1)
             points[27 + side] = .init(x: x + sin(angle * .pi / 180) * 0.25,

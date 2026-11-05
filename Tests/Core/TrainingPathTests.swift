@@ -96,10 +96,11 @@ func validationRejectsEachRuleAGeneratedPathCouldBreak(rule: String) {
     #expect(PathCapability.of("squat") == .cameraAssessment)
     #expect(PathCapability.of("pushup") == .cameraAssessment)
     #expect(TempoContract.contract(for: "pushup")?.metric == .repTime)
-    // Every other catalogue movement stays a practice log until a tracker is trained and given a contract.
+    // A fixed assessment contract remains separate from observed quantities.
     #expect(ExerciseCatalog.all.filter { PathCapability.of($0.id) == .cameraAssessment }.map(\.id).sorted() == ["pushup", "squat"])
-    #expect(PathCapability.of("plank").detail.contains("not trained"))
-    #expect(PathCapability.of("gluteBridge") == .practiceLog)
+    #expect(PathCapability.of("plank").rawValue == "cameraTiming")
+    #expect(PathCapability.of("gluteBridge") == .cameraCounting)
+    #expect(PathCapability.of("catCow") == .practiceLog)
     #expect(PathSurvey.equipmentChoices == ["Stable chair", "Stable sofa or counter", "Stable support", "Wall"])
 }
 

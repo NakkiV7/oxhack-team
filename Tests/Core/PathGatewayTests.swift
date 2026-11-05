@@ -30,7 +30,7 @@ private func plan(_ request: PathProposalRequest, start: String = "gluteBridge",
     let squat = try #require(exercises.first { $0["id"] as? String == "squat" })
     #expect(squat["capability"] as? String == "cameraAssessment" && squat["maxTarget"] as? Int == 18)
     #expect(exercises.first { $0["id"] as? String == "pushup" }?["capability"] as? String == "cameraAssessment")
-    #expect(exercises.first { $0["id"] as? String == "plank" }?["capability"] as? String == "practiceLog")
+    #expect(exercises.first { $0["id"] as? String == "plank" }?["capability"] as? String == "cameraTiming")
     #expect(request.allowedStarts == ["gluteBridge"] && request.ruleStart == "gluteBridge" && request.repair.isEmpty)
     let experienced = PathProposalRequest(survey: PathSurvey(goal: .squat, abilityKey: "comfortable"), repair: ["squat: practice target outside the allowed range"])
     #expect(experienced.allowedStarts == ["gluteBridge", "squat"] && experienced.ruleStart == "squat" && experienced.repair.count == 1)

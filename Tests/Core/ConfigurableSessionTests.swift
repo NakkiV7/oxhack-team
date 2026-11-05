@@ -332,10 +332,12 @@ func configuredCameraCountsObservedCyclesAndNeverEndsAtItsTarget(exerciseID: Str
     run.endSet(at: 15); run.nextSet(at: 20)
     #expect(run.source == .manual)
     let mutationResult3 = run.resetSet(source: .camera, at: 20)
-    #expect(!mutationResult3)
+    #expect(mutationResult3)
+    run.switchInput(source: .manual, at: 20)
     run.beginSet(at: 25); run.setReps(4); run.endSet(at: 30); run.nextSet(at: 35)
     let mutationResult4 = run.resetSet(source: .camera, at: 35)
-    #expect(!mutationResult4)
+    #expect(mutationResult4)
+    run.switchInput(source: .manual, at: 35)
     run.beginSet(at: 40); run.pause(at: 45); run.resume(at: 50); run.endSet(at: 55); run.finish(at: 56)
     let reopened = try JSONDecoder().decode(SessionRecord.self, from: JSONEncoder().encode(run.record))
     let report = WorkoutReport(record: reopened)
@@ -421,7 +423,7 @@ func configuredWatchRejectsUnsupportedCameraSourceClaims(exerciseID: String) thr
     let snapshot = CompanionSnapshot(session: run, at: 0, sentAt: now)
     var json = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(snapshot)) as? [String: Any])
     var configured = try #require(json["configured"] as? [String: Any])
-    configured["source"] = "camera"; json["configured"] = configured
+    configured["source"] = "camera"; configured.removeValue(forKey: "measuredSeconds"); json["configured"] = configured
     let decoded = try JSONDecoder().decode(CompanionSnapshot.self, from: JSONSerialization.data(withJSONObject: json))
     #expect(!decoded.isFresh(at: now))
 }
@@ -546,4 +548,109 @@ func configuredWatchRejectsUnsupportedCameraSourceClaims(exerciseID: String) thr
     run.nextSet(at: 20); run.beginSet(at: 30); run.setReps(1); run.endSet(at: 35)
     #expect(run.completed.last?.restSecondsBefore == 15)
     #expect(run.record.activeSeconds == 9)
+}
+
+@Test func cameraHoldSavesOnlyAdjacentObservedSecondsAndNeverElapsedLoss() throws {
+    var run = try ConfigurableSession(plan: customPlan("""
+    {"exerciseID":"plank","sets":1,"target":20,"unit":"seconds","restSeconds":30}
+    """), availableSupport: [])
+    run.start(at: 0); run.resetSet(source: .camera, at: 0); run.beginSet(at: 0)
+    #expect(!run.canEndSet(at: 30))
+    let generation = run.generation
+    for i in 0...6 {
+        run.consume(.init(time: Double(i) * 0.2, angle: 170, confidence: 1, provenance: .posture, holdQualification: .staticHold), generation: generation)
+    }
+    run.consume(.init(time: 1.3, angle: .nan, confidence: 0), generation: generation)
+    run.consume(.init(time: 20, angle: 170, confidence: 1, provenance: .posture, holdQualification: .staticHold), generation: generation)
+    let endedHold = run.endSet(at: 30)
+    #expect(endedHold)
+    #expect(abs((run.completed.first?.seconds ?? 0) - 1.2) < 0.00001)
+    #expect(run.completed.first?.activeSeconds == 30)
+    #expect(run.completed.first?.reps == 0)
+    #expect(run.completed.first?.repDurations == nil)
+}
+
+@Test func fractionalCameraManualPauseBoundariesPreserveQuantityAndHonestOrigin() throws {
+    var run = try ConfigurableSession(plan: customPlan("""
+    {"exerciseID":"plank","sets":1,"target":20,"unit":"seconds","restSeconds":30}
+    """), availableSupport: [])
+    run.start(at: 0); run.resetSet(source: .camera, at: 0); run.beginSet(at: 0)
+    for time in [0.0, 0.2, 0.4] { run.consume(.init(time: time, angle: 170, confidence: 1, provenance: .posture, holdQualification: .staticHold), generation: run.generation) }
+    run.switchInput(source: .manual, at: 10)
+    run.pause(at: 10.35); run.resume(at: 20)
+    run.switchInput(source: .camera, at: 20.35)
+    for time in [30.0, 30.2, 30.4] { run.consume(.init(time: time, angle: 170, confidence: 1, provenance: .posture, holdQualification: .staticHold), generation: run.generation) }
+    let ended = run.endSet(at: 40)
+    #expect(ended)
+    #expect(abs((run.completed.first?.seconds ?? 0) - 1.5) < 0.00001)
+    #expect(run.completed.first?.source == .manual)
+    #expect(run.completed.first?.quantityOrigin?.rawValue == "mixed")
+    let restored = try JSONDecoder().decode(SessionRecord.self, from: JSONEncoder().encode(run.record))
+    #expect(WorkoutReport(record: restored).sets.first?.sourceLabel == "Camera + manual")
+}
+
+@Test func watchCameraSecondsAreObservedWhileActiveTimeAndControlRemainSeparate() throws {
+    var run = try ConfigurableSession(plan: customPlan("""
+    {"exerciseID":"plank","sets":1,"target":20,"unit":"seconds","restSeconds":30}
+    """), availableSupport: [])
+    run.start(at: 0); run.resetSet(source: .camera, at: 0); run.beginSet(at: 0)
+    for i in 0...6 { run.consume(.init(time: Double(i) * 0.2, angle: 170, confidence: 1, provenance: .posture, holdQualification: .staticHold), generation: run.generation) }
+    let now = Date()
+    let snapshot = CompanionSnapshot(session: run, at: 30, sentAt: now)
+    #expect(snapshot.isFresh(at: now))
+    var state = CompanionState(); state.receive(snapshot, now: now)
+    #expect(state.command(.endSet, now: now) != nil)
+    #expect(state.command(.pause, now: now) != nil)
+    let json = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(snapshot)) as? [String: Any])
+    let payload = try #require(json["configured"] as? [String: Any])
+    #expect(abs((payload["measuredSeconds"] as? Double ?? -1) - 1.2) < 0.00001)
+    #expect(payload["activeSeconds"] as? Double == 30)
+}
+
+@Test func cameraOnlyWorkKeepsOriginAfterInputSwitchAndPreservesLargeCounts() throws {
+    var run = try ConfigurableSession(plan: customPlan("""
+    {"exerciseID":"squat","sets":1,"target":8,"unit":"reps","restSeconds":30}
+    """), availableSupport: [])
+    run.start(at: 0); run.resetSet(source: .camera, at: 0); run.beginSet(at: 0)
+    for i in 0..<205 { configuredCycle(&run, from: Double(i)*2) }
+    #expect(run.actualReps == 205)
+    run.switchInput(source: .manual, at: 411); run.setReps(205)
+    #expect(run.actualReps == 205)
+    let ended = run.endSet(at: 412)
+    #expect(ended)
+    #expect(run.completed.first?.source == .camera)
+    #expect(run.completed.first?.quantityOrigin == nil)
+}
+
+@Test func watchTimedPayloadRejectsCorruptQuantityAndRetainsOldManualTimer() throws {
+    var run = try ConfigurableSession(plan: customPlan("""
+    {"exerciseID":"plank","sets":1,"target":20,"unit":"seconds","restSeconds":30}
+    """), availableSupport: [])
+    run.start(at: 0); run.beginSet(at: 0)
+    let now = Date()
+    let original = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(CompanionSnapshot(session: run, at: 30, sentAt: now))) as? [String: Any])
+    for corrupt in [-1.0, 31, 86401] {
+        var json = original
+        var payload = try #require(json["configured"] as? [String: Any])
+        payload["measuredSeconds"] = corrupt; json["configured"] = payload
+        let value = try JSONDecoder().decode(CompanionSnapshot.self, from: JSONSerialization.data(withJSONObject: json))
+        #expect(!value.isFresh(at: now))
+    }
+    var old = original
+    var payload = try #require(old["configured"] as? [String: Any]); payload.removeValue(forKey: "measuredSeconds"); old["configured"] = payload
+    let legacy = try JSONDecoder().decode(CompanionSnapshot.self, from: JSONSerialization.data(withJSONObject: old))
+    #expect(legacy.isFresh(at: now))
+    #expect(legacy.configured?.displaySeconds == 30)
+}
+
+@Test func watchCannotOfferEndForUnobservedTimedCameraQuantity() throws {
+    var run = try ConfigurableSession(plan: customPlan("""
+    {"exerciseID":"plank","sets":1,"target":20,"unit":"seconds","restSeconds":30}
+    """), availableSupport: [])
+    run.start(at: 0); run.resetSet(source: .camera, at: 0); run.beginSet(at: 0)
+    let now = Date()
+    var json = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(CompanionSnapshot(session: run, at: 30, sentAt: now))) as? [String: Any])
+    var payload = try #require(json["configured"] as? [String: Any]); payload["canEndSet"] = true; json["configured"] = payload
+    let corrupt = try JSONDecoder().decode(CompanionSnapshot.self, from: JSONSerialization.data(withJSONObject: json))
+    #expect(!corrupt.isFresh(at: now))
 }

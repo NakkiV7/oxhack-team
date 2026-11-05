@@ -38,7 +38,8 @@ public struct PathMapLayout: Equatable, Sendable {
     public static func role(of node: PathNode, in path: TrainingPath) -> Role {
         if node.id == path.goalNode { return .goal }
         if node.optional { return .optional }
-        return PathCapability.of(node.id) == .practiceLog ? .standard : .milestone
+        let establishedMilestones: Set<String> = ["squat", "pushup", "halfSquat", "supportedSquat", "wideSquat", "wallPushup", "inclinePushup", "kneePushup", "closeGripPushup", "tempoSquat", "pausedSquat", "tempoPushup", "pausedPushup"]
+        return establishedMilestones.contains(node.id) ? .milestone : .standard
     }
 
     /// - Parameters: step is the distance between consecutive steps; lane the distance between lanes; wave the sideways

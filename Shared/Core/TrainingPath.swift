@@ -6,17 +6,20 @@ public enum PathCapability: String, Codable, Sendable {
     case cameraAssessment
     /// The camera counts reps, but no contract can verify the step yet.
     case cameraCounting
-    /// Self-reported practice: no camera tracker has been trained and validated for this movement yet.
+    case cameraTiming
+    /// Self-reported practice without camera measurement support.
     case practiceLog
 
     public static func of(_ exerciseID: String) -> PathCapability {
         if TempoContract.contract(for: exerciseID) != nil { return .cameraAssessment }
-        return ExerciseCatalog.find(exerciseID)?.tracking != nil ? .cameraCounting : .practiceLog
+        guard let tracking = ExerciseCatalog.find(exerciseID)?.tracking else { return .practiceLog }
+        return tracking.isTimed ? .cameraTiming : .cameraCounting
     }
     public var title: String {
         switch self {
         case .cameraAssessment: return "Camera assessment"
         case .cameraCounting: return "Camera rep counting"
+        case .cameraTiming: return "Camera observed time"
         case .practiceLog: return "Practice log"
         }
     }
@@ -24,7 +27,8 @@ public enum PathCapability: String, Codable, Sendable {
         switch self {
         case .cameraAssessment: return "The camera times your reps, gives one coaching change and checks a retry against a fixed target. Passing it marks this step AI-verified."
         case .cameraCounting: return "The camera counts your reps. There is no fixed target to check against yet, so it cannot verify this step."
-        case .practiceLog: return "Camera tracking is not trained for this movement yet. Log your practice; it counts towards earning the step but is never shown as AI-verified."
+        case .cameraTiming: return "The camera records seconds while the selected posture or activity is visible. This does not verify a fixed assessment target."
+        case .practiceLog: return "Camera tracking is unavailable for this movement. Log your practice; it counts towards earning the step but is never shown as AI-verified."
         }
     }
 }

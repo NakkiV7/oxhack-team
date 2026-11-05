@@ -138,7 +138,7 @@ struct PoseOverlay: View {
                 var path = Path(); path.move(to: from); path.addLine(to: to)
                 context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: 4, lineCap: .round))
             }
-            let joints = exercise.isSquat ? [23,24,25,26,27,28] : [11,12,13,14,15,16]
+            let joints = exercise.focusJointIndices
             for index in joints {
                 guard frame.points.indices.contains(index) else { continue }
                 let point = frame.points[index]
@@ -151,7 +151,7 @@ struct PoseOverlay: View {
     }
     private func edgeColor(_ sample: MovementSample?, bodyEdge: Bool) -> Color {
         guard let sample else { return .gray }
-        guard !exercise.isSquat, bodyEdge else { return Palette.green }
+        guard bodyEdge else { return Palette.green }
         switch sample.bodyLine {
         case .unknown: return .gray
         case .steady: return Palette.green
