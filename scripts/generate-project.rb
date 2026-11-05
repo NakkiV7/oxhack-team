@@ -46,13 +46,14 @@ resource(project, watch, 'Native/Watch/Assets.xcassets')
 resource(project, watch, 'Native/Watch/PrivacyInfo.xcprivacy')
 resource(project, unit, 'Tests/iOS/Resources/pose.jpg')
 resource(project, unit, 'Tests/iOS/Resources/blank.mp4')
+resource(project, unit, 'StoreKit/Spottr.storekit')
 
 [app, watch, unit, ui].each do |target|
   target.build_configurations.each do |config|
     config.build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = 'com.omarchoudhry.' + target.name.downcase
     config.build_settings['GENERATE_INFOPLIST_FILE'] = 'YES'
     config.build_settings['MARKETING_VERSION'] = '0.1'
-    config.build_settings['CURRENT_PROJECT_VERSION'] = '18'
+    config.build_settings['CURRENT_PROJECT_VERSION'] = '19'
     config.build_settings['CODE_SIGN_STYLE'] = 'Automatic'
     config.build_settings['SWIFT_EMIT_LOC_STRINGS'] = 'NO'
     config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'YES'
@@ -113,6 +114,26 @@ project.save
   scheme.add_build_target(target)
   tests.each { |test| scheme.add_test_target(test) }
   scheme.set_launch_target(target)
+  if name == 'Spottr'
+    [scheme.launch_action, scheme.test_action].each do |action|
+      action.xml_element.add_element('StoreKitConfigurationFileReference', { 'identifier' => '../../StoreKit/Spottr.storekit' })
+    end
+  end
   scheme.save_as(project.path, name, true)
 end
+membership_scheme = Xcodeproj::XCScheme.new
+membership_scheme.add_build_target(app)
+membership_scheme.set_launch_target(app)
+[[unit, 'MembershipStoreKitTests'], [ui, 'MembershipFlowTests']].each do |target, test_class|
+  membership_scheme.add_test_target(target)
+  testable = membership_scheme.test_action.testables.last
+  testable.use_test_selection_whitelist = true
+  selection = Xcodeproj::XCScheme::TestAction::TestableReference::Test.new
+  selection.identifier = test_class
+  testable.add_selected_test(selection)
+end
+[membership_scheme.launch_action, membership_scheme.test_action].each do |action|
+  action.xml_element.add_element('StoreKitConfigurationFileReference', { 'identifier' => '../../StoreKit/Spottr.storekit' })
+end
+membership_scheme.save_as(project.path, 'SpottrMembership', true)
 puts 'Generated Spottr.xcodeproj'

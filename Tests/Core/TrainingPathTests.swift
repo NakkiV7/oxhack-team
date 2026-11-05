@@ -100,7 +100,7 @@ func validationRejectsEachRuleAGeneratedPathCouldBreak(rule: String) {
     #expect(ExerciseCatalog.all.filter { PathCapability.of($0.id) == .cameraAssessment }.map(\.id).sorted() == ["pushup", "squat"])
     #expect(PathCapability.of("plank").detail.contains("not trained"))
     #expect(PathCapability.of("gluteBridge") == .practiceLog)
-    #expect(PathSurvey.equipmentChoices == ["Stable sofa or counter", "Stable support", "Wall"])
+    #expect(PathSurvey.equipmentChoices == ["Stable chair", "Stable sofa or counter", "Stable support", "Wall"])
 }
 
 @Test func surveyAnswersDecodeWithDefaultsForMissingKeys() throws {

@@ -1,4 +1,6 @@
-# Spottr testing build and next steps
+# Spottr offline MVP checkpoint
+
+This records the earlier build 18 checkpoint. The later production-foundation update expands the library to 32 entries and 13 camera styles and adds optional website accounts and StoreKit infrastructure. See [current priorities](production-next-steps-2026-11-05.md) and [App Store preparation](app-store-launch-2026-11-05.md).
 
 ## Implemented in this change
 

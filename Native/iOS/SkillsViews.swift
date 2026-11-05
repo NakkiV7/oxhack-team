@@ -338,7 +338,9 @@ struct ExerciseArtwork: View {
     let entry: ExerciseEntry
     var body: some View {
         Group {
-            if let exercise = entry.tracking, [Exercise.halfSquat, .supportedSquat, .wideSquat].contains(exercise) {
+            if entry.art.hasPrefix("stick-") {
+                StickFigureArtwork(exerciseID: entry.id)
+            } else if let exercise = entry.tracking, [Exercise.halfSquat, .supportedSquat, .wideSquat].contains(exercise) {
                 StickFigureArtwork(exercise: exercise)
             } else if UIImage(named: entry.art) != nil {
                 Image(entry.art).resizable().scaledToFit()

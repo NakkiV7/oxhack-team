@@ -1,0 +1,102 @@
+{
+  "checkedAt": "2026-11-05T14:03:27.468Z",
+  "source": "Apple App Store Connect API GET readback",
+  "appID": "6826666965",
+  "group": {
+    "id": "22549158",
+    "name": "Spottr Membership",
+    "locale": "en-GB"
+  },
+  "monthly": {
+    "id": "6831175695",
+    "productID": "com.omarchoudhry.spottr.monthly",
+    "state": "MISSING_METADATA",
+    "period": "ONE_MONTH",
+    "planType": "UPFRONT",
+    "territories": [
+      "GBR"
+    ],
+    "currency": "GBP",
+    "customerPrice": "10.00",
+    "localizations": [
+      {
+        "name": "Spottr Monthly",
+        "locale": "en-GB",
+        "description": "Monthly Spottr membership. Renews until cancelled.",
+        "state": "PREPARE_FOR_SUBMISSION"
+      }
+    ],
+    "introductoryOffer": {
+      "startDate": "2026-11-05",
+      "endDate": null,
+      "duration": "TWO_WEEKS",
+      "offerMode": "FREE_TRIAL",
+      "numberOfPeriods": 1,
+      "targetSubscriptionPlanType": "UPFRONT"
+    }
+  },
+  "lifetime": {
+    "id": "6831175389",
+    "productID": "com.omarchoudhry.spottr.lifetime",
+    "state": "MISSING_METADATA",
+    "type": "NON_CONSUMABLE",
+    "territories": [
+      "GBR"
+    ],
+    "currency": "GBP",
+    "customerPrice": "200.00",
+    "localizations": [
+      {
+        "name": "Spottr Lifetime",
+        "locale": "en-GB",
+        "description": "Lifetime Spottr membership. One payment, no renewal.",
+        "state": "PREPARE_FOR_SUBMISSION"
+      }
+    ]
+  },
+  "testerOffer": {
+    "id": "3b82e808-90d0-4c21-b56a-90bd415644ca",
+    "name": "Spottr Tester Lifetime",
+    "definitionActive": true,
+    "customerPrice": "0.00",
+    "currency": "GBP",
+    "territories": [
+      "GBR"
+    ],
+    "customCode": "SPOTTRTESTERS",
+    "customCodeCreated": false,
+    "productionCodeCount": 0,
+    "sandboxCodeCount": 0,
+    "requestHTTPStatus": 409,
+    "errors": [
+      {
+        "status": "409",
+        "code": "ENTITY_ERROR.ATTRIBUTE.INVALID.UNSUPPORTED_NUMBER_OF_CODES",
+        "title": "The provided entity includes an attribute with an invalid value",
+        "detail": "Given number is not supported, must be one of [500, 1000, 1500, 2000, 2500, 5000, 7500, 10000, 15000, 20000, 25000]"
+      },
+      {
+        "status": "409",
+        "code": "STATE_ERROR.NON_APPROVED_IAP",
+        "title": "The request cannot be fulfilled because parent InAppPurchase is not approved.",
+        "detail": "Cannot create offer for given in-app purchase 6831175389. Offers can only be created for approved in-app purchases."
+      },
+      {
+        "status": "409",
+        "code": "STATE_ERROR.NON_ACTIVE_APP",
+        "title": "The request cannot be fulfilled because parent App is not active.",
+        "detail": "Cannot create production codes for given in-app purchase 6826666965. Offers can only be created for active apps."
+      }
+    ]
+  },
+  "notPerformed": [
+    "public App Store review submission",
+    "agreement acceptance",
+    "banking or tax change",
+    "purchase",
+    "native source change",
+    "build upload"
+  ],
+  "sandboxStoreKitRetrievalVerified": false,
+  "livePurchaseOrRedemptionVerified": false
+}

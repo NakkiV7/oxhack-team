@@ -1,0 +1,18 @@
+# Spottr production foundation
+
+The user authorises continued exercise expansion and UX improvements, a Cloudflare-only site at spottr.omarchoudhry.co.uk, optional passwordless accounts with mandatory Authenticator MFA and backup codes, App Store notices/screenshots, and membership at £10 monthly with an eligible 14-day introductory trial or £200 lifetime. Requested tester lifetime code: SPOTTRTESTERS. Keep all human-style faces out of artwork; retain faceless stick figures and abstract coach designs. Existing build 17 and build 18 evidence remain intact. No Chrome testing or new simulators. New bulk build scratch stays on the Extreme SSD. No HPC training without first explaining model, data and purpose to the user.
+
+## Phone and Watch
+Expand the catalogue with useful styles and clearly labelled manual alternatives. Camera algorithms must check the chosen variation's observable geometry and temporal requirements; do not claim stance/hand placement or clinically effective rehabilitation unless measured. Retain bounded occlusion recovery, counts/time/source integrity and offline operation. Add reusable faceless artwork and clear instructions. Preserve current user history and data.
+
+Use StoreKit 2 for monthly and non-consumable lifetime purchases, verified entitlements only, restore, revocation/expiry/pending handling, localized prices, eligibility-aware trial text and Apple code redemption. Never implement a client-side SPOTTRTESTERS license-key bypass. StoreKit test configuration exercises real framework transactions. Actual Apple products/offer-code activation and genuine device purchases are separate gates. Do not accept agreements, make purchases or claim an inactive offer works.
+
+## Public website
+Use the existing landing assets and current app screenshots. Create an intentional light editorial design with cobalt/teal, generous whitespace, rounded friendly type and clear CTA to the genuine existing TestFlight invite. Include exercise/library, tracking, Watch, offline coaching, FAQ, pricing, privacy, terms, support and account links. Be explicit that new features are a testing candidate, no medical/GP efficacy claims or endorsement. Prices are the requested launch plan until real products are available. No fake reviews, downloads or metrics. No third-party analytics or marketing cookies.
+
+## Accounts
+Passkey with required user verification is the first factor, Authenticator TOTP the second. Every new sign-in needs both; a single-use backup code can replace TOTP for recovery. No passwords, email dependence, provider tokens or health/video uploads. Account creation is optional and does not create paid iOS entitlements or silently sync workouts.
+
+Use a Worker plus D1, vetted WebAuthn verification, Web Crypto HMAC/AES-GCM, CSPRNG challenge/session/backup values, hashed session and backup tokens, encrypted TOTP secrets, challenge expiry/consumption, TOTP replay prevention and atomic one-use recovery. Require same-origin JSON mutations and CSRF protection, secure HttpOnly SameSite cookies, bounded request sizes, generic pre-factor errors and rate limits. Pending enrollment is not an authenticated session. Support logout, backup rotation, Authenticator replacement and self-service account deletion with recent two-factor proof. No secrets in logs/source/public assets.
+
+Publish only after local behavioral checks, independent auth review, deployment readback and live negative/security checks. A public signup must not be advertised as accepted until an actual WebAuthn+MFA journey passes. Preserve previous DNS/site configuration as a rollback receipt before cutover; do not touch other domains/resources or buy plans.

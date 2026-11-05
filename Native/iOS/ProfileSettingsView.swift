@@ -91,6 +91,7 @@ struct ProfileSettingsView: View {
     @State private var message: String?
     @State private var error: String?
     @State private var persistence: ProfileDraftPersistence
+    @State private var membership = MembershipStore()
     @FocusState private var editingName: Bool
 
     init(profileStore: NativeProfileStore, history: [SessionRecord],
@@ -112,6 +113,21 @@ struct ProfileSettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section("Spottr beta") {
+                    Text("All features available during beta")
+                        .font(.subheadline.weight(.semibold))
+                        .accessibilityIdentifier("profile-beta-access")
+                    NavigationLink {
+                        MembershipView(store: membership)
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image("membership-gem").resizable().scaledToFit().frame(width: 32, height: 32).accessibilityHidden(true)
+                            Text("Membership & Apple purchases")
+                        }
+                    }.accessibilityIdentifier("profile-membership")
+                    Text("Membership is optional during this beta. Plans and prices are available only when confirmed by the App Store.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 Section {
                     Label("Local profile", systemImage: "person.crop.circle").font(.headline)
                     Text("Saved on this iPhone. No account or sign-in is needed.").font(.caption).foregroundStyle(.secondary)
@@ -212,6 +228,17 @@ struct ProfileSettingsView: View {
                     Button("Delete local training history", systemImage: "trash", role: .destructive) { deletion = .history }
                         .accessibilityIdentifier("delete-local-history")
                     Button("Reset local profile", systemImage: "person.crop.circle.badge.xmark", role: .destructive) { deletion = .profile }
+                }
+                Section("Website & support") {
+                    Link("Privacy policy", destination: URL(string: "https://spottr.omarchoudhry.co.uk/privacy")!)
+                        .accessibilityIdentifier("profile-privacy")
+                    Link("Spottr support", destination: URL(string: "https://spottr.omarchoudhry.co.uk/support")!)
+                        .accessibilityIdentifier("profile-support")
+                    Link("Optional website account", destination: URL(string: "https://spottr.omarchoudhry.co.uk/account")!)
+                        .accessibilityIdentifier("profile-website-account")
+                    Text("A website account is optional and separate from your local training profile and Apple membership. Creating an account does not upload your workouts or unlock an Apple purchase.")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("profile-account-separation")
                 }
             }
             .scrollContentBackground(.hidden).scrollDismissesKeyboard(.immediately)

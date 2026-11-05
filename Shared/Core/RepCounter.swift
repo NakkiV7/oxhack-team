@@ -18,6 +18,8 @@ public struct RepCounter: Sendable {
     private var deepest: (angle: Double, time: Double)?
     private var armedAt: Double?
     private var reachedBottom = false
+    private var firstBottomAt: Double?
+    private var bottomHoldStartedAt: Double?
     private var candidateAt: Double?
     private var candidate = 0
     private var lastTime: Double?
@@ -36,6 +38,7 @@ public struct RepCounter: Sendable {
         armedAt = nil; reachedBottom = false; candidateAt = nil; candidate = 0
         lastTime = nil; lastReliableTime = nil; side = nil
         descentStartedAt = nil; deepest = nil
+        firstBottomAt = nil; bottomHoldStartedAt = nil
         interruptedPhases = false
     }
     public mutating func consume(_ sample: MovementSample) -> Cue {
@@ -46,6 +49,7 @@ public struct RepCounter: Sendable {
         if let previousTime, sample.time < previousTime { resetMovement(); return .tracking }
         guard sample.confidence.isFinite else { resetMovement(); return .tracking }
         guard sample.confidence >= 0.6 else {
+            if exercise.requiresContinuousTiming { resetMovement(); return .tracking }
             interruptedPhases = true
             if !exercise.isSquat || candidate != -1 { candidate = 0; candidateAt = nil }
             if lastReliableTime.map({ sample.time - $0 > continuityWindow }) ?? true { resetMovement() }
@@ -56,6 +60,7 @@ public struct RepCounter: Sendable {
         }
         if let lastReliableTime, sample.time - lastReliableTime > continuityWindow { resetMovement() }
         else if let previousTime, sample.time - previousTime > 0.75 {
+            if exercise.requiresContinuousTiming { resetMovement() }
             interruptedPhases = true
             if !exercise.isSquat || candidate != -1 { candidate = 0; candidateAt = nil }
         }
@@ -67,11 +72,29 @@ public struct RepCounter: Sendable {
             candidate = zone; candidateAt = sample.time
             if armedAt != nil, !reachedBottom { descentStartedAt = zone == 1 ? nil : (descentStartedAt ?? sample.time) }
         }
+        if armedAt != nil, zone == -1 {
+            firstBottomAt = firstBottomAt ?? sample.time
+            bottomHoldStartedAt = bottomHoldStartedAt ?? sample.time
+        } else {
+            bottomHoldStartedAt = nil
+        }
         if descentStartedAt != nil, sample.angle < (deepest?.angle ?? .infinity) { deepest = (sample.angle, sample.time) }
         guard let since = candidateAt, sample.time - since >= 0.15 else { return .lower }
-        if zone == -1, armedAt != nil { reachedBottom = true; return .rise }
+        if zone == -1, armedAt != nil {
+            guard sample.time - (bottomHoldStartedAt ?? sample.time) >= exercise.minimumBottomHoldSeconds else { return .hold }
+            reachedBottom = true; return .rise
+        }
         guard zone == 1 else { return reachedBottom ? .rise : .lower }
-        guard let start = armedAt, reachedBottom else { armedAt = sample.time; descentStartedAt = nil; deepest = nil; return .lower }
+        guard let start = armedAt, reachedBottom else {
+            armedAt = sample.time; descentStartedAt = nil; deepest = nil; firstBottomAt = nil
+            return .lower
+        }
+        if exercise.minimumLoweringSeconds > 0 {
+            guard let began = descentStartedAt, let bottom = firstBottomAt,
+                  bottom - began >= exercise.minimumLoweringSeconds else {
+                resetMovement(); armedAt = sample.time; return .lower
+            }
+        }
         guard (0.6...15).contains(sample.time - start) else {
             resetMovement(); armedAt = sample.time; return .lower
         }

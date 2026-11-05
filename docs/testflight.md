@@ -1,5 +1,9 @@
 # Install the Spottr beta
 
+**5 November 2026 update** — Build **0.1 (19)** is VALID and IN_BETA_TESTING internally and externally, with beta review APPROVED. It contains the offline redesign, 32 exercises, 13 camera styles and unrestricted beta membership/settings flow. [Current build 19 evidence](evidence/production-foundation-2026-11-05.md) supersedes the historical build 5 checkpoint below. [Install through the existing invitation](https://testflight.apple.com/join/f3MhePbf). Physical installation/counting acceptance and Apple paid-product approval remain separate.
+
+## Historical build 5 checkpoint
+
 Checkpoint: **25 October 2026, 05:05:16.755 UTC**. Build **0.1 (5)** is processed (`VALID`) and available internally and externally (`IN_BETA_TESTING`), with beta review `APPROVED` and encryption `false`. Spottr Internal contains **5/4/3/2/1**. Build 5 includes weekly planning, profile/skills polish, skip/one-rep check-ins, report/Coach polish and the compact Watch pager. [Build 5 evidence](evidence/testflight-build-5-2026-10-25.md). Distribution does not establish installation on a phone or Watch.
 
 The **OxHack** external group retains the same 25-person [public invitation](https://testflight.apple.com/join/f3MhePbf). Read-back at **05:05:16.755 UTC** showed external builds **5/4/3/1**, with build 2 internal only; build 5’s submission is `APPROVED` (`submittedDate: null`). The Apple page check belongs to the earlier build 3 checkpoint. No new public-page check, invitation acceptance, deep-link launch or installation was performed for build 5, and no public App Store release was submitted. [Earlier page receipt](evidence/testflight-build-3-2026-10-25.md#apple-distribution).

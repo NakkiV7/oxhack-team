@@ -1,0 +1,111 @@
+{
+  "appPolicies": {
+    "eula": "",
+    "policies": [
+      {
+        "locale": "en_US",
+        "policyText": "",
+        "policyURL": ""
+      }
+    ]
+  },
+  "identifier": "631B2E19",
+  "nonRenewingSubscriptions": [],
+  "products": [
+    {
+      "displayPrice": "200.00",
+      "familyShareable": false,
+      "internalID": "632B2E20",
+      "localizations": [
+        {
+          "description": "Spottr lifetime membership with one payment and no renewal. Does not cancel an existing monthly subscription.",
+          "displayName": "Spottr Lifetime",
+          "locale": "en_GB"
+        }
+      ],
+      "offerCodes": [
+        {
+          "internalID": "632B2E21",
+          "paymentMode": "free",
+          "referenceName": "Lifetime tester offer — local testing only"
+        }
+      ],
+      "productID": "com.omarchoudhry.spottr.lifetime",
+      "referenceName": "Spottr Lifetime",
+      "type": "NonConsumable"
+    }
+  ],
+  "settings": {
+    "_askToBuyEnabled": false,
+    "_billingGracePeriodEnabled": false,
+    "_billingIssuesEnabled": false,
+    "_disableDialogs": false,
+    "_failTransactionsEnabled": false,
+    "_locale": "en_GB",
+    "_renewalBillingIssuesEnabled": false,
+    "_storefront": "GBR",
+    "_storeKitErrors": [],
+    "_timeRate": 0
+  },
+  "subscriptionBundleGroups": [],
+  "subscriptionGroups": [
+    {
+      "id": "632B2E22",
+      "localizations": [],
+      "name": "Spottr Membership",
+      "subscriptions": [
+        {
+          "adHocOffers": [],
+          "billingPlans": [
+            {
+              "billingPlanType": "BILLED_UPFRONT",
+              "commitmentDisplayPrice": "10.00",
+              "displayPrice": "10.00",
+              "internalID": "632B2E24",
+              "isEnabled": true
+            }
+          ],
+          "codeOffers": [],
+          "displayPrice": "10.00",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "632B2E23",
+          "introductoryOffer": {
+            "billingPlanType": "BILLED_UPFRONT",
+            "internalID": "632B2E25",
+            "numberOfPeriods": 1,
+            "paymentMode": "free",
+            "subscriptionPeriod": "P2W"
+          },
+          "introductoryOffers": [
+            {
+              "billingPlanType": "BILLED_UPFRONT",
+              "internalID": "632B2E26",
+              "numberOfPeriods": 1,
+              "paymentMode": "free",
+              "subscriptionPeriod": "P2W"
+            }
+          ],
+          "localizations": [
+            {
+              "description": "Monthly Spottr membership. Two-week introductory free trial for eligible Apple accounts, then monthly renewal until cancelled.",
+              "displayName": "Spottr Monthly",
+              "locale": "en_GB"
+            }
+          ],
+          "productID": "com.omarchoudhry.spottr.monthly",
+          "recurringSubscriptionPeriod": "P1M",
+          "referenceName": "Spottr Monthly",
+          "subscriptionGroupID": "632B2E22",
+          "type": "RecurringSubscription",
+          "winbackOffers": []
+        }
+      ]
+    }
+  ],
+  "subscriptionSuiteGroups": [],
+  "version": {
+    "major": 6,
+    "minor": 3
+  }
+}

@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /account/
+Disallow: /api/
+Sitemap: https://spottr.omarchoudhry.co.uk/sitemap.xml

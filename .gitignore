@@ -28,3 +28,8 @@ squat/models/*.task
 squat/voice_cache/
 squat/sessions/
 !prototype/*/assets/*.mp4
+
+# Spottr Cloudflare development
+web/node_modules/
+web/.wrangler/
+web/.dev.vars*

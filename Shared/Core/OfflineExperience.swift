@@ -8,8 +8,14 @@ public struct LocalSkillStep: Identifiable, Sendable {
 
 public enum LocalSkillPath {
     public static func chain(family: ExerciseFamily) -> [String] {
-        if family == .legs { return ["supportedSquat", "halfSquat", "squat", "wideSquat", "reverseLunge", "splitSquat", "assistedSquat"] }
-        return ExerciseCatalog.all.filter { $0.family == family }.sorted { $0.level < $1.level }.map(\.id)
+        switch family {
+        case .push: return ["wallPushup", "inclinePushup", "kneePushup", "pushup", "closeGripPushup"]
+        case .legs: return ["supportedSquat", "halfSquat", "squat", "wideSquat", "reverseLunge", "splitSquat", "assistedSquat"]
+        case .core: return ["deadBug", "plank", "sidePlank"]
+        case .conditioning: return ["stepJack", "highKnees", "mountainClimber"]
+        case .mobility: return ["catCow", "hipFlexorStretch"]
+        case .balance: return ["singleLegBalance"]
+        }
     }
     public static func make(family: ExerciseFamily, profile: LocalProfile?, history: [SessionRecord]) -> [LocalSkillStep] {
         let chain = chain(family: family)

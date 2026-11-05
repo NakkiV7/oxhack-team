@@ -149,7 +149,7 @@ struct SessionReportView: View {
                             VStack(alignment: .leading, spacing: 9) {
                                 HStack(alignment: .top, spacing: 12) {
                                     if let entry = ExerciseCatalog.find(set.exerciseID) {
-                                        Image(entry.art).resizable().scaledToFit().frame(width: 52, height: 60).accessibilityHidden(true)
+                                        ExerciseArtwork(entry: entry).frame(width: 52, height: 60).accessibilityHidden(true)
                                     }
                                     VStack(alignment: .leading, spacing: 5) {
                                         Text(set.exerciseName).font(.headline)

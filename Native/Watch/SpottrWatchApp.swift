@@ -216,6 +216,7 @@ struct WatchTrainingView: View {
         case .ready, .tracking: return "Show your full body."
         case .lower: return "Lower with control."
         case .rise: return "Drive back up."
+        case .hold: return "Hold at depth. Stay steady."
         case .alignment: return "Brace a straight body."
         case .controlled: return "Strong rep. Stay steady."
         case .paused: return "Paused. Take a breath."

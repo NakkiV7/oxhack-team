@@ -18,7 +18,7 @@ import Testing
 
 @Test func filmingDirectionsIdentifyBothSidesAndUsefulViewsWithoutClaimingTrackingCoverage() throws {
     let bilateralTakes: Set<String> = ["reverseLunge", "splitSquat", "assistedSquat", "deadBug", "sidePlank",
-        "stepJack", "highKnees", "mountainClimber", "hipFlexorStretch", "singleLegBalance"]
+        "stepJack", "highKnees", "mountainClimber", "hipFlexorStretch", "singleLegBalance", "birdDog", "seatedKneeExtension"]
     let guides = ExerciseDemonstrationGuide.all
     #expect(Set(guides.filter(\.requiresBothSides).map(\.exerciseID)) == bilateralTakes)
     #expect(guides.filter(\.requiresBothSides).allSatisfy { $0.sideInstructions.contains("both") })

@@ -48,7 +48,7 @@ import Testing
         _ = counter.consume(.init(time: 1, angle: .nan, confidence: 0))
         _ = counter.consume(.init(time: 1.3, angle: 170))
         _ = counter.consume(.init(time: 1.5, angle: 170))
-        #expect(counter.reps == 1)
+        #expect(counter.reps == (exercise.requiresContinuousTiming ? 0 : 1))
         #expect(counter.lastRepPhases == nil)
     }
 }

@@ -36,13 +36,13 @@ public struct ExerciseDemonstrationGuide: Identifiable, Sendable {
                 ? "Record 10–15 seconds of the alternating movement, including a clear start and finish."
                 : "Record a 10–15 second steady hold, including how you enter the position and return to rest.")
         let front: Set<String> = ["stepJack", "highKnees", "singleLegBalance"]
-        let oblique: Set<String> = ["closeGripPushup", "reverseLunge", "splitSquat", "assistedSquat", "deadBug", "sidePlank", "mountainClimber"]
+        let oblique: Set<String> = ["closeGripPushup", "widePushup", "diamondPushup", "birdDog", "reverseLunge", "splitSquat", "assistedSquat", "deadBug", "sidePlank", "mountainClimber"]
         cameraAngle = front.contains(entry.id) ? .front : (oblique.contains(entry.id) ? .frontOblique : .side)
-        let floor: Set<String> = ["kneePushup", "pushup", "closeGripPushup", "gluteBridge", "deadBug", "plank", "sidePlank", "mountainClimber", "catCow", "hipFlexorStretch"]
+        let floor: Set<String> = ["kneePushup", "pushup", "closeGripPushup", "tempoPushup", "pausedPushup", "widePushup", "diamondPushup", "birdDog", "gluteBridge", "deadBug", "plank", "sidePlank", "mountainClimber", "catCow", "hipFlexorStretch"]
         framing = floor.contains(entry.id)
             ? "Use a low, steady camera angle that includes the floor contacts and your whole body, from head to hands and feet. Leave room for the full reach."
             : "Keep your whole body in frame, including your head, hands and feet. Leave space above your hands and behind your stepping leg."
-        requiresBothSides = ["reverseLunge", "splitSquat", "assistedSquat", "deadBug", "sidePlank", "stepJack", "highKnees", "mountainClimber", "hipFlexorStretch", "singleLegBalance"].contains(entry.id)
+        requiresBothSides = ["birdDog", "seatedKneeExtension", "reverseLunge", "splitSquat", "assistedSquat", "deadBug", "sidePlank", "stepJack", "highKnees", "mountainClimber", "hipFlexorStretch", "singleLegBalance"].contains(entry.id)
         sideInstructions = requiresBothSides
             ? "Include both left and right sides. For alternating movements, show a complete cycle on each side; for single-side holds, record each side separately."
             : "Record one complete take with both hands and feet visible throughout the movement."
@@ -55,8 +55,18 @@ public struct ExerciseDemonstrationGuide: Identifiable, Sendable {
     }
 
     private static func phases(for entry: ExerciseEntry) -> [String] {
+        if entry.tracking?.minimumLoweringSeconds == 3 {
+            return ["Show the standing or extended-arm start", "Lower for at least 3 seconds with all measured joints visible", "Return to the starting position"]
+        }
+        if entry.tracking?.minimumBottomHoldSeconds == 2 {
+            return ["Show the standing or extended-arm start", "Lower to depth and hold for at least 2 seconds", "Return to the starting position"]
+        }
         if entry.family == .push { return ["Show the extended-arm starting position", "Lower with control", "Press back to the starting position"] }
         switch entry.id {
+        case "wallSit": return ["Show your back against the wall and feet planted", "Slide to a comfortable height and hold while breathing", "Slide up and return to standing"]
+        case "calfRaise": return ["Stand with your support visible", "Raise both heels with control", "Lower both heels to the floor"]
+        case "birdDog": return ["Show the hands-and-knees start", "Reach opposite arm and leg without twisting", "Return and show the other side"]
+        case "seatedKneeExtension": return ["Sit on the chair with feet planted", "Straighten one knee through a comfortable range", "Lower the foot and show the other side"]
         case "gluteBridge": return ["Show hips resting on the floor", "Lift the hips with control", "Lower back to the floor"]
         case "squat": return ["Stand tall", "Sit back and lower to a comfortable depth", "Return to standing"]
         case "reverseLunge": return ["Stand tall", "Step back and lower", "Return to standing and alternate sides"]

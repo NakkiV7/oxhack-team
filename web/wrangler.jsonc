@@ -1,0 +1,47 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "spottr-site",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-05",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "account_id": "920081a8b351a6e9912f156e1e3852e2",
+  "workers_dev": false,
+  "preview_urls": false,
+  "vars": {
+    "ORIGIN": "https://spottr.omarchoudhry.co.uk"
+  },
+  "assets": {
+    "directory": "../landing/public",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  "observability": {
+    "enabled": false
+  },
+  "limits": {
+    "cpu_ms": 10
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "spottr-accounts",
+      "database_id": "d7aac141-b07d-45f5-8a44-e59264de5063",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "triggers": {
+    "crons": [
+      "17 * * * *"
+    ]
+  },
+  "routes": [
+    {
+      "pattern": "spottr.omarchoudhry.co.uk",
+      "custom_domain": true
+    }
+  ]
+}

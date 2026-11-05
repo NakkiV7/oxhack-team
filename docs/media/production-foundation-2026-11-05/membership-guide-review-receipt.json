@@ -1,0 +1,28 @@
+{
+  "build": "19",
+  "version": "0.1",
+  "status": "Actual beta screenshots for review; not App Store-approved",
+  "deviceID": "BF27AFBA-FF1E-4484-A3BD-42916CEB1170",
+  "device": "iPhone (iPhone 17 Pro)",
+  "runtime": "iOS 26.5",
+  "resultBundle": "/Volumes/Spottr Development/Native/TestResults/MembershipFinal-20261105.xcresult",
+  "testSummary": {
+    "passed": 213,
+    "failed": 0,
+    "excluded": [
+      "SpottrTests/MembershipStoreKitTests"
+    ]
+  },
+  "files": [
+    {
+      "file": "membership-beta.png",
+      "sourceAttachment": "1B766A87-44E4-452E-A97E-B741907EB91E.png",
+      "sha256": "8879415ba74f1426c802a128f54477caf3d7199696d3568e9e5f4a4da196649a"
+    },
+    {
+      "file": "paused-squat-guide-beta.png",
+      "sourceAttachment": "274C112D-B522-4739-99C8-2E2604D58E51.png",
+      "sha256": "32eca7000e4714858ec4a68964e47f86359d9964935ab38840213d2426fc17f5"
+    }
+  ]
+}

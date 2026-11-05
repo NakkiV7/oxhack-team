@@ -44,7 +44,7 @@ public enum PoseGeometry {
                     guard torsoX > frame.width * 0.08 else { continue }
                 }
                 let endpoint = frame.points[(exercise == .kneePushup ? 25 : 27) + side]
-                if exercise == .kneePushup && !valid(endpoint) { continue }
+                if (exercise == .kneePushup || exercise.requiresContinuousTiming) && !valid(endpoint) { continue }
                 if valid(endpoint) {
                     let foot = (endpoint.x * frame.width, endpoint.y * frame.height)
                     if exercise == .wallPushup {

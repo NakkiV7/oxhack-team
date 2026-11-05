@@ -3,7 +3,8 @@ import Foundation
 public enum Exercise: String, Codable, CaseIterable, Sendable {
     case squat, pushup, halfSquat, supportedSquat, wideSquat
     case wallPushup, inclinePushup, kneePushup, closeGripPushup
-    public var isSquat: Bool { [.squat, .halfSquat, .supportedSquat, .wideSquat].contains(self) }
+    case tempoSquat, pausedSquat, tempoPushup, pausedPushup
+    public var isSquat: Bool { [.squat, .halfSquat, .supportedSquat, .wideSquat, .tempoSquat, .pausedSquat].contains(self) }
     public var title: String {
         switch self {
         case .squat: return "Squats"
@@ -15,18 +16,25 @@ public enum Exercise: String, Codable, CaseIterable, Sendable {
         case .inclinePushup: return "Incline push-ups"
         case .kneePushup: return "Knee push-ups"
         case .closeGripPushup: return "Close-grip push-ups"
+        case .tempoSquat: return "Tempo squats"
+        case .pausedSquat: return "Paused squats"
+        case .tempoPushup: return "Tempo push-ups"
+        case .pausedPushup: return "Paused push-ups"
         }
     }
-    public var target: Int { isSquat ? 12 : (self == .pushup ? 10 : 8) }
+    public var minimumLoweringSeconds: Double { [.tempoSquat, .tempoPushup].contains(self) ? 3 : 0 }
+    public var minimumBottomHoldSeconds: Double { [.pausedSquat, .pausedPushup].contains(self) ? 2 : 0 }
+    public var requiresContinuousTiming: Bool { minimumLoweringSeconds > 0 || minimumBottomHoldSeconds > 0 }
+    public var target: Int { requiresContinuousTiming ? 6 : (isSquat ? 12 : (self == .pushup ? 10 : 8)) }
     public var bottomAngle: Double {
         switch self {
         case .halfSquat, .supportedSquat: return 135
-        case .squat, .wideSquat: return 105
+        case .squat, .wideSquat, .tempoSquat, .pausedSquat: return 105
         case .wallPushup, .inclinePushup: return 110
         default: return 100
         }
     }
-    public var art: String { [.squat, .pushup].contains(self) ? "\(rawValue)-mid" : rawValue }
+    public var art: String { requiresContinuousTiming ? "stick-\(rawValue)" : ([.squat, .pushup].contains(self) ? "\(rawValue)-mid" : rawValue) }
     public var guide: String { ExerciseCatalog.find(rawValue)?.instruction ?? "Move at a comfortable pace." }
 
 }
@@ -52,12 +60,13 @@ public struct MovementSample: Sendable {
 }
 
 public enum Cue: String, Codable, Sendable {
-    case ready, tracking, lower, rise, alignment, controlled, paused
+    case ready, tracking, lower, hold, rise, alignment, controlled, paused
     public var text: String {
         switch self {
         case .ready: return "Get into position. Show your full body."
         case .tracking: return "Step into view. Keep your whole body visible."
         case .lower: return "Lower with control."
+        case .hold: return "Hold at depth. Keep steady."
         case .rise: return "Drive back up. Stay controlled."
         case .alignment: return "Brace your body. Keep a straight line."
         case .controlled: return "Strong rep. Keep that rhythm."

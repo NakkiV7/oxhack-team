@@ -9,23 +9,34 @@
     <a href="#inside-spottr">App tour</a> ·
     <a href="docs/SETUP.md">Developer setup</a>
   </p>
-  <p>Built for OxHack 2026</p>
+  <p>Offline training. A clear next step.</p>
 </div>
 
 ![Swift](https://img.shields.io/badge/Swift-SwiftUI-F05138?logo=swift&logoColor=white)
 ![iOS](https://img.shields.io/badge/iOS-26-000000?logo=apple&logoColor=white)
 ![watchOS](https://img.shields.io/badge/watchOS-26-000000?logo=apple&logoColor=white)
 ![MediaPipe](https://img.shields.io/badge/MediaPipe-Pose_Landmarker-0097A7?logo=google&logoColor=white)
-![Node.js](https://img.shields.io/badge/Node.js-gateway-339933?logo=nodedotjs&logoColor=white)
-![Gemini](https://img.shields.io/badge/Gemini-API-8E75B2?logo=googlegemini&logoColor=white)
-![Tiger Data](https://img.shields.io/badge/Tiger_Data-adapter-FDB515)
-![Status](https://img.shields.io/badge/status-hackathon_prototype-orange)
+![Cloudflare](https://img.shields.io/badge/Cloudflare-optional_accounts-F38020?logo=cloudflare&logoColor=white)
+![Coaching](https://img.shields.io/badge/coaching-on_device-08786f)
+![Status](https://img.shields.io/badge/status-TestFlight_19-2156ce)
 
 ## Offline testing build, 5 November 2026
 
-The current consumer app uses local, rule-based coaching and quantitative insights. It adds seven camera variations, preserves live work when switching camera/manual input, offers optional on-device spoken counting, and starts a vertical skill path from onboarding comfort answers. Coach selection uses abstract colour designs and all exercise guides remain faceless stick figures. TestFlight preview and generative consumer coach/path/report flows are removed from navigation. Today, Skills, Insights and Coach are the four main tabs.
+**Build 0.1 (19) is available through the existing TestFlight invitation**, internally and externally, with approved beta review. The current consumer app uses local, rule-based coaching and quantitative insights. It has 32 exercise entries and 13 camera-supported styles, including tempo and paused squats and push-ups. Live work survives switching camera/manual input, optional on-device spoken counting is available, and onboarding comfort answers establish a vertical skill path. Coach selection uses abstract colours and exercise guides remain faceless stick figures. Today, Skills, Insights and Coach are the four main tabs.
 
 Original Maya/Leo voices currently use installed iPhone speech. New bundled ElevenLabs recordings need renewed authoring access; existing optional Arnold/Goggins-inspired audio is retained. The [testing guide and prioritised feature list](docs/offline-mvp-testing-and-next-steps-2026-11-05.md) distinguishes implemented behavior, software checks and physical acceptance. See the [software and signed-build verification](docs/evidence/offline-mvp-2026-11-05.md) and [current skill-path capture](docs/media/offline-mvp-2026-11-05/vertical-skill-path.png). Historical screenshots, server integrations and release receipts below describe earlier builds.
+
+The [live Cloudflare website](https://spottr.omarchoudhry.co.uk/) provides support, privacy, terms and optional passkey-plus-Authenticator accounts. Training and Health data remain local. Apple has saved the requested £10 monthly plan with an eligible two-week trial and £200 lifetime product; production product approval and `SPOTTRTESTERS` activation remain pending. Beta training is unrestricted. [Current verification and distribution](docs/evidence/production-foundation-2026-11-05.md), [feature priorities](docs/production-next-steps-2026-11-05.md), [website/account development](web/README.md).
+
+## Inside Spottr
+
+<table><tr>
+<td align="center" width="33%"><a href="docs/media/offline-mvp-2026-11-05/vertical-skill-path.png"><img src="docs/media/offline-mvp-2026-11-05/vertical-skill-path.png" alt="Vertical skill path with one current challenge" width="230"></a><br>One clear next step</td>
+<td align="center" width="33%"><a href="docs/media/production-foundation-2026-11-05/paused-squat-guide-beta.png"><img src="docs/media/production-foundation-2026-11-05/paused-squat-guide-beta.png" alt="Faceless paused squat guide with highlighted joints" width="230"></a><br>Movement guides</td>
+<td align="center" width="33%"><a href="docs/media/offline-mvp-2026-11-05/abstract-trainer-onboarding.png"><img src="docs/media/offline-mvp-2026-11-05/abstract-trainer-onboarding.png" alt="Abstract colour designs for personal trainer selection" width="230"></a><br>Your coach, your style</td>
+</tr></table>
+
+These are actual local-candidate captures. Physical movement quality and Apple purchase acceptance remain separate from the software and beta-distribution checks.
 
 ## November patient-demo build
 
@@ -33,7 +44,7 @@ The consolidated native demo includes personalised training paths, Insights, off
 
 For the proposed OneMedicalGroup pitch, see the [patient/practice storyboard](presentation/one-medical-group-storyboard.md) and [current native captures](presentation/captures/2026-11-03/README.md). The historical hackathon presentation is preserved separately.
 
-## Inside Spottr
+## Historical app gallery
 
 From your first session to your next training plan. Select any screenshot to view it at full size.
 

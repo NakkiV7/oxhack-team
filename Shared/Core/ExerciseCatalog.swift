@@ -31,11 +31,14 @@ public struct ExerciseEntry: Identifiable, Sendable {
     public let tracking: Exercise?
     public var levelName: String { "\(family.title) \(["I", "II", "III", "IV", "V"][min(4, max(0, level - 1))])" }
     public var goalText: String { "3 × \(goal) \(unit == .reps ? "reps" : "sec") · 2 days" }
-    public var art: String { tracking?.art ?? id }
+    public var art: String {
+        ["widePushup", "diamondPushup", "wallSit", "calfRaise", "birdDog", "seatedKneeExtension"].contains(id)
+            ? "stick-\(id)" : (tracking?.art ?? id)
+    }
 }
 
 public enum ExerciseCatalog {
-    public static let version = 1
+    public static let version = 2
     public static let all: [ExerciseEntry] = [
         .init(id: "wallPushup", name: "Wall push-ups", family: .push, level: 1, goal: 8, unit: .reps, attribute: .strength, instruction: "Keep your body straight. Bend your elbows toward the wall, then press away.", support: "Wall", tracking: .wallPushup),
         .init(id: "inclinePushup", name: "Incline push-ups", family: .push, level: 2, goal: 8, unit: .reps, attribute: .strength, instruction: "Use a stable raised surface. Keep your body in one line as you lower and press.", support: "Stable sofa or counter", tracking: .inclinePushup),
@@ -58,7 +61,17 @@ public enum ExerciseCatalog {
         .init(id: "mountainClimber", name: "Mountain climbers", family: .conditioning, level: 3, goal: 20, unit: .reps, attribute: .stamina, instruction: "From a high plank, bring one knee forward and return. Alternate and count each knee drive.", support: nil, tracking: nil),
         .init(id: "catCow", name: "Cat-cow", family: .mobility, level: 1, goal: 6, unit: .reps, attribute: .mobility, instruction: "On hands and knees, gently round and lengthen your back. One comfortable cycle is one rep.", support: nil, tracking: nil),
         .init(id: "hipFlexorStretch", name: "Hip-flexor stretch", family: .mobility, level: 2, goal: 30, unit: .seconds, attribute: .mobility, instruction: "Use a half-kneeling stance and gently shift forward. Keep the stretch comfortable; alternate sides.", support: nil, tracking: nil),
-        .init(id: "singleLegBalance", name: "Single-leg stand", family: .balance, level: 1, goal: 20, unit: .seconds, attribute: .balance, instruction: "Stand on one leg near a stable support. Keep your gaze steady and alternate sides.", support: "Optional nearby support", tracking: nil)
+        .init(id: "singleLegBalance", name: "Single-leg stand", family: .balance, level: 1, goal: 20, unit: .seconds, attribute: .balance, instruction: "Stand on one leg near a stable support. Keep your gaze steady and alternate sides.", support: "Optional nearby support", tracking: nil),
+        .init(id: "tempoSquat", name: "Tempo squats", family: .legs, level: 3, goal: 6, unit: .reps, attribute: .strength, instruction: "Film from the side. Take at least 3 seconds from leaving standing to reaching squat depth, then stand tall. Keep your near leg visible throughout.", support: nil, tracking: .tempoSquat),
+        .init(id: "pausedSquat", name: "Paused squats", family: .legs, level: 3, goal: 6, unit: .reps, attribute: .strength, instruction: "Film from the side. Lower to squat depth, hold there for at least 2 seconds, then stand tall. Use a comfortable range; choose half squats if needed.", support: nil, tracking: .pausedSquat),
+        .init(id: "tempoPushup", name: "Tempo push-ups", family: .push, level: 5, goal: 6, unit: .reps, attribute: .strength, instruction: "Film from the side with shoulders, hands, hips and feet visible. Take at least 3 seconds to lower from extended arms to depth, then press back up.", support: nil, tracking: .tempoPushup),
+        .init(id: "pausedPushup", name: "Paused push-ups", family: .push, level: 5, goal: 6, unit: .reps, attribute: .strength, instruction: "Keep your body in one line and film from the side with feet visible. Lower, hold at depth for at least 2 seconds, then press to extended arms.", support: nil, tracking: .pausedPushup),
+        .init(id: "widePushup", name: "Wide push-ups", family: .push, level: 4, goal: 6, unit: .reps, attribute: .strength, instruction: "Place your hands a little wider than your shoulders. Lower through a comfortable range and press back up. Log your own reps; hand width is not checked by the camera.", support: nil, tracking: nil),
+        .init(id: "diamondPushup", name: "Diamond push-ups", family: .push, level: 5, goal: 5, unit: .reps, attribute: .strength, instruction: "Bring your hands close together under your chest in a comfortable diamond shape. Lower and press with control. Log your own reps; hand placement is not checked by the camera.", support: nil, tracking: nil),
+        .init(id: "wallSit", name: "Wall sit", family: .legs, level: 1, goal: 20, unit: .seconds, attribute: .stamina, instruction: "Rest your back against a wall and slide to a comfortable seated height. Keep feet planted, breathe steadily, then stand. Record the hold with the timer or manually.", support: "Wall", tracking: nil),
+        .init(id: "calfRaise", name: "Supported calf raises", family: .legs, level: 1, goal: 12, unit: .reps, attribute: .strength, instruction: "Stand near a stable support. Rise onto the balls of both feet, then lower your heels with control. Count one rise and return as one rep; log manually.", support: "Stable support", tracking: nil),
+        .init(id: "birdDog", name: "Bird dog", family: .core, level: 1, goal: 8, unit: .reps, attribute: .balance, instruction: "Start on hands and knees. Reach one arm and the opposite leg without twisting, then return and switch sides. Count each side as one rep and log manually.", support: nil, tracking: nil),
+        .init(id: "seatedKneeExtension", name: "Seated knee extensions", family: .legs, level: 1, goal: 10, unit: .reps, attribute: .mobility, instruction: "Sit on a stable chair with both feet down. Straighten one knee through a comfortable range, then lower the foot and alternate. Count each side as one rep and log manually.", support: "Stable chair", tracking: nil)
     ]
     public static func find(_ id: String) -> ExerciseEntry? { all.first { $0.id == id } }
 }
