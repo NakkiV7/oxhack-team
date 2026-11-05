@@ -48,7 +48,16 @@ Native Swift app; no runtime paid AI or new training; no faces; no Chrome or new
 - [ ] Run all core/gateway/static/Pi checks and relevant/full native plus selected UI journeys. Use only shared existing iPhone under root coordination, isolated test namespaces, SSD build directories and jobs2. Record all failures and their resolutions.
 - [ ] Self-review, commit owned files and report. Controller dispatches broad whole-change review, then fixes and re-reviews Critical/Important findings before delivery.
 
-### Task 4: Finished release and physical installation
+### Task 4: Real-video validation and resulting robustness fixes
+
+**Files:** A bounded opt-in native video validation harness and tests, Shared/Core geometry/counters only if footage exposes a demonstrated defect, public source/annotation/result manifests and evidence. Copyrighted video stays private on SSD and never ships in the app or repository.
+**Interfaces:** Use the actual native PoseDetector, bundled Full model and current measurement/counter APIs. Root acquires short published exercise demonstrations and manually labels visible complete cycles/hold intervals before viewing algorithm results. No new model/training/Python inference dependency or Chrome.
+- [ ] Freeze source URLs, hashes, selected intervals, camera views and independent manual labels for representative movement families, with multiple publishers and separate held-out trials. Record unsupported viewpoints and incomplete cycles rather than changing labels to match the counter.
+- [ ] Run real native inference and counters on the existing coordinated simulator, bounded sequential work and SSD logs. Compare actual counts/qualified seconds to labels, report visibility coverage and missed/extra counts by clip. Keep frame-rate, mirror and simulated-dropout sensitivity trials separate from independent source trials.
+- [ ] Fix demonstrated defects with red tests from recorded observations, preserving independent acceptance clips. Do not loosen observability or make a generic counter pass the footage. Re-run covering checks; full integrated required suites must pass before final delivery.
+- [ ] Commit harness/tests/results and limitations, excluding copyrighted videos and credentials. Controller task review then broad final whole-change review must be resolved before physical installation.
+
+### Task 5: Finished release and physical installation
 
 **Files:** project version/generator, release/evidence/testing docs, private receipts and SSD signed builds.
 - [ ] Freeze sources and audit the complete signed phone/Watch archive: signatures/profiles, canonical pose model, audio bytes, no credentials, compatible versions; recheck protected build17/Vendor and original evidence.
