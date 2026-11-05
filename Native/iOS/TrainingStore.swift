@@ -336,6 +336,7 @@ final class TrainingStore {
         watchInbox = WatchTelemetryInbox(url: historyStore.url.deletingLastPathComponent().appendingPathComponent("watch-inbox.json"))
         rewards = rewardsStore ?? NativeRewardsStore(url: historyStore.url.deletingLastPathComponent().appendingPathComponent("rewards.json"))
         coachingVoice.repVoice = repVoice
+        coachingVoice.onCancellation = { [weak self] in self?.cancelCoaching() }
         if !previewMode, defaults.string(forKey: RepVoicePlayer.defaultsKey) == nil,
            remoteVoice?.preference == .maya || remoteVoice?.preference == .leo { repVoice.coach = nil }
         do { history = try historyStore.load().reversed() }

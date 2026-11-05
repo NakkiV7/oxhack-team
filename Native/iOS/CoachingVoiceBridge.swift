@@ -6,10 +6,12 @@ final class CoachingVoiceBridge {
     private let uptime: () -> Double
     private var latest: (context: VoiceCueContext, event: VoiceCue?, enabled: Bool, now: Double, uptime: Double)?
     private var waitingOnRep = false
+    /// External coach/OS cancellation must also invalidate intents held by the store.
+    var onCancellation: (() -> Void)?
     var repVoice: RepVoicePlayer? {
         didSet {
             oldValue?.onInterrupt = nil
-            repVoice?.onInterrupt = { [weak self] in self?.cancel() }
+            repVoice?.onInterrupt = { [weak self] in self?.interrupted() }
         }
     }
     var isSpeaking: Bool { controller.isSpeaking || waitingOnRep }
@@ -20,10 +22,7 @@ final class CoachingVoiceBridge {
     init(playback: VoicePlayback, uptime: @escaping () -> Double = { ProcessInfo.processInfo.systemUptime }) {
         self.uptime = uptime
         controller = VoiceCuePlaybackController(playback: playback, uptime: uptime)
-        playback.onInterrupt = { [weak self] in
-            self?.cancel()
-            self?.repVoice?.cancel()
-        }
+        playback.onInterrupt = { [weak self] in self?.interrupted() }
     }
 
     func update(session: TrainingSession, event: CoachingEvent?, enabled: Bool, now: Double) {
@@ -65,6 +64,12 @@ final class CoachingVoiceBridge {
         waitingOnRep = false
         repVoice?.finishCurrent(then: nil)
         controller.transition(to: context)
+    }
+
+    private func interrupted() {
+        cancel()
+        repVoice?.cancel()
+        onCancellation?()
     }
 
     func cancel() {

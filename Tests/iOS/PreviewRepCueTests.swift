@@ -266,9 +266,10 @@ final class PreviewRepCueTests: XCTestCase {
 
 @MainActor
 final class RepCounterVoiceTests: XCTestCase {
-    private func store(preview: Bool, coach: RepVoicePlan.Coach?, clips: RepClipRecorder) -> (TrainingStore, RepRecordingVoice, RepCueClock) {
+    private func store(preview: Bool, coach: RepVoicePlan.Coach?, clips: RepClipRecorder,
+                       local: RepRecordingVoice? = nil) -> (TrainingStore, RepRecordingVoice, RepCueClock) {
         let clock = RepCueClock(), cached = RepRecordingVoice()
-        let remote = RemoteVoicePlayback(local: RepRecordingVoice(), previewPlayback: preview ? cached : nil, arnoldPlayback: cached, client: {
+        let remote = RemoteVoicePlayback(local: local ?? RepRecordingVoice(), previewPlayback: preview ? cached : nil, arnoldPlayback: cached, client: {
             throw RemoteVoiceError.configuration
         }, uptime: { clock.now })
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("history.json")
@@ -289,6 +290,93 @@ final class RepCounterVoiceTests: XCTestCase {
         }
         clock.now = 100 + base + 2
         store.coachingTick(at: clock.now)
+    }
+
+    func testCoachChangeAndInterruptionInvalidatePendingStoreFormIncludingExpiredRefresh() async throws {
+        for action in ["voiceCoach", "repCoach", "interruption"] {
+            for delay in [1.0, 8.0] {
+                let clips = RepClipRecorder(), local = RepRecordingVoice()
+                let (store, cached, clock) = store(preview: false, coach: .arnold, clips: clips, local: local)
+                defer { store.cancelCoaching() }
+                store.session.cue = .alignment
+                clock.now += 1
+                store.coachingTick(at: clock.now)
+                let cancelled = try XCTUnwrap(store.coachingEvent)
+                XCTAssertEqual(cancelled.decision.reason, .alignment)
+                XCTAssertTrue(store.repVoice.isPlaying)
+                XCTAssertTrue(cached.spoken.isEmpty)
+                XCTAssertTrue(local.spoken.isEmpty)
+
+                try await interrupt(action, store: store)
+                XCTAssertNil(store.coachingEvent, "\(action) must cancel the store's unseen form intent")
+                XCTAssertFalse(store.repVoice.isPlaying)
+                clock.now += delay
+                store.coachingTick(at: clock.now)
+                clips.finish()
+                clock.now += 8
+                store.coachingTick(at: clock.now)
+                XCTAssertTrue(cached.spoken.isEmpty, "\(action) cannot revive an old intent after its deadline")
+                XCTAssertTrue(local.spoken.isEmpty, "A coach change cannot forward cancelled speech to the new voice")
+                XCTAssertNil(store.coachingEvent)
+
+                store.session.cue = .lower
+                clock.now += 0.2
+                store.coachingTick(at: clock.now)
+                store.session.cue = .alignment
+                clock.now += 1
+                store.coachingTick(at: clock.now)
+                let fresh = try XCTUnwrap(store.coachingEvent)
+                XCTAssertNotEqual(fresh.id, cancelled.id)
+                XCTAssertEqual((cached.spoken + local.spoken).map(\.reason), [.alignment],
+                               "A new post-action observation must remain eligible")
+            }
+        }
+    }
+
+    func testCoachChangeAndInterruptionInvalidatePendingStoreClosing() async throws {
+        for action in ["voiceCoach", "repCoach", "interruption"] {
+            let clips = RepClipRecorder(), local = RepRecordingVoice()
+            let (store, cached, clock) = store(preview: false, coach: .arnold, clips: clips, local: local)
+            defer { store.cancelCoaching() }
+            clips.finish(); rep(0, store, clock); clips.finish()
+            clock.now = store.now
+            store.session.cue = .alignment
+            store.coachingTick(at: clock.now)
+            let active = try XCTUnwrap(cached.spoken.last)
+            store.endSet()
+            XCTAssertFalse(store.repVoice.isPlaying, "The closing is waiting behind the current coaching sentence")
+            XCTAssertFalse(clips.made.contains { $0.clip.hasPrefix("closing") })
+
+            try await interrupt(action, store: store)
+            clock.now += 1
+            store.coachingTick(at: clock.now)
+            cached.onFinish?(active.id)
+            clock.now += 1
+            store.coachingTick(at: clock.now)
+            XCTAssertFalse(clips.made.contains { $0.clip.hasPrefix("closing") },
+                           "\(action) must invalidate the store's pending closing slot")
+            XCTAssertEqual((cached.spoken + local.spoken).map(\.reason), [.alignment])
+
+            clock.now = store.now + 46
+            store.coachingTick(at: clock.now)
+            XCTAssertEqual((cached.spoken + local.spoken).map(\.reason), [.alignment, .restReminder],
+                           "A genuinely new post-action rest event must remain eligible")
+            XCTAssertFalse(clips.made.contains { $0.clip.hasPrefix("closing") })
+        }
+    }
+
+    private func interrupt(_ action: String, store: TrainingStore) async throws {
+        switch action {
+        case "voiceCoach": try store.remoteVoice?.select(.local)
+        case "repCoach": store.repVoice.choose(.goggins)
+        default:
+            NotificationCenter.default.post(name: AVAudioSession.interruptionNotification, object: nil,
+                userInfo: [AVAudioSessionInterruptionTypeKey: AVAudioSession.InterruptionType.began.rawValue])
+            for _ in 0..<10 { await Task.yield() }
+            NotificationCenter.default.post(name: AVAudioSession.interruptionNotification, object: nil,
+                userInfo: [AVAudioSessionInterruptionTypeKey: AVAudioSession.InterruptionType.ended.rawValue])
+            for _ in 0..<10 { await Task.yield() }
+        }
     }
 
     func testFormWarningWaitsForCurrentRepAndClearedWarningNeverStartsLater() {
