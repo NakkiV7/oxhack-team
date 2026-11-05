@@ -18,13 +18,15 @@
 ![MediaPipe](https://img.shields.io/badge/MediaPipe-Pose_Landmarker-0097A7?logo=google&logoColor=white)
 ![Cloudflare](https://img.shields.io/badge/Cloudflare-optional_accounts-F38020?logo=cloudflare&logoColor=white)
 ![Coaching](https://img.shields.io/badge/coaching-on_device-08786f)
-![Status](https://img.shields.io/badge/status-TestFlight_19-2156ce)
+![Status](https://img.shields.io/badge/status-TestFlight_20-2156ce)
 
 ## Offline testing build, 5 November 2026
 
-**Build 0.1 (19) is available through the existing TestFlight invitation**, internally and externally, with approved beta review. The current consumer app uses local, rule-based coaching and quantitative insights. It has 32 exercise entries and 13 camera-supported styles, including tempo and paused squats and push-ups. Live work survives switching camera/manual input, optional on-device spoken counting is available, and onboarding comfort answers establish a vertical skill path. Coach selection uses abstract colours and exercise guides remain faceless stick figures. Today, Skills, Insights and Coach are the four main tabs.
+**Build 0.1 (20) is available through the existing TestFlight invitation**, internally and externally, with approved beta review. The current consumer app uses local, rule-based coaching and quantitative insights. It has 32 exercise entries and 13 camera-supported styles, including tempo and paused squats and push-ups. Live work survives switching camera/manual input, optional on-device spoken counting is available, and onboarding comfort answers establish a vertical skill path. Coach selection uses abstract colours and exercise guides remain faceless stick figures. Today, Skills, Insights and Coach are the four main tabs.
 
 Original Maya/Leo voices currently use installed iPhone speech. New bundled ElevenLabs recordings need renewed authoring access; existing optional Arnold/Goggins-inspired audio is retained. The [testing guide and prioritised feature list](docs/offline-mvp-testing-and-next-steps-2026-11-05.md) distinguishes implemented behavior, software checks and physical acceptance. See the [software and signed-build verification](docs/evidence/offline-mvp-2026-11-05.md) and [current skill-path capture](docs/media/offline-mvp-2026-11-05/vertical-skill-path.png). Historical screenshots, server integrations and release receipts below describe earlier builds.
+
+Build 20 adds optional Watch/Health setup to onboarding, a clearer Today page, an Insights overview and reports based on observed readings. Heart-rate coverage and zones, energy, work/rest, camera rep timing and wrist-motion summaries retain gaps and measurement limits. Nine dated Apple Health metrics stay separate from workout records. [Build 20 verification and limits](docs/evidence/watch-insights-2026-11-05.md), [Watch and Health setup](docs/watch-health-setup-2026-11-05.md), [actual screen captures](docs/media/watch-insights-2026-11-05/review.md).
 
 The [live Cloudflare website](https://spottr.omarchoudhry.co.uk/) provides support, privacy, terms and optional passkey-plus-Authenticator accounts. Training and Health data remain local. Apple has saved the requested £10 monthly plan with an eligible two-week trial and £200 lifetime product; production product approval and `SPOTTRTESTERS` activation remain pending. Beta training is unrestricted. [Current verification and distribution](docs/evidence/production-foundation-2026-11-05.md), [feature priorities](docs/production-next-steps-2026-11-05.md), [website/account development](web/README.md).
 

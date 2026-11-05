@@ -1,6 +1,6 @@
 # Watch, Health and reporting verification — build 20
 
-5 November 2026. This checkpoint covers the native Today/report/Insights overhaul and optional Health/Watch setup, built from `codex/spottr-demo-consolidation`. It supersedes build 19 for these features. Distribution status is recorded below once Apple processing finishes.
+5 November 2026. This checkpoint covers the native Today/report/Insights overhaul and optional Health/Watch setup, built from `codex/spottr-demo-consolidation`. It supersedes build 19 for these features. Apple has processed and approved this build for internal and external TestFlight testing.
 
 ## Implemented behavior
 
@@ -34,3 +34,9 @@ The Watch summarises acceleration and rotation over sampled windows, flushes par
 Physical Watch installation, Health permission/data availability, sensor accuracy, background delivery, long-workout battery, larger text and VoiceOver still need device acceptance. Motion is wrist acceleration/rotation, not linear body speed or camera form scoring. Missing readings remain absent and gaps are not extrapolated. Maximum-HR estimates are optional approximations. Available Health types depend on device, region, permissions and prior data.
 
 Queues are bounded to 7,200 samples; overflow/write failures are visible but cannot guarantee retention. Unflushed memory samples may be lost on termination. A phone crash does not reconstruct an unfinished workout from orphaned inbox samples. One-second JSON outbox persistence has not been battery-profiled. No new model training or HPC workload was started.
+
+## Apple distribution read-back
+
+Build/delivery ID `f27a5859-7ace-4458-be22-1c87ccd5a47c` is **VALID**, with encryption declaration `false`. Both `internalBuildState` and `externalBuildState` are **IN_BETA_TESTING**; beta review is **APPROVED**. The existing internal group and OxHack external group both contain build 20, verified through each group’s build relationship after assignment. [Existing TestFlight invitation](https://testflight.apple.com/join/f3MhePbf). No public App Store release or real paid transaction was submitted.
+
+Implementation commit `705893c3369e0ace00420c47f6b481c87c2dfda1` is pushed on `codex/spottr-demo-consolidation`. Private validation/upload/API receipts are copied and hash-verified in `Releases/Spottr-20-Evidence` on the SSD-backed development volume; originals remain preserved. The two original untracked evidence directories remain untouched.
