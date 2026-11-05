@@ -79,6 +79,7 @@ public struct TrainingSession: Sendable {
     public private(set) var telemetry: [WatchTelemetry] = []
     public private(set) var counter = RepCounter(exercise: .squat)
     public private(set) var manualReps: Int?
+    public var cameraRecoveryState: CameraRecoveryState { source == .manual || ![.active, .paused].contains(phase) ? .ready : counter.cameraRecoveryState }
     public var actualReps: Int? { source == .manual ? manualReps : counter.reps }
     public var exercise: Exercise { counter.exercise }
     public var setNumber: Int { sets.count % 3 + 1 }
@@ -137,7 +138,7 @@ public struct TrainingSession: Sendable {
         let count = actualReps ?? 0
         if self.source == .manual && count > 0 { includesManualReps = true }
         self.source = source
-        counter = RepCounter(exercise: exercise, initialReps: count)
+        counter = counter.replacingQuantity(count)
         manualReps = count > 0 ? count : nil
         generation = UUID(); cue = phase == .paused ? .paused : .ready
     }
@@ -163,8 +164,10 @@ public struct TrainingSession: Sendable {
         phase = .paused; generation = UUID(); counter.resetMovement(); cue = .paused
     }
     public mutating func resume(at time: Double) {
-        guard phase == .paused else { return }
-        phase = .active; activeStarted = time; generation = UUID(); cue = .ready
+        guard time.isFinite, phase == .paused || (phase == .active && cameraRecoveryState == .needsResume) else { return }
+        counter.acknowledgeIdentityRecovery()
+        if phase == .paused { activeStarted = time }
+        phase = .active; generation = UUID(); cue = .ready
     }
     public mutating func endSet(at time: Double, reason: StopReason = .voluntary) {
         guard time.isFinite, phase == .active || phase == .paused, let reps = actualReps else { return }

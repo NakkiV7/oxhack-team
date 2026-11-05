@@ -45,3 +45,11 @@ import Testing
         #expect(!guide.phases.contains("Show the full movement"), "Missing movement-specific guide: \(entry.id)")
     }
 }
+
+@Test func sidePlankGuidesExplainForearmAndStraightArmAlternatives() throws {
+    for id in ["sidePlank","kneeSidePlank"] {
+        let phases=try #require(ExerciseDemonstrationGuide.find(id)).phases.joined(separator:" ")
+        #expect(phases.contains("forearm"))
+        #expect(phases.contains("straight arm"))
+    }
+}

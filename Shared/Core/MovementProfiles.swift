@@ -79,8 +79,11 @@ enum ProfileGeometry {
     static func measure(_ frame: PoseFrame, exercise: Exercise, preferredSide: Int?, allowSideFallback: Bool) -> MovementSample? {
         let g = ImagePose(frame)
         let order = allowSideFallback ? [preferredSide ?? 0, (preferredSide ?? 0) == 0 ? 1 : 0] : [preferredSide ?? 0]
-        let limbs = order.compactMap { standing(g,exercise,$0) ?? floor(g,exercise,$0) ?? lowerBody(g,exercise,$0) ?? heldPosture(g,exercise,$0) }.sorted { $0.angle < $1.angle }
-        guard let primary = limbs.first else { return nil }
+        let measured = order.compactMap { standing(g,exercise,$0) ?? floor(g,exercise,$0) ?? lowerBody(g,exercise,$0) ?? heldPosture(g,exercise,$0) }
+        let followsActiveLimb = exercise.tracksAlternatingLimbs || exercise == .highKnees
+        let limbs = followsActiveLimb ? measured.sorted { $0.angle < $1.angle } : measured.sorted { $0.confidence > $1.confidence }
+        let preferred = followsActiveLimb ? nil : limbs.first { $0.side == preferredSide }
+        guard let primary = preferred ?? limbs.first else { return nil }
         let secondary = exercise.tracksAlternatingLimbs ? limbs.dropFirst().first : nil
         var hold: HoldQualification = exercise.isTimed && exercise != .highKnees ? .staticHold : .none
         if exercise == .highKnees {
@@ -109,6 +112,11 @@ enum ProfileGeometry {
             let dx=g.x(ankle)-g.x(hip)
             let direction = e == .standingHipExtension ? g.x(29+other)-g.x(31+other) : g.x(hip)-g.x(23+other)
             guard dx*direction >= -t*t*0.02 else { return nil }
+            if e == .standingHipAbduction {
+                // Projected leg excursion is independent of torso/leg proportions; this is not a 3D joint angle.
+                let excursion = atan2(abs(dx), g.y(ankle)-g.y(hip)) * 180 / .pi
+                return g.limb(s,g.signal(excursion/25),ids,provenance:.normalizedJointExcursion)
+            }
             return g.limb(s,g.signal(abs(dx)/(t*0.9)),ids)
         case .frontArmRaise, .lateralArmRaise:
             let ids=base+[el,wr] + (e == .frontArmRaise ? [29+s,31+s] : [11+other])
@@ -127,11 +135,12 @@ enum ProfileGeometry {
                   let a=g.imageAngle(sh,el,wr), let b=g.imageAngle(11+other,13+other,15+other) else { return nil }
             return g.limb(s,g.signal((min(a,b)-90)/70),ids,provenance:.normalizedJointExcursion)
         case .calfRaise:
-            let ids=[11,12,23,24,25,26,27,28,29,30,31,32]
-            guard g.valid(ids), (g.imageAngle(23,25,27) ?? 0)>155, (g.imageAngle(24,26,28) ?? 0)>155,
-                  g.distance(29,31)>t*0.08, g.distance(30,32)>t*0.08 else { return nil }
-            let left=(g.y(31)-g.y(29))/g.distance(29,31), right=(g.y(32)-g.y(30))/g.distance(30,32)
-            return g.limb(s,g.signal((min(left,right)-0.08)/0.55),ids)
+            // Count one complete visible calf chain. The far leg and floor contact are not verified.
+            let heel=29+s, toe=31+s, ids=base+[knee,ankle,heel,toe]
+            guard g.valid(ids), (g.imageAngle(hip,knee,ankle) ?? 0)>155,
+                  g.distance(heel,toe)>t*0.08 else { return nil }
+            let tilt=asin(max(-1,min(1,(g.y(toe)-g.y(heel))/g.distance(heel,toe)))) * 180 / .pi
+            return g.limb(s,g.signal((tilt-5)/20),ids,provenance:.normalizedJointExcursion)
         default: return nil
         }
     }
@@ -143,8 +152,9 @@ enum ProfileGeometry {
         case .gluteBridge:
             let ids=[sh,hip,knee,ankle]
             guard g.valid(ids), g.y(sh)>=g.y(hip)-t*0.1, g.y(ankle)>g.y(knee)+t*0.3,
-                  let bend=g.imageAngle(hip,knee,ankle), (45...145).contains(bend) else { return nil }
-            return g.limb(s,g.signal((g.y(sh)-g.y(hip))/(t*0.55)),ids)
+                  let bend=g.imageAngle(hip,knee,ankle), (30...145).contains(bend) else { return nil }
+            guard let opening = g.imageAngle(sh,hip,knee) else { return nil }
+            return g.limb(s,g.signal((opening-135)/30),ids,provenance:.normalizedJointExcursion)
         case .deadBug, .birdDog:
             let ids=[sh,11+o,13+s,15+s,13+o,15+o,hip,23+o,knee,ankle,25+o,27+o]
             guard g.valid(ids), let leg=g.imageAngle(sh,hip,knee),
@@ -190,7 +200,7 @@ enum ProfileGeometry {
             if e == .assistedSquat {
                 guard g.y(27+o)<g.y(ankle)-t*0.35 else { return nil }
             } else if e == .lateralLunge {
-                guard spread>t*1.4, (g.imageAngle(23+o,25+o,27+o) ?? 0)>155 else { return nil }
+                guard (spread>t*1.4 || (g.imageAngle(hip,knee,ankle) ?? 0)>=160), (g.imageAngle(23+o,25+o,27+o) ?? 0)>155 else { return nil }
             } else if e == .splitSquat || e == .supportedSplitSquat || bend.angle<155 {
                 guard spread>t*0.8 else { return nil }
             }
@@ -228,12 +238,16 @@ enum ProfileGeometry {
                 guard g.horizontal(s), g.y(el)>g.y(sh)+t*0.2 else { return nil }
                 if sideHold {
                     guard g.y(sh)-g.y(11+o)>t*0.4, abs(g.x(sh)-g.x(11+o))<t*0.35,
-                          g.y(hip)-g.y(23+o)>t*0.35 else { return nil }
+                          g.y(hip)-g.y(23+o)>t*0.2,
+                          abs(g.x(hip)-g.x(23+o)) < g.y(hip)-g.y(23+o) else { return nil }
                 } else {
                     guard g.view(.side,s) else { return nil }
                 }
                 if e == .highPlank { guard elbow>=160, g.y(wr)>g.y(sh)+t*0.5 else { return nil } }
-                else { guard (65...120).contains(elbow), abs(g.x(el)-g.x(sh))<t*0.35 else { return nil } }
+                else if sideHold && elbow >= 150 {
+                    guard g.y(wr)>g.y(el)+t*0.15, abs(g.x(wr)-g.x(sh))<t*0.35 else { return nil }
+                }
+                else { guard (45...120).contains(elbow), abs(g.x(el)-g.x(sh))<t*0.35 else { return nil } }
             }
             return g.limb(s,170,ids,provenance:.posture)
         case .wallSit, .hipFlexorStretch:

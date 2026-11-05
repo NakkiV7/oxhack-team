@@ -128,7 +128,7 @@ struct LiveSetView: View {
                         Text(store.source == .manual ? "Enter the reps you actually complete." : (store.coachingEvent?.decision.text ?? MovementFeedback.text(store.session.cue, exercise: store.session.exercise)))
                             .font(.system(size: 19, weight: .semibold)).fixedSize(horizontal: false, vertical: true)
                             .accessibilityIdentifier("coaching-cue")
-                        Text(store.session.phase == .paused ? "Your set is on hold." : "\(store.session.exercise.guide)").font(.caption).foregroundStyle(.secondary)
+                        Text(store.session.phase == .paused ? "Your set is on hold." : (store.session.cameraRecoveryState.message ?? store.session.exercise.guide)).font(.caption).foregroundStyle(.secondary)
                     }
                 }
                 Divider()
@@ -142,15 +142,21 @@ struct LiveSetView: View {
         }
         .safeAreaInset(edge: .bottom) {
             HStack(spacing: 12) {
+                if store.session.cameraRecoveryState == .needsResume {
+                    PrimaryButton(title: "Resume camera", symbol: "play", action: store.resume)
+                    Button("End set") { enteringReps = false; store.endSet() }
+                        .font(.subheadline.weight(.medium)).padding(19)
+                } else {
                 Button {
                     store.session.phase == .paused ? store.resume() : store.pause()
                 } label: {
-                    Label(store.session.phase == .paused ? "Resume" : "Pause", systemImage: store.session.phase == .paused ? "play" : "pause")
+                    Label(store.session.cameraRecoveryState == .needsResume ? "Resume camera" : (store.session.phase == .paused ? "Resume" : "Pause"), systemImage: store.session.phase == .paused || store.session.cameraRecoveryState == .needsResume ? "play" : "pause")
                         .font(.subheadline.weight(.medium)).frame(maxWidth: .infinity).padding(19)
                         .overlay(RoundedRectangle(cornerRadius: 15).stroke(.black.opacity(0.12)))
                 }.buttonStyle(.plain)
                 PrimaryButton(title: "End set", symbol: "checkmark") { enteringReps = false; store.endSet() }
                     .disabled(store.source == .manual && (validManualQuantity == nil || validManualQuantity != store.session.manualReps))
+                }
             }.padding(.horizontal, 24).padding(.vertical, 12).background(.white)
         }
         .scrollDismissesKeyboard(.interactively)

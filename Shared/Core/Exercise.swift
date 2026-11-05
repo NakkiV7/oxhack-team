@@ -82,6 +82,9 @@ public struct MovementLimbSample: Sendable {
 }
 
 public struct MovementSample: Sendable {
+    public let observation: PoseObservation
+    public enum BodySupport: Sendable { case extended, knees }
+    public let bodySupport: BodySupport
     public enum BodyLine: Sendable { case unknown, steady, adjust, reset }
     public let time: Double
     public let angle: Double
@@ -95,13 +98,15 @@ public struct MovementSample: Sendable {
     public var bodyLine: BodyLine {
         guard aligned else { return .reset }
         guard let bodyAngle, bodyAngle.isFinite else { return .unknown }
-        if bodyAngle < 150 { return .reset }
+        if bodyAngle < (bodySupport == .knees ? 135 : 150) { return .reset }
         return bodyAngle < 165 ? .adjust : .steady
     }
     public init(time: Double, angle: Double, confidence: Double = 1, side: Int = 0, aligned: Bool = true, bodyAngle: Double? = nil,
                 provenance: MeasurementProvenance = .jointAngle2D, secondary: MovementLimbSample? = nil,
-                holdQualification: HoldQualification = .none) {
+                holdQualification: HoldQualification = .none, observation: PoseObservation = .singlePerson, bodySupport: BodySupport = .extended) {
         self.provenance = provenance; self.secondary = secondary; self.holdQualification = holdQualification
+        self.bodySupport = bodySupport
+        self.observation = observation
         self.time = time; self.angle = angle; self.confidence = confidence
         self.side = side; self.aligned = aligned; self.bodyAngle = bodyAngle
     }

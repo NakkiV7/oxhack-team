@@ -1,0 +1,12 @@
+{
+  "originalTrialID": "video-07",
+  "startSeconds": 6.5,
+  "endSeconds": 13.5,
+  "referenceQuantity": 1,
+  "referenceUnit": "reps",
+  "sourceSHA256": "91acc032d721f6ccdc79ac00861013cf16077838b143c725eec82d32cc71ca29",
+  "selectedAtUTC": "2026-11-05T22:39:04.200052+00:00",
+  "selectionStage": "post-baseline consumed development sensitivity; original full-source native poses/results already inspected",
+  "referenceBy": "Codex source contact-sheet visual review; not human or clinical ground truth",
+  "notes": "One complete second modified press: neutral6.5\u20138, down8.5\u201310.5, returns12\u201313.5; cut-free within this window. Native detector newly initialized at6.5, no user Resume simulated. Original video-07 full-window0/3 retained separately; not independent source."
+}

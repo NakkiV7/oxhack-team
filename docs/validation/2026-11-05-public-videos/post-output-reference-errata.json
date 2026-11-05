@@ -1,0 +1,33 @@
+{
+  "status": "Post-output source-only reinspection erratum; original references immutable",
+  "annotationBy": "Root Codex visual reinspection of original4fps contact sheet and exact source PTSs; not independent human/clinical annotation",
+  "modelOutputWasAlreadyKnown": true,
+  "originalReferenceFile": "codex-visual-annotations-locked.json",
+  "originalReferenceSHA256": "25263ee96b8b3ba12f1a8b10297752060a1865d8a800fdc9149e2f17e84d1cb9",
+  "corrections": [
+    {
+      "trialID": "video-17",
+      "clip": "calfRaiseBalance",
+      "sourceSHA256": "adf6b0061f578dfad44cb520da7d9784380a037678824067a58aeb94304720e1",
+      "originalCompleteCycles": 4,
+      "correctedCompleteCycles": 3,
+      "reason": "Root original source-only count of4 was mistaken. Reinspection identifies only three complete heel lifts/returns; initial0\u2013~1s and~9.5\u201311.604696s are planted/idle. No algorithm threshold change justified to create a fourth action. Preserve original3/4 result and show posthoc3/3 separately; no claim of blind/independent corrected acceptance.",
+      "sourceVisualIntervals": [
+        [
+          1.251819,
+          2.774301
+        ],
+        [
+          4.26295,
+          6.259093
+        ],
+        [
+          7.510911,
+          9.507054
+        ]
+      ],
+      "originalContactSheet": "calfRaiseBalance-detail-contact.jpg",
+      "originalContactTimes": "calfRaiseBalance-detail-contact-times.json"
+    }
+  ]
+}

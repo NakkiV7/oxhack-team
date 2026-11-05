@@ -128,3 +128,54 @@ import Testing
     run.nextSet(at: 5)
     #expect(CompanionSnapshot(session: run, at: 5).configured?.currentWasSkipped == false)
 }
+
+@Test func cameraAmbiguityNeedsIntentionalResumeWithoutPausingWorkoutAndRejectsOldGeneration() throws {
+    var session = TrainingSession()
+    session.start(at: 0)
+    let original = session.generation
+    session.consume(.init(time: 1, angle: .nan, confidence: 0, observation: .multiplePeople), generation: original)
+    #expect(session.phase == .active)
+    var state = CompanionState()
+    let now = Date()
+    state.receive(.init(session: session, sentAt: now), now: now)
+    let resume = try #require(state.command(.resume, now: now))
+    session.apply(resume, at: 2)
+    #expect(session.generation != original)
+    #expect(session.elapsed(at: 3) == 3)
+    session.consume(.init(time: 3, angle: .nan, confidence: 0, observation: .multiplePeople), generation: original)
+    #expect(!session.counter.requiresIdentityAcknowledgement)
+    session.pause(at: 4)
+    session.resume(at: 5)
+    #expect(session.elapsed(at: 6) == 5)
+}
+
+@Test func cameraRecoverySnapshotIsOptionalForOlderMessagesAndCannotEnableManualControls() throws {
+    var session = TrainingSession(); session.start(at:0)
+    session.consume(.init(time:0,angle:.nan,confidence:0,observation:.multiplePeople),generation:session.generation)
+    let now=Date()
+    let data=try JSONEncoder().encode(CompanionSnapshot(session:session,sentAt:now))
+    var object=try #require(JSONSerialization.jsonObject(with:data) as? [String:Any])
+    object.removeValue(forKey:"cameraRecoveryState")
+    let older=try JSONDecoder().decode(CompanionSnapshot.self,from:JSONSerialization.data(withJSONObject:object))
+    #expect(older.cameraRecoveryState == nil)
+    #expect(older.isFresh(at:now))
+    object["cameraRecoveryState"]="needsResume"
+    object["source"]="manual"
+    let manual=try JSONDecoder().decode(CompanionSnapshot.self,from:JSONSerialization.data(withJSONObject:object))
+    #expect(!manual.isFresh(at:now))
+    session.switchInput(source:.manual,at:1); session.setManualReps(4)
+    session.switchInput(source:.camera,at:2)
+    #expect(session.cameraRecoveryState == .needsResume)
+    #expect(session.actualReps == 4)
+}
+
+@Test func watchRecoveryControlNamesTheResumeActionItActuallySends() {
+    var run=TrainingSession(); run.start(at:0)
+    #expect(CompanionSnapshot(session:run).pauseResumeTitle == "Pause")
+    run.consume(.init(time:1,angle:.nan,confidence:0,observation:.multiplePeople),generation:run.generation)
+    #expect(CompanionSnapshot(session:run).pauseResumeTitle == "Resume camera")
+    run.resume(at:2)
+    #expect(CompanionSnapshot(session:run).pauseResumeTitle == "Pause")
+    run.pause(at:3)
+    #expect(CompanionSnapshot(session:run).pauseResumeTitle == "Resume")
+}

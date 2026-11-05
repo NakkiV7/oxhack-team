@@ -129,7 +129,7 @@ struct WatchTrainingView: View {
             VStack(spacing: 11) {
                 Text("Controls").font(.headline)
                 if snapshot.configured?.stoppedForDiscomfort != true, snapshot.configured?.currentWasSkipped != true {
-                    Text(store.status ?? store.recordingState.message).font(.caption2).foregroundStyle(.secondary)
+                    Text(snapshot.cameraRecoveryState?.message ?? store.status ?? store.recordingState.message).font(.caption2).foregroundStyle(.secondary)
                         .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                 }
                 if [.active, .paused, .rest].contains(snapshot.phase) {
@@ -143,9 +143,9 @@ struct WatchTrainingView: View {
                         } else if snapshot.configured?.hasStarted == false {
                             Button("Start set", systemImage: "play.fill") { store.command(.startSet) }.buttonStyle(.borderedProminent)
                         } else {
-                            Button(snapshot.phase == .paused ? "Resume" : "Pause", systemImage: snapshot.phase == .paused ? "play.fill" : "pause.fill") {
-                                store.command(snapshot.phase == .paused ? .resume : .pause)
-                            }.buttonStyle(.borderedProminent).tint(snapshot.phase == .paused ? .green : .orange)
+                            Button(snapshot.pauseResumeTitle, systemImage: snapshot.phase == .paused || snapshot.cameraRecoveryState == .needsResume ? "play.fill" : "pause.fill") {
+                                store.command(snapshot.phase == .paused || snapshot.cameraRecoveryState == .needsResume ? .resume : .pause)
+                            }.buttonStyle(.borderedProminent).tint(snapshot.phase == .paused || snapshot.cameraRecoveryState == .needsResume ? .green : .orange)
                             Button("End set", systemImage: "checkmark") { store.command(.endSet) }.buttonStyle(.bordered)
                                 .disabled(snapshot.configured?.canEndSet == false || (snapshot.configured == nil && snapshot.source == .manual && snapshot.reps == 0))
                         }

@@ -1,9 +1,119 @@
 import XCTest
 import UIKit
+import Observation
+import SwiftUI
 @testable import Spottr
 
 @MainActor
 final class ConfiguredWorkoutFlowTests: XCTestCase {
+    func testNativeRecoveryScreensRetainEarnedCountAndExposeBothRecoveryStates() async throws {
+        let vision=VisionWorker(cameraAvailable:{true},requestAccess:{_ in})
+        let store=TrainingStore(historyURL:cameraHistoryURL(),vision:vision)
+        store.repVoice.coach=nil
+        store.startPlan(try CoachSavedPlan.catalogue(exerciseID:"squat",sets:1,target:6,restSeconds:30),availableSupport:[])
+        XCTAssertTrue(store.selectConfiguredInput(.phoneCamera)); store.beginConfiguredSet()
+        let token=try XCTUnwrap(store.configured?.generation)
+        for offset in [0.0,2.0] {
+            for (time,angle) in [(0.0,170.0),(0.2,170),(0.6,90),(0.8,90),(1.2,170),(1.4,170)] {
+                var points=Array(repeating:PosePoint(x:0,y:0,confidence:0),count:33)
+                for side in 0...1 {
+                    let x=0.4+Double(side)*0.05
+                    points[11+side] = .init(x:x,y:0.05,confidence:1)
+                    points[23+side] = .init(x:x,y:0.25,confidence:1)
+                    points[25+side] = .init(x:x,y:0.5,confidence:1)
+                    points[27+side] = .init(x:x+sin(angle * .pi/180)*0.25,y:0.5-cos(angle * .pi/180)*0.25,confidence:1)
+                }
+                vision.onFrame?(.init(time:time+offset,width:640,height:640,points:points),UIImage(),token)
+                for _ in 0..<50 where store.frame?.time != time+offset { await Task.yield() }
+            }
+        }
+        XCTAssertEqual(store.configured?.actualReps,2)
+        vision.onFrame?(.init(time:4,width:640,height:640,points:[],observation:.multiplePeople),UIImage(),token)
+        for _ in 0..<50 where store.configured?.cameraRecoveryState != .needsResume { await Task.yield() }
+        store.frame=nil; store.image=nil
+        let previous=UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.flatMap(\.windows).first { $0.isKeyWindow }
+        let host=UIHostingController(rootView:ConfiguredSessionView(store:store))
+        let scene=try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let window=UIWindow(windowScene:scene)
+        window.frame=CGRect(x:0,y:0,width:390,height:844)
+        window.overrideUserInterfaceStyle = .light; window.rootViewController=host; window.makeKeyAndVisible()
+        defer { window.isHidden=true; previous?.makeKey(); store.finish(); vision.stop() }
+        for state in [CameraRecoveryState.needsResume,.waitingForClear] {
+            if state == .waitingForClear { store.resume() }
+            XCTAssertEqual(store.configured?.cameraRecoveryState,state)
+            XCTAssertEqual(store.configured?.actualReps,2)
+            host.view.setNeedsLayout(); host.view.layoutIfNeeded()
+            try await Task.sleep(for:.milliseconds(150))
+            var drawn=false
+            let image=UIGraphicsImageRenderer(bounds:window.bounds).image { _ in drawn=window.drawHierarchy(in:window.bounds,afterScreenUpdates:true) }
+            XCTAssertTrue(drawn,"Recovery screenshot must draw the attached native view hierarchy")
+            let pixels=try XCTUnwrap(image.cgImage?.dataProvider?.data) as Data
+            XCTAssertGreaterThan(Set(pixels).count,8,"A blank bitmap is not rendering acceptance")
+            // Inspect the real rendered primary-action colour, not a mirrored presentation flag.
+            let cgImage=try XCTUnwrap(image.cgImage), width=cgImage.width, height=cgImage.height
+            var rgba=[UInt8](repeating:0,count:width*height*4)
+            let context=try XCTUnwrap(CGContext(data:&rgba,width:width,height:height,bitsPerComponent:8,bytesPerRow:width*4,
+                space:CGColorSpaceCreateDeviceRGB(),bitmapInfo:CGImageAlphaInfo.premultipliedLast.rawValue))
+            context.draw(cgImage,in:CGRect(x:0,y:0,width:width,height:height))
+            var leftBlue=0, rightBlue=0
+            for y in 0..<height { for x in 0..<width {
+                let i=(y*width+x)*4
+                if Int(rgba[i+2]) > Int(rgba[i])+40 && Int(rgba[i+2]) > Int(rgba[i+1])+40 {
+                    if x < width/2 { leftBlue += 1 } else { rightBlue += 1 }
+                }
+            } }
+            if state == .needsResume { XCTAssertGreaterThan(leftBlue,rightBlue,"Resume camera must be the primary recovery action") }
+            else { XCTAssertGreaterThan(rightBlue,leftBlue,"Normal End set emphasis returns after acknowledgment") }
+            let data=try XCTUnwrap(image.pngData())
+            XCTAssertGreaterThan(data.count,10_000)
+            if let folder=ProcessInfo.processInfo.environment["SPOTTR_RECOVERY_RENDER_DIR"] {
+                let url=URL(fileURLWithPath:folder); try FileManager.default.createDirectory(at:url,withIntermediateDirectories:true)
+                try data.write(to:url.appendingPathComponent("camera-\(state.rawValue).png"))
+            }
+        }
+    }
+
+    func testCameraRecoveryPublishesEvenWhenTrackingCueAndQuantityStayUnchanged() async throws {
+        let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { _ in })
+        let store = TrainingStore(historyURL: cameraHistoryURL(), vision: vision)
+        store.startPlan(try cameraPlan(), availableSupport: [])
+        XCTAssertTrue(store.selectConfiguredInput(.phoneCamera)); store.beginConfiguredSet()
+        let generation = try XCTUnwrap(store.configured?.generation)
+        vision.onFrame?(.init(time: 0, width: 640, height: 480, points: []), UIImage(), generation)
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertEqual(store.configured?.cue, .tracking)
+        let changed = expectation(description: "Camera recovery publishes independently of cue or count")
+        withObservationTracking { _ = store.configured?.cameraRecoveryState } onChange: { changed.fulfill() }
+        vision.onFrame?(.init(time: 1, width: 640, height: 480, points: [], observation: .multiplePeople), UIImage(), generation)
+        await fulfillment(of: [changed], timeout: 1)
+        XCTAssertEqual(store.configured?.cameraRecoveryState, .needsResume)
+        XCTAssertEqual(store.configured?.phase, .active)
+        store.resume()
+        XCTAssertEqual(store.configured?.cameraRecoveryState, .waitingForClear)
+        XCTAssertNotEqual(store.configured?.generation, generation)
+        let resumed = try XCTUnwrap(store.configured?.generation)
+        var points = Array(repeating: PosePoint(x:0,y:0,confidence:0),count:33)
+        for side in 0...1 {
+            let x = 0.4 + Double(side)*0.05
+            for (index,y) in [(11,0.1),(23,0.3),(25,0.6),(27,0.9)] { points[index+side] = .init(x:x,y:y,confidence:1) }
+        }
+        // First valid recovery frame changes ready cue to tracking; isolate the later state-only change.
+        vision.onFrame?(.init(time:2,width:640,height:640,points:points),UIImage(),resumed)
+        for _ in 0..<20 { await Task.yield() }
+        let rearmed = expectation(description: "Rearmed state publishes with zero quantity")
+        withObservationTracking { _ = store.configured?.cameraRecoveryState } onChange: { rearmed.fulfill() }
+        for time in stride(from:2.1,through:4.1,by:0.1) {
+            vision.onFrame?(.init(time:time,width:640,height:640,points:points),UIImage(),resumed)
+            for _ in 0..<10 { await Task.yield() }
+        }
+        await fulfillment(of:[rearmed],timeout:1)
+        XCTAssertEqual(store.configured?.cameraRecoveryState,.ready)
+        XCTAssertEqual(store.configured?.actualReps,0)
+        XCTAssertTrue(store.selectConfiguredInput(.manual))
+        XCTAssertEqual(store.configured?.cameraRecoveryState, .ready)
+        store.finish(); vision.stop()
+    }
+
     func testWorkoutInputChoicesUseOnlyThisIPhoneOrManualEntry() {
         XCTAssertEqual(TrainingStore.ConfiguredInput.allCases.map(\.title), ["Manual reps", "iPhone camera"])
     }
@@ -255,6 +365,13 @@ extension ConfiguredWorkoutFlowTests {
         store.coachingTick(at: store.now + 1)
         XCTAssertEqual(voice.spoken.first?.sessionID, run.id)
         XCTAssertEqual(voice.spoken.first?.generation, run.generation)
+        vision.onFrame?(.init(time:2,width:640,height:480,points:[],observation:.multiplePeople),UIImage(),run.generation)
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertEqual(store.configured?.cameraRecoveryState,.needsResume)
+        store.resume(); store.coachingTick(at:store.now+2)
+        XCTAssertEqual(voice.stops,0)
+        XCTAssertEqual(voice.spoken.count,1)
+        XCTAssertEqual(store.configured?.cameraRecoveryState,.waitingForClear)
         store.pause()
         XCTAssertEqual(voice.stops, 1)
         XCTAssertNil(store.coachingEvent)
@@ -331,7 +448,7 @@ extension ConfiguredWorkoutFlowTests {
                     if exercise == .standingBicepsCurl {
                         put(11,0.4,0.2); put(13,0.4,0.4); put(15,0.4+sin(angle * .pi/180)*0.2,0.4-cos(angle * .pi/180)*0.2); put(23,0.4,0.65)
                     } else if exercise == .gluteBridge {
-                        put(11,0.15,0.7); put(23,0.45,angle < 100 ? 0.5 : 0.7); put(25,0.65,0.5); put(27,0.75,0.8)
+                        put(11,0.15,0.7); put(23,0.45,angle < 100 ? 0.58 : 0.7); put(25,0.65,0.5); put(27,0.75,0.8)
                     } else {
                         put(11,0.4,0.1); put(23,0.4,0.3); put(25,0.4,0.55); put(27,0.4+sin(angle * .pi/180)*0.25,0.55-cos(angle * .pi/180)*0.25)
                     }
@@ -339,7 +456,8 @@ extension ConfiguredWorkoutFlowTests {
                 vision.onFrame?(.init(time:time,width:1000,height:1000,points:points), UIImage(), generation)
                 for _ in 0..<100 where store.frame?.time != time { try await Task.sleep(for: .milliseconds(1)) }
             }
-            XCTAssertEqual(store.configured?.actualReps, exercise == .standingBicepsCurl ? 2 : 1, exercise.rawValue)
+            XCTAssertEqual(store.configured?.actualReps, 1, exercise.rawValue)
+            if exercise == .standingBicepsCurl { XCTAssertEqual(store.configured?.counter?.completedLimbCycles, 2) }
             if exercise == .standingBicepsCurl { XCTAssertNotNil(store.configured?.counter?.lastRepPhases) }
             else { XCTAssertNil(store.configured?.counter?.lastRepPhases) }
             if exercise == .sitToStand { XCTAssertTrue(store.configured?.repDurations.isEmpty == true) }

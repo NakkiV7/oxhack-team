@@ -255,6 +255,24 @@ final class VoiceCuePlaybackTests: XCTestCase {
         XCTAssertEqual(playback.events, [.speak(first.id)])
     }
 
+    func testExplicitSameInputRecoveryKeepsSentenceButOrdinaryGenerationChangeStillCancels() {
+        let playback = RecordingVoicePlayback()
+        let controller = VoiceCuePlaybackController(playback:playback)
+        let first=cue()
+        controller.update(context:context(),event:first,enabled:true,now:0)
+        let resumed=context(generation:UUID())
+        controller.continueTracking(to:resumed)
+        controller.update(context:resumed,event:first,enabled:true,now:1)
+        XCTAssertEqual(playback.events,[.speak(first.id)])
+        playback.onFinish?(first.id)
+        controller.update(context:resumed,event:first,enabled:true,now:2)
+        XCTAssertEqual(playback.events,[.speak(first.id)])
+        let next=cue(generation:resumed.generation)
+        controller.update(context:resumed,event:next,enabled:true,now:3)
+        controller.update(context:context(generation:UUID()),event:nil,enabled:true,now:4)
+        XCTAssertEqual(playback.events,[.speak(first.id),.speak(next.id),.stop])
+    }
+
     func testNaturalRestTransitionPreservesSentenceAndInvalidatesDeferredOnNewContext() {
         let playback = RecordingVoicePlayback()
         let controller = VoiceCuePlaybackController(playback: playback)

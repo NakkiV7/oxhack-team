@@ -1,0 +1,37 @@
+{
+  "video-32": {
+    "credited": 0.8008000000000002,
+    "unobservedAdjacency": 1.6016,
+    "validStartupBeforeFirstCredit": 0.4012,
+    "validUnqualifiedAfterFirstCredit": 0.8007999999999997,
+    "unsampledBoundary": 0.09560000000000013
+  },
+  "video-33": {
+    "credited": 0.7007000000000021,
+    "unobservedAdjacency": 1.7016999999999962,
+    "validStartupBeforeFirstCredit": 0.5064999999999991,
+    "validUnqualifiedAfterFirstCredit": 0.20020000000000238,
+    "unsampledBoundary": 0.09089999999999954
+  },
+  "video-18": {
+    "credited": 7.920000000000002,
+    "unobservedAdjacency": 0,
+    "validStartupBeforeFirstCredit": 0,
+    "validUnqualifiedAfterFirstCredit": 0,
+    "unsampledBoundary": 0.0799999999999983
+  },
+  "video-19": {
+    "credited": 3.5035000000000007,
+    "unobservedAdjacency": 3.4063999999999997,
+    "validStartupBeforeFirstCredit": 0,
+    "validUnqualifiedAfterFirstCredit": 0,
+    "unsampledBoundary": 0.09009999999999962
+  },
+  "video-40": {
+    "credited": 13.559999999999999,
+    "unobservedAdjacency": 0.8399999999999999,
+    "validStartupBeforeFirstCredit": 0,
+    "validUnqualifiedAfterFirstCredit": 0,
+    "unsampledBoundary": 0.10000000000000142
+  }
+}

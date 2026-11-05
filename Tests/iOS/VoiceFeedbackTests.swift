@@ -3,6 +3,53 @@ import XCTest
 
 @MainActor
 final class VoiceFeedbackTests: XCTestCase {
+    func testAmbiguitySuspendsOnlyCameraCountingAndExplicitResumeRenewsCapture() async throws {
+        let playback = FakeVoicePlayback()
+        let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { _ in })
+        let store = TrainingStore(voicePlayback: playback, vision: vision)
+        store.repVoice.coach = nil
+        store.start(); store.hasInput = true; store.setVoiceFeedback(true)
+        store.session.cue = .alignment; store.coachingTick()
+        XCTAssertEqual(playback.spoken.count, 1)
+        let generation = store.session.generation
+        vision.onFrame?(.init(time: 1, width: 640, height: 480, points: [], observation: .multiplePeople), UIImage(), generation)
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertEqual(store.session.cameraRecoveryState, .needsResume)
+        XCTAssertEqual(store.session.phase, .active)
+        XCTAssertEqual(playback.stops, 0)
+        let speaking = try XCTUnwrap(playback.spoken.first)
+        store.resume(); store.coachingTick()
+        XCTAssertEqual(playback.stops, 0, "A same-camera recovery tick must let the ordinary sentence finish")
+        XCTAssertEqual(playback.spoken.count, 1)
+        XCTAssertNotEqual(store.session.generation, generation)
+        XCTAssertEqual(store.session.cameraRecoveryState, .waitingForClear)
+        vision.onFrame?(.init(time: 2, width: 640, height: 480, points: [], observation: .multiplePeople), UIImage(), generation)
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertEqual(store.session.cameraRecoveryState, .waitingForClear)
+        XCTAssertEqual(playback.stops, 0)
+        playback.onFinish?(speaking.id); store.coachingTick()
+        XCTAssertEqual(playback.spoken.count, 1, "Recovery must not replay an intro or old queued cue")
+        store.finish(); store.cancelCoaching(); vision.stop()
+    }
+
+    func testSameCameraRecoveryDoesNotReplayTheRepSetIntro() async throws {
+        let playback=FakeVoicePlayback(), clips=RepClipRecorder()
+        let vision=VisionWorker(cameraAvailable:{true},requestAccess:{_ in})
+        let store=TrainingStore(voicePlayback:playback,vision:vision)
+        store.repVoice=RepVoicePlayer(defaults:UserDefaults(suiteName:UUID().uuidString)!,makeOutput:clips.make)
+        store.start(); store.hasInput=true; store.setVoiceFeedback(true); store.coachingTick()
+        XCTAssertFalse(store.repVoice.started.isEmpty)
+        clips.finish()
+        let started=store.repVoice.started, generation=store.session.generation
+        vision.onFrame?(.init(time:1,width:640,height:480,points:[],observation:.multiplePeople),UIImage(),generation)
+        for _ in 0..<20 { await Task.yield() }
+        store.resume(); store.coachingTick()
+        if let ordinary=playback.spoken.first { playback.onFinish?(ordinary.id) }
+        store.coachingTick()
+        XCTAssertEqual(store.repVoice.started,started)
+        store.finish(); store.cancelCoaching(); vision.stop()
+    }
+
     func testEndingSetPreservesOrdinarySentenceAndFinishingWaitsForActualCompletion() throws {
         let playback = FakeVoicePlayback()
         let store = TrainingStore(voicePlayback: playback)

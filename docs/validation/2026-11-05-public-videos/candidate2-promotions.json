@@ -1,0 +1,22 @@
+{
+  "promotedAtUTC": "2026-11-05T22:10:47.021310+00:00",
+  "reason": "Root explicitly requested robustness fixes after candidate1 first heldOut evaluation; original references and split labels remain immutable.",
+  "promotedSourceNames": [
+    "kneePushupNASM",
+    "calfRaiseBalance",
+    "hipAbductionAHA",
+    "sitToStandRoyalFree"
+  ],
+  "promotedTrialIDs": [
+    "video-07",
+    "video-13",
+    "video-14",
+    "video-17",
+    "video-30",
+    "video-31"
+  ],
+  "originalSplit": "heldOut",
+  "finalEvaluationStatus": "consumed development; unblinded re-evaluation",
+  "initialResults": "final-production-heldout/results.json",
+  "initialCandidateFreeze": "candidate-freeze.json"
+}

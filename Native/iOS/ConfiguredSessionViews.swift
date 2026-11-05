@@ -104,8 +104,13 @@ private struct ConfiguredLiveSetView: View {
                             if !run.hasStarted {
                                 PrimaryButton(title: run.current.unit == .seconds ? "Start hold" : "Start set", symbol: "play", action: store.beginConfiguredSet)
                                     .accessibilityIdentifier("configured-start")
+                            } else if run.cameraRecoveryState == .needsResume {
+                                PrimaryButton(title: "Resume camera", symbol: "play", action: store.resume)
+                                Button("End set") { enteringReps = false; store.endSet() }
+                                    .font(.subheadline.weight(.medium)).padding(18)
+                                    .disabled(!run.canEndSet(at: store.now)).accessibilityIdentifier("configured-end")
                             } else {
-                                Button(run.phase == .paused ? "Resume" : "Pause") { run.phase == .paused ? store.resume() : store.pause() }
+                                Button(run.phase == .paused ? "Resume" : "Pause") { run.phase == .paused || run.cameraRecoveryState == .needsResume ? store.resume() : store.pause() }
                                     .font(.subheadline.weight(.medium)).padding(18)
                                 PrimaryButton(title: "End set", symbol: "checkmark") { enteringReps = false; store.endSet() }
                                     .disabled(!run.canEndSet(at: store.now)).accessibilityIdentifier("configured-end")
@@ -155,6 +160,7 @@ private struct ConfiguredLiveSetView: View {
             return run.source == .camera ? "Get your full body in view, then Start to open the selected camera. Preparation time is left out." : "Get into position, then start. Preparation time is left out."
         }
         if run.phase == .paused { return "Your set is paused. Resume when you’re ready, or change input while keeping your work." }
+        if let message = run.cameraRecoveryState.message { return message }
         if run.current.unit == .seconds { return run.source == .camera ? "Only visible, qualified movement earns seconds. Missing camera intervals do not count. End the set yourself." : "The manual timer runs while active. Pause whenever you stop. End the set yourself." }
         return run.source == .camera ? "Keep your full body visible for camera form tracking." : "Complete your reps, enter the actual count, then end this set."
     }

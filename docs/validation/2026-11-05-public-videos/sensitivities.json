@@ -1,0 +1,934 @@
+{
+  "cachedCoreOnly": {
+    "primary10": {
+      "config": "{\"input\": \"<PRIVATE_VALIDATION_ROOT>/task4/candidate2-final-development\", \"output\": \"<PRIVATE_VALIDATION_ROOT>/task4/candidate2-sensitivity-primary10.json\", \"trialIDs\": [\"video-01\", \"video-08\", \"video-18\", \"video-32\"]}\n",
+      "input": "<PRIVATE_VALIDATION_ROOT>/task4/candidate2-final-development",
+      "mode": "cachedCoreOnly",
+      "results": [
+        {
+          "completedLimbCycles": 3,
+          "events": [
+            {
+              "increment": 1,
+              "pts": 6.2062
+            },
+            {
+              "increment": 1,
+              "pts": 10.4104
+            },
+            {
+              "increment": 1,
+              "pts": 14.014
+            }
+          ],
+          "exercise": "squat",
+          "firstEarnedPTS": 6.2062,
+          "frames": 128,
+          "id": "video-01",
+          "limbEvents": [],
+          "measurementFrames": 128,
+          "quantity": 3,
+          "traceSHA256": "b4baa2a5d255d1bc450cbc55d7ac443a91defbdc98b9b565a338b9d8fa278c54"
+        },
+        {
+          "completedLimbCycles": 8,
+          "events": [
+            {
+              "increment": 1,
+              "pts": 4.9049
+            },
+            {
+              "increment": 1,
+              "pts": 8.9089
+            },
+            {
+              "increment": 1,
+              "pts": 12.7127
+            },
+            {
+              "increment": 1,
+              "pts": 16.6166
+            }
+          ],
+          "exercise": "lateralArmRaise",
+          "firstEarnedPTS": 4.9049,
+          "frames": 180,
+          "id": "video-08",
+          "limbEvents": [
+            {
+              "duration": 3.7036999999999995,
+              "pts": 4.9049,
+              "side": 0
+            },
+            {
+              "duration": 3.7036999999999995,
+              "pts": 4.9049,
+              "side": 1
+            },
+            {
+              "duration": 3.503499999999999,
+              "pts": 8.9089,
+              "side": 0
+            },
+            {
+              "duration": 4.004,
+              "pts": 8.9089,
+              "side": 1
+            },
+            {
+              "duration": 3.3033,
+              "pts": 12.7127,
+              "side": 0
+            },
+            {
+              "duration": 3.9039,
+              "pts": 12.8128,
+              "side": 1
+            },
+            {
+              "duration": 3.203199999999999,
+              "pts": 16.6166,
+              "side": 0
+            },
+            {
+              "duration": 3.803799999999999,
+              "pts": 16.6166,
+              "side": 1
+            }
+          ],
+          "measurementFrames": 167,
+          "quantity": 4,
+          "traceSHA256": "348cba835c4c061e60bae442ddb0e6cc2907865a5508c735580ff61cebd6e0eb"
+        },
+        {
+          "completedLimbCycles": 0,
+          "events": [],
+          "exercise": "plank",
+          "firstEarnedPTS": 10.12,
+          "frames": 67,
+          "id": "video-18",
+          "limbEvents": [],
+          "measurementFrames": 67,
+          "quantity": 7.920000000000002,
+          "traceSHA256": "0ef0fd72f6565a54c1221f312a97349878b67838f627806b32ea220910c9e652"
+        },
+        {
+          "completedLimbCycles": 0,
+          "events": [],
+          "exercise": "highKnees",
+          "firstEarnedPTS": 1.7017,
+          "frames": 37,
+          "id": "video-32",
+          "limbEvents": [],
+          "measurementFrames": 29,
+          "quantity": 0.8008000000000002,
+          "traceSHA256": "bcf280533edcf000c2ec83a60d46b4962832e4a45256618968a5e10b443b427f"
+        }
+      ],
+      "sourceCodeSHA256": {
+        "Shared/Core/MovementProfiles.swift": "9d65e099dbebfa8645744273ebd54fb0ab9ac000adcc45f0df411e599b0fa9a9",
+        "Shared/Core/PoseGeometry.swift": "601d1534b6b63400b5da3b177999dace78c0e33134df23febe23cefba68683da",
+        "Shared/Core/PoseHoldCounter.swift": "c8d161129f1deff6e43e6019e8c15576329fbdb34f79ceaaac7ff9beab341ad7",
+        "Shared/Core/RepCounter.swift": "ec050ac5e23f70d3e9a19873c4fa8159864080eed5576f309dc36ef1681df05a"
+      }
+    },
+    "mirror10": {
+      "config": "{\"input\": \"<PRIVATE_VALIDATION_ROOT>/task4/candidate2-final-development\", \"output\": \"<PRIVATE_VALIDATION_ROOT>/task4/candidate2-sensitivity-mirror10.json\", \"trialIDs\": [\"video-01\", \"video-08\", \"video-18\", \"video-32\"], \"mirror\": true}\n",
+      "input": "<PRIVATE_VALIDATION_ROOT>/task4/candidate2-final-development",
+      "mode": "cachedCoreOnly",
+      "results": [
+        {
+          "completedLimbCycles": 3,
+          "events": [
+            {
+              "increment": 1,
+              "pts": 6.2062
+            },
+            {
+              "increment": 1,
+              "pts": 10.4104
+            },
+            {
+              "increment": 1,
+              "pts": 14.014
+            }
+          ],
+          "exercise": "squat",
+          "firstEarnedPTS": 6.2062,
+          "frames": 128,
+          "id": "video-01",
+          "limbEvents": [],
+          "measurementFrames": 128,
+          "quantity": 3,
+          "traceSHA256": "b4baa2a5d255d1bc450cbc55d7ac443a91defbdc98b9b565a338b9d8fa278c54"
+        },
+        {
+          "completedLimbCycles": 8,
+          "events": [
+            {
+              "increment": 1,
+              "pts": 4.9049
+            },
+            {
+              "increment": 1,
+              "pts": 8.9089
+            },
+            {
+              "increment": 1,
+              "pts": 12.7127
+            },
+            {
+              "increment": 1,
+              "pts": 16.6166
+            }
+          ],
+          "exercise": "lateralArmRaise",
+          "firstEarnedPTS": 4.9049,
+          "frames": 180,
+          "id": "video-08",
+          "limbEvents": [
+            {
+              "duration": 3.7036999999999995,
+              "pts": 4.9049,
+              "side": 0
+            },
+            {
+              "duration": 3.7036999999999995,
+              "pts": 4.9049,
+              "side": 1
+            },
+            {
+              "duration": 4.004,
+              "pts": 8.9089,
+              "side": 0
+            },
+            {
+              "duration": 3.503499999999999,
+              "pts": 8.9089,
+              "side": 1
+            },
+            {
+              "duration": 3.3033,
+              "pts": 12.7127,
+              "side": 1
+            },
+            {
+              "duration": 3.9039,
+              "pts": 12.8128,
+              "side": 0
+            },
+            {
+              "duration": 3.803799999999999,
+              "pts": 16.6166,
+              "side": 0
+            },
+            {
+              "duration": 3.203199999999999,
+              "pts": 16.6166,
+              "side": 1
+            }
+          ],
+          "measurementFrames": 167,
+          "quantity": 4,
+          "traceSHA256": "348cba835c4c061e60bae442ddb0e6cc2907865a5508c735580ff61cebd6e0eb"
+        },
+        {
+          "completedLimbCycles": 0,
+          "events": [],
+          "exercise": "plank",
+          "firstEarnedPTS": 10.12,
+          "frames": 67,
+          "id": "video-18",
+          "limbEvents": [],
+          "measurementFrames": 67,
+          "quantity": 7.920000000000002,
+          "traceSHA256": "0ef0fd72f6565a54c1221f312a97349878b67838f627806b32ea220910c9e652"
+        },
+        {
+          "completedLimbCycles": 0,
+          "events": [],
+          "exercise": "highKnees",
+          "firstEarnedPTS": 1.7017,
+          "frames": 37,
+          "id": "video-32",
+          "limbEvents": [],
+          "measurementFrames": 29,
+          "quantity": 0.8008000000000002,
+          "traceSHA256": "bcf280533edcf000c2ec83a60d46b4962832e4a45256618968a5e10b443b427f"
+        }
+      ],
+      "sourceCodeSHA256": {
+        "Shared/Core/MovementProfiles.swift": "9d65e099dbebfa8645744273ebd54fb0ab9ac000adcc45f0df411e599b0fa9a9",
+        "Shared/Core/PoseGeometry.swift": "601d1534b6b63400b5da3b177999dace78c0e33134df23febe23cefba68683da",
+        "Shared/Core/PoseHoldCounter.swift": "c8d161129f1deff6e43e6019e8c15576329fbdb34f79ceaaac7ff9beab341ad7",
+        "Shared/Core/RepCounter.swift": "ec050ac5e23f70d3e9a19873c4fa8159864080eed5576f309dc36ef1681df05a"
+      }
+    },
+    "dropout10": {
+      "config": "{\"input\": \"<PRIVATE_VALIDATION_ROOT>/task4/candidate2-final-development\", \"output\": \"<PRIVATE_VALIDATION_ROOT>/task4/candidate2-sensitivity-dropout10.json\", \"trialIDs\": [\"video-01\", \"video-08\", \"video-18\", \"video-32\"], \"dropoutEvery\": 7}\n",
+      "input": "<PRIVATE_VALIDATION_ROOT>/task4/candidate2-final-development",
+      "mode": "cachedCoreOnly",
+      "results": [
+        {
+          "completedLimbCycles": 3,
+          "events": [
+            {
+              "increment": 1,
+              "pts": 6.4064
+            },
+            {
+              "increment": 1,
+              "pts": 10.6106
+            },
+            {
+              "increment": 1,
+              "pts": 14.1141
+            }
+          ],
+          "exercise": "squat",
+          "firstEarnedPTS": 6.4064,
+          "frames": 128,
+          "id": "video-01",
+          "limbEvents": [],
+          "measurementFrames": 109,
+          "quantity": 3,
+          "traceSHA256": "b4baa2a5d255d1bc450cbc55d7ac443a91defbdc98b9b565a338b9d8fa278c54"
+        },
+        {
+          "completedLimbCycles": 7,
+          "events": [
+            {
+              "increment": 1,
+              "pts": 5.1051
+            },
+            {
+              "increment": 1,
+              "pts": 8.9089
+            },
+            {
+              "increment": 1,
+              "pts": 12.8128
+            },
+            {
+              "increment": 1,
+              "pts": 16.6166
+            }
+          ],
+          "exercise": "lateralArmRaise",
+          "firstEarnedPTS": 5.1051,
+          "frames": 180,
+          "id": "video-08",
+          "limbEvents": [
+            {
+              "duration": 3.9039,
+              "pts": 5.1051,
+              "side": 0
+            },
+            {
+              "duration": 3.503499999999999,
+              "pts": 8.9089,
+              "side": 0
+            },
+            {
+              "duration": 7.707699999999999,
+              "pts": 8.9089,
+              "side": 1
+            },
+            {
+              "duration": 3.4033999999999995,
+              "pts": 12.8128,
+              "side": 0
+            },
+            {
+              "duration": 3.9039,
+              "pts": 12.8128,
+              "side": 1
+            },
+            {
+              "duration": 3.4033999999999978,
+              "pts": 16.6166,
+              "side": 0
+            },
+            {
+              "duration": 3.803799999999999,
+              "pts": 16.6166,
+              "side": 1
+            }
+          ],
+          "measurementFrames": 144,
+          "quantity": 4,
+          "traceSHA256": "348cba835c4c061e60bae442ddb0e6cc2907865a5508c735580ff61cebd6e0eb"
+        },
+        {
+          "completedLimbCycles": 0,
+          "events": [],
+          "exercise": "plank",
+          "firstEarnedPTS": 10.24,
+          "frames": 67,
+          "id": "video-18",
+          "limbEvents": [],
+          "measurementFrames": 57,
+          "quantity": 5.640000000000004,
+          "traceSHA256": "0ef0fd72f6565a54c1221f312a97349878b67838f627806b32ea220910c9e652"
+        },
+        {
+          "completedLimbCycles": 0,
+          "events": [],
+          "exercise": "highKnees",
+          "firstEarnedPTS": 1.7017,
+          "frames": 37,
+          "id": "video-32",
+          "limbEvents": [],
+          "measurementFrames": 25,
+          "quantity": 0.6006000000000005,
+          "traceSHA256": "bcf280533edcf000c2ec83a60d46b4962832e4a45256618968a5e10b443b427f"
+        }
+      ],
+      "sourceCodeSHA256": {
+        "Shared/Core/MovementProfiles.swift": "9d65e099dbebfa8645744273ebd54fb0ab9ac000adcc45f0df411e599b0fa9a9",
+        "Shared/Core/PoseGeometry.swift": "601d1534b6b63400b5da3b177999dace78c0e33134df23febe23cefba68683da",
+        "Shared/Core/PoseHoldCounter.swift": "c8d161129f1deff6e43e6019e8c15576329fbdb34f79ceaaac7ff9beab341ad7",
+        "Shared/Core/RepCounter.swift": "ec050ac5e23f70d3e9a19873c4fa8159864080eed5576f309dc36ef1681df05a"
+      }
+    },
+    "15fps": {
+      "config": "{\"input\": \"<PRIVATE_VALIDATION_ROOT>/task4/final-development\", \"output\": \"<PRIVATE_VALIDATION_ROOT>/task4/candidate2-sensitivity-15fps.json\", \"trialIDs\": [\"video-01\", \"video-08\", \"video-18\", \"video-32\"]}\n",
+      "input": "<PRIVATE_VALIDATION_ROOT>/task4/final-development",
+      "mode": "cachedCoreOnly",
+      "results": [
+        {
+          "completedLimbCycles": 3,
+          "events": [
+            {
+              "increment": 1,
+              "pts": 6.139466666666666
+            },
+            {
+              "increment": 1,
+              "pts": 10.477133333333333
+            },
+            {
+              "increment": 1,
+              "pts": 13.947266666666666
+            }
+          ],
+          "exercise": "squat",
+          "firstEarnedPTS": 6.139466666666666,
+          "frames": 192,
+          "id": "video-01",
+          "limbEvents": [],
+          "measurementFrames": 192,
+          "quantity": 3,
+          "traceSHA256": "cadf9852417ff790a3d92d81a7357e7834882b0ee595144c9d5cb2544ad36259"
+        },
+        {
+          "completedLimbCycles": 8,
+          "events": [
+            {
+              "increment": 1,
+              "pts": 4.8048
+            },
+            {
+              "increment": 1,
+              "pts": 8.875533333333333
+            },
+            {
+              "increment": 1,
+              "pts": 12.679333333333334
+            },
+            {
+              "increment": 1,
+              "pts": 16.549866666666667
+            }
+          ],
+          "exercise": "lateralArmRaise",
+          "firstEarnedPTS": 4.8048,
+          "frames": 270,
+          "id": "video-08",
+          "limbEvents": [
+            {
+              "duration": 3.6036,
+              "pts": 4.8048,
+              "side": 0
+            },
+            {
+              "duration": 3.6036,
+              "pts": 4.8048,
+              "side": 1
+            },
+            {
+              "duration": 3.470133333333333,
+              "pts": 8.875533333333333,
+              "side": 0
+            },
+            {
+              "duration": 4.070733333333333,
+              "pts": 8.875533333333333,
+              "side": 1
+            },
+            {
+              "duration": 3.2032000000000007,
+              "pts": 12.679333333333334,
+              "side": 0
+            },
+            {
+              "duration": 3.8705333333333343,
+              "pts": 12.746066666666668,
+              "side": 1
+            },
+            {
+              "duration": 3.136466666666667,
+              "pts": 16.549866666666667,
+              "side": 0
+            },
+            {
+              "duration": 3.8705333333333307,
+              "pts": 16.6166,
+              "side": 1
+            }
+          ],
+          "measurementFrames": 251,
+          "quantity": 4,
+          "traceSHA256": "359499eaa607042b3a8fd80d676eee78feccc4ebfc3115b5b5d7bd1945210561"
+        },
+        {
+          "completedLimbCycles": 0,
+          "events": [],
+          "exercise": "plank",
+          "firstEarnedPTS": 10.08,
+          "frames": 120,
+          "id": "video-18",
+          "limbEvents": [],
+          "measurementFrames": 120,
+          "quantity": 7.960000000000001,
+          "traceSHA256": "5f18e402194af0d37fa38ce1975b9f82205e92b1059c3d716234d18575edb3ef"
+        },
+        {
+          "completedLimbCycles": 0,
+          "events": [],
+          "exercise": "highKnees",
+          "firstEarnedPTS": 1.4014,
+          "frames": 56,
+          "id": "video-32",
+          "limbEvents": [],
+          "measurementFrames": 45,
+          "quantity": 1.6016000000000004,
+          "traceSHA256": "3cf57e6f55f45a1936184a29ea13b3894779bf0f69c94e46e0596f502f46575f"
+        }
+      ],
+      "sourceCodeSHA256": {
+        "Shared/Core/MovementProfiles.swift": "9d65e099dbebfa8645744273ebd54fb0ab9ac000adcc45f0df411e599b0fa9a9",
+        "Shared/Core/PoseGeometry.swift": "601d1534b6b63400b5da3b177999dace78c0e33134df23febe23cefba68683da",
+        "Shared/Core/PoseHoldCounter.swift": "c8d161129f1deff6e43e6019e8c15576329fbdb34f79ceaaac7ff9beab341ad7",
+        "Shared/Core/RepCounter.swift": "ec050ac5e23f70d3e9a19873c4fa8159864080eed5576f309dc36ef1681df05a"
+      }
+    },
+    "7_5fps-grid": {
+      "config": "{\"input\": \"<PRIVATE_VALIDATION_ROOT>/task4/candidate2-final-development\", \"output\": \"<PRIVATE_VALIDATION_ROOT>/task4/candidate2-sensitivity-7_5fps-grid.json\", \"trialIDs\": [\"video-01\", \"video-08\", \"video-18\", \"video-32\"], \"fps\": 7.5}\n",
+      "input": "<PRIVATE_VALIDATION_ROOT>/task4/candidate2-final-development",
+      "mode": "cachedCoreOnly",
+      "results": [
+        {
+          "completedLimbCycles": 3,
+          "events": [
+            {
+              "increment": 1,
+              "pts": 6.3063
+            },
+            {
+              "increment": 1,
+              "pts": 10.4104
+            },
+            {
+              "increment": 1,
+              "pts": 14.014
+            }
+          ],
+          "exercise": "squat",
+          "firstEarnedPTS": 6.3063,
+          "frames": 96,
+          "id": "video-01",
+          "limbEvents": [],
+          "measurementFrames": 96,
+          "quantity": 3,
+          "traceSHA256": "b4baa2a5d255d1bc450cbc55d7ac443a91defbdc98b9b565a338b9d8fa278c54"
+        },
+        {
+          "completedLimbCycles": 6,
+          "events": [
+            {
+              "increment": 1,
+              "pts": 5.005
+            },
+            {
+              "increment": 1,
+              "pts": 9.009
+            },
+            {
+              "increment": 1,
+              "pts": 12.7127
+            },
+            {
+              "increment": 1,
+              "pts": 16.7167
+            }
+          ],
+          "exercise": "lateralArmRaise",
+          "firstEarnedPTS": 5.005,
+          "frames": 135,
+          "id": "video-08",
+          "limbEvents": [
+            {
+              "duration": 3.8038,
+              "pts": 5.005,
+              "side": 0
+            },
+            {
+              "duration": 3.6036,
+              "pts": 9.009,
+              "side": 0
+            },
+            {
+              "duration": 3.3033,
+              "pts": 12.7127,
+              "side": 0
+            },
+            {
+              "duration": 11.6116,
+              "pts": 12.8128,
+              "side": 1
+            },
+            {
+              "duration": 3.3033,
+              "pts": 16.7167,
+              "side": 0
+            },
+            {
+              "duration": 3.9039,
+              "pts": 16.7167,
+              "side": 1
+            }
+          ],
+          "measurementFrames": 125,
+          "quantity": 4,
+          "traceSHA256": "348cba835c4c061e60bae442ddb0e6cc2907865a5508c735580ff61cebd6e0eb"
+        },
+        {
+          "completedLimbCycles": 0,
+          "events": [],
+          "exercise": "plank",
+          "firstEarnedPTS": 10.24,
+          "frames": 60,
+          "id": "video-18",
+          "limbEvents": [],
+          "measurementFrames": 60,
+          "quantity": 7.920000000000002,
+          "traceSHA256": "0ef0fd72f6565a54c1221f312a97349878b67838f627806b32ea220910c9e652"
+        },
+        {
+          "completedLimbCycles": 0,
+          "events": [],
+          "exercise": "highKnees",
+          "firstEarnedPTS": 3.1031,
+          "frames": 28,
+          "id": "video-32",
+          "limbEvents": [],
+          "measurementFrames": 22,
+          "quantity": 0.10009999999999986,
+          "traceSHA256": "bcf280533edcf000c2ec83a60d46b4962832e4a45256618968a5e10b443b427f"
+        }
+      ],
+      "sourceCodeSHA256": {
+        "Shared/Core/MovementProfiles.swift": "9d65e099dbebfa8645744273ebd54fb0ab9ac000adcc45f0df411e599b0fa9a9",
+        "Shared/Core/PoseGeometry.swift": "601d1534b6b63400b5da3b177999dace78c0e33134df23febe23cefba68683da",
+        "Shared/Core/PoseHoldCounter.swift": "c8d161129f1deff6e43e6019e8c15576329fbdb34f79ceaaac7ff9beab341ad7",
+        "Shared/Core/RepCounter.swift": "ec050ac5e23f70d3e9a19873c4fa8159864080eed5576f309dc36ef1681df05a"
+      }
+    },
+    "5fps-grid": {
+      "config": "{\"input\": \"<PRIVATE_VALIDATION_ROOT>/task4/candidate2-final-development\", \"output\": \"<PRIVATE_VALIDATION_ROOT>/task4/candidate2-sensitivity-5fps-grid.json\", \"trialIDs\": [\"video-01\", \"video-08\", \"video-18\", \"video-32\"], \"fps\": 5}\n",
+      "input": "<PRIVATE_VALIDATION_ROOT>/task4/candidate2-final-development",
+      "mode": "cachedCoreOnly",
+      "results": [
+        {
+          "completedLimbCycles": 3,
+          "events": [
+            {
+              "increment": 1,
+              "pts": 6.4064
+            },
+            {
+              "increment": 1,
+              "pts": 10.6106
+            },
+            {
+              "increment": 1,
+              "pts": 14.2142
+            }
+          ],
+          "exercise": "squat",
+          "firstEarnedPTS": 6.4064,
+          "frames": 64,
+          "id": "video-01",
+          "limbEvents": [],
+          "measurementFrames": 64,
+          "quantity": 3,
+          "traceSHA256": "b4baa2a5d255d1bc450cbc55d7ac443a91defbdc98b9b565a338b9d8fa278c54"
+        },
+        {
+          "completedLimbCycles": 4,
+          "events": [
+            {
+              "increment": 1,
+              "pts": 5.005
+            },
+            {
+              "increment": 1,
+              "pts": 9.009
+            },
+            {
+              "increment": 1,
+              "pts": 12.8128
+            },
+            {
+              "increment": 1,
+              "pts": 16.8168
+            }
+          ],
+          "exercise": "lateralArmRaise",
+          "firstEarnedPTS": 5.005,
+          "frames": 90,
+          "id": "video-08",
+          "limbEvents": [
+            {
+              "duration": 3.8038,
+              "pts": 5.005,
+              "side": 0
+            },
+            {
+              "duration": 3.6036,
+              "pts": 9.009,
+              "side": 0
+            },
+            {
+              "duration": 3.4033999999999995,
+              "pts": 12.8128,
+              "side": 0
+            },
+            {
+              "duration": 3.4034000000000013,
+              "pts": 16.8168,
+              "side": 0
+            }
+          ],
+          "measurementFrames": 83,
+          "quantity": 4,
+          "traceSHA256": "348cba835c4c061e60bae442ddb0e6cc2907865a5508c735580ff61cebd6e0eb"
+        },
+        {
+          "completedLimbCycles": 0,
+          "events": [],
+          "exercise": "plank",
+          "firstEarnedPTS": 10.24,
+          "frames": 40,
+          "id": "video-18",
+          "limbEvents": [],
+          "measurementFrames": 40,
+          "quantity": 7.800000000000001,
+          "traceSHA256": "0ef0fd72f6565a54c1221f312a97349878b67838f627806b32ea220910c9e652"
+        },
+        {
+          "completedLimbCycles": 0,
+          "events": [],
+          "exercise": "highKnees",
+          "frames": 19,
+          "id": "video-32",
+          "limbEvents": [],
+          "measurementFrames": 16,
+          "quantity": 0,
+          "traceSHA256": "bcf280533edcf000c2ec83a60d46b4962832e4a45256618968a5e10b443b427f"
+        }
+      ],
+      "sourceCodeSHA256": {
+        "Shared/Core/MovementProfiles.swift": "9d65e099dbebfa8645744273ebd54fb0ab9ac000adcc45f0df411e599b0fa9a9",
+        "Shared/Core/PoseGeometry.swift": "601d1534b6b63400b5da3b177999dace78c0e33134df23febe23cefba68683da",
+        "Shared/Core/PoseHoldCounter.swift": "c8d161129f1deff6e43e6019e8c15576329fbdb34f79ceaaac7ff9beab341ad7",
+        "Shared/Core/RepCounter.swift": "ec050ac5e23f70d3e9a19873c4fa8159864080eed5576f309dc36ef1681df05a"
+      }
+    }
+  },
+  "nativeEndToEndPostBaselineSameSourceControls": {
+    "candidate2-knee-cut-free": {
+      "annotationSHA256": "25263ee96b8b3ba12f1a8b10297752060a1865d8a800fdc9149e2f17e84d1cb9",
+      "config": "{\n  \"root\": \"<PRIVATE_VALIDATION_ROOT>\",\n  \"output\": \"<PRIVATE_VALIDATION_ROOT>/task4/candidate2-knee-cut-free\",\n  \"split\": \"heldOut\",\n  \"fps\": 10,\n  \"trialIDs\": [\n    \"video-07\"\n  ],\n  \"includeSupplement\": false,\n  \"inputWidth\": 640,\n  \"sensitivityWindow\": {\n    \"originalTrialID\": \"video-07\",\n    \"startSeconds\": 6.5,\n    \"endSeconds\": 13.5,\n    \"referenceQuantity\": 1,\n    \"referenceUnit\": \"reps\",\n    \"sourceSHA256\": \"91acc032d721f6ccdc79ac00861013cf16077838b143c725eec82d32cc71ca29\",\n    \"selectedAtUTC\": \"2026-11-05T22:39:04.200052+00:00\",\n    \"selectionStage\": \"post-baseline consumed development sensitivity; original full-source native poses/results already inspected\",\n    \"referenceBy\": \"Codex source contact-sheet visual review; not human or clinical ground truth\",\n    \"notes\": \"One complete second modified press: neutral6.5\\u20138, down8.5\\u201310.5, returns12\\u201313.5; cut-free within this window. Native detector newly initialized at6.5, no user Resume simulated. Original video-07 full-window0/3 retained separately; not independent source.\"\n  },\n  \"inputHeight\": 640,\n  \"sampling\": \"minimumInterval\"\n}\n",
+      "mode": "nativeEndToEnd",
+      "modelSHA256": "4eaa5eb7a98365221087693fcc286334cf0858e2eb6e15b506aa4a7ecdcec4ad",
+      "results": [
+        {
+          "clip": "kneePushupNASM",
+          "completedLimbCycles": 0,
+          "events": [],
+          "exercise": "kneePushup",
+          "extraQuantity": 0,
+          "firstPTS": 6.5,
+          "frames": 56,
+          "id": "video-07",
+          "isPostBaselineSensitivity": true,
+          "lastPTS": 13.388375,
+          "measurementCoverage": 1,
+          "measurementFrames": 56,
+          "missedQuantity": 1,
+          "poseCoverage": 1,
+          "poseFrames": 56,
+          "preferredTransform": [
+            1,
+            0,
+            0,
+            1,
+            0,
+            0
+          ],
+          "provenanceFrames": {
+            "jointAngle3D": 56
+          },
+          "quantity": 0,
+          "referenceQuantity": 1,
+          "sourceSHA256": "91acc032d721f6ccdc79ac00861013cf16077838b143c725eec82d32cc71ca29",
+          "split": "heldOut",
+          "traceSHA256": "ba8aba9e31281f4b5d6e5d090124565d45e2c7a94f240daa150a9c24ff928de3",
+          "unit": "reps",
+          "windowEndSeconds": 13.5,
+          "windowStartSeconds": 6.5
+        }
+      ],
+      "sdk": "MediaPipeTasksVision 1.1.1"
+    },
+    "candidate2-knee-cut-free-v2": {
+      "annotationSHA256": "25263ee96b8b3ba12f1a8b10297752060a1865d8a800fdc9149e2f17e84d1cb9",
+      "config": "{\n  \"root\": \"<PRIVATE_VALIDATION_ROOT>\",\n  \"output\": \"<PRIVATE_VALIDATION_ROOT>/task4/candidate2-knee-cut-free-v2\",\n  \"split\": \"heldOut\",\n  \"fps\": 10,\n  \"trialIDs\": [\n    \"video-07\"\n  ],\n  \"includeSupplement\": false,\n  \"inputWidth\": 640,\n  \"sensitivityWindow\": {\n    \"originalTrialID\": \"video-07\",\n    \"startSeconds\": 6.5,\n    \"endSeconds\": 13.5,\n    \"referenceQuantity\": 1,\n    \"referenceUnit\": \"reps\",\n    \"sourceSHA256\": \"91acc032d721f6ccdc79ac00861013cf16077838b143c725eec82d32cc71ca29\",\n    \"selectedAtUTC\": \"2026-11-05T22:39:04.200052+00:00\",\n    \"selectionStage\": \"post-baseline consumed development sensitivity; original full-source native poses/results already inspected\",\n    \"referenceBy\": \"Codex source contact-sheet visual review; not human or clinical ground truth\",\n    \"notes\": \"One complete second modified press: neutral6.5\\u20138, down8.5\\u201310.5, returns12\\u201313.5; cut-free within this window. Native detector newly initialized at6.5, no user Resume simulated. Original video-07 full-window0/3 retained separately; not independent source.\"\n  },\n  \"inputHeight\": 640,\n  \"sampling\": \"minimumInterval\"\n}\n",
+      "mode": "nativeEndToEnd",
+      "modelSHA256": "4eaa5eb7a98365221087693fcc286334cf0858e2eb6e15b506aa4a7ecdcec4ad",
+      "results": [
+        {
+          "clip": "kneePushupNASM",
+          "completedLimbCycles": 1,
+          "events": [
+            {
+              "duration": 4.004,
+              "increment": 1,
+              "phases": {
+                "lowering": 2.627625,
+                "minimumAngle": 82.47950410773225,
+                "rising": 1.126125
+              },
+              "pts": 12.26225,
+              "total": 1
+            }
+          ],
+          "exercise": "kneePushup",
+          "extraQuantity": 0,
+          "firstEarnedPTS": 12.26225,
+          "firstPTS": 6.5,
+          "frames": 56,
+          "id": "video-07",
+          "isPostBaselineSensitivity": true,
+          "lastPTS": 13.388375,
+          "measurementCoverage": 1,
+          "measurementFrames": 56,
+          "missedQuantity": 0,
+          "poseCoverage": 1,
+          "poseFrames": 56,
+          "preferredTransform": [
+            1,
+            0,
+            0,
+            1,
+            0,
+            0
+          ],
+          "provenanceFrames": {
+            "jointAngle3D": 56
+          },
+          "quantity": 1,
+          "referenceQuantity": 1,
+          "sourceSHA256": "91acc032d721f6ccdc79ac00861013cf16077838b143c725eec82d32cc71ca29",
+          "split": "heldOut",
+          "traceSHA256": "8dc4560ff86ba08dabf9914dadf2b5652d502a1c1ce8324103b87ce51da9eec8",
+          "unit": "reps",
+          "windowEndSeconds": 13.5,
+          "windowStartSeconds": 6.5
+        }
+      ],
+      "sdk": "MediaPipeTasksVision 1.1.1"
+    },
+    "candidate2-pushup-cut-free": {
+      "annotationSHA256": "25263ee96b8b3ba12f1a8b10297752060a1865d8a800fdc9149e2f17e84d1cb9",
+      "config": "{\n  \"root\": \"<PRIVATE_VALIDATION_ROOT>\",\n  \"output\": \"<PRIVATE_VALIDATION_ROOT>/task4/candidate2-pushup-cut-free\",\n  \"split\": \"development\",\n  \"fps\": 10,\n  \"trialIDs\": [\n    \"video-06\"\n  ],\n  \"includeSupplement\": false,\n  \"inputWidth\": 640,\n  \"sensitivityWindow\": {\n    \"originalTrialID\": \"video-06\",\n    \"startSeconds\": 4.0,\n    \"endSeconds\": 10.2,\n    \"referenceQuantity\": 2,\n    \"referenceUnit\": \"reps\",\n    \"sourceSHA256\": \"3ec4cf2814675446828f6f51c83993108c1bd49816f9162b70877ca7943a4cc3\",\n    \"selectedAtUTC\": \"2026-11-05T22:51:41.938431+00:00\",\n    \"selectionStage\": \"post-baseline same-source sensitivity; full-source model outputs already known; this window reference set before its cold-start native replay\",\n    \"referenceBy\": \"Codex visual review of original4fps contact sheet; not human/clinical ground truth\",\n    \"notes\": \"Two complete ordinary presses between zoom cuts: starts extended4.0, lowers~4.5\\u20135.8 and returns~6.5\\u20137; second lowers~8.25\\u20139.25 and returns~9.75\\u201310.0. End10.2 before next zoom cut. New detector at4.0; no scripted Resume. Does not replace original full-window0/4 or add a source.\"\n  },\n  \"inputHeight\": 640,\n  \"sampling\": \"minimumInterval\"\n}\n",
+      "mode": "nativeEndToEnd",
+      "modelSHA256": "4eaa5eb7a98365221087693fcc286334cf0858e2eb6e15b506aa4a7ecdcec4ad",
+      "results": [
+        {
+          "clip": "pushupNASM",
+          "completedLimbCycles": 2,
+          "events": [
+            {
+              "duration": 2.627625,
+              "increment": 1,
+              "phases": {
+                "lowering": 1.126125,
+                "minimumAngle": 85.8199097500172,
+                "rising": 1.2512500000000006
+              },
+              "pts": 6.881875,
+              "total": 1
+            },
+            {
+              "duration": 2.3773750000000007,
+              "increment": 1,
+              "phases": {
+                "lowering": 1.126125,
+                "minimumAngle": 87.9029725278311,
+                "rising": 1.0009999999999994
+              },
+              "pts": 10.135125,
+              "total": 2
+            }
+          ],
+          "exercise": "pushup",
+          "extraQuantity": 0,
+          "firstEarnedPTS": 6.881875,
+          "firstPTS": 4,
+          "frames": 50,
+          "id": "video-06",
+          "isPostBaselineSensitivity": true,
+          "lastPTS": 10.135125,
+          "measurementCoverage": 1,
+          "measurementFrames": 50,
+          "missedQuantity": 0,
+          "poseCoverage": 1,
+          "poseFrames": 50,
+          "preferredTransform": [
+            1,
+            0,
+            0,
+            1,
+            0,
+            0
+          ],
+          "provenanceFrames": {
+            "jointAngle3D": 50
+          },
+          "quantity": 2,
+          "referenceQuantity": 2,
+          "sourceSHA256": "3ec4cf2814675446828f6f51c83993108c1bd49816f9162b70877ca7943a4cc3",
+          "split": "development",
+          "traceSHA256": "f01c9489bc3753301175ceff20e49763fe1084e9a49db861bb152dbab6216b75",
+          "unit": "reps",
+          "windowEndSeconds": 10.2,
+          "windowStartSeconds": 4
+        }
+      ],
+      "sdk": "MediaPipeTasksVision 1.1.1"
+    }
+  }
+}

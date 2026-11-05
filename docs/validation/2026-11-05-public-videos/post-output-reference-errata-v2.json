@@ -1,0 +1,65 @@
+{
+  "status": "Post-output source-only reinspection erratum; original references immutable",
+  "annotationBy": "Root Codex visual reinspection of original4fps contact sheet and exact source PTSs; not independent human/clinical annotation",
+  "modelOutputWasAlreadyKnown": true,
+  "originalReferenceFile": "codex-visual-annotations-locked.json",
+  "originalReferenceSHA256": "25263ee96b8b3ba12f1a8b10297752060a1865d8a800fdc9149e2f17e84d1cb9",
+  "corrections": [
+    {
+      "trialID": "video-17",
+      "clip": "calfRaiseBalance",
+      "sourceSHA256": "adf6b0061f578dfad44cb520da7d9784380a037678824067a58aeb94304720e1",
+      "originalCompleteCycles": 4,
+      "correctedCompleteCycles": 3,
+      "reason": "Root original source-only count of4 was mistaken. Reinspection identifies only three complete heel lifts/returns; initial0\u2013~1s and~9.5\u201311.604696s are planted/idle. No algorithm threshold change justified to create a fourth action. Preserve original3/4 result and show posthoc3/3 separately; no claim of blind/independent corrected acceptance.",
+      "sourceVisualIntervals": [
+        [
+          1.251819,
+          2.774301
+        ],
+        [
+          4.26295,
+          6.259093
+        ],
+        [
+          7.510911,
+          9.507054
+        ]
+      ],
+      "originalContactSheet": "calfRaiseBalance-detail-contact.jpg",
+      "originalContactTimes": "calfRaiseBalance-detail-contact-times.json"
+    },
+    {
+      "trialID": "video-28",
+      "clip": "kneePushup",
+      "sourceSHA256": "6e7e50cecbda98c80bb5523af8e1d7ac4a4b7bdb188ba6ce44232fb2530fbfc5",
+      "sourceWindow": [
+        13.5,
+        16
+      ],
+      "originalCompleteCycles": 1,
+      "correctedCompleteCycles": 0,
+      "physicalPartialMovementPresent": true,
+      "reason": "Source-only post-output480px4fps audit shows neutral at13.5\u201314, descent14.25\u201315, bottom~15\u201315.5, partial rise15.75\u201316; arms have not returned to initial extended setup before16s window ends. Close-up cut follows~16.25. Whole6\u201324 physical4-cycle stress reference unchanged. Original cut-free window was too short; no complete cycle inside it. Preserve original0/1 result plus corrected partial-window interpretation, no blind-acceptance claim or algorithm threshold change.",
+      "sourceVisualIntervals": {
+        "initialNeutral": [
+          13.5,
+          14
+        ],
+        "descentAndBottom": [
+          14.25,
+          15.5
+        ],
+        "incompleteReturnWithinWindow": [
+          15.75,
+          16
+        ],
+        "cutAfterWindow": 16.25
+      },
+      "contactSheet": "kneePushup-reference-audit-13-17.jpg",
+      "contactTimes": "kneePushup-reference-audit-13-17-times.json"
+    }
+  ],
+  "previousErrataFile": "post-output-reference-errata.json",
+  "previousErrataSHA256": "a7a00a22439fc7fb10f545d4a250e37bfe3f4547ab899f993bf0d01f79652c91"
+}

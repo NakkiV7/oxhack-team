@@ -13,7 +13,7 @@ public struct CompanionState: Sendable {
         switch action {
         case .startSet: allowed = snapshot.phase == .active && snapshot.configured?.hasStarted == false
         case .pause: allowed = snapshot.phase == .active && (snapshot.configured?.hasStarted ?? true)
-        case .resume: allowed = snapshot.phase == .paused
+        case .resume: allowed = snapshot.phase == .paused || (snapshot.phase == .active && snapshot.cameraRecoveryState == .needsResume)
         case .endSet: allowed = (snapshot.phase == .active || snapshot.phase == .paused) && (snapshot.configured?.canEndSet ?? true)
         case .nextSet: allowed = snapshot.phase == .rest && snapshot.configured?.stoppedForDiscomfort != true && snapshot.configured?.currentWasSkipped != true
         case .finish: allowed = snapshot.phase != .idle && snapshot.phase != .finished
@@ -53,6 +53,8 @@ public struct ConfiguredCompanionSnapshot: Codable, Sendable {
 }
 
 public struct CompanionSnapshot: Codable, Sendable {
+    public let cameraRecoveryState: CameraRecoveryState?
+    public var pauseResumeTitle: String { cameraRecoveryState == .needsResume ? "Resume camera" : (phase == .paused ? "Resume" : "Pause") }
     public let sessionID: UUID
     public let generation: UUID
     public let exercise: Exercise?
@@ -74,6 +76,7 @@ public struct CompanionSnapshot: Codable, Sendable {
         }
     }
     public init(session: TrainingSession, sentAt: Date = Date()) {
+        cameraRecoveryState = session.cameraRecoveryState
         sessionID = session.id; generation = session.generation; exercise = session.exercise
         phase = session.phase; reps = session.actualReps ?? 0; target = session.exercise.target
         setNumber = session.setNumber; cue = session.cue; self.sentAt = sentAt
@@ -85,6 +88,7 @@ public struct CompanionSnapshot: Codable, Sendable {
         }
         let activeSeconds = session.phase == .rest || session.phase == .finished
             ? (ended?.activeSeconds ?? ended?.seconds ?? 0) : session.elapsed(at: time)
+        cameraRecoveryState = session.cameraRecoveryState
         source = nil
         sessionID = session.id; generation = session.generation; exercise = nil
         phase = session.phase; reps = session.actualReps ?? 0; target = session.current.target
@@ -100,6 +104,9 @@ public struct CompanionSnapshot: Codable, Sendable {
     public func isFresh(at now: Date) -> Bool {
         let age = now.timeIntervalSince(sentAt)
         guard age >= -5, age <= 10, reps >= 0, (1...1000).contains(target) else { return false }
+        if let cameraRecoveryState, cameraRecoveryState != .ready {
+            guard [.active, .paused].contains(phase), (configured?.source ?? source) != .manual else { return false }
+        }
         guard let configured else { return exercise != nil && exercise?.isTimed == false && (1...3).contains(setNumber) }
         guard configured.source != .video else { return false }
         if configured.currentWasSkipped == true {

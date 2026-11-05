@@ -1,0 +1,12 @@
+{
+  "originalTrialID": "video-06",
+  "startSeconds": 4.0,
+  "endSeconds": 10.2,
+  "referenceQuantity": 2,
+  "referenceUnit": "reps",
+  "sourceSHA256": "3ec4cf2814675446828f6f51c83993108c1bd49816f9162b70877ca7943a4cc3",
+  "selectedAtUTC": "2026-11-05T22:51:41.938431+00:00",
+  "selectionStage": "post-baseline same-source sensitivity; full-source model outputs already known; this window reference set before its cold-start native replay",
+  "referenceBy": "Codex visual review of original4fps contact sheet; not human/clinical ground truth",
+  "notes": "Two complete ordinary presses between zoom cuts: starts extended4.0, lowers~4.5\u20135.8 and returns~6.5\u20137; second lowers~8.25\u20139.25 and returns~9.75\u201310.0. End10.2 before next zoom cut. New detector at4.0; no scripted Resume. Does not replace original full-window0/4 or add a source."
+}

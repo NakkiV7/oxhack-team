@@ -680,3 +680,32 @@ func configuredWatchRejectsUnsupportedCameraSourceClaims(exerciseID: String) thr
     #expect(camera.quantitySourcePresentation(at: 1.1).title == "Camera + manual quantity")
     #expect(abs(camera.measuredSeconds(at: 1.1) - 0.5) < 0.00001)
 }
+
+@Test func configuredAmbiguityPreservesQuantityAcrossPauseAndManualFallbackWithoutBypassingRecovery() throws {
+    for id in ["squat", "plank"] {
+        let timed = id == "plank"
+        let plan = try CoachSavedPlan.catalogue(exerciseID:id,sets:1,target:10,restSeconds:0)
+        var run = try ConfigurableSession(plan:plan,availableSupport:[])
+        run.start(at:0); let reset = run.resetSet(source:.camera,at:0); #expect(reset); run.beginSet(at:0)
+        let token = run.generation
+        run.consume(.init(time:0,angle:90,holdQualification:.staticHold),generation:token)
+        run.consume(.init(time:0.1,angle:90,holdQualification:.staticHold),generation:token)
+        let earned = run.measuredSeconds(at:0.1)
+        run.consume(.init(time:0.2,angle:.nan,confidence:0,observation:.multiplePeople),generation:token)
+        #expect(run.cameraRecoveryState == .needsResume)
+        #expect(run.phase == .active)
+        run.pause(at:1)
+        #expect(run.cameraRecoveryState == .needsResume)
+        run.resume(at:2)
+        #expect(run.cameraRecoveryState == .waitingForClear)
+        run.consume(.init(time:3,angle:.nan,confidence:0,observation:.multiplePeople),generation:token)
+        #expect(run.cameraRecoveryState == .waitingForClear)
+        let manual = run.switchInput(source:.manual,at:3); #expect(manual)
+        #expect(run.cameraRecoveryState == .ready)
+        if !timed { run.setReps(4) }
+        let camera = run.switchInput(source:.camera,at:4); #expect(camera)
+        #expect(run.cameraRecoveryState != .ready)
+        if !timed { #expect(run.actualReps == 4) }
+        else { #expect(run.holdCounter?.observedSeconds == earned) }
+    }
+}

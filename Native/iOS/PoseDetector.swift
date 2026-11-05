@@ -31,7 +31,7 @@ final class PoseDetector {
             let orientation: CGImagePropertyOrientation = turn == 1 ? .right : (turn == 3 ? .left : .up)
             let observations = try observe(cgImage, orientation)
             guard observations.count <= 1 else {
-                return PoseFrame(time: time, width: image.size.width, height: image.size.height, points: [])
+                return PoseFrame(time: time, width: image.size.width, height: image.size.height, points: [], observation: .multiplePeople)
             }
             let frame = AppleVisionPoseAdapter.frame(observations: observations, time: time,
                 size: image.size, quarterTurns: turn)
@@ -48,7 +48,7 @@ enum AppleVisionPoseAdapter {
                       time: Double, size: CGSize, quarterTurns: Int = 0) -> PoseFrame {
         guard observations.count == 1, let observation = observations.first,
               observation.values.contains(where: { $0.confidence > 0 }) else {
-            return PoseFrame(time: time, width: size.width, height: size.height, points: [])
+            return PoseFrame(time: time, width: size.width, height: size.height, points: [], observation: observations.count > 1 ? .multiplePeople : .notDetected)
         }
         var points = Array(repeating: PosePoint(x: 0, y: 0, confidence: 0), count: 33)
         let joints: [(Int, VNHumanBodyPoseObservation.JointName)] = [
@@ -126,7 +126,7 @@ final class PoseDetector {
         let validWorld = world.flatMap { values in
             values.allSatisfy { [$0.x,$0.y,$0.z].allSatisfy { $0.isFinite && abs($0) <= 5 } && $0.confidence.isFinite && (0...1).contains($0.confidence) } ? values : nil
         }
-        return PoseFrame(time: time, width: image.size.width, height: image.size.height, points: points, worldPoints: validWorld)
+        return PoseFrame(time: time, width: image.size.width, height: image.size.height, points: points, worldPoints: validWorld, observation: result.landmarks.count > 1 ? .multiplePeople : (result.landmarks.count == 1 ? .singlePerson : .notDetected))
     }
 }
 

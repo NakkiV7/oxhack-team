@@ -44,6 +44,10 @@ public struct ConfigurableSession: Sendable {
     private var restBefore: Double?
     public var current: WorkoutStep { steps[index] }
     public var trackingExercise: Exercise? { current.entry.tracking }
+    public var cameraRecoveryState: CameraRecoveryState {
+        guard source == .camera, [.active, .paused].contains(phase) else { return .ready }
+        return (current.unit == .seconds ? holdCounter?.cameraRecoveryState : counter?.cameraRecoveryState) ?? .ready
+    }
     public var actualReps: Int? { source == .camera ? counter?.reps : manualReps }
     public var record: SessionRecord { .init(id: id, date: date, sets: [], telemetry: telemetry, loggedSets: completed, skippedSets: skippedSets) }
 
@@ -128,7 +132,9 @@ public struct ConfigurableSession: Sendable {
         holdCounter?.resetContinuity()
         if current.unit == .seconds && holdCounter == nil, let exercise = trackingExercise, source == .camera { holdCounter = PoseHoldCounter(exercise: exercise) }
         self.source = source
-        counter = source == .camera && current.unit == .reps ? trackingExercise.map { RepCounter(exercise: $0, initialReps: count) } : nil
+        if current.unit == .reps {
+            counter = counter?.replacingQuantity(count) ?? (source == .camera ? trackingExercise.map { RepCounter(exercise: $0, initialReps: count) } : nil)
+        }
         manualReps = source == .manual && count > 0 ? count : nil
         generation = UUID(); cue = phase == .paused ? .paused : .ready
         return true
@@ -161,8 +167,10 @@ public struct ConfigurableSession: Sendable {
         counter?.resetMovement(); holdCounter?.resetContinuity(); cue = .paused
     }
     public mutating func resume(at time: Double) {
-        guard phase == .paused, time.isFinite else { return }
-        activeStarted = time; phase = .active; generation = UUID(); cue = .ready
+        guard time.isFinite, phase == .paused || (phase == .active && cameraRecoveryState == .needsResume) else { return }
+        counter?.acknowledgeIdentityRecovery(); holdCounter?.acknowledgeIdentityRecovery()
+        if phase == .paused { activeStarted = time }
+        phase = .active; generation = UUID(); cue = .ready
         if current.unit == .seconds && source == .manual { manualStarted = time }
     }
     @discardableResult public mutating func endSet(at time: Double, reason: StopReason = .voluntary) -> Bool {

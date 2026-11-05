@@ -217,3 +217,185 @@ func continuouslyObservedBothLimbsRetainActualAngularPhases(side: Int) {
     #expect(counter.reps == 1)
     #expect(counter.lastRepPhases != nil)
 }
+
+@Test func relaxedArmRaiseNeutralStillRequiresObservedExcursionAndReturn() {
+    for exercise in [Exercise.lateralArmRaise, .frontArmRaise] {
+        for startInRange in [false, true] {
+            var counter = RepCounter(exercise: exercise)
+            let sequence: [(Double, Double)] = startInRange
+                ? [(0,90),(0.2,90),(0.6,130),(1,155),(1.2,155)]
+                : [(0,155),(0.2,155),(0.6,130),(1,90),(1.1,90),(1.6,130),(2,155),(2.2,155)]
+            for (time,angle) in sequence {
+                _ = counter.consume(.init(time:time, angle:angle, provenance:.normalizedJointExcursion))
+            }
+            #expect(counter.reps == (startInRange ? 0 : 1))
+            #expect(counter.lastRepPhases == nil)
+        }
+    }
+}
+
+@Test func synchronizedArmCyclesCountOnceButAlternatingActionsRemainSeparate() {
+    for exercise in [Exercise.lateralArmRaise, .frontArmRaise, .standingBicepsCurl, .standingKneeRaise] {
+        for lag in [0.0,0.1,0.5,2.0] {
+            var counter = RepCounter(exercise: exercise)
+            func angle(_ time: Double) -> Double {
+                if time < 0.4 { return 170 }
+                if time < 0.8 { return 130 }
+                if time < 1.2 { return 90 }
+                if time < 1.6 { return 130 }
+                return 170
+            }
+            for i in 0...50 {
+                let time = Double(i)/10
+                _ = counter.consume(.init(time:time, angle:angle(time), side:0,
+                    secondary:.init(angle:angle(time-lag),side:1)))
+            }
+            let synchronizedArms = exercise != .standingKneeRaise && lag <= 0.1
+            #expect(counter.reps == (synchronizedArms ? 1 : 2))
+        }
+    }
+}
+
+@Test func visibleComfortablePressAndCurlStartCalibratesOnlyNearExtension() {
+    for exercise in [Exercise.wallPushup,.kneePushup,.pushup,.standingBicepsCurl,.lateralLunge] {
+        for neutral in [145.0,135.0,125.0] {
+            var counter = RepCounter(exercise:exercise)
+            for (time,angle) in [(0.0,neutral),(0.2,neutral),(0.4,neutral),(0.6,neutral),
+                (0.9,120),(1.2,85),(1.4,85),(1.7,120),(2,neutral),(2.2,neutral)] {
+                _ = counter.consume(.init(time:time,angle:angle))
+            }
+            #expect(counter.reps == (neutral >= 135 ? 1 : 0))
+        }
+    }
+}
+
+@Test func synchronizedWitnessedArmCyclesSurviveBriefLossWithoutInventingPhases() {
+    var counter=RepCounter(exercise:.standingBicepsCurl)
+    for (t,a) in [(0.0,170.0),(0.2,170),(0.5,130),(0.8,90),(1,90)] {
+        _ = counter.consume(.init(time:t,angle:a,secondary:.init(angle:a,side:1)))
+    }
+    _ = counter.consume(.init(time:1.1,angle:.nan,confidence:0))
+    for t in [1.3,1.5] { _ = counter.consume(.init(time:t,angle:170,secondary:.init(angle:170,side:1))) }
+    #expect(counter.reps == 1)
+    #expect(counter.lastRepPhases == nil)
+}
+
+@Test func dynamicTimingRetainsRecentWitnessedLiftsAcrossBriefLossButNeverCreditsTheGap() {
+    var hold=PoseHoldCounter(exercise:.highKnees)
+    _ = hold.consume(.init(time:0,angle:90,holdQualification:.activeLimb(0)))
+    _ = hold.consume(.init(time:0.1,angle:.nan,confidence:0))
+    _ = hold.consume(.init(time:0.2,angle:90,side:1,holdQualification:.activeLimb(1)))
+    #expect(hold.observedSeconds == 0)
+    _ = hold.consume(.init(time:0.3,angle:90,side:1,holdQualification:.activeLimb(1)))
+    #expect(abs(hold.observedSeconds-0.1)<1e-8)
+    _ = hold.consume(.init(time:0.4,angle:.nan,confidence:0))
+    _ = hold.consume(.init(time:0.8,angle:90,holdQualification:.activeLimb(0)))
+    _ = hold.consume(.init(time:0.9,angle:90,holdQualification:.activeLimb(0)))
+    #expect(abs(hold.observedSeconds-0.1)<1e-8)
+    hold.resetContinuity()
+    _ = hold.consume(.init(time:1,angle:90,side:1,holdQualification:.activeLimb(1)))
+    _ = hold.consume(.init(time:1.1,angle:90,side:1,holdQualification:.activeLimb(1)))
+    #expect(abs(hold.observedSeconds-0.1)<1e-8)
+}
+
+@Test func calibratedNeutralRequiresUninterruptedStableObservationsAndNeverCreditsPartialRanges() {
+    for interruption in [false,true] {
+        var counter=RepCounter(exercise:.wallPushup)
+        _ = counter.consume(.init(time:0,angle:145))
+        if interruption { _ = counter.consume(.init(time:0.1,angle:.nan,confidence:0)) }
+        for (t,a) in [(0.2,145.0),(0.36,145),(0.5,120),(0.8,85),(1,85),(1.3,120),(1.6,145),(1.8,145)] {
+            _ = counter.consume(.init(time:t,angle:a))
+        }
+        #expect(counter.reps == (interruption ? 0 : 1))
+    }
+    var partial=RepCounter(exercise:.wallPushup)
+    for (t,a) in [(0.0,145.0),(0.2,145),(0.4,145),(0.8,115),(1,115),(1.4,145),(1.6,145)] {
+        _ = partial.consume(.init(time:t,angle:a))
+    }
+    #expect(partial.reps == 0)
+}
+
+@Test func bilateralReturnDoesNotAddAnExtraEventWhenOneArmMissedThePreviousNeutral() {
+    var counter=RepCounter(exercise:.standingBicepsCurl)
+    for (t,left,right) in [(0.0,170.0,170.0),(0.2,170,170),(0.5,130,130),(0.8,90,90),(1,90,90),
+        (1.3,170,150),(1.5,170,150),(1.8,130,130),(2.1,90,90),(2.3,90,90),(2.6,170,170),(2.8,170,170)] {
+        _ = counter.consume(.init(time:t,angle:left,secondary:.init(angle:right,side:1)))
+    }
+    #expect(counter.completedLimbCycles == 3)
+    #expect(counter.reps == 2)
+}
+
+@Test func neutralCalibrationCannotAssumeStablePoseThroughUnsampledTime() {
+    var counter=RepCounter(exercise:.wallPushup)
+    for (t,a) in [(0.0,145.0),(0.6,145),(0.76,145),(0.9,120),(1.2,85),(1.4,85),(1.7,120),(2,145),(2.2,145)] {
+        _ = counter.consume(.init(time:t,angle:a))
+    }
+    #expect(counter.reps == 0)
+}
+
+@Test func nonAlternatingCountersRetainObservedChainDuringBoundedLoss() {
+    for exercise in [Exercise.pushup,.wallPushup,.gluteBridge] {
+        var counter=RepCounter(exercise:exercise)
+        for (t,a) in [(0.0,170.0),(0.2,170),(0.6,130),(0.8,90),(1,90)] {
+            _ = counter.consume(.init(time:t,angle:a,side:1))
+        }
+        #expect(counter.continuitySide(at:1.1) == 1)
+        _ = counter.consume(.init(time:1.1,angle:.nan,confidence:0))
+        #expect(counter.continuitySide(at:1.2) == 1)
+        #expect(counter.continuitySide(at:3) == nil)
+        for t in [1.3,1.5] { _ = counter.consume(.init(time:t,angle:170,side:1)) }
+        #expect(counter.reps == 1)
+        #expect(counter.lastRepPhases == nil)
+    }
+}
+
+@Test func explicitMultiplePeopleInvalidatePartialCyclesAndRequireStableClearRecovery() {
+    var counter=RepCounter(exercise:.squat,initialReps:4)
+    for (t,a) in [(0.0,170.0),(0.2,170),(0.5,130),(0.8,90),(1,90)] { _ = counter.consume(.init(time:t,angle:a)) }
+    _ = counter.consume(.init(time:1.1,angle:.nan,confidence:0,observation:.multiplePeople))
+    for i in 0...10 { _ = counter.consume(.init(time:1.2+Double(i)/10,angle:170)) }
+    #expect(counter.reps == 4)
+    for (t,a) in [(2.3,130.0),(2.4,90),(2.5,90),(2.6,130),(2.7,170),(2.8,170)] { _ = counter.consume(.init(time:t,angle:a)) }
+    #expect(counter.reps == 4)
+    #expect(counter.requiresIdentityAcknowledgement)
+    counter.acknowledgeIdentityRecovery()
+    for i in 0...24 { _ = counter.consume(.init(time:3+Double(i)/10,angle:170)) }
+    for (t,a) in [(5.8,130.0),(6.1,90),(6.3,90),(6.6,170),(6.8,170)] { _ = counter.consume(.init(time:t,angle:a)) }
+    #expect(counter.reps == 5)
+    var hold=PoseHoldCounter(exercise:.plank,initialSeconds:5)
+    _ = hold.consume(.init(time:0,angle:170,holdQualification:.staticHold))
+    _ = hold.consume(.init(time:0.1,angle:170,holdQualification:.staticHold))
+    _ = hold.consume(.init(time:0.2,angle:.nan,confidence:0,observation:.multiplePeople))
+    for i in 0...19 { _ = hold.consume(.init(time:0.3+Double(i)/10,angle:170,holdQualification:.staticHold)) }
+    #expect(abs(hold.observedSeconds-5.1)<1e-8)
+    #expect(hold.requiresIdentityAcknowledgement)
+    hold.acknowledgeIdentityRecovery()
+    for i in 0...22 { _ = hold.consume(.init(time:2.3+Double(i)/10,angle:170,holdQualification:.staticHold)) }
+    #expect(abs(hold.observedSeconds-5.3)<1e-8)
+}
+
+@Test func ordinaryObservedReturnAtTenHertzDoesNotRequireThreeNeutralFrames() {
+    for exercise in [Exercise.squat,.standingHipAbduction,.tempoSquat,.pausedSquat] {
+        var counter=RepCounter(exercise:exercise)
+        let proxy=exercise == .standingHipAbduction
+        let neutral=proxy ? 157.0 : 170.0
+        for (time,angle) in [(0.0,neutral),(0.2,neutral),(0.4,130),(0.6,90),(0.8,90),(1.0,130),(1.2,neutral),(1.3,neutral)] {
+            _ = counter.consume(.init(time:time,angle:angle,provenance:proxy ? .normalizedJointExcursion : .jointAngle2D))
+        }
+        #expect(counter.reps == (exercise.requiresContinuousTiming ? 0 : 1))
+    }
+    var spike=RepCounter(exercise:.squat)
+    for (t,a) in [(0.0,170.0),(0.2,170),(0.4,90),(0.5,170),(0.6,170)] { _ = spike.consume(.init(time:t,angle:a)) }
+    #expect(spike.reps == 0)
+}
+
+@Test func stableNearExtensionCalibrationCanStraddleTheDefaultNeutralBoundary() {
+    for unstable in [false,true] {
+        var counter=RepCounter(exercise:.kneePushup)
+        let setup: [(Double,Double)] = unstable ? [(0,140),(0.1,150),(0.2,159),(0.3,155)] : [(0,159),(0.1,161),(0.2,160),(0.3,159),(0.5,160)]
+        for (t,a) in setup + [(0.7,130),(0.9,90),(1.1,90),(1.4,130),(1.6,158),(1.8,159)] {
+            _ = counter.consume(.init(time:t,angle:a))
+        }
+        #expect(counter.reps == (unstable ? 0 : 1))
+    }
+}

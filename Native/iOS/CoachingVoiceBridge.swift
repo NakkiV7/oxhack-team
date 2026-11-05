@@ -66,6 +66,12 @@ final class CoachingVoiceBridge {
         controller.transition(to: context)
     }
 
+    func continueTracking(to context: VoiceCueContext) {
+        latest = nil; waitingOnRep = false
+        repVoice?.finishCurrent(then: nil)
+        controller.continueTracking(to: context)
+    }
+
     private func interrupted() {
         cancel()
         repVoice?.cancel()

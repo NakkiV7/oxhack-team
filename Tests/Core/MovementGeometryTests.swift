@@ -84,7 +84,7 @@ private func floorFixture(_ id: String, active: Bool) -> [(Int,Double,Double)] {
     if id == "gluteBridge" {
         let rest = changed(bird,[(11,0.15,0.7),(12,0.17,0.72),(23,0.45,0.7),(24,0.47,0.72),
             (25,0.65,0.5),(26,0.67,0.52),(27,0.75,0.8),(28,0.77,0.82)])
-        return active ? changed(rest,[(23,0.45,0.5),(24,0.47,0.52)]) : rest
+        return active ? changed(rest,[(23,0.45,0.58),(24,0.47,0.60)]) : rest
     }
     let rest = changed(bird,[(25,0.75,0.4),(26,0.77,0.43),(27,0.9,0.4),(28,0.92,0.43)])
     return active ? changed(rest,[(25,0.4,0.55),(27,0.55,0.65)]) : rest
@@ -273,5 +273,168 @@ func angularProfilesPreserveImageAspectAndMirroredVisibility(exercise: Exercise)
         }
         #expect(counter.reps == 0)
         #expect(counter.lastRepPhases == nil)
+    }
+}
+
+@Test func sidePlankRecognizesBothVisibleSupportsAndNaturallyNarrowerPelvis() throws {
+    for mirror in [false,true] {
+        for straightArm in [false,true] {
+            let base=changed(holdFixture("sidePlank"),[(24,0.6,0.32)])
+            let values=straightArm ? changed(base,[(13,0.3,0.55),(15,0.3,0.75)]) : base
+            var hold=PoseHoldCounter(exercise:.sidePlank)
+            for t in [0.0,0.1,0.2] {
+                _ = hold.consume(try #require(PoseGeometry.measure(pose(values,time:t,mirrored:mirror),exercise:.sidePlank)))
+            }
+            #expect(abs(hold.observedSeconds-0.2)<1e-8)
+            let flat=changed(values,[(12,0.32,0.4),(24,0.62,0.4)])
+            #expect(PoseGeometry.measure(pose(flat,mirrored:mirror),exercise:.sidePlank) == nil)
+        }
+    }
+}
+
+@Test func projectedForearmSupportRemainsQualifiedWithBentVisibleElbow() throws {
+    let values=changed(holdFixture("plank"),[(15,0.464,0.485)])
+    for mirror in [false,true] {
+        let sample=try #require(PoseGeometry.measure(pose(values,mirrored:mirror),exercise:.plank,
+            preferredSide:mirror ? 1 : 0,allowSideFallback:false))
+        #expect(sample.holdQualification == .staticHold)
+        let hidden=values.filter { $0.0 != 15 }
+        #expect(PoseGeometry.measure(pose(hidden,mirrored:mirror),exercise:.plank,
+            preferredSide:mirror ? 1 : 0,allowSideFallback:false) == nil)
+    }
+}
+
+@Test func bridgeCanBeginWithHeelsNearHipsAndStillNeedsLiftAndReturn() throws {
+    for mirror in [false,true] {
+        let rest=changed(floorFixture("gluteBridge",active:false),[(25,0.65,0.45),(26,0.67,0.47),
+            (27,0.65,0.8),(28,0.67,0.82)])
+        let raised=changed(rest,[(23,0.45,0.55),(24,0.47,0.57)])
+        var counter=RepCounter(exercise:.gluteBridge)
+        for (t,values) in [(0.0,rest),(0.2,rest),(0.6,raised),(0.8,raised),(1.2,rest),(1.4,rest)] {
+            _ = counter.consume(try #require(PoseGeometry.measure(pose(values,time:t,mirrored:mirror),exercise:.gluteBridge)))
+        }
+        #expect(counter.reps == 1)
+        #expect(counter.lastRepPhases == nil)
+    }
+}
+
+@Test func lateralLungeCanStartWithFeetTogetherButMustStepOutAtDepth() throws {
+    for mirror in [false,true] {
+        let wide=changed(standing,[(25,0.1,0.5),(27,0.1,0.9),(26,0.735,0.7),(28,0.9,0.9)])
+        var counter=RepCounter(exercise:.lateralLunge)
+        for (t,values) in [(0.0,standing),(0.2,standing),(0.6,wide),(0.8,wide),(1.2,standing),(1.4,standing)] {
+            _ = counter.consume(try #require(PoseGeometry.measure(pose(values,time:t,mirrored:mirror),exercise:.lateralLunge)))
+        }
+        #expect(counter.reps == 1)
+        let narrowBent=changed(standing,[(25,0.25,0.5),(27,0.25,0.9)])
+        #expect(PoseGeometry.measure(pose(narrowBent,mirrored:mirror),exercise:.lateralLunge) == nil)
+    }
+}
+
+@Test func bridgeUsesHipOpeningRatherThanCameraDependentVerticalHeight() throws {
+    for mirror in [false,true] {
+        let rest=floorFixture("gluteBridge",active:false)
+        let straight=changed(rest,[(23,0.45,0.58),(24,0.47,0.60)])
+        var counter=RepCounter(exercise:.gluteBridge)
+        for (t,values) in [(0.0,rest),(0.2,rest),(0.6,straight),(0.8,straight),(1.2,rest),(1.4,rest)] {
+            _ = counter.consume(try #require(PoseGeometry.measure(pose(values,time:t,mirrored:mirror),exercise:.gluteBridge)))
+        }
+        #expect(counter.reps == 1)
+        #expect(counter.lastRepPhases == nil)
+    }
+}
+
+@Test func sideSupportUsesVisibleArmSegmentsRatherThanAssumedArmTorsoRatio() throws {
+    let values=changed(holdFixture("sidePlank"),[(13,0.333,0.47),(15,0.333,0.54)])
+    for mirror in [false,true] {
+        #expect(try #require(PoseGeometry.measure(pose(values,mirrored:mirror),exercise:.sidePlank)).holdQualification == .staticHold)
+        let midBend=changed(values,[(13,0.37,0.47),(15,0.37,0.54)])
+        #expect(PoseGeometry.measure(pose(midBend,mirrored:mirror),exercise:.sidePlank,preferredSide:mirror ? 1 : 0,allowSideFallback:false) == nil)
+    }
+}
+
+@Test(arguments: [Exercise.pushup,.gluteBridge])
+func nonAlternatingCycleStartsOnClearestChainAndDoesNotFuseAnOccludedFarSide(exercise: Exercise) throws {
+    for mirror in [false,true] {
+        var counter=RepCounter(exercise:exercise)
+        var preferred: Int?
+        for (t,active) in [(0.0,false),(0.2,false),(0.6,true),(0.8,true),(1.2,false),(1.4,false)] {
+            let base=floorFixture("mountainClimber",active:false)
+            let pressValues=active ? changed(base,[(13,0.3,0.6),(15,0.5,0.6),(14,0.32,0.63),(16,0.52,0.63)]) : base
+            let values=exercise == .gluteBridge ? floorFixture("gluteBridge",active:active) : pressValues
+            let original=pose(values,time:t,mirrored:mirror)
+            let far=mirror ? 1 : 0
+            let points=original.points.enumerated().map { index,p in
+                PosePoint(x:p.x,y:p.y,confidence:index>=11 && index%2 == (far == 0 ? 1 : 0) ? (active ? 0.2 : 0.7) : p.confidence)
+            }
+            let frame=PoseFrame(time:t,width:original.width,height:original.height,points:points)
+            let held=counter.continuitySide(at:t)
+            let sample=try #require(PoseGeometry.measure(frame,exercise:exercise,preferredSide:held ?? preferred,allowSideFallback:held == nil))
+            if t == 0 { #expect(sample.side == 1-far) }
+            preferred=sample.side
+            _ = counter.consume(sample)
+        }
+        #expect(counter.reps == 1)
+    }
+}
+
+@Test func explicitMultiplePeopleSurvivesGeometryEvenWithoutLandmarks() throws {
+    for points in [[], pose(standing).points] {
+        let frame = PoseFrame(time: 1, width: 640, height: 480, points: points, observation: .multiplePeople)
+        for exercise in [Exercise.squat, .plank, .calfRaise] {
+            let sample = try #require(PoseGeometry.measure(frame, exercise: exercise))
+            #expect(sample.observation == .multiplePeople)
+            #expect(sample.confidence == 0)
+        }
+    }
+    #expect(PoseGeometry.measure(PoseFrame(time: 1, width: 640, height: 480, points: []), exercise: .squat) == nil)
+}
+
+@Test func calfRaiseUsesOneCompleteVisibleFootAndLegWithoutClaimingFarLegForm() throws {
+    for mirror in [false, true] {
+        var counter = RepCounter(exercise: .calfRaise)
+        for (time, raised) in [(0.0,false),(0.2,false),(0.6,true),(0.8,true),(1.2,false),(1.4,false)] {
+            let footY = raised ? 0.92 - tan(25 * Double.pi/180)*0.05 : 0.92
+            let values = changed(standing, [(29,0.41,footY)]).filter { ![12,24,26,28,30,32].contains($0.0) }
+            let sample = try #require(PoseGeometry.measure(pose(values,time:time,mirrored:mirror), exercise:.calfRaise))
+            #expect(sample.confidence == 1)
+            _ = counter.consume(sample)
+        }
+        #expect(counter.reps == 1)
+        #expect(counter.lastRepPhases == nil)
+        let missingFoot = standing.filter { ![29,30].contains($0.0) }
+        #expect(PoseGeometry.measure(pose(missingFoot,mirrored:mirror),exercise:.calfRaise) == nil)
+    }
+}
+
+@Test func hipAbductionUsesProjectedLegAngleAcrossDifferentTorsoLengths() throws {
+    for mirror in [false,true] {
+        for shoulderY in [0.1,0.25] {
+            let excursion = 25 * Double.pi/180
+            let values = changed(standing, [(11,0.4,shoulderY),(12,0.6,shoulderY),
+                (25,0.43-sin(excursion)*0.2,0.5+cos(excursion)*0.2),
+                (27,0.43-sin(excursion)*0.4,0.5+cos(excursion)*0.4)])
+            let sample = try #require(PoseGeometry.measure(pose(values,mirrored:mirror),exercise:.standingHipAbduction))
+            #expect(sample.angle <= Exercise.standingHipAbduction.bottomAngle)
+            #expect(sample.provenance == .normalizedJointExcursion)
+        }
+    }
+}
+
+@Test func kneeSupportedPressKeepsMeasuredAlignmentFeedbackWithoutResettingSmallHipFlexion() throws {
+    for mirror in [false,true] {
+        var counter = RepCounter(exercise:.kneePushup)
+        let base = changed(floorFixture("mountainClimber",active:false),[(25,0.8,0.54),(26,0.82,0.57),(27,0.9,0.61),(28,0.92,0.64)])
+        for (time,bent) in [(0.0,false),(0.2,false),(0.6,true),(0.8,true),(1.2,false),(1.4,false)] {
+            let values = bent ? changed(base,[(13,0.3,0.55),(15,0.45,0.55),(14,0.32,0.58),(16,0.47,0.58)]) : base
+            let sample = try #require(PoseGeometry.measure(pose(values,time:time,mirrored:mirror),exercise:.kneePushup))
+            #expect(try #require(sample.bodyAngle) < 150)
+            #expect(sample.bodyLine == .adjust)
+            _ = counter.consume(sample)
+        }
+        #expect(counter.reps == 1)
+        let quadruped = try #require(PoseGeometry.measure(pose(floorFixture("birdDog",active:false),mirrored:mirror),exercise:.kneePushup))
+        #expect(quadruped.bodyLine == .reset)
+        #expect(try #require(PoseGeometry.measure(pose(base,mirrored:mirror),exercise:.pushup)).bodyLine == .reset)
     }
 }

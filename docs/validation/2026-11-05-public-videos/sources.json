@@ -1,0 +1,711 @@
+{
+  "sourceCount": 28,
+  "heldOutSourceCount": 8,
+  "privateOriginalManifestSHA256": {
+    "source-manifest-frozen.json": "cda9dbf29297d58c5dd5d7f4ba092cb84317f2798b32fc81c8a137dc55a75a4b",
+    "supplemental-source-manifest-frozen.json": "21600ceb765d2521c8fdb0e0e6883ed53c859ef124d252fbd28c12da568a6edc",
+    "post-baseline-development-sources-frozen.json": "c66844c937207c9f7f58583e0e2a54867bbb64b7bf1534483ea18ebed7c09dd7"
+  },
+  "sources": [
+    {
+      "id": "kmzcmFZ9NyY",
+      "clipName": "wallPushup",
+      "publisher": "South Tees",
+      "url": "https://www.youtube.com/watch?v=kmzcmFZ9NyY",
+      "bytes": 3359413,
+      "sha256": "a98ab5dfca135c60fa72984bb2ddecc84617edde28b9e4f80a8ef1e0d4e76b8e",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "25/1"
+          }
+        ],
+        "format": {
+          "duration": "37.360000"
+        }
+      },
+      "split": "development",
+      "selectionStage": "original pre-inference selection"
+    },
+    {
+      "id": "LD9qrH7o2fY",
+      "clipName": "kneePushup",
+      "publisher": "South Tees",
+      "url": "https://www.youtube.com/watch?v=LD9qrH7o2fY",
+      "bytes": 3189570,
+      "sha256": "6e7e50cecbda98c80bb5523af8e1d7ac4a4b7bdb188ba6ce44232fb2530fbfc5",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "25/1"
+          }
+        ],
+        "format": {
+          "duration": "35.080000"
+        }
+      },
+      "split": "development",
+      "selectionStage": "original pre-inference selection"
+    },
+    {
+      "id": "Q7J7inTvb5U",
+      "clipName": "plank",
+      "publisher": "South Tees",
+      "url": "https://www.youtube.com/watch?v=Q7J7inTvb5U",
+      "bytes": 2907995,
+      "sha256": "6b946555a5cd11fe3af25b7e6391099b34b20103e188ed66f595ac04326a09cd",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "25/1"
+          }
+        ],
+        "format": {
+          "duration": "31.840000"
+        }
+      },
+      "split": "development",
+      "selectionStage": "original pre-inference selection"
+    },
+    {
+      "id": "-Q8VJyiM6_0",
+      "clipName": "squat",
+      "publisher": "NHFT",
+      "url": "https://www.youtube.com/watch?v=-Q8VJyiM6_0",
+      "bytes": 2178507,
+      "sha256": "357f8dd60801123b2157ffa5d86297b0b6ab49632b3a24ffe886d79aa73a94a3",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "30000/1001"
+          }
+        ],
+        "format": {
+          "duration": "14.781433"
+        }
+      },
+      "split": "development",
+      "selectionStage": "original pre-inference selection"
+    },
+    {
+      "id": "9i0jnjNzgCg",
+      "clipName": "wideSquat",
+      "publisher": "NHFT",
+      "url": "https://www.youtube.com/watch?v=9i0jnjNzgCg",
+      "bytes": 1503832,
+      "sha256": "98b64b725c732fc830f2b64813f53faa96e3651c717d0c64f2eb6d62210d9162",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "30000/1001"
+          }
+        ],
+        "format": {
+          "duration": "11.778433"
+        }
+      },
+      "split": "development",
+      "selectionStage": "original pre-inference selection"
+    },
+    {
+      "id": "PPNCe7nX3Fc",
+      "clipName": "gluteBridge",
+      "publisher": "NHFT",
+      "url": "https://www.youtube.com/watch?v=PPNCe7nX3Fc",
+      "bytes": 3273115,
+      "sha256": "d69f91c4cff15cf4747742c0bf56c90e5d2d4c60815e98bcc1c4919ab79e79c5",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "30000/1001"
+          }
+        ],
+        "format": {
+          "duration": "20.020000"
+        }
+      },
+      "split": "development",
+      "selectionStage": "original pre-inference selection"
+    },
+    {
+      "id": "170WTc62Zbw",
+      "clipName": "calfRaise",
+      "publisher": "NHFT",
+      "url": "https://www.youtube.com/watch?v=170WTc62Zbw",
+      "bytes": 2663504,
+      "sha256": "d0e4f839967a8293c78748f30c6f0c930c4c3be1640ad30985aa60563a81292b",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "30000/1001"
+          }
+        ],
+        "format": {
+          "duration": "16.316300"
+        }
+      },
+      "split": "development",
+      "selectionStage": "original pre-inference selection"
+    },
+    {
+      "id": "4PD3xooxMcc",
+      "clipName": "hipAbductionCandidate",
+      "publisher": "NHFT",
+      "url": "https://www.youtube.com/watch?v=4PD3xooxMcc",
+      "bytes": 1850397,
+      "sha256": "b2d1211c8f6cbb67fd2a2d723448db57e964c3c48446c711d95262d63f03cdaf",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "30000/1001"
+          }
+        ],
+        "format": {
+          "duration": "14.214200"
+        }
+      },
+      "split": "development",
+      "selectionStage": "original pre-inference selection"
+    },
+    {
+      "id": "FNIzR98paJ0",
+      "clipName": "mountainClimber",
+      "publisher": "NHFT",
+      "url": "https://www.youtube.com/watch?v=FNIzR98paJ0",
+      "bytes": 1708274,
+      "sha256": "d0ab7690e4e48ec1538de8cbf674c72bee0f373cf2904ef6e89dc7e7524e50b5",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "30000/1001"
+          }
+        ],
+        "format": {
+          "duration": "9.576233"
+        }
+      },
+      "split": "development",
+      "selectionStage": "original pre-inference selection"
+    },
+    {
+      "id": "qVdJCdXNC4Y",
+      "clipName": "lateralLungeCandidate",
+      "publisher": "NHFT",
+      "url": "https://www.youtube.com/watch?v=qVdJCdXNC4Y",
+      "bytes": 1708432,
+      "sha256": "4079941049b23a9aefb7c78884cee5353f49d962b26285f00ccfd23fe6c67a63",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "30000/1001"
+          }
+        ],
+        "format": {
+          "duration": "14.147467"
+        }
+      },
+      "split": "development",
+      "selectionStage": "original pre-inference selection"
+    },
+    {
+      "id": "B0cU1zCX9RE",
+      "clipName": "sidePlank",
+      "publisher": "NHFT",
+      "url": "https://www.youtube.com/watch?v=B0cU1zCX9RE",
+      "bytes": 1279209,
+      "sha256": "8fb6b7e6617d1ffaa835507631dcc70a25653adc519860204ef3e2cae3ad2e4a",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "30000/1001"
+          }
+        ],
+        "format": {
+          "duration": "11.044367"
+        }
+      },
+      "split": "development",
+      "selectionStage": "original pre-inference selection"
+    },
+    {
+      "id": "6z2BSlkkwgg",
+      "clipName": "hipAbductionAHA",
+      "publisher": "American Heart Association",
+      "url": "https://www.youtube.com/watch?v=6z2BSlkkwgg",
+      "bytes": 3767445,
+      "sha256": "a368472d2dec70ef068d17cb21a98336da39a77f0aa50a2230bf2493224751bc",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "24000/1001"
+          }
+        ],
+        "format": {
+          "duration": "62.645917"
+        }
+      },
+      "split": "heldOut",
+      "selectionStage": "original pre-inference selection"
+    },
+    {
+      "id": "l96rtpWwRbs",
+      "clipName": "hipAbductionVNA",
+      "publisher": "VNA Health Group",
+      "url": "https://www.youtube.com/watch?v=l96rtpWwRbs",
+      "bytes": 7759902,
+      "sha256": "0ecda120ee0127b3a63a09b07beb161979c79422c571ceaffe23e5c73381911d",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "30000/1001"
+          }
+        ],
+        "format": {
+          "duration": "62.395667"
+        }
+      },
+      "split": "heldOut",
+      "selectionStage": "original pre-inference selection"
+    },
+    {
+      "id": "R1OXPHRqehw",
+      "clipName": "bridgeCleveland",
+      "publisher": "Cleveland Clinic",
+      "url": "https://www.youtube.com/watch?v=R1OXPHRqehw",
+      "bytes": 781214,
+      "sha256": "0a3ecee7c9e869055ae54f98adb2856c0b4f4f7e6509eacde25551200aff54e7",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 360,
+            "height": 640,
+            "avg_frame_rate": "30000/1001"
+          }
+        ],
+        "format": {
+          "duration": "35.702333"
+        }
+      },
+      "split": "heldOut",
+      "selectionStage": "original pre-inference selection"
+    },
+    {
+      "id": "QciWGMjD-nM",
+      "clipName": "bicepsCurlNASM",
+      "publisher": "National Academy of Sports Medicine",
+      "url": "https://www.youtube.com/watch?v=QciWGMjD-nM",
+      "bytes": 680559,
+      "sha256": "45ea64af961656802c5aaf1976f9448eaab59fe9cf9e28d896b23f0dfb0045cd",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "30000/1001"
+          }
+        ],
+        "format": {
+          "duration": "14.047367"
+        }
+      },
+      "split": "development",
+      "selectionStage": "original pre-inference selection"
+    },
+    {
+      "id": "Km0QS46bTEA",
+      "clipName": "calfRaiseBalance",
+      "publisher": "Balance In Motion",
+      "url": "https://www.youtube.com/watch?v=Km0QS46bTEA",
+      "bytes": 311791,
+      "sha256": "adf6b0061f578dfad44cb520da7d9784380a037678824067a58aeb94304720e1",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "29557/1000"
+          }
+        ],
+        "format": {
+          "duration": "11.604696"
+        }
+      },
+      "split": "heldOut",
+      "selectionStage": "original pre-inference selection"
+    },
+    {
+      "id": "0YAFlev6AYg",
+      "clipName": "halfSquatMGH",
+      "publisher": "MGHOrthopaedics",
+      "url": "https://www.youtube.com/watch?v=0YAFlev6AYg",
+      "bytes": 1052609,
+      "sha256": "a5803cb0715d2e1273eae891e76e6405c93c88c10e6ce7188505b031c9deca0a",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "30000/1001"
+          }
+        ],
+        "format": {
+          "duration": "37.704333"
+        }
+      },
+      "split": "development",
+      "selectionStage": "original pre-inference selection"
+    },
+    {
+      "id": "PDr5B2jLUOw",
+      "clipName": "kneePushupNASM",
+      "publisher": "National Academy of Sports Medicine",
+      "url": "https://www.youtube.com/watch?v=PDr5B2jLUOw",
+      "bytes": 652708,
+      "sha256": "91acc032d721f6ccdc79ac00861013cf16077838b143c725eec82d32cc71ca29",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "24000/1001"
+          }
+        ],
+        "format": {
+          "duration": "20.103417"
+        }
+      },
+      "split": "heldOut",
+      "selectionStage": "original pre-inference selection"
+    },
+    {
+      "id": "XPPfnSEATJA",
+      "clipName": "lateralArmRaiseNASM",
+      "publisher": "National Academy of Sports Medicine",
+      "url": "https://www.youtube.com/watch?v=XPPfnSEATJA",
+      "bytes": 1071694,
+      "sha256": "55e82192745ca37508712f081bce21e391e6c1600d9a1eff63e04bfa3cd57301",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "30000/1001"
+          }
+        ],
+        "format": {
+          "duration": "18.018000"
+        }
+      },
+      "split": "development",
+      "selectionStage": "original pre-inference selection"
+    },
+    {
+      "id": "WDIpL0pjun0",
+      "clipName": "pushupNASM",
+      "publisher": "National Academy of Sports Medicine",
+      "url": "https://www.youtube.com/watch?v=WDIpL0pjun0",
+      "bytes": 697802,
+      "sha256": "3ec4cf2814675446828f6f51c83993108c1bd49816f9162b70877ca7943a4cc3",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "24000/1001"
+          }
+        ],
+        "format": {
+          "duration": "13.555208"
+        }
+      },
+      "split": "development",
+      "selectionStage": "original pre-inference selection"
+    },
+    {
+      "id": "7NUICnha_Hk",
+      "clipName": "pushupNASMAlt",
+      "publisher": "National Academy of Sports Medicine",
+      "url": "https://www.youtube.com/watch?v=7NUICnha_Hk",
+      "bytes": 2077250,
+      "sha256": "41adcfd40892d1b79f7b365560c1298e099be855cca0b8bc6c13530f089e3e89",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "30000/1001"
+          }
+        ],
+        "format": {
+          "duration": "33.299933"
+        }
+      },
+      "split": "heldOut",
+      "selectionStage": "original pre-inference selection"
+    },
+    {
+      "id": "Dg20pIkkzh8",
+      "clipName": "sitToStandPlymouth",
+      "publisher": "NHS University Hospitals Plymouth Physiotherapy",
+      "url": "https://www.youtube.com/watch?v=Dg20pIkkzh8",
+      "bytes": 474740,
+      "sha256": "03694a3ad08fb0795d2e558c4e918f0c3b0612645ddc22977b5e4a0051b98013",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 568,
+            "height": 320,
+            "avg_frame_rate": "30/1"
+          }
+        ],
+        "format": {
+          "duration": "16.333333"
+        }
+      },
+      "split": "heldOut",
+      "selectionStage": "original pre-inference selection"
+    },
+    {
+      "id": "5yxfzyzEzBY",
+      "clipName": "sitToStandRoyalFree",
+      "publisher": "Royal Free London NHS Foundation Trust",
+      "url": "https://www.youtube.com/watch?v=5yxfzyzEzBY",
+      "bytes": 4791424,
+      "sha256": "6cf89f5f8d7985a96e45a8c8c8e9f1113a1fa5d4a58fb153f6fe7c335d75aaed",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "30000/1001"
+          }
+        ],
+        "format": {
+          "duration": "53.787067"
+        }
+      },
+      "split": "heldOut",
+      "selectionStage": "original pre-inference selection"
+    },
+    {
+      "id": "cUmfCd-Hznk",
+      "clipName": "highKneesCF",
+      "publisher": "CrossFit Affiliate Programming",
+      "url": "https://www.youtube.com/watch?v=cUmfCd-Hznk",
+      "bytes": 1930823,
+      "sha256": "a6040e6de9010b7a42678258e1e4764a87040d58f01be238ceffce2069bae20a",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "30000/1001"
+          }
+        ],
+        "format": {
+          "duration": "10.410400"
+        }
+      },
+      "split": "development",
+      "selectionStage": "original pre-inference selection"
+    },
+    {
+      "id": "ZdAHe9_HeEw",
+      "clipName": "birdDogNASM",
+      "publisher": "National Academy of Sports Medicine (NASM)",
+      "url": "https://www.youtube.com/watch?v=ZdAHe9_HeEw",
+      "bytes": 1047890,
+      "sha256": "9a5038ed19262c343db7624c687cf6893441aa639d269a7f615a3782180fbccb",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "24000/1001"
+          }
+        ],
+        "format": {
+          "duration": "25.400375"
+        }
+      },
+      "split": "development",
+      "selectionStage": "post-baseline development supplement"
+    },
+    {
+      "id": "o4GKiEoYClI",
+      "clipName": "deadBugPursuit",
+      "publisher": "Pursuit Physical Therapy",
+      "url": "https://www.youtube.com/watch?v=o4GKiEoYClI",
+      "bytes": 3929690,
+      "sha256": "213951e5319380f6e097e5688be1bff9d38edab10d6b12a2db0b7a5a530bda36",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "60000/1001"
+          }
+        ],
+        "format": {
+          "duration": "20.236883"
+        }
+      },
+      "split": "development",
+      "selectionStage": "post-baseline development supplement"
+    },
+    {
+      "id": "VuJZ6dqMf8M",
+      "clipName": "seatedKneeExtensionDoctorJo",
+      "publisher": "Ask Doctor Jo",
+      "url": "https://www.youtube.com/watch?v=VuJZ6dqMf8M",
+      "bytes": 1146079,
+      "sha256": "5b19837255a3fd33354b29ef2681c0d6c91fa733b0c4b5620075c4478a0d5714",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "24000/1001"
+          }
+        ],
+        "format": {
+          "duration": "25.567208"
+        }
+      },
+      "split": "development",
+      "selectionStage": "post-baseline development supplement"
+    },
+    {
+      "id": "ZLxyh_PEstI",
+      "clipName": "singleLegBalanceRehab",
+      "publisher": "Rehab My Patient",
+      "url": "https://www.youtube.com/watch?v=ZLxyh_PEstI",
+      "bytes": 1715511,
+      "sha256": "33f78d936b4273e727d1e061252d562c20e9bf982e8aeac35e5a3325b9abdbab",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 720,
+            "avg_frame_rate": "25/1"
+          }
+        ],
+        "format": {
+          "duration": "24.160000"
+        }
+      },
+      "split": "development",
+      "selectionStage": "post-baseline development supplement"
+    }
+  ]
+}

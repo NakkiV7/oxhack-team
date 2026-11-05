@@ -1,0 +1,17 @@
+{
+  "frozenAtUTC": "2026-11-05T22:03:15.907067+00:00",
+  "heldOutConsumed": false,
+  "heldOutSources": 8,
+  "primaryFPSCap": 10,
+  "primarySampling": "minimumInterval",
+  "sourceCodeSHA256": {
+    "Native/iOS/PoseDetector.swift": "6c5768207e5eb1a3be7586066cc250cd5b13cc3697a0da8e100515ad9d39d14d",
+    "Shared/Core/PoseGeometry.swift": "ea2278dade559ee50e7aea72484eda014d7db109a1ea0a2f6da478593e449f43",
+    "Shared/Core/MovementProfiles.swift": "520a7986dc615c6314e06ac4564425a8a2ad45de97230b05e149cc74dbb6ec0e",
+    "Shared/Core/RepCounter.swift": "90db5c9637344d6d91a0f5b466eca8e76a1ce9e29cc5926089e7a82e5305bea1",
+    "Shared/Core/PoseHoldCounter.swift": "7dc848cc890833c658aa562fe67d5e4d290d8b3ee8c8655979b4c7a2fc5b5261",
+    "Shared/Core/ExerciseDemonstrationGuide.swift": "47d5a56db0993bf2410e11adb458f128c5f93621417d3a59556059689afb7590"
+  },
+  "baseHEAD": "6fbf4ec6cb5baaec3425b4491377f9e596992916",
+  "reason": "Development observations and publicAPI regressions complete; no held-out inference yet. Native final development confirmation next, heldOut after confirmation."
+}

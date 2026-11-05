@@ -14,20 +14,37 @@ public struct RepCounter: Sendable {
     public private(set) var lastRepDuration: Double?
     public private(set) var lastRepPhases: RepPhases?
     private var limbs: [LimbRepCounter]
+    private var identityRecovery = PoseIdentityRecovery()
+    public var cameraRecoveryState: CameraRecoveryState { identityRecovery.state }
+    public var requiresIdentityAcknowledgement: Bool { identityRecovery.requiresAcknowledgement }
+    public mutating func acknowledgeIdentityRecovery() { identityRecovery.acknowledge(); resetCycle() }
     private var lastSampleTime: Double?
+    private var lastArmCycle: (side: Int, end: Double)?
+    public var completedLimbCycles: Int { limbs.reduce(0) { $0 + $1.reps } }
     public init(exercise: Exercise, initialReps: Int = 0) {
         self.exercise = exercise; reps = max(0, initialReps)
         limbs = [LimbRepCounter(exercise: exercise), LimbRepCounter(exercise: exercise)]
     }
+    func replacingQuantity(_ count: Int) -> RepCounter {
+        var next = RepCounter(exercise: exercise, initialReps: count)
+        next.identityRecovery = identityRecovery
+        next.identityRecovery.interrupt()
+        return next
+    }
     public func continuitySide(at time: Double) -> Int? {
         exercise.tracksAlternatingLimbs ? nil : limbs[0].continuitySide(at: time)
     }
-    public mutating func resetMovement() {
-        limbs[0].resetMovement(); limbs[1].resetMovement(); lastSampleTime = nil
+    public mutating func resetMovement() { resetCycle(); identityRecovery.interrupt() }
+    private mutating func resetCycle() {
+        limbs[0].resetMovement(); limbs[1].resetMovement(); lastSampleTime = nil; lastArmCycle = nil
     }
     public mutating func consume(_ sample: MovementSample) -> Cue {
         guard !exercise.isTimed else { return .hold }
         guard sample.time.isFinite else { resetMovement(); return .tracking }
+        if sample.observation == .multiplePeople {
+            resetCycle(); identityRecovery.rejectAmbiguity(); return .tracking
+        }
+        guard identityRecovery.accepts(sample) else { resetCycle(); return .tracking }
         if sample.time == lastSampleTime { return .tracking }
         if let lastSampleTime, sample.time < lastSampleTime { resetMovement(); return .tracking }
         defer { lastSampleTime = sample.time }
@@ -45,11 +62,22 @@ public struct RepCounter: Sendable {
         let otherCue = consumeLimb(otherSample)
         return primaryCue == .controlled || otherCue == .controlled ? .controlled : primaryCue
     }
+    private var combinesSynchronizedArms: Bool {
+        [.frontArmRaise, .lateralArmRaise, .standingBicepsCurl].contains(exercise)
+    }
     private mutating func consumeLimb(_ sample: MovementSample) -> Cue {
         let index = exercise.tracksAlternatingLimbs ? sample.side : 0
         let before = limbs[index].reps
         let cue = limbs[index].consume(sample)
         if limbs[index].reps > before {
+            if combinesSynchronizedArms, let returnTime = limbs[index].lastRepReturnTime {
+                if let previous = lastArmCycle, previous.side != sample.side,
+                   abs(previous.end - returnTime) <= 0.25 {
+                    lastArmCycle = nil
+                    return cue
+                }
+                lastArmCycle = (sample.side, returnTime)
+            }
             reps += limbs[index].reps - before
             lastRepDuration = limbs[index].lastRepDuration
             lastRepPhases = limbs[index].lastRepPhases
@@ -64,10 +92,13 @@ private struct LimbRepCounter: Sendable {
     public private(set) var lastRepDuration: Double?
     /// Phases of the last counted rep, when the descent was observed from the top. Counting never depends on it.
     public private(set) var lastRepPhases: RepPhases?
+    private(set) var lastRepReturnTime: Double?
     private var descentStartedAt: Double?
     private var deepest: (angle: Double, time: Double)?
     private var topAngle = 0.0
     private var initialSeatedStart = false
+    private var calibratedNeutral: Double?
+    private var neutralCandidate: (time: Double, minimum: Double, maximum: Double)?
     private var witnessedInitialRise = false
     private var armedAt: Double?
     private var reachedBottom = false
@@ -82,9 +113,9 @@ private struct LimbRepCounter: Sendable {
     private var interruptedPhases = false
     private var provenance: MeasurementProvenance?
     private var continuityWindow: Double { exercise.isSquat ? 2 : 1.5 }
-    /// Hold the observed leg through a short squat occlusion; never combine two legs into one movement.
+    /// Preserve the observed chain through a brief loss; never combine sides into one cycle.
     public func continuitySide(at time: Double) -> Int? {
-        guard exercise.isSquat, armedAt != nil, time.isFinite, let lastReliableTime,
+        guard !exercise.isTimed, armedAt != nil, time.isFinite, let lastReliableTime,
               time >= (lastTime ?? lastReliableTime), time - lastReliableTime <= continuityWindow else { return nil }
         return side
     }
@@ -96,6 +127,7 @@ private struct LimbRepCounter: Sendable {
         firstBottomAt = nil; bottomHoldStartedAt = nil
         interruptedPhases = false; provenance = nil
         initialSeatedStart = false; witnessedInitialRise = false
+        calibratedNeutral = nil; neutralCandidate = nil
     }
     public mutating func consume(_ sample: MovementSample) -> Cue {
         guard sample.time.isFinite else { resetMovement(); return .tracking }
@@ -105,6 +137,7 @@ private struct LimbRepCounter: Sendable {
         if let previousTime, sample.time < previousTime { resetMovement(); return .tracking }
         guard sample.confidence.isFinite else { resetMovement(); return .tracking }
         guard sample.confidence >= 0.6 else {
+            neutralCandidate = nil
             if exercise.requiresContinuousTiming || initialSeatedStart || (exercise == .sitToStand && armedAt == nil) {
                 resetMovement(); return .tracking
             }
@@ -131,7 +164,13 @@ private struct LimbRepCounter: Sendable {
         provenance = sample.provenance
         guard sample.bodyLine != .reset else { resetMovement(); return .alignment }
         defer { lastReliableTime = sample.time; lastReliableAngle = sample.angle; side = sample.side }
-        let zone = sample.angle >= 160 ? 1 : (sample.angle <= exercise.bottomAngle ? -1 : 0)
+        calibrateVisibleNeutral(sample)
+        let ordinaryNeutral: Double
+        if exercise == .frontArmRaise || exercise == .lateralArmRaise { ordinaryNeutral = 170 - 80 * 20 / 85 }
+        else if exercise == .standingHipAbduction { ordinaryNeutral = 170 - 80 * 5 / 25 }
+        else { ordinaryNeutral = 160 }
+        let neutralThreshold = calibratedNeutral ?? ordinaryNeutral
+        let zone = sample.angle >= neutralThreshold ? 1 : (sample.angle <= exercise.bottomAngle ? -1 : 0)
         if zone == 1, !reachedBottom { topAngle = max(topAngle,sample.angle) }
         if candidate != zone {
             candidate = zone; candidateAt = sample.time
@@ -145,7 +184,10 @@ private struct LimbRepCounter: Sendable {
         }
         if (descentStartedAt != nil || initialSeatedStart), sample.angle < (deepest?.angle ?? .infinity) { deepest = (sample.angle, sample.time) }
         if initialSeatedStart, zone == 0, sample.angle > (deepest?.angle ?? sample.angle) + 8 { witnessedInitialRise = true }
-        guard let since = candidateAt, sample.time - since >= (zone == -1 && !exercise.requiresContinuousTiming ? 0.04 : 0.15) else { return .lower }
+        // An ordinary return already has witnessed depth and a bounded full-cycle duration.
+        // Two clear return observations suffice at production cadence; setup and tempo/pause retain their dwell.
+        let confirmation = !exercise.requiresContinuousTiming && (zone == -1 || (zone == 1 && reachedBottom)) ? 0.04 : 0.15
+        guard let since = candidateAt, sample.time - since >= confirmation else { return .lower }
         if exercise == .sitToStand, armedAt == nil, zone == -1 {
             guard sample.time - since >= 0.15 else { return .hold }
             armedAt = sample.time; reachedBottom = true; initialSeatedStart = true
@@ -162,7 +204,7 @@ private struct LimbRepCounter: Sendable {
             return .lower
         }
         let observedTop = initialSeatedStart ? sample.angle : topAngle
-        guard let lowest = deepest?.angle, observedTop - lowest >= 18,
+        guard let lowest = deepest?.angle, observedTop - lowest >= (calibratedNeutral == nil ? 18 : 35),
               !initialSeatedStart || witnessedInitialRise else {
             resetMovement(); armedAt = sample.time; topAngle = sample.angle; return .lower
         }
@@ -176,12 +218,32 @@ private struct LimbRepCounter: Sendable {
         guard (minimumDuration...15).contains(sample.time - start) else {
             resetMovement(); armedAt = sample.time; topAngle = sample.angle; return .lower
         }
+        lastRepReturnTime = candidateAt ?? sample.time
         reps += 1; lastRepDuration = initialSeatedStart ? nil : sample.time - start
         if !initialSeatedStart, sample.provenance.isJointAngle, !interruptedPhases, let began = descentStartedAt, let deepest, let top = candidateAt, deepest.time > began, top > deepest.time {
             lastRepPhases = RepPhases(lowering: deepest.time - began, rising: top - deepest.time, minimumAngle: deepest.angle)
         } else { lastRepPhases = nil }
+        let retainedNeutral = calibratedNeutral
         resetMovement(); armedAt = sample.time; topAngle = sample.angle
+        calibratedNeutral = retainedNeutral
         candidate = 1; candidateAt = sample.time
         return .controlled
     }
+    private mutating func calibrateVisibleNeutral(_ sample: MovementSample) {
+        guard calibratedNeutral == nil, armedAt == nil, !exercise.requiresContinuousTiming,
+              exercise.isPushup || exercise == .standingBicepsCurl || [.lateralLunge,.reverseLunge,.forwardLunge,.splitSquat,.supportedSplitSquat,.assistedSquat].contains(exercise),
+              sample.provenance.isJointAngle else { return }
+        if let lastReliableTime, sample.time - lastReliableTime > 0.25 { neutralCandidate = nil }
+        guard (135..<166).contains(sample.angle) else { neutralCandidate = nil; return }
+        guard let candidate = neutralCandidate else {
+            neutralCandidate = (sample.time,sample.angle,sample.angle); return
+        }
+        let minimum = min(candidate.minimum,sample.angle), maximum = max(candidate.maximum,sample.angle)
+        guard maximum - minimum <= 6 else {
+            neutralCandidate = (sample.time,sample.angle,sample.angle); return
+        }
+        neutralCandidate = (candidate.time,minimum,maximum)
+        if sample.time - candidate.time >= 0.2, minimum < 160 { calibratedNeutral = max(130,minimum - 5) }
+    }
+
 }

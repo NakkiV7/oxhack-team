@@ -84,6 +84,14 @@ public final class VoiceCuePlaybackController {
         self.context = context
     }
 
+    /// Same input and active set, explicitly continued after camera identity recovery.
+    /// Invalidate old queued intent without treating a capture-token change as a speech cancellation.
+    public func continueTracking(to context: VoiceCueContext) {
+        guard self.context?.sessionID == context.sessionID, self.context?.phase == .active, context.phase == .active else { return }
+        deferred = nil; completedTrackingPrompt = nil
+        self.context = context
+    }
+
     public func update(context: VoiceCueContext, event: VoiceCue?, enabled: Bool, now: Double, playbackAvailable: Bool = true) {
         if self.context?.sessionID != context.sessionID || self.context?.generation != context.generation {
             cancel()

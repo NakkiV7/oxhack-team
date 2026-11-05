@@ -109,10 +109,11 @@ final class TrainingStore {
         repVoice.cancel()
     }
 
-    private func transitionCoaching() {
+    private func transitionCoaching(continuingCamera: Bool = false) {
         activeCoachingEvent = nil
         trackingLoss = nil; trackingContext = nil; lastTrackingPromptAt = nil; handledTrackingCompletion = nil
-        coachingVoice.transition(to: feedbackContext)
+        if continuingCamera { coachingVoice.continueTracking(to: feedbackContext) }
+        else { coachingVoice.transition(to: feedbackContext) }
     }
 
     func setVoiceFeedback(_ enabled: Bool) {
@@ -525,16 +526,18 @@ final class TrainingStore {
         preferredSide = sample?.side ?? preferredSide
         if configured != nil {
             let previousReps = configured?.actualReps, previousCue = configured?.cue
+            let previousRecovery = configured?.cameraRecoveryState
             let previousSeconds = configuredDisplayedSeconds
             configuredStorage?.consume(sample ?? .init(time: frame.time, angle: .nan, confidence: 0), generation: generation)
-            if previousReps != configured?.actualReps || previousCue != configured?.cue || previousSeconds != configuredDisplayedSeconds {
+            if previousReps != configured?.actualReps || previousCue != configured?.cue || previousSeconds != configuredDisplayedSeconds || previousRecovery != configured?.cameraRecoveryState {
                 configuredRevision += 1; coachingTick(); publish()
             }
             return
         }
+        let previousRecovery = session.cameraRecoveryState
         let previousReps = session.counter.reps, previousCue = session.cue
         session.consume(sample ?? .init(time: frame.time, angle: .nan, confidence: 0), generation: generation)
-        if previousReps != session.counter.reps || previousCue != session.cue {
+        if previousReps != session.counter.reps || previousCue != session.cue || previousRecovery != session.cameraRecoveryState {
             coachingTick()
             publish()
         }
@@ -552,11 +555,17 @@ final class TrainingStore {
     func resume() {
         guard appActive || !requiresForegroundCapture else { return }
         if configured != nil {
-            guard configured?.phase == .paused else { return }
-            configured?.resume(at: now); startConfiguredCapture(); publish(); return
+            guard configured?.phase == .paused || configured?.cameraRecoveryState == .needsResume else { return }
+            let continuingCamera = configured?.phase == .active && configured?.cameraRecoveryState == .needsResume
+            configured?.resume(at: now)
+            if continuingCamera { transitionCoaching(continuingCamera: true) }
+            frame = nil; image = nil; preferredSide = nil; startConfiguredCapture(); publish(); return
         }
-        guard session.phase == .paused else { return }
+        guard session.phase == .paused || session.cameraRecoveryState == .needsResume else { return }
+        let continuingCamera = session.phase == .active && session.cameraRecoveryState == .needsResume
         session.resume(at: now)
+        if continuingCamera { transitionCoaching(continuingCamera: true) }
+        frame = nil; image = nil; preferredSide = nil
         if hasInput { vision.resume(token: session.generation, source: source) }
         publish()
     }
