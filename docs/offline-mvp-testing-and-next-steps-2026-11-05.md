@@ -17,7 +17,7 @@ This records the earlier build 18 checkpoint. The later production-foundation up
 
 ## Audio status
 
-**Build 22 candidate update:** renewed restricted authoring access succeeded. Maya and Leo now have 144 natural bundled recordings across three styles, using 3,658 credits within the approved 10,000-credit cap. [Current audio evidence](evidence/natural-coach-voices-2026-11-05.md). The paragraph below records the earlier build 19 checkpoint.
+**Build 22 TestFlight update:** renewed restricted authoring access succeeded. Maya and Leo now have 144 natural bundled recordings across three styles, using 3,658 credits within the approved 10,000-credit cap. [Current audio evidence](evidence/natural-coach-voices-2026-11-05.md). The paragraph below records the earlier build 19 checkpoint.
 
 Original Maya and Leo coaches currently use the iPhone's installed speech voices with three styles and a rotating phrase bank. They are not ElevenLabs recordings. Existing authoring credentials returned HTTP 400/401 and the restricted key is expired. No new synthesis, key creation, purchase or upgrade was performed. Existing Arnold and Goggins-inspired bundled recordings remain available. Identity/authenticity/endorsement is not claimed.
 

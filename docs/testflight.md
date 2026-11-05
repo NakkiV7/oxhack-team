@@ -1,6 +1,6 @@
 # Install the Spottr beta
 
-**5 November 2026 update** — Build **0.1 (21)** is VALID and IN_BETA_TESTING internally and externally, with beta review APPROVED. It unifies artwork and layouts, improves onboarding and adds guided Watch model/connection/sync setup. All beta training remains available without purchase. [Current build21 evidence](evidence/ui-watch-polish-2026-11-05.md). [Install through the existing invitation](https://testflight.apple.com/join/f3MhePbf). Update both iPhone and Watch apps before using the new companion check. Physical sensor acceptance and paid-product approval remain separate.
+**5 November 2026 update** — Build **0.1 (22)** is VALID and IN_BETA_TESTING internally and externally, with beta review APPROVED. Maya and Leo now use 144 natural offline recordings across Gentle, Encouraging and Direct styles. Voice playback preserves tracking sentences and rechecks freshness after audio activation. Existing Arnold/Goggins rep packs remain. All beta training remains available without purchase. [Build 22 evidence](evidence/natural-coach-voices-2026-11-05.md). [Install through the existing invitation](https://testflight.apple.com/join/f3MhePbf). Build 21's UI and guided Watch setup are retained. Physical audio, movement and sensor acceptance remain device checks.
 
 ## Historical build 5 checkpoint
 
