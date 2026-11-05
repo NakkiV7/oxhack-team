@@ -492,6 +492,11 @@ extension ConfiguredWorkoutFlowTests {
             XCTAssertEqual(store.configured?.measuredSeconds(at: time) ?? -1, manualSeconds + Double(index)*0.2, accuracy: 0.00001)
             XCTAssertEqual(store.configured?.quantityOrigin(at: time), index == 0 ? .activeTimer : .mixed)
             XCTAssertEqual(store.configured?.quantitySourcePresentation(at: time).title, index == 0 ? "Manual hold, active timer" : "Camera + manual quantity")
+            let snapshot = CompanionSnapshot(session: try XCTUnwrap(store.configured), at: time)
+            XCTAssertEqual(snapshot.configured?.quantityOrigin, index == 0 ? .activeTimer : .mixed)
+            XCTAssertEqual(snapshot.quantityOriginLabel, index == 0 ? "Manual hold, active timer" : "Camera + manual quantity")
+            XCTAssertTrue(snapshot.quantityAccessibilityValue.contains(index == 0 ? "Manual hold, active timer" : "Camera + manual quantity"))
+            XCTAssertEqual(snapshot.configured?.source, .camera)
             XCTAssertNotEqual(store.coachingEvent?.decision.reason, .targetReached)
             XCTAssertFalse(store.coachingEvent?.decision.facts.contains(where: { $0.contains("observed seconds") }) ?? false)
         }

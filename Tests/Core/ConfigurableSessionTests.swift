@@ -747,3 +747,16 @@ func configuredWatchRejectsUnsupportedCameraSourceClaims(exerciseID: String) thr
         #expect((timed ? run.measuredSeconds(at: 14.3) : Double(run.actualReps ?? 0)) > saved)
     }
 }
+
+@Test func configuredProgressNamesExerciseAndSetWithoutRepeatingSingleExerciseTotals() throws {
+    var single = try ConfigurableSession(plan: CoachSavedPlan.catalogue(exerciseID: "squat", sets: 3, target: 8, restSeconds: 30), availableSupport: [])
+    #expect(single.progressDescription == "Set 1 of 3")
+    single.start(at: 0); single.beginSet(at: 0); single.setReps(1); single.endSet(at: 1); single.nextSet(at: 2)
+    #expect(single.progressDescription == "Set 2 of 3")
+    var multiple = try ConfigurableSession(plan: customPlan(), availableSupport: ["Wall"])
+    #expect(multiple.progressDescription == "Exercise 1 of 2 · Set 1 of 2")
+    multiple.start(at: 0); multiple.beginSet(at: 0); multiple.setReps(1); multiple.endSet(at: 1); multiple.nextSet(at: 2)
+    #expect(multiple.progressDescription == "Exercise 1 of 2 · Set 2 of 2")
+    multiple.beginSet(at: 2); multiple.setReps(1); multiple.endSet(at: 3); multiple.nextSet(at: 4)
+    #expect(multiple.progressDescription == "Exercise 2 of 2 · Set 1 of 1")
+}

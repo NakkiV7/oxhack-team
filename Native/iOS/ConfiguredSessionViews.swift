@@ -16,7 +16,7 @@ struct ConfiguredSessionView: View {
                     VStack(spacing: 4) {
                         Text(run.phase == .finished ? "Your session" : run.current.entry.name).font(.headline)
                         if run.phase != .finished {
-                            Text("Set \(run.current.number) of \(run.current.totalSets), \(run.index + 1) of \(run.steps.count) planned")
+                            Text(run.progressDescription)
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                     }.multilineTextAlignment(.center)

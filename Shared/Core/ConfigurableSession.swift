@@ -43,6 +43,13 @@ public struct ConfigurableSession: Sendable {
     private var restStarted: Double?
     private var restBefore: Double?
     public var current: WorkoutStep { steps[index] }
+    public var progressDescription: String {
+        let set = "Set \(current.number) of \(current.totalSets)"
+        let exerciseCount = Set(steps.map(\.exerciseID)).count
+        guard exerciseCount > 1 else { return set }
+        let exerciseIndex = Set(steps.prefix(index + 1).map(\.exerciseID)).count
+        return "Exercise \(exerciseIndex) of \(exerciseCount) · \(set)"
+    }
     public var trackingExercise: Exercise? { current.entry.tracking }
     public var cameraRecoveryState: CameraRecoveryState {
         guard source == .camera, [.active, .paused].contains(phase) else { return .ready }

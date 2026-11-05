@@ -165,3 +165,38 @@ test('path capability claims must match counting timing and fixed assessment sup
   assert.equal((await request('/v1/path-proposal', forged)).status, 422);
   assert.equal(calls.length, 0);
 });
+
+// Exact request fixture from approved build 22, e7a8731 (no catalogue version field).
+const build22PathInput = {
+  generationID: 'path-1', goal: 'squat',
+  answers: { band: 'beginner', focus: 'learn', coachingStyle: 'encouraging', minutesPerSession: 20, sessionsPerWeek: 3 },
+  exercises: [
+    { id: 'gluteBridge', capability: 'practiceLog', allowedPrerequisites: [], maxTarget: 18 },
+    { id: 'squat', capability: 'cameraAssessment', allowedPrerequisites: ['gluteBridge'], maxTarget: 18 },
+    { id: 'reverseLunge', capability: 'practiceLog', allowedPrerequisites: ['squat', 'singleLegBalance'], maxTarget: 12 },
+    { id: 'splitSquat', capability: 'practiceLog', allowedPrerequisites: ['reverseLunge'], maxTarget: 12 },
+    { id: 'assistedSquat', capability: 'practiceLog', allowedPrerequisites: ['splitSquat', 'hipFlexorStretch'], maxTarget: 8 },
+    { id: 'singleLegBalance', capability: 'practiceLog', allowedPrerequisites: [], maxTarget: 30 },
+    { id: 'hipFlexorStretch', capability: 'practiceLog', allowedPrerequisites: [], maxTarget: 45 }
+  ],
+  allowedStarts: ['gluteBridge'], ruleStart: 'gluteBridge'
+};
+
+test('approved build 22 path requests preserve legacy capability in provider context', async t => {
+  const { request, calls } = await serve(t, () => validPath);
+  const response = await request('/v1/path-proposal', build22PathInput);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), validPath);
+  const context = JSON.parse(calls[0].contents[0].parts[0].text);
+  assert.deepEqual(context.exercises, build22PathInput.exercises);
+  assert.equal(context.exercises.find(item => item.id === 'gluteBridge').capability, 'practiceLog');
+});
+
+test('legacy compatibility never permits timing or assessment elevation', async t => {
+  const { request, calls } = await serve(t, () => validPath);
+  for (const [id, capability] of [['gluteBridge', 'cameraTiming'], ['singleLegBalance', 'cameraAssessment'], ['singleLegBalance', 'cameraCounting']]) {
+    const forged = { ...build22PathInput, exercises: build22PathInput.exercises.map(item => item.id === id ? { ...item, capability } : item) };
+    assert.equal((await request('/v1/path-proposal', forged)).status, 422);
+  }
+  assert.equal(calls.length, 0);
+});

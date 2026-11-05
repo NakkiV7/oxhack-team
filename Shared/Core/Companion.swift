@@ -41,6 +41,8 @@ public struct ConfiguredCompanionSnapshot: Codable, Sendable {
     public let totalSteps: Int
     public let enteredReps: Int?
     public let measuredSeconds: Double?
+    /// Origin of earned quantity, independent of the currently selected input. Nil for legacy/empty snapshots.
+    public let quantityOrigin: LoggedSet.QuantityOrigin?
     public var displaySeconds: Double? { measuredSeconds ?? (source == .camera ? nil : activeSeconds) }
     public let activeSeconds: Double
     public let restElapsed: Double?
@@ -75,6 +77,30 @@ public struct CompanionSnapshot: Codable, Sendable {
         default: return nil
         }
     }
+    public var quantityText: String {
+        guard let configured else { return source == .manual && reps == 0 ? "—" : "\(reps)" }
+        if configured.unit == .seconds { return configured.displaySeconds.map { "\(Int($0))" } ?? "—" }
+        if configured.source == .camera { return "\(reps)" }
+        return configured.enteredReps.map(String.init) ?? "—"
+    }
+    public var quantityOriginLabel: String? {
+        guard let configured else { return nil }
+        let hasQuantity = configured.unit == .seconds ? (configured.displaySeconds ?? 0) > 0 : reps > 0
+        guard hasQuantity else { return "No quantity recorded" }
+        switch configured.quantityOrigin {
+        case .mixed: return "Camera + manual quantity"
+        case .activeTimer: return "Manual hold, active timer"
+        case .selfReport: return "Manual self-report"
+        case .cameraObserved: return "Camera observation"
+        case nil: return "Quantity origin unavailable"
+        }
+    }
+    public var quantityAccessibilityValue: String {
+        let unit = configured?.unit == .seconds ? "seconds" : "reps"
+        let quantity = quantityText == "—" ? "No quantity entered. Target \(target) \(unit)." : "\(quantityText) of \(target) \(unit)"
+        let separator = quantity.hasSuffix(".") ? " " : ". "
+        return quantityOriginLabel.map { "\(quantity)\(separator)\($0)." } ?? quantity
+    }
     public init(session: TrainingSession, sentAt: Date = Date()) {
         cameraRecoveryState = session.cameraRecoveryState
         sessionID = session.id; generation = session.generation; exercise = session.exercise
@@ -88,6 +114,15 @@ public struct CompanionSnapshot: Codable, Sendable {
         }
         let activeSeconds = session.phase == .rest || session.phase == .finished
             ? (ended?.activeSeconds ?? ended?.seconds ?? 0) : session.elapsed(at: time)
+        let endedPhase = session.phase == .rest || session.phase == .finished
+        let hasQuantity = session.current.unit == .seconds
+            ? (endedPhase ? ended?.seconds ?? 0 : session.measuredSeconds(at: time)) > 0
+            : (endedPhase ? ended?.reps ?? 0 : session.actualReps ?? 0) > 0
+        // Camera-only reps use nil in the saved legacy model. Here actual earned session facts
+        // (or the ended record's source), never the selected input, establish their origin.
+        let origin: LoggedSet.QuantityOrigin? = !hasQuantity ? nil : endedPhase
+            ? (ended?.quantityOrigin ?? (ended?.source == .camera ? .cameraObserved : nil))
+            : (session.quantityOrigin(at: time) ?? .cameraObserved)
         cameraRecoveryState = session.cameraRecoveryState
         source = nil
         sessionID = session.id; generation = session.generation; exercise = nil
@@ -96,7 +131,7 @@ public struct CompanionSnapshot: Codable, Sendable {
         self.sentAt = sentAt
         configured = .init(exerciseID: session.current.exerciseID, unit: session.current.unit,
             totalSets: session.current.totalSets, stepIndex: session.index + 1, totalSteps: session.steps.count,
-            enteredReps: session.manualReps, measuredSeconds: session.current.unit == .seconds ? ((session.phase == .rest || session.phase == .finished) ? ended?.seconds ?? 0 : session.measuredSeconds(at: time)) : nil, activeSeconds: activeSeconds,
+            enteredReps: session.manualReps, measuredSeconds: session.current.unit == .seconds ? ((session.phase == .rest || session.phase == .finished) ? ended?.seconds ?? 0 : session.measuredSeconds(at: time)) : nil, quantityOrigin: origin, activeSeconds: activeSeconds,
             restElapsed: session.restElapsed(at: time), restTarget: session.current.restSeconds,
             hasStarted: session.hasStarted, canEndSet: session.canEndSet(at: time),
             stoppedForDiscomfort: session.stoppedForDiscomfort, currentWasSkipped: session.currentWasSkipped, source: session.source)
@@ -122,6 +157,12 @@ public struct CompanionSnapshot: Codable, Sendable {
             guard configured.hasStarted, phase == .active || phase == .paused, (configured.measuredSeconds ?? 0) >= 1 else { return false }
         }
         guard configured.measuredSeconds == nil || configured.unit == .seconds else { return false }
+        if configured.quantityOrigin == .activeTimer && configured.unit != .seconds { return false }
+        if configured.quantityOrigin == .selfReport && configured.unit != .reps { return false }
+        if configured.quantityOrigin == .cameraObserved || configured.quantityOrigin == .mixed {
+            guard ExerciseCatalog.find(configured.exerciseID)?.tracking != nil,
+                  configured.unit != .seconds || configured.measuredSeconds != nil else { return false }
+        }
         return ExerciseCatalog.find(configured.exerciseID)?.unit == configured.unit
             && (1...10).contains(configured.totalSets) && (1...configured.totalSets).contains(setNumber)
             && (1...120).contains(configured.totalSteps) && (1...configured.totalSteps).contains(configured.stepIndex)

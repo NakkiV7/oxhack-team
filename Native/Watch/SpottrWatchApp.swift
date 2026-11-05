@@ -99,14 +99,14 @@ struct WatchTrainingView: View {
                 Text("Your review is on iPhone.").font(.caption)
             } else {
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
-                    Text(quantity(snapshot)).font(.system(size: min(countFontSize, 48), weight: .semibold, design: .rounded))
+                    Text(snapshot.quantityText).font(.system(size: min(countFontSize, 48), weight: .semibold, design: .rounded))
                         .monospacedDigit().lineLimit(1).minimumScaleFactor(0.6)
                     Text("/ \(snapshot.target)\(snapshot.configured?.unit == .seconds ? " s" : "")")
                         .font(.system(size: 12)).foregroundStyle(.secondary)
                 }.accessibilityIdentifier("watch-quantity")
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("Quantity and target")
-                    .accessibilityValue(quantity(snapshot) == "—" ? "No quantity entered. Target \(snapshot.target) \(snapshot.configured?.unit == .seconds ? "seconds" : "reps")." : "\(quantity(snapshot)) of \(snapshot.target) \(snapshot.configured?.unit == .seconds ? "seconds" : "reps")")
+                    .accessibilityValue(snapshot.quantityAccessibilityValue)
                 HStack(spacing: 6) {
                     let heartRate = store.heart?.heartRate(at: now)
                     Label(heartRate.map { "\(Int($0.rounded())) BPM" } ?? "— BPM", systemImage: "heart.fill")
@@ -120,6 +120,11 @@ struct WatchTrainingView: View {
                 Text(instruction(snapshot)).font(.system(size: 11)).multilineTextAlignment(.center).lineLimit(2)
                     .foregroundStyle(snapshot.configured?.stoppedForDiscomfort == true ? Color.red : Color.white)
                     .accessibilityLabel(instruction(snapshot))
+            }
+            if let origin = snapshot.quantityOriginLabel {
+                Text(origin).font(.caption2).foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .accessibilityIdentifier("watch-quantity-origin")
             }
         }.padding(.horizontal, 12).padding(.vertical, 4).frame(maxWidth: .infinity, maxHeight: .infinity)
             .accessibilityIdentifier("watch-metrics-page")
@@ -229,14 +234,6 @@ struct WatchTrainingView: View {
     }
     private func setDescription(_ snapshot: CompanionSnapshot) -> String {
         "Set \(snapshot.setNumber) of \(snapshot.configured?.totalSets ?? 3)"
-    }
-    private func quantity(_ snapshot: CompanionSnapshot) -> String {
-        guard let configured = snapshot.configured else {
-            return snapshot.source == .manual && snapshot.reps == 0 ? "—" : "\(snapshot.reps)"
-        }
-        if configured.unit == .seconds { return configured.displaySeconds.map { "\(Int($0))" } ?? "—" }
-        if configured.source == .camera { return "\(snapshot.reps)" }
-        return configured.enteredReps.map(String.init) ?? "—"
     }
     private func instruction(_ snapshot: CompanionSnapshot) -> String {
         if let manual = snapshot.manualRepInstruction { return manual }

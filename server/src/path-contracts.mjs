@@ -21,6 +21,14 @@ const exerciseID = z.enum(ids);
 const trackedID = z.enum(['squat', 'pushup']);
 const unique = list => new Set(list).size === list.length;
 
+// Build 22 shipped these identities as manual practice. Keep their lower capability claims
+// unchanged in provider context during mixed-version rollout; no assessment/timing elevation.
+const legacyPracticeIDs = new Set([
+  'gluteBridge', 'reverseLunge', 'splitSquat', 'assistedSquat', 'deadBug', 'plank', 'sidePlank',
+  'stepJack', 'highKnees', 'mountainClimber', 'catCow', 'hipFlexorStretch', 'singleLegBalance',
+  'widePushup', 'diamondPushup', 'wallSit', 'calfRaise', 'birdDog', 'seatedKneeExtension'
+]);
+
 // ---------- path proposal ----------
 export const pathRequest = z.strictObject({
   generationID: boundedText(128),
@@ -47,7 +55,7 @@ export const pathRequest = z.strictObject({
   const usable = data.exercises.map(item => item.id);
   return unique(usable) && usable.includes(data.goal) && data.allowedStarts.every(id => usable.includes(id)) && unique(data.allowedStarts)
     && data.allowedStarts.includes(data.ruleStart) && data.exercises.every(item => item.allowedPrerequisites.every(id => usable.includes(id) && id !== item.id))
-    && data.exercises.every(item => item.capability === (['squat', 'pushup'].includes(item.id) ? 'cameraAssessment' : byID[item.id].tracked ? (byID[item.id].unit === 'seconds' ? 'cameraTiming' : 'cameraCounting') : 'practiceLog'))
+    && data.exercises.every(item => (item.capability === 'practiceLog' && legacyPracticeIDs.has(item.id)) || item.capability === (['squat', 'pushup'].includes(item.id) ? 'cameraAssessment' : byID[item.id].tracked ? (byID[item.id].unit === 'seconds' ? 'cameraTiming' : 'cameraCounting') : 'practiceLog'))
     && data.exercises.every(item => item.maxTarget <= Math.ceil(byID[item.id].goal * 1.5));
 });
 
