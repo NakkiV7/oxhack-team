@@ -3,13 +3,15 @@ import Observation
 
 @MainActor @Observable
 final class NativeRewardsStore {
-    enum Failure: Error { case unreadableHistory, recordNotSaved }
+    enum Failure: Error { case unreadableHistory, recordNotSaved, timePressureDisabled }
     private(set) var ledger: GamificationLedger
     private(set) var loadError: String?
     private let url: URL
+    let allowsTimePressureRewards: Bool
 
-    init(url: URL, createdAt: Date = Date(), calendar: Calendar = .current) {
+    init(url: URL, createdAt: Date = Date(), calendar: Calendar = .current, allowsTimePressureRewards: Bool = true) {
         self.url = url
+        self.allowsTimePressureRewards = allowsTimePressureRewards
         ledger = GamificationLedger(createdAt: createdAt, calendar: calendar)
         guard FileManager.default.fileExists(atPath: url.path) else { return }
         do { ledger = try JSONDecoder().decode(GamificationLedger.self, from: Data(contentsOf: url)) }
@@ -17,6 +19,7 @@ final class NativeRewardsStore {
     }
 
     func schedule(startHour: Int, at date: Date) throws {
+        guard allowsTimePressureRewards else { throw Failure.timePressureDisabled }
         try requireReadable()
         var candidate = ledger
         try candidate.scheduleWindow(DailyXPWindow(startHour: startHour), at: date)
@@ -24,6 +27,7 @@ final class NativeRewardsStore {
     }
 
     func award(record: SessionRecord, before: [SessionRecord], history: [SessionRecord], completedAt: Date) throws {
+        guard allowsTimePressureRewards else { return }
         try requireReadable()
         guard !before.contains(where: { $0.id == record.id }),
               !ledger.events.contains(where: { $0.sessionID == record.id }) else { return }
@@ -35,7 +39,7 @@ final class NativeRewardsStore {
     }
 
     func totalXP(history: [SessionRecord]) -> Int {
-        baseXP(history: history) + reconciled(history: history).totalBonusXP
+        baseXP(history: history) + (allowsTimePressureRewards ? reconciled(history: history).totalBonusXP : 0)
     }
 
     func summary(history: [SessionRecord], at date: Date) -> GamificationSummary {
@@ -44,6 +48,7 @@ final class NativeRewardsStore {
     }
 
     func advance(history: [SessionRecord], at date: Date, plannedRestDays: [Date] = []) throws {
+        guard allowsTimePressureRewards else { return }
         try requireReadable()
         var candidate = reconciled(history: history)
         candidate.advance(to: date, plannedRestDays: plannedRestDays,
@@ -65,7 +70,7 @@ final class NativeRewardsStore {
     private func save(_ candidate: GamificationLedger) throws {
         let data = try JSONEncoder().encode(candidate)
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try data.write(to: url, options: .atomic)
+        try ProtectedLocalStorage.write(data, to: url)
         ledger = candidate
     }
 

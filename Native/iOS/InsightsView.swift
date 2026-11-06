@@ -286,7 +286,7 @@ private struct WeeklySection: View {
     @State private var pathStore: TrainingPathStore
     init(store: TrainingStore, profile: LocalProfile?, previewMode: Bool) {
         self.store = store; self.profile = profile; self.previewMode = previewMode
-        _pathStore = State(initialValue: TrainingPathStore(preview: previewMode))
+        _pathStore = State(initialValue: TrainingPathStore(url: store.dataFolder.appendingPathComponent("training-path.json"), preview: previewMode))
     }
 
     var body: some View {

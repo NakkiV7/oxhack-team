@@ -1,0 +1,424 @@
+import SwiftUI
+
+@MainActor @Observable final class AccountWorkspaceCoordinator {
+    let account: NativeAccountStore
+    let root: URL
+    private(set) var directory: AccountProfileDirectory?
+    private(set) var workspace: AccountWorkspace?
+    private(set) var message: String?
+    init(account: NativeAccountStore? = nil, root: URL? = nil) {
+        self.account = account ?? NativeAccountStore()
+        let base = URL.applicationSupportDirectory.appendingPathComponent("Spottr")
+        let namespace = ProcessInfo.processInfo.environment["SPOTTR_DATA_NAMESPACE"].flatMap(UUID.init(uuidString:))
+        self.root = root ?? namespace.map { base.appendingPathComponent($0.uuidString) } ?? base
+        do {
+            try ProtectedLocalStorage.prepare(self.root)
+            for name in ["profile.json", "history.json", "rewards.json", "training-path.json", "watch-inbox.json"] {
+                let file = self.root.appendingPathComponent(name)
+                if FileManager.default.fileExists(atPath: file.path) { try ProtectedLocalStorage.protect(file) }
+            }
+        } catch { message = "Local data protection could not be updated. Existing files have not been replaced." }
+    }
+    var visibleWorkspace: AccountWorkspace? {
+        guard account.trusted, workspace?.scope.accountID == account.accountID else { return nil }
+        return workspace
+    }
+    func accountChanged() {
+        do {
+            guard let id = account.accountID, account.trusted else { workspace?.suspend(); directory = nil; return }
+            if directory?.accountID != id { directory = try AccountProfileDirectory(accountID: id, root: root) }
+            if let selected = directory?.selectedID { try select(selected) }
+        } catch { message = "This profile could not be opened. Saved data has not been changed." }
+    }
+    func createProfile(name: String, age: TrainingAgeContext) async {
+        do {
+            guard account.trusted, let directory else { throw AccountFailure.reauthenticate }
+            if age.guardianManaged || !directory.profiles.isEmpty { try await account.authorization.guardian() }
+            guard account.accountID == directory.accountID else { throw AccountFailure.reauthenticate }
+            try requireNoOtherWorkout()
+            let profile = try directory.add(age: age, name: name)
+            try select(profile.id)
+        } catch { message = error.localizedDescription }
+    }
+    func choose(_ id: UUID) async {
+        do {
+            guard let directory, account.accountID == directory.accountID else { throw AccountFailure.reauthenticate }
+            try await account.authorization.guardian()
+            guard account.accountID == directory.accountID else { throw AccountFailure.reauthenticate }
+            try select(id)
+        } catch { message = error.localizedDescription }
+    }
+    private func select(_ id: UUID) throws {
+        guard let directory, directory.profiles.contains(where: { $0.id == id }), account.trusted, directory.accountID == account.accountID else { throw AccountFailure.reauthenticate }
+        let scope = directory.scope(id)
+        if workspace?.scope == scope { workspace?.training.setAccountActive(true); return }
+        try requireNoOtherWorkout()
+        workspace?.suspend()
+        let next = try AccountWorkspace(scope: scope)
+        try directory.select(id)
+        workspace = next
+    }
+    private func requireNoOtherWorkout() throws {
+        guard workspace?.hasOngoingWorkout != true else { throw WorkspaceFailure.unfinished }
+    }
+    func archivePausedWorkout() async {
+        do {
+            guard let captured = workspace, captured.hasOngoingWorkout else { return }
+            try await account.authorization.guardian()
+            guard workspace === captured else { throw AccountFailure.reauthenticate }
+            captured.training.setAccountActive(false)
+            try captured.training.preservePendingWorkout()
+            workspace = nil
+            message = "The unfinished workout snapshot is preserved for local export. No completed workout or XP was added."
+        } catch { message = "The paused workout could not be archived. Its current session is still retained." }
+    }
+
+    func importLegacy() async {
+        do {
+            guard let workspace = visibleWorkspace, let age = workspace.profile.profile?.programmePreferences?.ageContext else { throw AccountFailure.reauthenticate }
+            try await account.authorization.guardian()
+            guard visibleWorkspace === workspace else { throw AccountFailure.reauthenticate }
+            try requireNoOtherWorkout()
+            try workspace.scope.importLegacy(from: root, age: age)
+            self.workspace = try AccountWorkspace(scope: workspace.scope)
+            message = "Your selected records were copied. Original files and a verified local archive are preserved."
+        } catch { message = error.localizedDescription }
+    }
+    enum WorkspaceFailure: LocalizedError {
+        case unfinished
+        var errorDescription: String? { "Finish the paused workout in its original account and profile before switching. Its recorded quantities are preserved." }
+    }
+}
+
+struct AccountRootView: View {
+    @State private var coordinator = AccountWorkspaceCoordinator()
+    @State private var controls = false
+    @Environment(\.scenePhase) private var scenePhase
+    var body: some View {
+        Group {
+            if let workspace = coordinator.visibleWorkspace, coordinator.account.backupCodes.isEmpty {
+                Group {
+                    if workspace.profile.profile?.programmePreferences?.ageContext?.ageYears ?? 0 < 5 {
+                        FamilyMovementView(authorization: coordinator.account.authorization)
+                    } else {
+                        SpottrRoot(store: workspace.training, profileStore: workspace.profile, healthStore: workspace.health,
+                                   guardianAuthorization: coordinator.account.authorization)
+                    }
+                }
+                .safeAreaInset(edge: .top) {
+                    Button {
+                        Task {
+                            if workspace.profile.profile?.programmePreferences?.ageContext?.ageYears ?? 0 < 18 {
+                                do { try await coordinator.account.authorization.guardian() } catch { return }
+                                guard coordinator.visibleWorkspace === workspace else { return }
+                            }
+                            controls = true
+                        }
+                    } label: { Label("Account and training profiles", systemImage: "person.crop.circle.badge.checkmark").font(.footnote).padding(8) }
+                }
+                .task(id: workspace.scope) {
+                    workspace.training.setAccountActive(true)
+                    while !Task.isCancelled {
+                        workspace.training.coachingTick(); workspace.training.publish()
+                        try? await Task.sleep(for: .seconds(1))
+                    }
+                }
+            } else {
+                AccountSetupView(account: coordinator.account, coordinator: coordinator)
+            }
+        }
+        .sheet(isPresented: $controls) { AccountControlsView(coordinator: coordinator) }
+        .task { await coordinator.account.restore(); coordinator.accountChanged() }
+        .onChange(of: coordinator.account.accountID) { _, _ in coordinator.accountChanged(); controls = false }
+        .onChange(of: coordinator.account.state) { _, state in coordinator.accountChanged(); if state == .pendingMFA { controls = false } }
+        .onChange(of: scenePhase) { _, phase in
+            coordinator.visibleWorkspace?.training.setAppActive(phase == .active)
+        }
+    }
+}
+
+struct AccountSetupView: View {
+    @Bindable var account: NativeAccountStore
+    let coordinator: AccountWorkspaceCoordinator
+    @State private var age = ""
+    @State private var role = AccountPolicy.Role.adultSelf
+    @State private var email = ""
+    @State private var code = ""
+    @State private var name = ""
+    @State private var backup = false
+    @State private var purpose = IdentityPurpose.enroll
+    @State private var localMessage: String?
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Account and privacy") {
+                    Text("Use an adult account or an adult guardian’s account. A child does not need an email address. Guardianship is self-declared, not legally verified.")
+                    if account.trusted { Text("Your account is signed in with passkey and Authenticator verification.") }
+                    else { Text("A passkey with device verification and an Authenticator code are both required. Backup codes can replace Authenticator codes after your passkey.") }
+                }
+                if account.trusted {
+                    profileSetup
+                } else {
+                    authentication
+                }
+                if coordinator.workspace?.hasOngoingWorkout == true {
+                    Section("Protected paused workout") {
+                        Text("Return to its original account to resume, or keep its recorded quantities as an unfinished local snapshot before using another profile.")
+                        Button("Keep snapshot and close paused session") { Task { await coordinator.archivePausedWorkout() } }
+                    }
+                }
+                if let message = localMessage ?? account.message ?? coordinator.message { Section { Text(message).foregroundStyle(.secondary) } }
+                Section("Saved local data") {
+                    NavigationLink("View or export existing phone records") { ProtectedLegacyRecordsView(root: coordinator.root, authorization: account.authorization) }
+                    NavigationLink("Unlock retained account records") { LocalAccountArchivesView(root: coordinator.root, authorization: account.authorization) }
+                    Text("Existing records stay on this phone. Importing them into an adult training profile is an explicit choice after sign-in.")
+                }
+            }.navigationTitle("Account setup")
+        }
+    }
+    @ViewBuilder private var authentication: some View {
+        if account.step == .identity || account.step == .complete {
+            Section("Who is the training profile for?") {
+                TextField("Training person’s age in years", text: $age).keyboardType(.numberPad)
+                Picker("Account owner", selection: $role) { Text("Adult training for myself").tag(AccountPolicy.Role.adultSelf); Text("Adult guardian managing a profile").tag(AccountPolicy.Role.guardian) }
+                Button("Save local age and account role") {
+                    do { guard let age = Int(age) else { throw AccountFailure.checkpointRequired }; try account.setCheckpoint(ageYears: age, role: role); localMessage = nil }
+                    catch { localMessage = error.localizedDescription }
+                }
+                if account.checkpoint != nil { Label("Local checkpoint saved", systemImage: "checkmark.circle") }
+            }
+            Section("Create or recover") {
+                Picker("Purpose", selection: $purpose) { Text("Create account").tag(IdentityPurpose.enroll); Text("Recover account").tag(IdentityPurpose.recover) }
+                TextField("Adult account owner’s email", text: $email).textContentType(.emailAddress).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
+                Button("Send verification code") { Task { await account.startEmail(email: email, purpose: purpose) } }.disabled(account.busy || (purpose == .enroll && account.checkpoint == nil))
+                Button("Continue with Apple", systemImage: "apple.logo") { Task { await account.startApple(purpose: purpose) } }.disabled(account.busy || (purpose == .enroll && account.checkpoint == nil))
+            }
+            Section("Already have a passkey?") {
+                Button("Sign in with passkey") { Task { await account.login() } }.disabled(account.busy)
+            }
+        }
+        if account.step == .emailCode {
+            Section("Email verification") {
+                SecureField("Email code", text: $code).textContentType(.oneTimeCode).keyboardType(.numberPad)
+                Button("Verify email") { let entered = code; code = ""; Task { await account.verifyEmail(code: entered) } }.disabled(account.busy)
+            }
+        }
+        if account.step == .passkey { Section { Button("Create your verified passkey") { Task { await account.enrollPasskey() } }.disabled(account.busy) } }
+        if account.step == .recoveryBackup {
+            Section("Recover with a linked identity and backup") {
+                SecureField("Unused backup code", text: $code).textInputAutocapitalization(.never)
+                Button("Create replacement passkey") { let entered = code; code = ""; Task { await account.enrollPasskey(recoveryBackup: entered) } }.disabled(account.busy)
+                Text("Your existing credentials remain valid until the replacement passkey and Authenticator setup both finish.")
+            }
+        }
+        if account.step == .authenticatorSetup || account.step == .secondFactor {
+            Section("Authenticator verification") {
+                if let seed = account.authenticatorSecret {
+                    Text("Add this setup key to your Authenticator. It is shown only during setup.")
+                    Text(seed).font(.system(.body, design: .monospaced)).textSelection(.enabled).privacySensitive()
+                }
+                if account.step == .secondFactor { Toggle("Use a backup code", isOn: $backup) }
+                SecureField(backup ? "Backup code" : "Authenticator code", text: $code).textContentType(.oneTimeCode).privacySensitive()
+                Button("Complete secure sign-in") { let entered = code; code = ""; Task { await account.complete(code: entered, useBackup: backup) } }.disabled(account.busy)
+            }
+        }
+        if account.step != .identity { Section { Button("Cancel setup") { account.cancelSetup(); code = "" }.disabled(account.busy) } }
+    }
+    @ViewBuilder private var profileSetup: some View {
+        if !account.backupCodes.isEmpty {
+            Section("Save your backup codes") {
+                Text("Store these codes safely. Each works once after a verified passkey. Recovery also requires a linked email or Apple identity.")
+                ForEach(account.backupCodes, id: \.self) { Text($0).font(.system(.body, design: .monospaced)).privacySensitive().textSelection(.enabled) }
+                Button("I have saved my backup codes") { account.dismissBackupCodes() }
+            }
+        }
+        Section("Local training profile") {
+            TextField("Profile name", text: $name)
+            if account.checkpoint == nil {
+                TextField("Training person’s age", text: $age).keyboardType(.numberPad)
+                Picker("Role", selection: $role) { Text("Adult self").tag(AccountPolicy.Role.adultSelf); Text("Adult guardian").tag(AccountPolicy.Role.guardian) }
+            }
+            Button("Create training profile") {
+                Task {
+                    do {
+                        let context = try account.checkpoint ?? AccountPolicy.checkpoint(ageYears: Int(age) ?? -1, role: role)
+                        await coordinator.createProfile(name: name, age: context)
+                    } catch { localMessage = error.localizedDescription }
+                }
+            }
+            Text("Adults complete height and weight in profile setup. Junior measurements are optional and protected by the device owner’s authentication.")
+        }
+    }
+}
+
+struct AccountControlsView: View {
+    let coordinator: AccountWorkspaceCoordinator
+    @State private var creatingProfile = false
+    @State private var confirmDelete = false
+    @State private var linkEmail = ""
+    @State private var message: String?
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Training profiles") {
+                    ForEach(coordinator.directory?.profiles ?? []) { profile in
+                        Button(profile.name.isEmpty ? "Training profile" : profile.name) { Task { await coordinator.choose(profile.id) } }
+                    }
+                    Button("Add a training profile") { creatingProfile = true }
+                    Button("Import old phone records into this adult profile") { Task { await coordinator.importLegacy() } }
+                }
+                Section("Account security") {
+                    TextField("Adult email to link", text: $linkEmail).textContentType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
+                    Button("Link verified email") { Task { await coordinator.account.startEmail(email: linkEmail, purpose: .link); creatingProfile = true } }
+                    Button("Link Apple identity") { Task { await coordinator.account.startApple(purpose: .link); creatingProfile = true } }
+                    Button("Verify passkey and Authenticator again") { Task { await coordinator.account.login(); creatingProfile = true } }
+                    Button("Sign out") {
+                        do { try coordinator.workspace?.training.preservePendingWorkout(); coordinator.workspace?.suspend(); Task { await coordinator.account.signOut() } }
+                        catch { message = "The paused workout could not be saved. Retry before signing out." }
+                    }
+                    Button("Delete online account", role: .destructive) { confirmDelete = true }
+                    Text("Deletion requires recent complete MFA. Phone records and pending workouts are preserved. Export local records before removing data you want to keep.")
+                }
+                if let workspace = coordinator.visibleWorkspace {
+                    Section("Local data export") {
+                        NavigationLink("View and export this profile’s records") { LegacyAccountRecordsView(root: workspace.scope.folder) }
+                    }
+                }
+                if let message = message ?? coordinator.message ?? coordinator.account.message { Text(message) }
+            }.navigationTitle("Account and profiles")
+        }
+        .sheet(isPresented: $creatingProfile) { AccountSetupView(account: coordinator.account, coordinator: coordinator) }
+        .confirmationDialog("Delete the online account and its cloud data?", isPresented: $confirmDelete) {
+            Button("Delete online account", role: .destructive) {
+                do { try coordinator.workspace?.training.preservePendingWorkout(); Task { await coordinator.account.deleteAccount() } }
+                catch { message = "The paused workout could not be saved. Retry before deleting the account." }
+            }
+        }
+    }
+}
+
+struct LegacyAccountRecordsView: View {
+    let root: URL
+    @State private var records: [SessionRecord] = []
+    @State private var export: URL?
+    @State private var message: String?
+    var body: some View {
+        List {
+            Text("These are existing records on this phone. Viewing or exporting them does not assign them to a new account or child.")
+            ForEach(records) { record in Text(record.date.formatted(date: .abbreviated, time: .shortened)) }
+            if FileManager.default.fileExists(atPath: root.appendingPathComponent("pending-phone-workout.json").path) {
+                NavigationLink("Preserved unfinished workout") { PendingWorkoutDataView(url: root.appendingPathComponent("pending-phone-workout.json")) }
+            }
+            Button("Prepare history export") {
+                do {
+                    let url = URL.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("spottr-history.json")
+                    try HistoryStore(url: root.appendingPathComponent("history.json")).export(to: url); export = url
+                } catch { message = "The records could not be exported. The original file is unchanged." }
+            }
+            if let export { ShareLink("Share history export", item: export) }
+            if let message { Text(message) }
+        }.navigationTitle("Saved phone records")
+            .task { do { records = try HistoryStore(url: root.appendingPathComponent("history.json")).load() } catch { message = "The saved file could not be read. It has not been replaced." } }
+    }
+}
+
+private struct FamilyMovementView: View {
+    let authorization: any NativeAccountAuthorization
+    @Environment(\.openURL) private var openURL
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Move and play together") {
+                    Text("For children under five, use supervised play rather than a formal workout or camera test.")
+                    Label("Dance together to a favourite song", systemImage: "music.note")
+                    Label("Explore gentle movement and play", systemImage: "figure.play")
+                    Label("Take breaks whenever your child wants", systemImage: "pause.circle")
+                    Button {
+                        Task {
+                            do { try await authorization.guardian() } catch { return }
+                            openURL(URL(string: "https://www.nhs.uk/live-well/exercise/physical-activity-guidelines-children-under-five-years/")!)
+                        }
+                    } label: { Label { Text("NHS activity guidance for under fives").underline() } icon: { Image(systemName: "arrow.up.right.square") } }.foregroundStyle(Palette.blue)
+                }
+            }.navigationTitle("Family movement")
+        }
+    }
+}
+
+private struct PendingWorkoutDataView: View {
+    let url: URL
+    @State private var saved: PendingPhoneWorkout?
+    var body: some View {
+        List {
+            Text("This unfinished workout remains separate from completed history and earns no XP. Resume it in the original open session, or keep this export of its recorded quantities.")
+            if let saved {
+                Text(saved.record.date.formatted())
+                Text(saved.exerciseID)
+                if let count = saved.actualReps { LabeledContent("Current set recorded reps", value: String(count)) }
+                if let seconds = saved.measuredSeconds { LabeledContent("Current set measured seconds", value: seconds.formatted()) }
+                LabeledContent("Completed sets retained", value: String(saved.record.sets.count + saved.record.loggedSets.count))
+                ShareLink("Export unfinished workout", item: url)
+            } else { Text("The saved draft is unavailable. The original file has not been changed.") }
+        }.navigationTitle("Unfinished workout")
+            .task { saved = try? JSONDecoder().decode(PendingPhoneWorkout.self, from: Data(contentsOf: url)) }
+    }
+}
+
+private struct LocalAccountArchivesView: View {
+    let root: URL
+    let authorization: any NativeAccountAuthorization
+    @State private var scopes: [AccountDataScope] = []
+    @State private var unlocked = false
+    @State private var export: URL?
+    @State private var message: String?
+    var body: some View {
+        List {
+            Text("Records retained on this phone can be exported after device-owner authentication, including after online account deletion. This does not restore an online account.")
+            if !unlocked {
+                Button("Unlock local records") {
+                    Task {
+                        do { try await authorization.guardian(); scopes = try AccountLocalArchives.scopes(root: root); unlocked = true }
+                        catch { message = "Local records were not unlocked. Their files are unchanged." }
+                    }
+                }
+            } else {
+                ForEach(scopes, id: \.self) { scope in
+                    Section("Profile " + scope.profileID.uuidString.prefix(8)) {
+                        NavigationLink("View saved records") { LegacyAccountRecordsView(root: scope.folder) }
+                        Button("Prepare local profile export") {
+                            do { export = try scope.exportLocalData() }
+                            catch { message = "The local export could not be read. Original files are unchanged." }
+                        }
+                    }
+                }
+                if scopes.isEmpty { Text("No account profiles are stored on this phone.") }
+            }
+            if let export { ShareLink("Share local profile export", item: export) }
+            if let message { Text(message) }
+        }.navigationTitle("Retained phone records")
+    }
+}
+
+private struct ProtectedLegacyRecordsView: View {
+    let root: URL
+    let authorization: any NativeAccountAuthorization
+    @State private var unlocked = false
+    @State private var message: String?
+    var body: some View {
+        Group {
+            if unlocked { LegacyAccountRecordsView(root: root) }
+            else {
+                List {
+                    Text("Unlock the existing records on this phone with device-owner authentication. No account import is performed.")
+                    Button("Unlock existing records") {
+                        Task {
+                            do { try await authorization.guardian(); unlocked = true }
+                            catch { message = "The records were not unlocked. Their files are unchanged." }
+                        }
+                    }
+                    if let message { Text(message) }
+                }.navigationTitle("Existing phone records")
+            }
+        }
+    }
+}

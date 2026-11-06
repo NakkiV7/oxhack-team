@@ -55,7 +55,7 @@ public struct WatchTelemetryInbox: Sendable {
     }
     private func write(_ batches:[Batch]) throws {
         try FileManager.default.createDirectory(at:url.deletingLastPathComponent(),withIntermediateDirectories:true)
-        try JSONEncoder().encode(batches).write(to:url,options:.atomic)
+        try ProtectedLocalStorage.write(JSONEncoder().encode(batches), to: url)
     }
     public func store(id:UUID,samples:[WatchTelemetry]) throws {
         guard !samples.isEmpty,samples.count <= 60,Set(samples.map(\.sessionID)).count==1 else { throw WatchTelemetryImportError.bounds }

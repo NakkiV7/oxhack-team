@@ -63,6 +63,7 @@ final class MeasurementsDraftPersistence {
 
 struct MeasurementsSettingsView: View {
     private let isIntroduction: Bool
+    private let profileStore: NativeProfileStore?
     @Environment(\.dismiss) private var dismiss
     @State private var heightCM: String
     @State private var weightKG: String
@@ -72,9 +73,10 @@ struct MeasurementsSettingsView: View {
     @FocusState private var field: Field?
     private enum Field { case height, weight }
 
-    init(measurements: LocalBodyMeasurements?, isIntroduction: Bool = false,
+    init(measurements: LocalBodyMeasurements?, isIntroduction: Bool = false, profileStore: NativeProfileStore? = nil,
          persist: @escaping (LocalBodyMeasurements?) throws -> Void) {
         self.isIntroduction = isIntroduction
+        self.profileStore = profileStore
         _heightCM = State(initialValue: measurements?.heightCM.formatted(.number.precision(.fractionLength(0...2))) ?? "")
         _weightKG = State(initialValue: measurements?.weightKG.formatted(.number.precision(.fractionLength(0...2))) ?? "")
         _eligible = State(initialValue: measurements?.bmiEligible ?? false)
@@ -110,6 +112,7 @@ struct MeasurementsSettingsView: View {
                         Text(message).font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("measurements-save-status")
                     }
                 }
+                if (profileStore?.profile?.programmePreferences?.ageContext?.ageYears ?? -1) >= 18 {
                 Section("Adult BMI (optional)") {
                     Toggle("I confirm adult BMI is suitable for me", isOn: binding($eligible))
                         .accessibilityIdentifier("measurements-eligible")
@@ -122,13 +125,13 @@ struct MeasurementsSettingsView: View {
                     }.accessibilityIdentifier("measurements-thresholds")
                     Text("Lower thresholds apply to South Asian, Chinese, other Asian, Middle Eastern, Black African or African-Caribbean backgrounds. You can skip this choice; only the threshold choice is stored.")
                         .font(.caption).foregroundStyle(.secondary)
-                    if let measurements = candidate, let bmi = measurements.bmi {
+                    if let assessment = try? profileStore?.assessment(for: candidate), let bmi = assessment.value {
                         VStack(alignment: .leading, spacing: 9) {
                             Text(bmi, format: .number.precision(.fractionLength(1))).font(.largeTitle.bold()).monospacedDigit()
                                 .accessibilityLabel("BMI").accessibilityIdentifier("measurements-bmi")
                                 .accessibilityValue(bmi.formatted(.number.precision(.fractionLength(1))))
                             ProgressView(value: min(bmi, 50), total: 50).tint(Palette.blue).accessibilityHidden(true)
-                            if let category = measurements.category { Text(categoryTitle(category)).font(.subheadline) }
+                            if let category = assessment.adultCategory { Text(categoryTitle(category)).font(.subheadline) }
                         }.padding(.vertical, 6)
                     } else {
                         Text("BMI unavailable until valid measurements and suitability are confirmed.").font(.caption).foregroundStyle(.secondary)
@@ -136,6 +139,14 @@ struct MeasurementsSettingsView: View {
                     Text("BMI is a rough measure, not a diagnosis or fitness score. It doesn’t distinguish muscle from fat; interpretation needs extra care with high muscle mass or from age 65. Ask a healthcare professional if you’re concerned about your weight.")
                         .font(.caption).foregroundStyle(.secondary)
                     Link("NHS adult BMI guidance", destination: URL(string: "https://www.nhs.uk/health-assessment-tools/calculate-your-body-mass-index/calculate-bmi-for-adults")!)
+                }
+                } else {
+                    Section("Growth information") {
+                        if let assessment = try? profileStore?.assessment(for: candidate), let value = assessment.value {
+                            Text("BMI \(value.formatted(.number.precision(.fractionLength(1))))")
+                        }
+                        Text("Children need age-appropriate growth interpretation. Adult BMI bands are not shown. Measurements are optional and stay in this local profile.")
+                    }
                 }
                 Section {
                     Button("Clear measurements", role: .destructive) {

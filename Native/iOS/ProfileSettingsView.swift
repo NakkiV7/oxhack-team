@@ -19,7 +19,8 @@ final class ProfileDraftPersistence {
                                            bodyMeasurements: store.profile?.bodyMeasurements,
                                            comfortableExercises: store.profile?.comfortableExercises ?? [],
                                            weightManagementGoal: store.profile?.weightManagementGoal ?? false,
-                                           onboardingRevision: store.profile?.onboardingRevision ?? 2)
+                                           onboardingRevision: store.profile?.onboardingRevision ?? 2,
+                                           programmePreferences: store.profile?.programmePreferences)
             guard store.loadError == nil else {
                 validationError = "Automatic saving is paused. Use Save profile to explicitly replace the unreadable profile."
                 return
@@ -43,7 +44,8 @@ final class ProfileDraftPersistence {
                                        bodyMeasurements: store.profile?.bodyMeasurements,
                                            comfortableExercises: store.profile?.comfortableExercises ?? [],
                                            weightManagementGoal: store.profile?.weightManagementGoal ?? false,
-                                           onboardingRevision: store.profile?.onboardingRevision ?? 2)
+                                           onboardingRevision: store.profile?.onboardingRevision ?? 2,
+                                           programmePreferences: store.profile?.programmePreferences)
             return persistPending()
         } catch { validationError = error.localizedDescription; return false }
     }
@@ -273,7 +275,7 @@ struct ProfileSettingsView: View {
                 if let rewards { TrainingRewardsSettingsView(store: rewards) }
             }
             .sheet(isPresented: $measurementsPresented, onDismiss: reloadDraft) {
-                MeasurementsSettingsView(measurements: profileStore.profile?.bodyMeasurements,
+                MeasurementsSettingsView(measurements: profileStore.profile?.bodyMeasurements, profileStore: profileStore,
                                          persist: profileStore.saveMeasurements)
             }
             .alert(deletion == .profile ? "Reset local profile?" : "Delete local training history?",

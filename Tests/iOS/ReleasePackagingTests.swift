@@ -1,6 +1,12 @@
 import XCTest
 
 final class ReleasePackagingTests: XCTestCase {
+    func testGuardianAuthenticationHasFaceIDPurposeInBuiltHost() throws {
+        let purpose = try XCTUnwrap(Bundle.main.object(forInfoDictionaryKey: "NSFaceIDUsageDescription") as? String)
+        XCTAssertTrue(purpose.contains("guardian"))
+        XCTAssertFalse(purpose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+    }
+
     func testRetiredSideCameraPairingIsNotShippedWithTheApp() {
         XCTAssertNil(Bundle.main.url(forResource: "SpottrDemoCamera", withExtension: "json"))
         let purpose = Bundle.main.object(forInfoDictionaryKey: "NSLocalNetworkUsageDescription") as? String

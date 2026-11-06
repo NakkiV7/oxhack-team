@@ -67,12 +67,12 @@ struct OnboardingView: View {
                     .disabled(step == 2 && goals.isEmpty && !weightManagementGoal)
                     .opacity(step == 2 && goals.isEmpty && !weightManagementGoal ? 0.4 : 1)
                     .accessibilityIdentifier("onboarding-continue")
-                Text("No account needed")
+                Text("Your training profile stays on this phone")
                     .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
             }.padding(.horizontal, 24).padding(.vertical, 18)
         }.background(.white).foregroundStyle(Palette.ink).preferredColorScheme(.light)
             .sheet(isPresented: $measurementsPresented) {
-                MeasurementsSettingsView(measurements: bodyMeasurements, isIntroduction: true) { bodyMeasurements = $0 }
+                MeasurementsSettingsView(measurements: bodyMeasurements, isIntroduction: true, profileStore: profileStore) { bodyMeasurements = $0 }
             }
             .sheet(item: $optionalSetup) { setup in
                 NavigationStack {
@@ -222,7 +222,8 @@ struct OnboardingView: View {
         do {
             try profileStore.save(LocalProfile(name: name, weeklyTarget: weeklyTarget, goals: goals.isEmpty ? [.stamina] : goals,
                                                baselineAbility: baselineAbility, bodyMeasurements: bodyMeasurements,
-                                               comfortableExercises: comfortableExercises, weightManagementGoal: weightManagementGoal))
+                                               comfortableExercises: comfortableExercises, weightManagementGoal: weightManagementGoal,
+                                               programmePreferences: profileStore.profile?.programmePreferences))
             onComplete()
             dismiss()
         } catch { self.error = error.localizedDescription }

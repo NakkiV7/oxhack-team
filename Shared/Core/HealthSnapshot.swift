@@ -103,6 +103,15 @@ public enum WatchSetupStatus: Sendable {
     }
 }
 
+@MainActor public protocol HealthPreferenceStorage {
+    func bool(forKey key: String) -> Bool
+    func double(forKey key: String) -> Double
+    func object(forKey key: String) -> Any?
+    func set(_ value: Any?, forKey key: String)
+    func removeObject(forKey key: String)
+}
+extension UserDefaults: HealthPreferenceStorage {}
+
 @MainActor @Observable
 public final class HealthSnapshotStore {
     private var latestSnapshot: HealthSnapshot?
@@ -111,13 +120,13 @@ public final class HealthSnapshotStore {
     public private(set) var hasRequestedAccess: Bool
     public private(set) var zonePreference: HealthZonePreference?
     private let client: any HealthReadingClient
-    private let defaults: UserDefaults
+    private let defaults: any HealthPreferenceStorage
     private let now: @MainActor () -> Date
     private let calendar: @MainActor () -> Calendar
     @ObservationIgnored private var dayRefresh: Task<Void, Never>?
     @ObservationIgnored private var readingID = UUID()
 
-    public init(client: any HealthReadingClient, defaults: UserDefaults = .standard,
+    public init(client: any HealthReadingClient, defaults: any HealthPreferenceStorage = UserDefaults.standard,
                 now: @escaping @MainActor () -> Date = { .now },
                 calendar: @escaping @MainActor () -> Calendar = { .current }) {
         self.client = client

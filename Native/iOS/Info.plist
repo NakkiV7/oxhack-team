@@ -11,6 +11,7 @@
 <key>ITSAppUsesNonExemptEncryption</key><false/>
 <key>UILaunchScreen</key><dict/>
 <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string></array>
+<key>NSFaceIDUsageDescription</key><string>Spottr uses Face ID to unlock guardian controls and protected records on this phone.</string>
 <key>NSCameraUsageDescription</key><string>Spottr uses your camera to count reps and show movement cues on this iPhone. Video stays on your device.</string>
 <key>NSMicrophoneUsageDescription</key><string>Spottr listens for rep numbers only when you choose spoken counting. Audio is processed on this iPhone.</string>
 <key>NSSpeechRecognitionUsageDescription</key><string>Spottr recognises rep numbers on this iPhone when you enable spoken counting. Manual entry is always available.</string>

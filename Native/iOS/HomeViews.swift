@@ -7,12 +7,15 @@ struct SpottrRoot: View {
     @State private var introductionPresented: Bool
     @State private var settingsPresented = false
     @State private var selectedTab = "today"
-    @State private var healthStore = HealthDataStore()
+    @State private var healthStore: HealthDataStore
+    let guardianAuthorization: (any NativeAccountAuthorization)?
 
-    init(store: TrainingStore, profileStore: NativeProfileStore, workspace: PreviewWorkspace? = nil) {
+    init(store: TrainingStore, profileStore: NativeProfileStore, workspace: PreviewWorkspace? = nil, healthStore: HealthDataStore? = nil, guardianAuthorization: (any NativeAccountAuthorization)? = nil) {
         self.store = store
         self.profileStore = profileStore
         self.workspace = workspace
+        self.guardianAuthorization = guardianAuthorization
+        _healthStore = State(initialValue: healthStore ?? HealthDataStore())
         _introductionPresented = State(initialValue: profileStore.shouldShowIntroduction())
     }
 
@@ -27,7 +30,13 @@ struct SpottrRoot: View {
                 }
             } else {
                 TabView(selection: $selectedTab) {
-                    TodayView(store: store, profileStore: profileStore, showSettings: { settingsPresented = true },
+                    TodayView(store: store, profileStore: profileStore, showSettings: { Task {
+                                  if profileStore.profile?.programmePreferences?.ageContext?.ageYears ?? 0 < 18 {
+                                      guard let guardianAuthorization else { return }
+                                      do { try await guardianAuthorization.guardian() } catch { return }
+                                  }
+                                  settingsPresented = true
+                              } },
                               openPath: { selectedTab = "skills" }, healthStore: healthStore)
                         .tabItem { Label("Today", systemImage: "house") }.tag("today")
                     PathSkillsView(store: store, profile: profileStore.profile)
@@ -46,7 +55,7 @@ struct SpottrRoot: View {
             if profileStore.profile == nil { introductionPresented = profileStore.shouldShowIntroduction() }
         }) {
             ProfileSettingsView(profileStore: profileStore, history: store.history,
-                                exportData: store.exportHistory, resetHistory: store.clearHistory, rewards: store.rewards,
+                                exportData: store.exportHistory, resetHistory: store.clearHistory, rewards: store.rewards.allowsTimePressureRewards ? store.rewards : nil,
                                 historyAvailable: store.historyAvailable, workspace: workspace, healthStore: healthStore)
         }
         .foregroundStyle(Palette.ink)
@@ -90,10 +99,12 @@ struct TodayView: View {
                     weeklyRhythm
                     recentReport
                     watchSetup
+                    if store.rewards.allowsTimePressureRewards {
                     Button { rewardsPresented = true } label: {
                         Label("Training rewards & streaks", systemImage: "flame")
                             .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, alignment: .leading)
                     }.buttonStyle(.plain).foregroundStyle(Palette.blue)
+                    }
                     if store.previewMode {
                         Label("Preview history is synthetic and stored separately.", systemImage: "play.rectangle")
                             .font(.caption).foregroundStyle(.secondary)

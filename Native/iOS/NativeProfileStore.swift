@@ -18,10 +18,19 @@ final class NativeProfileStore {
     }
 
     func save(_ profile: LocalProfile) throws {
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try JSONEncoder().encode(profile).write(to: url, options: .atomic)
+        if loadError != nil, FileManager.default.fileExists(atPath: url.path) {
+            let archive = url.deletingLastPathComponent().appendingPathComponent("unreadable-profile-" + UUID().uuidString + ".json")
+            let original = try Data(contentsOf: url)
+            try ProtectedLocalStorage.write(original, to: archive)
+            guard try Data(contentsOf: archive) == original else { throw CocoaError(.fileWriteUnknown) }
+        }
+        try ProtectedLocalStorage.write(JSONEncoder().encode(profile), to: url)
         self.profile = profile
         loadError = nil
+    }
+
+    func assessment(for measurements: LocalBodyMeasurements?) throws -> AgeAwareBMI {
+        try LocalProfile(bodyMeasurements: measurements, programmePreferences: profile?.programmePreferences).bmiAssessment
     }
 
     func saveMeasurements(_ measurements: LocalBodyMeasurements?) throws {
@@ -33,7 +42,7 @@ final class NativeProfileStore {
         let current = try profile ?? LocalProfile()
         try save(LocalProfile(name: current.name, weeklyTarget: current.weeklyTarget, goals: current.goals,
                               baselineAbility: current.baselineAbility, bodyMeasurements: measurements, comfortableExercises: current.comfortableExercises,
-                              weightManagementGoal: current.weightManagementGoal, onboardingRevision: current.onboardingRevision))
+                              weightManagementGoal: current.weightManagementGoal, onboardingRevision: current.onboardingRevision, programmePreferences: current.programmePreferences))
     }
 
     func shouldShowIntroduction(environment: [String: String] = ProcessInfo.processInfo.environment) -> Bool {

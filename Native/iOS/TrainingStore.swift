@@ -48,6 +48,10 @@ final class TrainingStore {
     let companion = CompanionLink()
     var watchReachable = false
     private(set) var reportedDiscomfort = false
+    private var accountActive = true
+    func setAccountActive(_ active: Bool) { accountActive = active; setAppActive(active) }
+    let accountScope: AccountDataScope?
+    var dataFolder: URL { historyStore.url.deletingLastPathComponent() }
     private let historyStore: HistoryStore
     private let watchInbox: WatchTelemetryInbox
     private var timelineSessionID: UUID?
@@ -326,7 +330,8 @@ final class TrainingStore {
     init(historyURL: URL? = nil,
          voicePlayback: VoicePlayback? = nil, vision: VisionWorker? = nil, rewardsStore: NativeRewardsStore? = nil,
          defaults: UserDefaults = .standard, previewMode: Bool = false, previewPlayback: VoicePlayback? = nil,
-         spokenReps: (any SpokenRepListening)? = nil) {
+         spokenReps: (any SpokenRepListening)? = nil, accountScope: AccountDataScope? = nil) {
+        self.accountScope = accountScope
         self.spokenReps = spokenReps ?? SpokenRepInput()
         repVoice = RepVoicePlayer(defaults: defaults)
         rewardDefaults = defaults
@@ -395,12 +400,33 @@ final class TrainingStore {
         companion.onRequest = { [weak self] in Task { @MainActor in self?.publish() } }
     }
 
+    func preservePendingWorkout() throws {
+        guard let accountScope, sessionPhase != .idle, sessionPhase != .finished else { return }
+        let pending = PendingPhoneWorkout(accountID: accountScope.accountID, profileID: accountScope.profileID,
+            record: configured?.record ?? session.record, phase: sessionPhase,
+            exerciseID: configured?.current.exerciseID ?? session.exercise.rawValue,
+            actualReps: configured != nil ? configured?.actualReps : session.actualReps,
+            measuredSeconds: configured?.current.unit == .seconds ? configured?.measuredSeconds(at: now) : nil,
+            quantityOrigin: configured?.quantityOrigin(at: now))
+        let url = accountScope.file("pending-phone-workout.json")
+        if FileManager.default.fileExists(atPath: url.path) {
+            let previous = try JSONDecoder().decode(PendingPhoneWorkout.self, from: Data(contentsOf: url))
+            if previous.record.id != pending.record.id {
+                let archive = accountScope.file("pending-" + previous.record.id.uuidString + ".json")
+                try ProtectedLocalStorage.write(Data(contentsOf: url), to: archive)
+            }
+        }
+        try ProtectedLocalStorage.write(JSONEncoder().encode(pending), to: url)
+    }
+
     func publish() {
+        guard accountActive else { return }
         markWorkoutPhase()
         if let configured { companion.publish(CompanionSnapshot(session: configured, at: now)) }
         else { companion.publish(CompanionSnapshot(session: session)) }
     }
     private func command(_ command: CompanionCommand) {
+        guard accountActive else { return }
         guard command.sessionID == (configured?.id ?? session.id),
               command.generation == (configured?.generation ?? session.generation) else { publish(); return }
         switch command.action {

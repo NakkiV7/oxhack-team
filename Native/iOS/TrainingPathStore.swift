@@ -71,6 +71,6 @@ final class TrainingPathStore {
 
     private func write(_ saved: Saved? = nil) throws {
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try JSONEncoder().encode(saved ?? Saved(survey: survey, history: history, attempts: attempts)).write(to: url, options: .atomic)
+        try ProtectedLocalStorage.write(JSONEncoder().encode(saved ?? Saved(survey: survey, history: history, attempts: attempts)), to: url)
     }
 }
