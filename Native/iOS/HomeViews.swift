@@ -21,15 +21,27 @@ struct SpottrRoot: View {
         _introductionPresented = State(initialValue: profileStore.shouldShowIntroduction())
     }
 
+    var setupView: OnboardingView {
+        OnboardingView(profileStore: profileStore, healthStore: healthStore, guardianAuthorization: guardianAuthorization,
+                       history: store.history, programme: store.programme, voicePreviews: store.voicePreviews) {
+            store.remoteVoice?.reloadPreferences()
+            store.repVoice.choose(store.remoteVoice?.gentleOnly == true ? nil : RepVoicePlan.Coach(rawValue: profileStore.preferencesDefaults.string(forKey: RepVoicePlayer.defaultsKey) ?? "off"))
+            store.setVoiceFeedback(profileStore.preferencesDefaults.bool(forKey: "trainer.audioEnabled"))
+            introductionPresented = false
+        }
+    }
+    var profileSettings: ProfileSettingsView {
+        ProfileSettingsView(profileStore: profileStore, history: store.history,
+                            exportData: store.exportHistory, resetHistory: store.clearHistory,
+                            rewards: store.rewards.allowsTimePressureRewards ? store.rewards : nil,
+                            historyAvailable: store.historyAvailable, workspace: workspace, healthStore: healthStore,
+                            membership: membership, guardianAuthorization: guardianAuthorization, voicePreviews: store.voicePreviews)
+    }
+
     var body: some View {
         Group {
             if introductionPresented {
-                OnboardingView(profileStore: profileStore, healthStore: healthStore, guardianAuthorization: guardianAuthorization, history: store.history, programme: store.programme) {
-                    store.remoteVoice?.reloadPreferences()
-                    store.repVoice.choose(store.remoteVoice?.gentleOnly == true ? nil : RepVoicePlan.Coach(rawValue: profileStore.preferencesDefaults.string(forKey: RepVoicePlayer.defaultsKey) ?? "off"))
-                    store.setVoiceFeedback(profileStore.preferencesDefaults.bool(forKey: "trainer.audioEnabled"))
-                    introductionPresented = false
-                }
+                setupView
             } else {
                 TabView(selection: $selectedTab) {
                     TodayView(store: store, profileStore: profileStore, showSettings: { Task {
@@ -58,9 +70,7 @@ struct SpottrRoot: View {
             store.setVoiceFeedback(profileStore.preferencesDefaults.bool(forKey: "trainer.audioEnabled"))
             if profileStore.profile == nil { introductionPresented = profileStore.shouldShowIntroduction() }
         }) {
-            ProfileSettingsView(profileStore: profileStore, history: store.history,
-                                exportData: store.exportHistory, resetHistory: store.clearHistory, rewards: store.rewards.allowsTimePressureRewards ? store.rewards : nil,
-                                historyAvailable: store.historyAvailable, workspace: workspace, healthStore: healthStore, membership: membership, guardianAuthorization: guardianAuthorization)
+            profileSettings
         }
         .sheet(isPresented: Binding(get: { store.launchCoordinator?.needsAttention == true && [WorkoutLaunchOrigin.today, .url, .watch].contains { $0 == store.launchCoordinator?.pendingOrigin } }, set: { if !$0 { store.launchCoordinator?.cancel() } })) {
             if let launch = store.launchCoordinator { WorkoutLaunchAccessView(launch: launch) }

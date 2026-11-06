@@ -13,7 +13,7 @@ import UIKit
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
     var preference: VoiceCoachPreference { preferences.preference }
     init(preferences: RemoteVoicePlayback, playback: RemoteVoicePlayback? = nil,
-         permitsSelection: @escaping () -> Bool = { true }, canPreview: @escaping () -> Bool = { true }) {
+         permitsSelection: @escaping () -> Bool = { true }, canPreview: @escaping () -> Bool) {
         self.preferences = preferences
         self.playback = playback ?? RemoteVoicePlayback(offlineOnly: true, defaults: preferences.preferencesDefaults, gentleOnly: preferences.gentleOnly)
         self.permitsSelection = permitsSelection; self.canPreview = canPreview

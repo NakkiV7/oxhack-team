@@ -12,6 +12,7 @@ import Observation
         let programmeID: String?
         let programmeRevision: Int?
     }
+    var voicePreviews: VoicePreviewCoordinator? { training.voicePreviews }
     private let training: TrainingStore
     let profile: NativeProfileStore
     var healthStore: HealthDataStore?

@@ -108,13 +108,15 @@ struct ProfileSettingsView: View {
     @State private var error: String?
     @State private var persistence: ProfileDraftPersistence
     private let membership: MembershipStore
+    private let voicePreviews: VoicePreviewCoordinator?
     @State private var healthStore: HealthDataStore
     @FocusState private var editingName: Bool
 
     init(profileStore: NativeProfileStore, history: [SessionRecord],
          exportData: @escaping () throws -> URL, resetHistory: @escaping () throws -> Void,
          rewards: NativeRewardsStore? = nil, historyAvailable: Bool = true, workspace: PreviewWorkspace? = nil,
-         healthStore: HealthDataStore? = nil, membership: MembershipStore? = nil, guardianAuthorization: (any NativeAccountAuthorization)? = nil) {
+         healthStore: HealthDataStore? = nil, membership: MembershipStore? = nil, guardianAuthorization: (any NativeAccountAuthorization)? = nil, voicePreviews: VoicePreviewCoordinator? = nil) {
+        self.voicePreviews = voicePreviews
         self.guardianAuthorization = guardianAuthorization
         self.membership = membership ?? MembershipStore()
         self.profileStore = profileStore
@@ -129,6 +131,11 @@ struct ProfileSettingsView: View {
         _name = State(initialValue: profileStore.profile?.name ?? "")
         _weeklyTarget = State(initialValue: profileStore.profile?.weeklyTarget ?? 3)
         _goals = State(initialValue: profileStore.profile?.trainingGoals ?? [.strength])
+    }
+
+    var voiceSettings: VoiceCoachSettingsView {
+        VoiceCoachSettingsView(previews: voicePreviews ?? VoicePreviewCoordinator(preferences: RemoteVoicePlayback(offlineOnly: true, defaults: profileStore.preferencesDefaults,
+                            gentleOnly: (profileStore.profile?.programmePreferences?.ageContext?.ageYears ?? 0) < 18), permitsSelection: { profileStore.permitsPolicyCallbacks }, canPreview: { false }))
     }
 
     var body: some View {
@@ -175,8 +182,7 @@ struct ProfileSettingsView: View {
                 }
                 Section("Your trainer") {
                     NavigationLink("Voice and coaching style") {
-                        VoiceCoachSettingsView(previews: VoicePreviewCoordinator(preferences: RemoteVoicePlayback(offlineOnly: true, defaults: profileStore.preferencesDefaults,
-                            gentleOnly: (profileStore.profile?.programmePreferences?.ageContext?.ageYears ?? 0) < 18), permitsSelection: { profileStore.permitsPolicyCallbacks }))
+                        voiceSettings
                     }
                 }
                 Section("Phone and Watch") {
@@ -294,7 +300,7 @@ struct ProfileSettingsView: View {
                 if flushPendingSave() { dismiss() }
             } } }
             .sheet(item: $introduction, onDismiss: reloadDraft) { _ in
-                OnboardingView(profileStore: profileStore, healthStore: healthStore, guardianAuthorization: guardianAuthorization, history: history, onComplete: reloadDraft)
+                OnboardingView(profileStore: profileStore, healthStore: healthStore, guardianAuthorization: guardianAuthorization, history: history, voicePreviews: voicePreviews, onComplete: reloadDraft)
             }
             .sheet(isPresented: $rewardsPresented) {
                 if let rewards { TrainingRewardsSettingsView(store: rewards) }

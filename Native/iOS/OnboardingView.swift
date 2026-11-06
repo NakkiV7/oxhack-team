@@ -26,16 +26,16 @@ struct OnboardingView: View {
     @State private var previewAnchor = Date.now
     @AccessibilityFocusState private var focusedFamily: ExerciseFamily?
     @AppStorage("trainer.audioEnabled") private var audioEnabled = false
-    @State private var previews: VoicePreviewCoordinator
+    @State var previews: VoicePreviewCoordinator
     private var playback: RemoteVoicePlayback { previews.preferences }
 
     init(profileStore: NativeProfileStore, healthStore: HealthDataStore? = nil,
-         guardianAuthorization: (any NativeAccountAuthorization)? = nil, history: [SessionRecord] = [], programme: ProgrammeStore? = nil, onComplete: @escaping () -> Void = {}) {
+         guardianAuthorization: (any NativeAccountAuthorization)? = nil, history: [SessionRecord] = [], programme: ProgrammeStore? = nil, voicePreviews: VoicePreviewCoordinator? = nil, onComplete: @escaping () -> Void = {}) {
         self.profileStore = profileStore; self.healthStore = healthStore ?? HealthDataStore()
         self.guardianAuthorization = guardianAuthorization; self.history = history; self.onComplete = onComplete; self.programme = programme
         _audioEnabled = AppStorage(wrappedValue: false, "trainer.audioEnabled", store: profileStore.preferencesDefaults)
-        _previews = State(initialValue: VoicePreviewCoordinator(preferences: RemoteVoicePlayback(offlineOnly: true, defaults: profileStore.preferencesDefaults,
-            gentleOnly: (profileStore.profile?.programmePreferences?.ageContext?.ageYears ?? 0) < 18), permitsSelection: { profileStore.permitsPolicyCallbacks }))
+        _previews = State(initialValue: voicePreviews ?? VoicePreviewCoordinator(preferences: RemoteVoicePlayback(offlineOnly: true, defaults: profileStore.preferencesDefaults,
+            gentleOnly: (profileStore.profile?.programmePreferences?.ageContext?.ageYears ?? 0) < 18), permitsSelection: { profileStore.permitsPolicyCallbacks }, canPreview: { false }))
         let profile = profileStore.profile
         let preferences = profile?.effectiveProgrammePreferences
         _name = State(initialValue: profile?.name ?? "")

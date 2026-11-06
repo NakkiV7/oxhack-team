@@ -4,9 +4,44 @@ import UIKit
 @testable import Spottr
 
 @MainActor final class VoicePreviewTests: XCTestCase {
+    func testProfileVoiceDestinationSharesClosingAndNewStartOwnership() throws {
+        let f = try RoutePreviewFixture()
+        defer { f.cleanUp() }
+        // This is the exact destination factory used by the real Root settings sheet.
+        let preview = f.root.profileSettings.voiceSettings.previews
+        defer { preview.stop() }
+        try assertRouteOwnsClosingAndNewStart(preview, fixture: f)
+    }
+    func testRootSetupVoiceSelectionSharesClosingAndRetirementOwnership() throws {
+        let f = try RoutePreviewFixture()
+        defer { f.cleanUp() }
+        // The real Root setup destination's State initial coordinator, not a replacement SUT.
+        let preview = f.root.setupView.previews
+        defer { preview.stop() }
+        try assertRouteOwnsClosingAndNewStart(preview, fixture: f)
+        f.training.setAccountActive(false); f.profile.invalidatePolicy()
+        let previous = preview.preference
+        preview.select(.leo, tone: .direct)
+        XCTAssertEqual(preview.preference, previous)
+        XCTAssertFalse(preview.isPlaying)
+    }
+    private func assertRouteOwnsClosingAndNewStart(_ preview: VoicePreviewCoordinator, fixture f: RoutePreviewFixture) throws {
+        f.training.beginAuthorizedSession(); f.training.setVoiceFeedback(true)
+        f.training.switchToManualReps(); f.training.setManualReps(2); f.training.endSet(); f.training.finish()
+        let closing = try XCTUnwrap(f.voice.spoken.first { $0.reason == .workoutCompleted })
+        preview.select(.maya, tone: .gentle)
+        XCTAssertFalse(preview.isPlaying, "The actual settings route must wait for the held live closing sentence")
+        XCTAssertEqual(f.voice.stops, 0, "A settings selection must not cut ordinary closing speech")
+        f.voice.onFinish?(closing.id)
+        preview.select(.maya, tone: .gentle)
+        XCTAssertTrue(preview.isPlaying, "Fresh selection remains functional after actual completion")
+        f.training.beginAuthorizedSession()
+        XCTAssertFalse(preview.isPlaying, "The real new-start owner must cancel this destination's sample")
+        XCTAssertEqual(f.training.history.first?.sets.first?.reps, 2)
+    }
     func testLatestSelectionWinsAndOldCompletionCannotStopNewPreview() throws {
         let fixture = PreviewFixture()
-        let preview = VoicePreviewCoordinator(preferences: fixture.live, playback: fixture.samples)
+        let preview = VoicePreviewCoordinator(preferences: fixture.live, playback: fixture.samples, canPreview: { true })
         preview.select(.maya, tone: .gentle)
         let first = try XCTUnwrap(fixture.outputs.first)
         let completion = first.onFinish
@@ -40,7 +75,7 @@ import UIKit
     }
     func testMissingNaturalAssetIsRecoverableAndMuteAndLifecycleStopPreview() async throws {
         let fixture = PreviewFixture()
-        let preview = VoicePreviewCoordinator(preferences: fixture.live, playback: fixture.samples)
+        let preview = VoicePreviewCoordinator(preferences: fixture.live, playback: fixture.samples, canPreview: { true })
         fixture.fail = true
         preview.select(.maya, tone: .gentle)
         XCTAssertFalse(preview.isPlaying)
@@ -70,7 +105,7 @@ import UIKit
         let defaults = UserDefaults(suiteName: UUID().uuidString)!
         let live = RemoteVoicePlayback(offlineOnly: true, defaults: defaults, gentleOnly: true)
         var valid = true
-        let preview = VoicePreviewCoordinator(preferences: live, permitsSelection: { valid })
+        let preview = VoicePreviewCoordinator(preferences: live, permitsSelection: { valid }, canPreview: { true })
         preview.select(.david, tone: .direct)
         XCTAssertNotEqual(preview.preference, .david)
         XCTAssertFalse(preview.isPlaying)
@@ -99,4 +134,44 @@ import UIKit
     var stops = 0
     func play() -> Bool { true }
     func stop() { stops += 1 }
+}
+
+@MainActor private final class RoutePreviewFixture {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let suite = "Task9Route." + UUID().uuidString
+    let defaults: UserDefaults
+    let profile: NativeProfileStore
+    let training: TrainingStore
+    let voice = RouteHeldVoice()
+    let membership: MembershipStore
+    var root: SpottrRoot { SpottrRoot(store: training, profileStore: profile, membership: membership) }
+    init() throws {
+        defaults = try XCTUnwrap(UserDefaults(suiteName: suite)); defaults.set("arnold", forKey: "trainer.voice")
+        profile = NativeProfileStore(url: directory.appendingPathComponent("profile.json"), preferencesDefaults: defaults)
+        try profile.save(LocalProfile(name: "Alex", onboardingRevision: TrainingSetup.revision,
+            programmePreferences: .init(goals: [.strength], weekdays: [1], ageContext: .init(ageYears: 30, guardianManaged: false))))
+        training = TrainingStore(historyURL: directory.appendingPathComponent("history.json"),
+            voicePlayback: RemoteVoicePlayback(offlineOnly: true, defaults: defaults, arnoldPlayback: voice), defaults: defaults)
+        membership = MembershipStore(root: directory, client: RouteNoPurchaseClient())
+    }
+    func cleanUp() {
+        training.setAccountActive(false); profile.invalidatePolicy()
+        defaults.removePersistentDomain(forName: suite)
+        try? FileManager.default.removeItem(at: directory)
+    }
+}
+@MainActor private final class RouteHeldVoice: VoicePlayback {
+    var onFinish: ((UUID) -> Void)?
+    var spoken: [VoiceCue] = []
+    var stops = 0
+    func speak(_ cue: VoiceCue) { spoken.append(cue) }
+    func stop() { stops += 1 }
+}
+@MainActor private final class RouteNoPurchaseClient: MembershipClient {
+    func products() async throws -> [MembershipOffer] { [] }
+    func currentEntitlements() async -> [MembershipVerification] { [] }
+    func updates() -> AsyncStream<MembershipVerification> { AsyncStream { $0.finish() } }
+    func purchase(_ plan: MembershipPlan, appAccountToken: UUID) async throws -> MembershipPurchaseResult { .cancelled }
+    func restore() async throws {}
+    func finish(transactionID: UInt64) async {}
 }

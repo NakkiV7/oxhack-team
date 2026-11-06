@@ -81,7 +81,7 @@ struct MembershipView: View {
                         .font(.subheadline).accessibilityIdentifier("membershipOverlapNotice")
                 }
                 VStack(spacing: 12) {
-                    if !store.hasAccess && store.offers.isEmpty { Text(store.status).font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("membershipStoreStatus") }
+                    if !store.hasAccess && store.status != "Prices and eligible trials are supplied by the App Store." { Text(store.status).font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("membershipStoreStatus") }
                     if let error = store.accessError { Text(error).font(.subheadline).foregroundStyle(Palette.red).accessibilityIdentifier("membershipError") }
                     if let catalogueError = store.catalogueError, !store.hasAccess || showOtherPlans {
                         Text(catalogueError).font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("membershipCatalogueStatus")
@@ -159,7 +159,7 @@ struct WorkoutLaunchAccessView: View {
                 }
             }
             .sheet(isPresented: $measurementsPresented) {
-                OnboardingView(profileStore: launch.profile, healthStore: launch.healthStore, guardianAuthorization: launch.guardianAuthorization, history: launch.history, programme: launch.programme)
+                OnboardingView(profileStore: launch.profile, healthStore: launch.healthStore, guardianAuthorization: launch.guardianAuthorization, history: launch.history, programme: launch.programme, voicePreviews: launch.voicePreviews)
             }
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { launch.cancel() } } }
         }

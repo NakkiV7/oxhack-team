@@ -154,6 +154,37 @@ import Vision
         XCTAssertFalse(text.contains { $0.contains("Prices and eligible trials are supplied") })
         XCTAssertTrue(elements(window).contains { $0.accessibilityTraits.contains(.selected) && ($0.accessibilityLabel?.contains("Lifetime") == true) })
     }
+    func testLoadedOffersKeepPendingAndCancelledPurchaseOutcomesVisible() async throws {
+        let w = try workspace(), client = PolishMembershipClient()
+        let store = MembershipStore(root: roots.last!, client: client); store.setAccount(w.scope.accountID)
+        let window = try await host(NavigationStack { MembershipView(store: store) }, workspace: w)
+        XCTAssertFalse(store.offers.isEmpty)
+        client.purchaseResult = .pending; await store.buy(.lifetime)
+        XCTAssertNil(store.accessError); XCTAssertFalse(store.hasAccess)
+        var text = try await inspect(window, name: "membership-pending")
+        XCTAssertTrue(text.contains { $0.contains("Purchase is pending approval. Access has not changed.") })
+        client.purchaseResult = .cancelled; await store.buy(.lifetime)
+        text = try await inspect(window, name: "membership-cancelled")
+        XCTAssertTrue(text.contains { $0.contains("Purchase cancelled. Access has not changed.") })
+    }
+    func testLoadedOffersKeepNoAccessRestoreOutcomeVisible() async throws {
+        let w = try workspace(), store = MembershipStore(root: roots.last!, client: PolishMembershipClient())
+        store.setAccount(w.scope.accountID)
+        let window = try await host(NavigationStack { MembershipView(store: store) }, workspace: w)
+        await store.restore()
+        XCTAssertFalse(store.offers.isEmpty); XCTAssertFalse(store.hasAccess); XCTAssertNil(store.accessError)
+        let text = try await inspect(window, name: "membership-restore-outcome")
+        XCTAssertTrue(text.contains { $0.contains("No active membership for this account. Sign in and restore a previous Apple purchase.") })
+    }
+    func testLoadedOffersKeepRedemptionFollowUpVisible() async throws {
+        let w = try workspace(), store = MembershipStore(root: roots.last!, client: PolishMembershipClient())
+        store.setAccount(w.scope.accountID)
+        let window = try await host(NavigationStack { MembershipView(store: store) }, workspace: w)
+        await store.completeRedemption(.success(()))
+        XCTAssertFalse(store.offers.isEmpty); XCTAssertFalse(store.hasAccess); XCTAssertNil(store.accessError)
+        let text = try await inspect(window, name: "membership-redemption-outcome")
+        XCTAssertTrue(text.contains { $0.contains("If Apple completed your redemption, use Restore purchases to verify it for this account.") })
+    }
     private func host<V: View>(_ content: V, workspace: AccountWorkspace) async throws -> UIWindow {
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         let window = try XCTUnwrap(scene.windows.first { $0.isKeyWindow })
@@ -214,10 +245,11 @@ private struct PolishCloudClient: ProgrammeCloudClient {
 }
 
 @MainActor private final class PolishMembershipClient: MembershipClient {
+    var purchaseResult: MembershipPurchaseResult = .cancelled
     func products() async throws -> [MembershipOffer] { [.init(plan: .lifetime, displayName: "Lifetime", displayPrice: "£87.99", eligibleTrialDays: nil)] }
     func currentEntitlements() async -> [MembershipVerification] { [] }
     func updates() -> AsyncStream<MembershipVerification> { AsyncStream { $0.finish() } }
-    func purchase(_ plan: MembershipPlan, appAccountToken: UUID) async throws -> MembershipPurchaseResult { .cancelled }
+    func purchase(_ plan: MembershipPlan, appAccountToken: UUID) async throws -> MembershipPurchaseResult { purchaseResult }
     func restore() async throws {}
     func finish(transactionID: UInt64) async {}
 }

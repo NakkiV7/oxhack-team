@@ -163,7 +163,7 @@ struct AccountRootView: View {
             if let workspace = coordinator.visibleWorkspace, coordinator.account.backupCodes.isEmpty {
                 Group {
                     if !workspace.hasOngoingWorkout && !AccountPolicy.setupComplete(profile: workspace.profile.profile) {
-                        OnboardingView(profileStore: workspace.profile, healthStore: workspace.health, guardianAuthorization: coordinator.account.authorization, history: workspace.training.history, programme: workspace.programme) {
+                        OnboardingView(profileStore: workspace.profile, healthStore: workspace.health, guardianAuthorization: coordinator.account.authorization, history: workspace.training.history, programme: workspace.programme, voicePreviews: workspace.training.voicePreviews) {
                             workspace.training.remoteVoice?.reloadPreferences()
                             workspace.training.repVoice.choose(workspace.training.remoteVoice?.gentleOnly == true ? nil : RepVoicePlan.Coach(rawValue: workspace.profile.preferencesDefaults.string(forKey: RepVoicePlayer.defaultsKey) ?? "off"))
                             workspace.training.setVoiceFeedback(workspace.profile.preferencesDefaults.bool(forKey: "trainer.audioEnabled"))
