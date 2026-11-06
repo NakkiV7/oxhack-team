@@ -8,8 +8,10 @@ final class NativeRewardsStore {
     private(set) var loadError: String?
     private let url: URL
     let allowsTimePressureRewards: Bool
+    private let requiresCapturedAdult: Bool
 
-    init(url: URL, createdAt: Date = Date(), calendar: Calendar = .current, allowsTimePressureRewards: Bool = true) {
+    init(url: URL, createdAt: Date = Date(), calendar: Calendar = .current, allowsTimePressureRewards: Bool = true, requiresCapturedAdult: Bool = false) {
+        self.requiresCapturedAdult = requiresCapturedAdult
         self.url = url
         self.allowsTimePressureRewards = allowsTimePressureRewards
         ledger = GamificationLedger(createdAt: createdAt, calendar: calendar)
@@ -28,6 +30,8 @@ final class NativeRewardsStore {
 
     func award(record: SessionRecord, before: [SessionRecord], history: [SessionRecord], completedAt: Date) throws {
         guard allowsTimePressureRewards else { return }
+        if requiresCapturedAdult && record.trainingContext?.age?.allowsTimePressureRewards != true { return }
+        if let captured = record.trainingContext, captured.age?.allowsTimePressureRewards != true { return }
         try requireReadable()
         guard !before.contains(where: { $0.id == record.id }),
               !ledger.events.contains(where: { $0.sessionID == record.id }) else { return }
@@ -39,7 +43,7 @@ final class NativeRewardsStore {
     }
 
     func totalXP(history: [SessionRecord]) -> Int {
-        baseXP(history: history) + (allowsTimePressureRewards ? reconciled(history: history).totalBonusXP : 0)
+        baseXP(history: history) + reconciled(history: history).totalBonusXP
     }
 
     func summary(history: [SessionRecord], at date: Date) -> GamificationSummary {

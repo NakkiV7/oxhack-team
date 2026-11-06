@@ -126,10 +126,13 @@ struct TrainingProfileDescriptor: Codable, Identifiable, Equatable {
         profile = NativeProfileStore(url: scope.file("profile.json"), fixedAge: knownAge, preferencesDefaults: defaults)
         programme = ProgrammeStore(scope: scope, profile: profile)
         path = TrainingPathStore(url: scope.file("training-path.json"))
-        let rewards = NativeRewardsStore(url: scope.file("rewards.json"), allowsTimePressureRewards: profile.profile?.programmePreferences?.ageContext?.allowsTimePressureRewards == true)
+        let rewards = NativeRewardsStore(url: scope.file("rewards.json"), allowsTimePressureRewards: profile.profile?.programmePreferences?.ageContext?.allowsTimePressureRewards == true, requiresCapturedAdult: true)
         let voice = RemoteVoicePlayback(offlineOnly: true, defaults: defaults, gentleOnly: (profile.profile?.programmePreferences?.ageContext?.ageYears ?? 0) < 18)
         training = TrainingStore(historyURL: scope.file("history.json"), voicePlayback: voice, rewardsStore: rewards, defaults: defaults, accountScope: scope)
         training.programme = programme
+        training.quests = QuestStore(scope: scope, profile: profile, programme: programme)
+        training.rewardReminders = RewardReminderStore(scope: scope, profile: profile, rewards: rewards, programme: programme, client: LocalRewardNotificationClient())
+        Task { [weak training] in await training?.rewardReminders?.refresh() }
         programme.protectedDayIDs = { [weak training] in training?.protectedProgrammeDayIDs ?? [] }
         health = HealthDataStore(client: ScopedHealthReadingClient(profile: profile), defaults: try FileHealthPreferences(url: scope.file("health-preferences.plist")))
     }
@@ -213,6 +216,8 @@ struct AccountLocalExport: Codable {
     let unfinishedWorkouts: [PendingPhoneWorkout]
     let programme: ProgrammeArchive?
     let weights: [DatedWeight]?
+    let quests: QuestArchive?
+    let xpReminderConsent: Bool?
 }
 
 enum AccountLocalArchives {
@@ -239,11 +244,12 @@ extension AccountDataScope {
             guard FileManager.default.fileExists(atPath: url.path) else { return nil }
             return try JSONDecoder().decode(type, from: Data(contentsOf: url))
         }
-        let export = AccountLocalExport(formatVersion: 3, accountID: accountID, profileID: profileID,
+        let export = AccountLocalExport(formatVersion: 4, accountID: accountID, profileID: profileID,
             profile: try read(LocalProfile.self, name: "profile.json"), history: try HistoryStore(url: file("history.json")).load(),
             rewards: try read(GamificationLedger.self, name: "rewards.json"), pendingWorkout: try read(PendingPhoneWorkout.self, name: "pending-phone-workout.json"),
             unfinishedWorkouts: try unfinishedSnapshots().map(\.snapshot),
-            programme: try read(ProgrammeArchive.self, name: "programme.json"), weights: try read([DatedWeight].self, name: "weights.json"))
+            programme: try read(ProgrammeArchive.self, name: "programme.json"), weights: try read([DatedWeight].self, name: "weights.json"),
+            quests: try read(QuestArchive.self, name: "quests.json"), xpReminderConsent: try read(Bool.self, name: "xp-reminders.json"))
         let target = URL.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("spottr-local-profile.json")
         let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try ProtectedLocalStorage.write(encoder.encode(export), to: target)

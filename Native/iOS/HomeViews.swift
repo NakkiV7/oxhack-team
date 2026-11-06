@@ -50,6 +50,7 @@ struct SpottrRoot: View {
                 }
             }
         }
+        .environment(\.profileWebsiteAccess, ProfileWebsiteAccess(profile: profileStore, guardian: guardianAuthorization))
         .fullScreenCover(isPresented: $store.presented) { SessionView(store: store).interactiveDismissDisabled() }
         .sheet(isPresented: $settingsPresented, onDismiss: {
             store.remoteVoice?.reloadPreferences()
@@ -106,12 +107,8 @@ struct TodayView: View {
                     }
                     weeklyRhythm
                     recentReport
-                    if store.rewards.allowsTimePressureRewards {
-                    Button { rewardsPresented = true } label: {
-                        Label("Training rewards & streaks", systemImage: "flame")
-                            .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, alignment: .leading)
-                    }.buttonStyle(.plain).foregroundStyle(Palette.blue)
-                    }
+                    if let quests = store.quests { QuestCardsView(store: store, quests: quests) }
+                    TrainingRewardWidget(store: store, profile: profileStore.profile)
                     if store.previewMode {
                         Label("Preview history is synthetic and stored separately.", systemImage: "play.rectangle")
                             .font(.caption).foregroundStyle(.secondary)

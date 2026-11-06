@@ -1,77 +1,10 @@
 import SwiftUI
 
-/// A local progression based on comfortable starting movements and completed training.
 struct PathSkillsView: View {
     @Bindable var store: TrainingStore
     var profile: LocalProfile? = nil
     var previewMode = false
-    @State private var family = ExerciseFamily.push
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    var body: some View {
-        NavigationStack {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        ScreenHeading(title: "Your next level", subtitle: "Build one skill at a time")
-                        Picker("Training path", selection: $family) {
-                            ForEach(ExerciseFamily.allCases, id: \.self) { Text($0.title).tag($0) }
-                        }.pickerStyle(.menu).accessibilityIdentifier("skill-path-family")
-                        let steps = LocalSkillPath.make(family: family, profile: profile, history: store.history)
-                        ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
-                            if let entry = ExerciseCatalog.find(step.id) {
-                                VStack(spacing: 0) {
-                                    if index > 0 {
-                                        Capsule().fill(step.state == .locked ? Palette.muted.opacity(0.2) : Palette.blue.opacity(0.25))
-                                            .frame(width: 5, height: 28).padding(.bottom, 12).accessibilityHidden(true)
-                                    }
-                                    if step.state == .locked {
-                                        pathNode(step, entry: entry).accessibilityLabel("Locked challenge. Complete the previous step to reveal it.")
-                                    } else {
-                                        NavigationLink { CatalogueWorkoutSetupView(store: store, entry: entry, origin: .skills) } label: { pathNode(step, entry: entry) }
-                                            .buttonStyle(SpottrPressStyle()).accessibilityIdentifier("skill-\(entry.id)")
-                                    }
-                                }.frame(maxWidth: .infinity).id(entry.id)
-                            }
-                        }
-                        Label("More challenges appear as you progress", systemImage: "lock.fill")
-                            .font(.subheadline).foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.vertical, 24)
-                        DisclosureGroup("How skills unlock") {
-                            Text("Your starting point comes from the movements you said feel comfortable. Complete three goal sets over two days to earn a skill and reveal the next challenge.")
-                                .font(.subheadline).foregroundStyle(.secondary).padding(.top, 8)
-                        }.font(.subheadline.weight(.medium)).tint(Palette.blue)
-                        NavigationLink("Browse every exercise") { ExerciseLibraryView(store: store) }.font(.subheadline.weight(.semibold))
-                    }.padding(24)
-                        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: family)
-                }.background(.white).navigationTitle("Skills").navigationBarTitleDisplayMode(.inline)
-                    .sensoryFeedback(.selection, trigger: family)
-            }
-        }
-    }
-    private func pathNode(_ step: LocalSkillStep, entry: ExerciseEntry) -> some View {
-        let locked = step.state == .locked
-        let completed = step.state == .earned || step.state == .startingSkill
-        let color = completed ? Palette.green : locked ? Palette.muted : Palette.blue
-        return VStack(spacing: 12) {
-            ZStack {
-                Circle().fill(color.opacity(0.12)).frame(width: 104, height: 104)
-                Circle().stroke(color.opacity(0.25), lineWidth: 7).frame(width: 92, height: 92)
-                if locked { Image(systemName: "lock.fill").font(.title).foregroundStyle(Palette.muted) }
-                else { ExerciseArtwork(entry: entry).frame(width: 73, height: 73) }
-            }.overlay(alignment: .bottomTrailing) {
-                if completed { Image(systemName: "checkmark.circle.fill").font(.title2).foregroundStyle(Palette.green).background(.white, in: Circle()) }
-            }
-            Text(locked ? "Next challenge" : entry.name).font(.headline).foregroundStyle(Palette.ink)
-            Text(step.state == .startingSkill ? "Starting skill" : step.state == .earned ? "Earned" : locked ? "Keep going to reveal" : "Your next quest")
-                .font(.caption.weight(.semibold)).foregroundStyle(color)
-            if step.state == .current {
-                Text("Practise \(entry.goal) \(entry.unit == .reps ? "reps" : "seconds")").font(.subheadline).foregroundStyle(.secondary)
-                Text("LET’S GO").font(.caption.bold()).tracking(1).foregroundStyle(.white)
-                    .padding(.horizontal, 23).padding(.vertical, 12).background(Palette.blue, in: Capsule())
-            }
-        }.frame(maxWidth: .infinity).padding(.vertical, 15)
-            .background(step.state == .current ? Palette.blue.opacity(0.035) : Color.clear, in: RoundedRectangle(cornerRadius: 28))
-            .accessibilityElement(children: .combine)
-    }
+    var body: some View { SkillsView(store: store, profile: profile, previewMode: previewMode) }
 }
 
 private struct BuildPathBanner: View {

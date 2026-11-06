@@ -41,6 +41,8 @@ end
 resource(project, app, '.local/SpottrPresage.json') if presage_enabled && File.file?('.local/SpottrPresage.json')
 resource(project, app, 'Native/iOS/PrivacyInfo.xcprivacy')
 resource(project, app, 'Shared/Core/Resources/coach-guidance.json')
+resource(project, app, 'Shared/Core/Resources/quest-calendar.json')
+resource(project, watch, 'Shared/Core/Resources/quest-calendar.json')
 resource(project, app, 'Native/Resources/Assets.xcassets') if File.directory?('Native/Resources/Assets.xcassets')
 resource(project, watch, 'Native/Watch/Assets.xcassets')
 resource(project, watch, 'Native/Watch/PrivacyInfo.xcprivacy')

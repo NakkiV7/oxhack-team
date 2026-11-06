@@ -93,6 +93,7 @@ struct XPWindowSettingsView: View {
     let timeZone: TimeZone
     let intervalForHour: (Int) -> DateInterval?
     let saveTomorrow: (Int) throws -> Void
+    var reminders: RewardReminderStore? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var selectedHour: Int
     @State private var saved = false
@@ -100,7 +101,8 @@ struct XPWindowSettingsView: View {
 
     init(todayWindow: DateInterval?, tomorrowStartHour: Int, tomorrowEffectiveAt: Date,
          timeZone: TimeZone, intervalForHour: @escaping (Int) -> DateInterval?,
-         saveTomorrow: @escaping (Int) throws -> Void) {
+         saveTomorrow: @escaping (Int) throws -> Void, reminders: RewardReminderStore? = nil) {
+        self.reminders = reminders
         self.todayWindow = todayWindow
         self.tomorrowEffectiveAt = tomorrowEffectiveAt
         self.timeZone = timeZone
@@ -119,6 +121,15 @@ struct XPWindowSettingsView: View {
                     }
                     Text("Eligible base XP earned when you finish a workout in the window receives an equal bonus. Train at a comfortable time; the window is optional.")
                         .font(.caption).foregroundStyle(.secondary)
+                }
+                if let reminders {
+                    Section("Optional reminders") {
+                        Toggle("One hour before and at the start", isOn: Binding(get: { reminders.consent }, set: { value in
+                            Task { do { try await reminders.setConsent(value) } catch { self.error = "This profile can’t change reminders right now." } }
+                        })).accessibilityIdentifier("xp-reminder-consent")
+                        Text(reminders.status).font(.caption).foregroundStyle(.secondary)
+                        Text("Only Spottr XP reminders are replaced. Permission and Focus control delivery.").font(.caption).foregroundStyle(.secondary)
+                    }
                 }
                 Section("Today") {
                     Text(intervalText(todayWindow, empty: "No bonus window today."))
@@ -185,11 +196,13 @@ struct XPWindowSettingsView: View {
 
 struct TrainingRewardsSettingsView: View {
     let store: NativeRewardsStore
+    var reminders: RewardReminderStore? = nil
+    var programme: ProgrammeStore? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var openedAt = Date()
 
     var body: some View {
-        let calendar = store.ledger.calendar
+        let calendar = programme?.localCalendar ?? .current
         if let issue = store.loadError {
             NavigationStack {
                 ContentUnavailableView("Rewards unavailable", systemImage: "exclamationmark.circle", description: Text(issue))
@@ -205,7 +218,8 @@ struct TrainingRewardsSettingsView: View {
                                      let now = Date()
                                      guard calendar.isDate(now, inSameDayAs: openedAt) else { throw WindowError.dayChanged }
                                      try store.schedule(startHour: hour, at: now)
-                                 })
+                                     Task { await reminders?.refresh() }
+                                 }, reminders: reminders)
         }
     }
 

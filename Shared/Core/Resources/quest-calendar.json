@@ -1,0 +1,3306 @@
+{
+  "version": 1,
+  "daily": [
+    {
+      "slot": 1,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 2,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 3,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 4,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 5,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 6,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 7,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 8,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 9,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 10,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 11,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 12,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 13,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 14,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 15,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 16,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 17,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 18,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 19,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 20,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 21,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 22,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 23,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 24,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 25,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 26,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 27,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 28,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 29,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 30,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 31,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 32,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 33,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 34,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 35,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 36,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 37,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 38,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 39,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 40,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 41,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 42,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 43,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 44,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 45,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 46,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 47,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 48,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 49,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 50,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 51,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 52,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 53,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 54,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 55,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 56,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 57,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 58,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 59,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 60,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 61,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 62,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 63,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 64,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 65,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 66,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 67,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 68,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 69,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 70,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 71,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 72,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 73,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 74,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 75,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 76,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 77,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 78,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 79,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 80,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 81,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 82,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 83,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 84,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 85,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 86,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 87,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 88,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 89,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 90,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 91,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 92,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 93,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 94,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 95,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 96,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 97,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 98,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 99,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 100,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 101,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 102,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 103,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 104,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 105,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 106,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 107,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 108,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 109,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 110,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 111,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 112,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 113,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 114,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 115,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 116,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 117,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 118,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 119,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 120,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 121,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 122,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 123,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 124,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 125,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 126,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 127,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 128,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 129,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 130,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 131,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 132,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 133,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 134,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 135,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 136,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 137,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 138,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 139,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 140,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 141,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 142,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 143,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 144,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 145,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 146,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 147,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 148,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 149,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 150,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 151,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 152,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 153,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 154,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 155,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 156,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 157,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 158,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 159,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 160,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 161,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 162,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 163,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 164,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 165,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 166,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 167,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 168,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 169,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 170,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 171,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 172,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 173,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 174,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 175,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 176,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 177,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 178,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 179,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 180,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 181,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 182,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 183,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 184,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 185,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 186,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 187,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 188,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 189,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 190,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 191,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 192,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 193,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 194,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 195,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 196,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 197,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 198,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 199,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 200,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 201,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 202,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 203,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 204,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 205,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 206,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 207,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 208,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 209,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 210,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 211,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 212,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 213,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 214,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 215,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 216,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 217,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 218,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 219,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 220,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 221,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 222,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 223,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 224,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 225,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 226,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 227,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 228,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 229,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 230,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 231,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 232,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 233,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 234,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 235,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 236,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 237,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 238,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 239,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 240,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 241,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 242,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 243,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 244,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 245,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 246,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 247,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 248,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 249,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 250,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 251,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 252,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 253,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 254,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 255,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 256,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 257,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 258,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 259,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 260,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 261,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 262,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 263,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 264,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 265,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 266,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 267,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 268,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 269,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 270,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 271,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 272,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 273,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 274,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 275,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 276,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 277,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 278,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 279,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 280,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 281,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 282,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 283,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 284,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 285,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 286,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 287,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 288,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 289,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 290,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 291,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 292,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 293,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 294,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 295,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 296,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 297,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 298,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 299,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 300,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 301,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 302,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 303,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 304,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 305,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 306,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 307,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 308,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 309,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 310,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 311,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 312,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 313,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 314,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 315,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 316,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 317,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 318,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 319,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 320,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 321,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 322,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 323,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 324,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 325,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 326,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 327,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 328,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 329,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 330,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 331,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 332,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 333,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 334,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 335,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 336,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 337,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 338,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 339,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 340,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 341,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 342,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 343,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 344,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 345,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 346,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 347,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 348,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 349,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 350,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 351,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 352,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 353,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 354,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 355,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 356,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 357,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 358,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 359,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 360,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 361,
+      "options": [
+        "practice",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 362,
+      "options": [
+        "control",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 363,
+      "options": [
+        "balance",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 364,
+      "options": [
+        "rhythm",
+        "practice",
+        "reflection"
+      ]
+    },
+    {
+      "slot": 365,
+      "options": [
+        "comfortable",
+        "camera",
+        "recovery"
+      ]
+    },
+    {
+      "slot": 366,
+      "options": [
+        "steady",
+        "practice",
+        "reflection"
+      ]
+    }
+  ],
+  "weekly": [
+    {
+      "slot": 1,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 2,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 3,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 4,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 5,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 6,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 7,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 8,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 9,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 10,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 11,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 12,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 13,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 14,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 15,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 16,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 17,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 18,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 19,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 20,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 21,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 22,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 23,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 24,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 25,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 26,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 27,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 28,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 29,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 30,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 31,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 32,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 33,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 34,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 35,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 36,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 37,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 38,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 39,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 40,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 41,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 42,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 43,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 44,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 45,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 46,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 47,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 48,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 49,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 50,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 51,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    },
+    {
+      "slot": 52,
+      "options": [
+        "weekRhythm",
+        "weekReflection"
+      ]
+    },
+    {
+      "slot": 53,
+      "options": [
+        "weekPractice",
+        "weekRecovery"
+      ]
+    }
+  ]
+}

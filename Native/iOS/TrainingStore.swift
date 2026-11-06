@@ -44,6 +44,8 @@ final class TrainingStore {
     var hasInput = false
     @ObservationIgnored weak var launchCoordinator: WorkoutLaunchCoordinator?
     var programme: ProgrammeStore?
+    var quests: QuestStore?
+    var rewardReminders: RewardReminderStore?
     private(set) var sessionTrainingContext: SessionTrainingContext?
     var selectedExercise: Exercise = .squat { didSet { if oldValue != selectedExercise { launchCoordinator?.cancel() } } }
     let spokenReps: any SpokenRepListening
@@ -57,6 +59,8 @@ final class TrainingStore {
         if !active, sessionPhase == .active { pause() }
         accountActive = active
         programme?.setActive(active)
+        quests?.setActive(active)
+        rewardReminders?.setActive(active)
         setAppActive(active)
     }
     let accountScope: AccountDataScope?
@@ -728,7 +732,8 @@ final class TrainingStore {
         let week = rewardDefaults.data(forKey: "coach.approvedWeek").flatMap { try? CoachSavedWeek.decode($0) }
         do {
             try rewards.advance(history: history, at: date,
-                                plannedRestDays: week?.plannedRestDays(calendar: rewards.ledger.calendar, at: date) ?? [])
+                                plannedRestDays: programme?.current?.days.filter { $0.kind == .rest || $0.kind == .recovery }.map(\.date) ?? week?.plannedRestDays(calendar: rewards.ledger.calendar, at: date) ?? [])
+            try quests?.reconcile(history: history)
         } catch {
             if self.error == nil { self.error = "Training rewards couldn’t be updated. Your saved workouts are unchanged." }
         }
@@ -824,6 +829,8 @@ final class TrainingStore {
             try FileManager.default.removeItem(at: exportDirectory)
         }
         try rewards.reset(at: Date())
+        try quests?.reconcile(history: history)
+        Task { await rewardReminders?.refresh() }
     }
     enum DataControlError: LocalizedError {
         case workoutInProgress

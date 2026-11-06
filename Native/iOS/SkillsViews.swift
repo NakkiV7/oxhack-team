@@ -3,113 +3,186 @@ import SwiftUI
 struct SkillsView: View {
     @Bindable var store: TrainingStore
     var profile: LocalProfile? = nil
-    @AppStorage("skills.layout") private var layout = "grid"
+    var previewMode = false
+    @State private var progress: SkillCurriculum.Progress?
+    @State private var selectedChapter: String?
     @State private var expanded = false
-    var previewMode: Bool = false
+    @State private var selected: ExerciseEntry?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
+    private var current: SkillCurriculum.Node? {
+        progress?.nodes.first { $0.isUsable && $0.state != .earned && $0.state != .placed && $0.state != .locked }
+    }
+    private var currentChapter: SkillCurriculum.Chapter {
+        SkillCurriculum.chapters.first { $0.exerciseIDs.contains(current?.id ?? "") } ?? SkillCurriculum.chapters[0]
+    }
     var body: some View {
-        let progress = SkillProgress.evaluate(history: store.history)
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Your skill tree.").font(.system(size: 32, weight: .bold)).tracking(-1)
-                        Text("\(progress.nodes.filter(\.isComplete).count) of \(ExerciseCatalog.all.count) challenges earned")
-                            .font(.subheadline).foregroundStyle(.secondary)
-                    }
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: dynamicTypeSize.isAccessibilitySize ? 1 : 2), spacing: 10) {
-                        ForEach(TrainingAttribute.allCases, id: \.self) { attribute in
-                            HStack {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text(attribute.title).font(.caption).foregroundStyle(.secondary)
-                                    Text("\(progress.points(for: attribute)) XP").font(.title3.weight(.semibold)).monospacedDigit()
-                                }
-                                Spacer(minLength: 4)
-                                Image(systemName: attributeSymbol(attribute)).font(.title3).foregroundStyle(.secondary)
-                            }.padding(17).background(Palette.surface, in: RoundedRectangle(cornerRadius: 17))
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 22) {
+                        ScreenHeading(title: "One journey, every movement", subtitle: "53 skills · Six chapters · Your own pace")
+                        HStack {
+                            Text("\(progress?.nodes.filter { $0.state == .earned }.count ?? 0) earned").font(.subheadline.weight(.semibold))
+                            Spacer()
+                            Button("Jump to current") {
+                                selectedChapter = nil; expanded = false
+                                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) { proxy.scrollTo(currentChapter.id, anchor: .top) }
+                            }.font(.subheadline.weight(.semibold)).accessibilityIdentifier("skills-jump-current")
+                        }
+                        ForEach(SkillCurriculum.chapters) { chapter in
+                            chapterSection(chapter).id(chapter.id)
+                        }
+                        if let quests = store.quests { QuestCardsView(store: store, quests: quests) }
+                        TrainingRewardWidget(store: store, profile: profile)
+                        NavigationLink("Browse every exercise") { ExerciseLibraryView(store: store) }
+                            .font(.subheadline.weight(.semibold))
+                        Text("Chapters help you explore. Progress in one movement family never blocks another. Placement is self-reported and earns no XP.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }.padding(24)
+                }.background(.white).navigationTitle("Skills").navigationBarTitleDisplayMode(.inline)
+                    .onChange(of: selectedChapter) { _, chapter in
+                        Task { @MainActor in
+                            await Task.yield()
+                            guard selectedChapter == chapter else { return }
+                            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) {
+                                proxy.scrollTo(chapter ?? currentChapter.id, anchor: .top)
+                            }
                         }
                     }
-                    if dynamicTypeSize.isAccessibilitySize {
-                        Text("Showing the linear tree for larger text. Your preferred layout is saved.")
-                            .font(.subheadline).accessibilityIdentifier("skill-accessible-layout-note")
-                    } else {
-                        Picker("Skill view", selection: $layout) {
-                            Text("Grid").tag("grid")
-                            Text("Linear").tag("linear")
-                        }.pickerStyle(.segmented).accessibilityIdentifier("skill-layout")
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button {
+                                selectedChapter = nil; expanded = false
+                                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) { proxy.scrollTo(currentChapter.id, anchor: .top) }
+                            } label: { Image(systemName: "location.north.line") }
+                            .accessibilityLabel("Jump to current").accessibilityIdentifier("skills-toolbar-current")
+                        }
                     }
-                    SkillLegend()
-                    if layout == "grid" && !dynamicTypeSize.isAccessibilitySize {
-                        Button {
-                            expanded.toggle()
-                        } label: {
-                            Label(expanded ? "Collapse skill tree" : "Expand skill tree",
-                                  systemImage: expanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
-                                .font(.subheadline.weight(.semibold))
-                        }.foregroundStyle(Palette.blue).accessibilityIdentifier("skill-grid-expand")
-                        SkillGraphView(store: store, progress: progress, previewMode: previewMode)
-                            .frame(height: expanded ? 640 : 360)
-                        Text("Scroll across for branches and down for later challenges.").font(.caption).foregroundStyle(.secondary)
-                        Text("Green connections mark earned prerequisites. Earn every incoming prerequisite to unlock a challenge.")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                    else { linearTree(progress: progress) }
-                    if let profile, let baseline = profile.baselineAbility {
-                        practiceIdeas(progress: progress, profile: profile, baseline: baseline)
-                    }
-                    Text("Earn a challenge with 3 goal sets across 2 days and every prerequisite. Practice before unlocking still counts. You can practise every exercise at any time.")
-                        .font(.caption).foregroundStyle(.secondary)
-                    Text("Each goal set earns 10 XP, up to 3 sets per exercise each day. Manual and camera sets count; video replays don’t. XP and unlocks are game progress.")
-                        .font(.caption).foregroundStyle(.secondary)
-                    Text("Manual sets are self-reported. Camera counts are tracking evidence, not verified form or fitness.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }.padding(24)
-            }.background(.white).navigationTitle("Skills").navigationBarTitleDisplayMode(.inline)
-        }
-    }
-
-    private func linearTree(progress: SkillProgress) -> some View {
-        ForEach(ExerciseFamily.allCases, id: \.self) { family in
-            VStack(alignment: .leading, spacing: 14) {
-                Text(family.title).font(.title3.bold())
-                ForEach(ExerciseCatalog.all.filter { $0.family == family }) { entry in
-                    NavigationLink { ExerciseDetailView(store: store, entry: entry) } label: {
-                        SkillRow(entry: entry, progress: progress,
-                                 access: progress.access(exerciseID: entry.id, previewUnlock: previewMode) ?? .locked)
-                    }.buttonStyle(.plain).accessibilityIdentifier("skill-\(entry.id)")
-                }
             }
         }
+        .sheet(item: $selected) { entry in
+            if let profile, let node = progress?.node(entry.id) { CurriculumPracticeSheet(store: store, profile: profile, entry: entry, node: node) }
+        }
+        .onAppear(perform: refresh)
+        .onChange(of: store.history) { _, _ in refresh() }
+        .onChange(of: profile) { _, _ in refresh() }
     }
-
-    private func practiceIdeas(progress: SkillProgress, profile: LocalProfile, baseline: LocalProfile.BaselineAbility) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Practice ideas, \(baseline.title)").font(.headline)
-            Text("Based on your self-reported starting point and goals. Choose a comfortable variation; these ideas don’t award XP or complete challenges.")
-                .font(.caption).foregroundStyle(.secondary)
-            ForEach(progress.suggestedChallengeIDs(profile: profile), id: \.self) { id in
-                if let entry = ExerciseCatalog.find(id) {
-                    NavigationLink { ExerciseDetailView(store: store, entry: entry) } label: {
-                        HStack(spacing: 12) {
-                            ExerciseArtwork(entry: entry).frame(width: 42, height: 48)
-                            Text(entry.name).font(.subheadline.weight(.medium))
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.caption)
-                        }.padding(12).background(Palette.surface, in: RoundedRectangle(cornerRadius: 14))
-                    }.buttonStyle(.plain).accessibilityIdentifier("suggested-\(id)")
+    private func refresh() {
+        progress = profile.map { SkillCurriculum.evaluate(profile: $0, history: store.history, calendar: store.programme?.localCalendar ?? .current) }
+    }
+    private func chapterSection(_ chapter: SkillCurriculum.Chapter) -> some View {
+        let open = (selectedChapter ?? currentChapter.id) == chapter.id
+        let earned = chapter.exerciseIDs.filter { progress?.node($0)?.state == .earned }.count
+        return VStack(alignment: .leading, spacing: 16) {
+            Button {
+                selectedChapter = open ? nil : chapter.id; expanded = false
+            } label: {
+                HStack(spacing: 12) {
+                    Text(String((SkillCurriculum.chapters.firstIndex { $0.id == chapter.id } ?? 0) + 1))
+                        .font(.caption.bold()).frame(width: 32, height: 32).background(Palette.blue.opacity(0.1), in: Circle())
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(chapter.title).font(.title3.bold())
+                        Text("\(earned) of \(chapter.exerciseIDs.count) earned").font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Image(systemName: open ? "chevron.up" : "chevron.down").font(.caption.weight(.semibold))
+                }.foregroundStyle(Palette.ink)
+            }.buttonStyle(.plain).accessibilityIdentifier("skills-chapter-\(chapter.id)")
+            if open {
+                let focus = chapter.exerciseIDs.firstIndex(of: current?.id ?? "") ?? 0
+                let start = expanded ? 0 : max(0, focus - 1)
+                let ids = expanded ? chapter.exerciseIDs : Array(chapter.exerciseIDs.dropFirst(start).prefix(5))
+                ForEach(Array(ids.enumerated()), id: \.element) { index, id in
+                    if let entry = ExerciseCatalog.find(id), let node = progress?.node(id) {
+                        VStack(spacing: 0) {
+                            if index > 0 {
+                                Capsule().fill(progress?.node(ids[index - 1])?.state == .earned ? Palette.green : Palette.blue.opacity(0.18))
+                                    .frame(width: 4, height: 24).frame(maxWidth: .infinity).accessibilityHidden(true)
+                            }
+                            Button { selected = entry } label: {
+                                nodeLabel(entry: entry, node: node, focused: id == current?.id)
+                            }.buttonStyle(SpottrPressStyle()).accessibilityIdentifier("skill-\(id)")
+                                .accessibilityLabel("\(entry.name), level \(entry.level), \(stateLabel(node)), \(node.qualifyingSets) qualifying sets across \(node.trainingDays) days")
+                                .accessibilityHint("Opens practice details. Achievement locks do not block suitable practice.")
+                        }
+                    }
+                }
+                if ids.count < chapter.exerciseIDs.count {
+                    Button("Show all \(chapter.exerciseIDs.count) skills in \(chapter.title)") { expanded = true }
+                        .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity).padding(.vertical, 8)
                 }
             }
-        }
+        }.padding(open ? 16 : 14).background(open ? Palette.blue.opacity(0.035) : Palette.surface, in: RoundedRectangle(cornerRadius: 24))
     }
+    private func nodeLabel(entry: ExerciseEntry, node: SkillCurriculum.Node, focused: Bool) -> some View {
+        let tint = node.state == .earned ? Palette.green : focused ? Palette.blue : Palette.muted
+        return VStack(spacing: 10) {
+            ZStack(alignment: .bottomTrailing) {
+                StickFigureArtwork(exerciseID: entry.id).padding(14).frame(width: 96, height: 96)
+                    .background(.white, in: Circle()).overlay { Circle().stroke(tint.opacity(0.4), lineWidth: focused ? 4 : 2) }
+                Image(systemName: node.state == .earned ? "checkmark.circle.fill" : node.state == .locked ? "lock.circle.fill" : "circle.fill")
+                    .foregroundStyle(tint).background(.white, in: Circle()).accessibilityHidden(true)
+            }.accessibilityHidden(true)
+            Text(entry.name).font(.headline).foregroundStyle(Palette.ink).multilineTextAlignment(.center)
+            Text("Level \(entry.level) · \(stateLabel(node))").font(.caption.weight(.semibold)).foregroundStyle(tint)
+            if focused { Text("Explore this movement").font(.caption.weight(.semibold)).foregroundStyle(Palette.blue) }
+        }.padding(.vertical, 10).frame(maxWidth: .infinity).contentShape(Rectangle())
+    }
+    private func stateLabel(_ node: SkillCurriculum.Node) -> String {
+        if !node.isUsable { return "Outside your current setup" }
+        switch node.state { case .earned: return "Earned"; case .placed: return "Comfortable starting point"; case .available: return "Ready to explore"; case .locked: return "Achievement ahead" }
+    }
+}
 
-    private func attributeSymbol(_ attribute: TrainingAttribute) -> String {
-        switch attribute {
-        case .strength: return "dumbbell"
-        case .stamina: return "bolt.heart"
-        case .mobility: return "figure.flexibility"
-        case .balance: return "figure.mind.and.body"
-        }
+private struct CurriculumPracticeSheet: View {
+    let store: TrainingStore
+    let profile: LocalProfile
+    let entry: ExerciseEntry
+    let node: SkillCurriculum.Node
+    @Environment(\.dismiss) private var dismiss
+    @State private var error: String?
+    private var age: Int { profile.programmePreferences?.ageContext?.ageYears ?? 0 }
+    private var target: Int { min(entry.goal, age < 13 ? (entry.unit == .reps ? 6 : 10) : age < 18 ? (entry.unit == .reps ? 10 : 20) : entry.goal) }
+    var body: some View {
+        NavigationStack {
+            Group {
+                if let launch = store.launchCoordinator, launch.needsAttention, launch.pendingOrigin == .skills {
+                    WorkoutLaunchAccessView(launch: launch)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 18) {
+                            StickFigureArtwork(exerciseID: entry.id).frame(height: 140).frame(maxWidth: .infinity).accessibilityHidden(true)
+                            Text(entry.instruction).font(.subheadline)
+                            if age >= 5 && node.isUsable {
+                                Label("One comfortable set · \(target) \(entry.unit == .reps ? "reps" : "seconds")", systemImage: "figure.strengthtraining.traditional").font(.headline)
+                            }
+                            if age >= 18 {
+                                Text("Earn this skill with three sets of \(entry.goal) \(entry.unit == .reps ? "reps" : "seconds") over two days. Manual and camera practice both count.").font(.subheadline)
+                                Text("\(node.qualifyingSets) qualifying sets · \(node.trainingDays) days · \(node.manualSets) manual · \(node.cameraSets) camera").font(.caption).foregroundStyle(.secondary)
+                            } else {
+                                Text("Comfortable practice is progress. Your daily practice quest celebrates your own age-appropriate target; adult benchmarks stay separate.").font(.subheadline)
+                            }
+                            if let support = PathSurvey.requiredEquipment(for: entry) { Label(support, systemImage: "checkmark.shield").font(.subheadline) }
+                            if !node.isUsable { Text("This movement is outside your current age, support or movement preferences. Choose a suitable movement from your programme.").font(.subheadline) }
+                            Text("Stop for pain or discomfort. Illustration is a guide, not a camera observation.").font(.caption).foregroundStyle(.secondary)
+                            if let error { Text(error).font(.caption).foregroundStyle(Palette.red) }
+                        }.padding(24)
+                    }
+                    .safeAreaInset(edge: .bottom) {
+                        if node.isUsable && age >= 5 {
+                            PrimaryButton(title: "Practise this movement", symbol: "play") {
+                                do {
+                                    let plan = try CoachSavedPlan.catalogue(exerciseID: entry.id, sets: 1, target: target, restSeconds: 60, availableSupport: profile.effectiveProgrammePreferences.availableSupport)
+                                    store.startPlan(plan, availableSupport: profile.effectiveProgrammePreferences.availableSupport, origin: .skills)
+                                } catch { self.error = "This practice couldn’t be prepared. Review your programme settings." }
+                            }.accessibilityIdentifier("skill-practice-start").padding(20).background(.regularMaterial)
+                        }
+                    }
+                }
+            }.navigationTitle(entry.name).navigationBarTitleDisplayMode(.inline)
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
+        }.onDisappear { if store.launchCoordinator?.pendingOrigin == .skills { store.launchCoordinator?.cancel() } }
     }
 }
 
