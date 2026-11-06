@@ -10,7 +10,7 @@ final class CoachingFlowTests: XCTestCase {
         store.session.cue = .alignment
         store.coachingTick(at: 10)
         XCTAssertNil(store.coachingEvent)
-        store.start()
+        store.beginAuthorizedSession()
         XCTAssertEqual(store.source, .camera)
     }
 
@@ -163,7 +163,7 @@ final class CoachingFlowTests: XCTestCase {
             target: 12, activeSeconds: 6, source: .camera, reason: .voluntary,
             repDurations: Array(repeating: 1.2, count: 5))
         store.history = [.init(id: UUID(), date: Date(timeIntervalSince1970: 100), sets: [set])]
-        store.start()
+        store.beginAuthorizedSession()
         for (time, angle) in [(0.0, 170.0), (0.2, 170), (0.6, 90), (0.8, 90),
                               (1.2, 90), (1.4, 90), (1.8, 170), (2.0, 170)] {
             store.session.consume(.init(time: time, angle: angle), generation: store.session.generation)
@@ -271,7 +271,7 @@ final class CoachingFlowTests: XCTestCase {
         {"items":[{"exerciseID":"\(exerciseID)","sets":2,"target":8,"unit":"\(unit)","restSeconds":30}],
         "approvedAt":0,"rationale":"Offline discomfort regression"}
         """.utf8))
-        store.startPlan(plan, availableSupport: ["Wall"])
+        store.beginAuthorizedPlan(plan, availableSupport: ["Wall"])
         store.setVoiceFeedback(true)
         return (store, playback)
     }

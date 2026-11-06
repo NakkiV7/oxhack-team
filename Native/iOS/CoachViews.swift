@@ -69,7 +69,11 @@ struct CoachView: View {
                     .accessibilityIdentifier("coach-conversation")
                     .onChange(of: model.turns.count) { _, _ in withAnimation { proxy.scrollTo("latest", anchor: .bottom) } }
                     .safeAreaInset(edge: .bottom) { composer }
-            }.navigationTitle("Coach").navigationBarTitleDisplayMode(.inline)
+            }
+            .sheet(isPresented: Binding(get: { store.launchCoordinator?.needsAttention == true && store.launchCoordinator?.pendingOrigin == .coach }, set: { if !$0 { store.launchCoordinator?.cancel() } })) {
+                if let launch = store.launchCoordinator { WorkoutLaunchAccessView(launch: launch) }
+            }
+            .navigationTitle("Coach").navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
                         if model.isLoading { Button("Cancel", action: cancel).accessibilityLabel("Cancel coach request") }
@@ -83,12 +87,12 @@ struct CoachView: View {
                         }
                     }
                     ToolbarItem(placement: .topBarTrailing) { Button { composerFocused = false; settingsPresented = true } label: { Image(systemName: "slider.horizontal.3") }.accessibilityLabel("Coach settings") } }
-                .sheet(isPresented: $settingsPresented) { CoachSettingsView() }
+               .sheet(isPresented: $settingsPresented) { CoachSettingsView() }
                 .alert("Remove saved workout?", isPresented: $removingPlan) {
                     Button("Remove workout", role: .destructive) { model.removeApprovedPlan() }
                     Button("Cancel", role: .cancel) {}
                 } message: { Text("Completed sessions stay in your history.") }
-                .sheet(item: $logItem) { item in
+               .sheet(item: $logItem) { item in
                     if let entry = ExerciseCatalog.find(item.exerciseID) {
                         ManualWorkoutView(store: store, entry: entry, initialCount: item.target, initialSets: item.sets)
                     }
@@ -165,7 +169,7 @@ struct CoachView: View {
                     Button("Log") { composerFocused = false; logItem = item }.font(.subheadline.weight(.semibold)).accessibilityLabel("Log \(ExerciseCatalog.find(item.exerciseID)?.name ?? item.exerciseID)")
                 }
             }
-            PrimaryButton(title: "Start saved workout", symbol: "play") { composerFocused = false; store.startPlan(plan, availableSupport: support) }
+            PrimaryButton(title: "Start saved workout", symbol: "play") { composerFocused = false; store.startPlan(plan, availableSupport: support, origin: .coach) }
                 .accessibilityIdentifier("start-saved-workout")
             Text("Follow the saved order with manual reps and active hold timers. Log is also available after training.")
                 .font(.caption).foregroundStyle(.secondary)

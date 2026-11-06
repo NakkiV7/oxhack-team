@@ -8,9 +8,11 @@ struct SpottrRoot: View {
     @State private var settingsPresented = false
     @State private var selectedTab = "today"
     private let healthStore: HealthDataStore
+    let membership: MembershipStore?
     let guardianAuthorization: (any NativeAccountAuthorization)?
 
-    init(store: TrainingStore, profileStore: NativeProfileStore, workspace: PreviewWorkspace? = nil, healthStore: HealthDataStore? = nil, guardianAuthorization: (any NativeAccountAuthorization)? = nil) {
+    init(store: TrainingStore, profileStore: NativeProfileStore, workspace: PreviewWorkspace? = nil, healthStore: HealthDataStore? = nil, guardianAuthorization: (any NativeAccountAuthorization)? = nil, membership: MembershipStore? = nil) {
+        self.membership = membership
         self.store = store
         self.profileStore = profileStore
         self.workspace = workspace
@@ -56,7 +58,10 @@ struct SpottrRoot: View {
         }) {
             ProfileSettingsView(profileStore: profileStore, history: store.history,
                                 exportData: store.exportHistory, resetHistory: store.clearHistory, rewards: store.rewards.allowsTimePressureRewards ? store.rewards : nil,
-                                historyAvailable: store.historyAvailable, workspace: workspace, healthStore: healthStore)
+                                historyAvailable: store.historyAvailable, workspace: workspace, healthStore: healthStore, membership: membership)
+        }
+        .sheet(isPresented: Binding(get: { store.launchCoordinator?.needsAttention == true && [WorkoutLaunchOrigin.today, .url, .watch].contains { $0 == store.launchCoordinator?.pendingOrigin } }, set: { if !$0 { store.launchCoordinator?.cancel() } })) {
+            if let launch = store.launchCoordinator { WorkoutLaunchAccessView(launch: launch) }
         }
         .foregroundStyle(Palette.ink)
         .id(ObjectIdentifier(store))

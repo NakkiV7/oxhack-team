@@ -27,7 +27,7 @@ struct PathSkillsView: View {
                                     if step.state == .locked {
                                         pathNode(step, entry: entry).accessibilityLabel("Locked challenge. Complete the previous step to reveal it.")
                                     } else {
-                                        NavigationLink { CatalogueWorkoutSetupView(store: store, entry: entry) } label: { pathNode(step, entry: entry) }
+                                        NavigationLink { CatalogueWorkoutSetupView(store: store, entry: entry, origin: .skills) } label: { pathNode(step, entry: entry) }
                                             .buttonStyle(SpottrPressStyle()).accessibilityIdentifier("skill-\(entry.id)")
                                     }
                                 }.frame(maxWidth: .infinity).id(entry.id)
@@ -149,7 +149,7 @@ private struct PathHomeView: View {
             }
             .background(.white).navigationTitle("Skills").navigationBarTitleDisplayMode(.inline)
             .navigationDestination(item: $workout) { step in
-                if let entry = ExerciseCatalog.find(step.id) { CatalogueWorkoutSetupView(store: store, entry: entry) }
+                if let entry = ExerciseCatalog.find(step.id) { CatalogueWorkoutSetupView(store: store, entry: entry, origin: .quest) }
             }
         }
         .sheet(item: $selected, onDismiss: { if let pendingWorkout { workout = pendingWorkout; self.pendingWorkout = nil } }) { step in

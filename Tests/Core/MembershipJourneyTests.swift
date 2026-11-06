@@ -1,13 +1,83 @@
 import XCTest
 @testable import SpottrCore
 
+private let testAccount = UUID()
+
 @MainActor
 final class MembershipJourneyTests: XCTestCase {
+    func testSignedOutCannotUseUnattributedAppleEntitlements() async {
+        let client = MembershipTestClient()
+        client.entitlements = [.verified(.init(appAccountToken: testAccount, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable))]
+        let store = MembershipCoordinator(client: client)
+        await store.load()
+        XCTAssertFalse(store.hasAccess)
+    }
+
+    func testAccountSwitchRejectsLatePurchaseAndRequiresExplicitLegacyRestore() async {
+        let client = MembershipTestClient()
+        client.availableOffers = [.init(plan: .lifetime, displayName: "Lifetime", displayPrice: "£200")]
+        let store = MembershipCoordinator(client: client)
+        store.setAccount(testAccount)
+        await store.load()
+        client.deferPurchase = true
+        let buying = Task { await store.buy(.lifetime) }
+        for _ in 0..<100 where client.purchaseContinuation == nil { await Task.yield() }
+        XCTAssertEqual(client.purchaseTokens, [testAccount])
+        store.setAccount(UUID())
+        XCTAssertTrue(store.busy, "A pending Apple checkout still owns the operation until it returns.")
+        let old = MembershipTransaction(appAccountToken: testAccount, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable)
+        client.entitlements = [.verified(old)]
+        client.purchaseContinuation?.resume(returning: .completed(.verified(old)))
+        await buying.value
+        XCTAssertFalse(store.busy)
+        XCTAssertFalse(store.hasAccess)
+        await store.refreshEntitlements()
+        XCTAssertFalse(store.hasAccess)
+        let legacy = MembershipVerification.verified(.init(id: 97, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable))
+        client.entitlements = [legacy]
+        await store.refreshEntitlements()
+        XCTAssertFalse(store.hasAccess)
+        await store.restore()
+        XCTAssertTrue(store.hasAccess)
+        store.setAccount(UUID())
+        await store.refreshEntitlements()
+        XCTAssertFalse(store.hasAccess)
+        store.setAccount(nil)
+        await store.restore()
+        XCTAssertFalse(store.hasAccess)
+        let count = client.purchases.count
+        await store.buy(.lifetime)
+        XCTAssertEqual(client.purchases.count, count)
+    }
+
+    func testVerifiedExpiredRevokedAndGraceStatesRemainDistinct() async {
+        let client = MembershipTestClient()
+        let store = MembershipCoordinator(client: client)
+        store.setAccount(testAccount)
+        let now = Date.now
+        client.entitlements = [.verified(.init(appAccountToken: testAccount, productID: MembershipPlan.monthly.productID, kind: .autoRenewable, expirationDate: now.addingTimeInterval(-10), gracePeriodExpirationDate: now.addingTimeInterval(30)))]
+        await store.refreshEntitlements()
+        XCTAssertEqual(store.condition, .gracePeriod)
+        XCTAssertTrue(store.hasAccess)
+        client.entitlements = [.verified(.init(appAccountToken: testAccount, productID: MembershipPlan.monthly.productID, kind: .autoRenewable, expirationDate: now.addingTimeInterval(-10)))]
+        await store.refreshEntitlements()
+        XCTAssertEqual(store.condition, .expired)
+        XCTAssertFalse(store.hasAccess)
+        client.entitlements = [.verified(.init(appAccountToken: testAccount, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable, revocationDate: now))]
+        await store.refreshEntitlements()
+        XCTAssertEqual(store.condition, .revoked)
+        XCTAssertFalse(store.hasAccess)
+        client.entitlements = [.unverified(.init(appAccountToken: testAccount, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable, revocationDate: now))]
+        await store.refreshEntitlements()
+        XCTAssertEqual(store.condition, .none)
+    }
+
     func testStoreOutageDoesNotRemoveVerifiedLifetimeAndNeverShowsInventedPrices() async {
         let client = MembershipTestClient()
-        client.entitlements = [.verified(.init(productID: MembershipPlan.lifetime.productID, kind: .nonConsumable))]
+        client.entitlements = [.verified(.init(appAccountToken: testAccount, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable))]
         client.productError = URLError(.notConnectedToInternet)
         let store = MembershipCoordinator(client: client)
+        store.setAccount(testAccount)
         await store.load()
         XCTAssertTrue(store.hasAccess)
         XCTAssertTrue(store.offers.isEmpty)
@@ -16,7 +86,7 @@ final class MembershipJourneyTests: XCTestCase {
     }
 
     func testCheckoutCancellationPendingAndUnverifiedPurchaseCannotUnlock() async {
-        let forged = MembershipTransaction(productID: MembershipPlan.lifetime.productID, kind: .nonConsumable)
+        let forged = MembershipTransaction(appAccountToken: testAccount, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable)
         let cases: [(MembershipPurchaseResult, String, Bool)] = [
             (.cancelled, "cancelled", false), (.pending, "pending", false),
             (.completed(.unverified(forged)), "verified", true)
@@ -26,6 +96,7 @@ final class MembershipJourneyTests: XCTestCase {
             client.availableOffers = [.init(plan: .lifetime, displayName: "Lifetime", displayPrice: "€240.00")]
             client.purchaseResult = result
             let store = MembershipCoordinator(client: client)
+        store.setAccount(testAccount)
             await store.load()
             await store.buy(.lifetime)
             XCTAssertFalse(store.hasAccess)
@@ -37,11 +108,12 @@ final class MembershipJourneyTests: XCTestCase {
     }
 
     func testVerifiedCheckoutRefreshesAppleEntitlementsAndFinishesOnlyMatchingTransactions() async {
-        let lifetime = MembershipTransaction(id: 42, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable)
+        let lifetime = MembershipTransaction(id: 42, appAccountToken: testAccount, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable)
         let client = MembershipTestClient()
         client.availableOffers = [.init(plan: .lifetime, displayName: "Lifetime", displayPrice: "€240.00")]
         client.purchaseResult = .completed(.verified(lifetime))
         let store = MembershipCoordinator(client: client)
+        store.setAccount(testAccount)
         await store.load()
         await store.buy(.lifetime)
         XCTAssertFalse(store.hasAccess, "A purchase callback alone must not substitute for Apple's current entitlements.")
@@ -54,8 +126,9 @@ final class MembershipJourneyTests: XCTestCase {
 
         let wrongClient = MembershipTestClient()
         wrongClient.availableOffers = client.availableOffers
-        wrongClient.purchaseResult = .completed(.verified(.init(id: 44, productID: "other.product", kind: .nonConsumable)))
+        wrongClient.purchaseResult = .completed(.verified(.init(id: 44, appAccountToken: testAccount, productID: "other.product", kind: .nonConsumable)))
         let wrongStore = MembershipCoordinator(client: wrongClient)
+        wrongStore.setAccount(testAccount)
         await wrongStore.load()
         await wrongStore.buy(.lifetime)
         XCTAssertFalse(wrongStore.hasAccess)
@@ -66,10 +139,11 @@ final class MembershipJourneyTests: XCTestCase {
     func testRestoreRefreshesVerifiedOwnershipWithoutCreatingOrExtendingATrial() async {
         var now = Date(timeIntervalSince1970: 1_000)
         let deadline = now.addingTimeInterval(20)
-        let monthly = MembershipTransaction(productID: MembershipPlan.monthly.productID, kind: .autoRenewable, expirationDate: deadline)
+        let monthly = MembershipTransaction(appAccountToken: testAccount, productID: MembershipPlan.monthly.productID, kind: .autoRenewable, expirationDate: deadline)
         let client = MembershipTestClient()
         client.restoredEntitlements = [.verified(monthly)]
         let store = MembershipCoordinator(client: client, now: { now })
+        store.setAccount(testAccount)
         await store.restore()
         XCTAssertTrue(store.hasAccess)
         XCTAssertEqual(store.access.expiresAt, deadline)
@@ -87,9 +161,10 @@ final class MembershipJourneyTests: XCTestCase {
     func testRedemptionCompletionCannotGrantMembershipUntilAppleReportsOwnership() async {
         let client = MembershipTestClient()
         let store = MembershipCoordinator(client: client)
+        store.setAccount(testAccount)
         await store.completeRedemption(.success(()))
         XCTAssertFalse(store.hasAccess)
-        client.entitlements = [.verified(.init(productID: MembershipPlan.lifetime.productID, kind: .nonConsumable))]
+        client.entitlements = [.verified(.init(appAccountToken: testAccount, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable))]
         await store.completeRedemption(.success(()))
         XCTAssertTrue(store.hasAccess)
         await store.completeRedemption(.failure(URLError(.cancelled)))
@@ -100,9 +175,10 @@ final class MembershipJourneyTests: XCTestCase {
     func testTransactionUpdatesRefreshPendingApprovalAndRefundAndFinishVerifiedKnownProducts() async {
         let client = MembershipTestClient()
         let store = MembershipCoordinator(client: client)
+        store.setAccount(testAccount)
         await store.refreshEntitlements()
         XCTAssertFalse(store.hasAccess)
-        let lifetime = MembershipTransaction(id: 55, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable)
+        let lifetime = MembershipTransaction(id: 55, appAccountToken: testAccount, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable)
         client.entitlements = [.verified(lifetime)]
         client.continuation.yield(.verified(lifetime))
         for _ in 0..<100 where !store.hasAccess { await Task.yield() }
@@ -110,7 +186,7 @@ final class MembershipJourneyTests: XCTestCase {
         for _ in 0..<100 where client.finished.isEmpty { await Task.yield() }
         XCTAssertEqual(client.finished, [55])
         client.entitlements = []
-        client.continuation.yield(.verified(.init(id: 55, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable, revocationDate: .now)))
+        client.continuation.yield(.verified(.init(id: 55, appAccountToken: testAccount, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable, revocationDate: .now)))
         for _ in 0..<100 where store.hasAccess { await Task.yield() }
         XCTAssertFalse(store.hasAccess)
         await store.refreshEntitlements()
@@ -120,8 +196,9 @@ final class MembershipJourneyTests: XCTestCase {
     func testSubscriptionDeadlineRefreshesVisibleMembershipWithoutAPurchaseOrRelaunch() async throws {
         let client = MembershipTestClient()
         let deadline = Date.now.addingTimeInterval(0.05)
-        client.entitlements = [.verified(.init(productID: MembershipPlan.monthly.productID, kind: .autoRenewable, expirationDate: deadline))]
+        client.entitlements = [.verified(.init(appAccountToken: testAccount, productID: MembershipPlan.monthly.productID, kind: .autoRenewable, expirationDate: deadline))]
         let store = MembershipCoordinator(client: client)
+        store.setAccount(testAccount)
         await store.refreshEntitlements()
         XCTAssertTrue(store.hasAccess)
         try await Task.sleep(for: .milliseconds(150))
@@ -134,10 +211,11 @@ final class MembershipJourneyTests: XCTestCase {
         let client = MembershipTestClient()
         client.availableOffers = [.init(plan: .monthly, displayName: "Monthly", displayPrice: "£10.00", eligibleTrialDays: 14)]
         let store = MembershipCoordinator(client: client)
+        store.setAccount(testAccount)
         await store.load()
         XCTAssertEqual(store.offers.first?.eligibleTrialDays, 14)
         client.availableOffers = [.init(plan: .monthly, displayName: "Monthly", displayPrice: "£10.00")]
-        let transaction = MembershipTransaction(id: 67, productID: MembershipPlan.monthly.productID, kind: .autoRenewable, expirationDate: .now.addingTimeInterval(200))
+        let transaction = MembershipTransaction(id: 67, appAccountToken: testAccount, productID: MembershipPlan.monthly.productID, kind: .autoRenewable, expirationDate: .now.addingTimeInterval(200))
         client.purchaseResult = .completed(.verified(transaction))
         client.purchaseEntitlements = [.verified(transaction)]
         await store.buy(.monthly)
@@ -148,12 +226,13 @@ final class MembershipJourneyTests: XCTestCase {
     func testOlderEntitlementRefreshCannotOverwriteANewerRefundResult() async {
         let client = MembershipTestClient()
         let store = MembershipCoordinator(client: client)
+        store.setAccount(testAccount)
         client.deferNextEntitlementRequest = true
         let older = Task { await store.refreshEntitlements() }
         for _ in 0..<100 where client.deferredEntitlements == nil { await Task.yield() }
         XCTAssertNotNil(client.deferredEntitlements)
         await store.refreshEntitlements()
-        client.deferredEntitlements?.resume(returning: [.verified(.init(productID: MembershipPlan.lifetime.productID, kind: .nonConsumable))])
+        client.deferredEntitlements?.resume(returning: [.verified(.init(appAccountToken: testAccount, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable))])
         await older.value
         XCTAssertFalse(store.hasAccess)
     }
@@ -170,6 +249,9 @@ private final class MembershipTestClient: MembershipClient {
     var restoredEntitlements: [MembershipVerification]?
     var restoreError: Error?
     var purchases: [MembershipPlan] = []
+    var purchaseTokens: [UUID] = []
+    var deferPurchase = false
+    var purchaseContinuation: CheckedContinuation<MembershipPurchaseResult, Never>?
     var finished: [UInt64] = []
     var deferNextEntitlementRequest = false
     var deferredEntitlements: CheckedContinuation<[MembershipVerification], Never>?
@@ -195,8 +277,10 @@ private final class MembershipTestClient: MembershipClient {
         return entitlements
     }
     func updates() -> AsyncStream<MembershipVerification> { stream }
-    func purchase(_ plan: MembershipPlan) async throws -> MembershipPurchaseResult {
+    func purchase(_ plan: MembershipPlan, appAccountToken: UUID) async throws -> MembershipPurchaseResult {
         purchases.append(plan)
+        purchaseTokens.append(appAccountToken)
+        if deferPurchase { return await withCheckedContinuation { purchaseContinuation = $0 } }
         if let purchaseError { throw purchaseError }
         if let purchaseEntitlements { entitlements = purchaseEntitlements }
         return purchaseResult

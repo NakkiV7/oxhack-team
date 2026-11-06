@@ -41,15 +41,25 @@ final class AppleMembershipClient: MembershipClient {
             let graceDeadline = await graceDeadline(transaction)
             entitlements.append(.verified(Self.snapshot(transaction, graceDeadline: graceDeadline)))
         }
+        for plan in MembershipPlan.allCases {
+            let alreadyRead = entitlements.contains { result in
+                if case .verified(let transaction) = result { return transaction.productID == plan.productID }
+                return false
+            }
+            guard !alreadyRead, let result = await StoreKit.Transaction.latest(for: plan.productID) else { continue }
+            if case .verified(let transaction) = result {
+                entitlements.append(.verified(Self.snapshot(transaction, graceDeadline: await graceDeadline(transaction))))
+            } else { entitlements.append(Self.map(result)) }
+        }
         return entitlements
     }
 
-    func purchase(_ plan: MembershipPlan) async throws -> MembershipPurchaseResult {
+    func purchase(_ plan: MembershipPlan, appAccountToken: UUID) async throws -> MembershipPurchaseResult {
         guard AppStore.canMakePayments, let product = cachedProducts.first(where: { $0.id == plan.productID }) else {
             throw MembershipStoreError.purchaseUnavailable
         }
         do {
-            switch try await product.purchase() {
+            switch try await product.purchase(options: [.appAccountToken(appAccountToken)]) {
             case .success(let result):
                 remember(result)
                 return .completed(Self.map(result))
@@ -130,7 +140,7 @@ final class AppleMembershipClient: MembershipClient {
     }
 
     private static func snapshot(_ transaction: StoreKit.Transaction, graceDeadline: Date? = nil) -> MembershipTransaction {
-        .init(id: transaction.id, productID: transaction.productID, kind: kind(transaction.productType),
+        .init(id: transaction.id, appAccountToken: transaction.appAccountToken, productID: transaction.productID, kind: kind(transaction.productType),
               expirationDate: transaction.expirationDate, gracePeriodExpirationDate: graceDeadline,
               revocationDate: transaction.revocationDate, isUpgraded: transaction.isUpgraded)
     }

@@ -12,7 +12,7 @@ final class PhoneCameraLifecycleTests: XCTestCase {
             defer { store.finish(); try? FileManager.default.removeItem(at: folder) }
             let initial = expectation(description: "Explicit foreground phone capture")
             camera.onStart = { initial.fulfill() }
-            store.start(); store.camera()
+            store.beginAuthorizedSession(); store.camera()
             await fulfillment(of: [initial], timeout: 2)
             store.pause(); store.setAppActive(false)
             let generation = store.session.generation
@@ -45,7 +45,7 @@ final class PhoneCameraLifecycleTests: XCTestCase {
             let camera = LifecyclePhoneCamera()
             let store = makeStore(folder: folder, camera: camera)
             defer { store.finish(); try? FileManager.default.removeItem(at: folder) }
-            store.startPlan(try CoachSavedPlan.catalogue(exerciseID: "squat", sets: 1, target: 2, restSeconds: 30), availableSupport: [])
+            store.beginAuthorizedPlan(try CoachSavedPlan.catalogue(exerciseID: "squat", sets: 1, target: 2, restSeconds: 30), availableSupport: [])
             XCTAssertTrue(store.selectConfiguredInput(.phoneCamera))
             store.setAppActive(false)
             let run = try XCTUnwrap(store.configured)

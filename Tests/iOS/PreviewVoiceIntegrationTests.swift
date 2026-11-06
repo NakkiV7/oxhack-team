@@ -15,7 +15,7 @@ final class PreviewVoiceIntegrationTests: XCTestCase {
         XCTAssertEqual(remote.preference, .arnold)
         XCTAssertEqual(remote.configuredVoices, [.arnold])
         XCTAssertFalse(store.voiceFeedbackEnabled)
-        store.start()
+        store.beginAuthorizedSession()
         XCTAssertTrue(store.remoteVoice === remote)
         XCTAssertFalse(store.voiceFeedbackEnabled)
         store.session.cue = .alignment
@@ -58,7 +58,7 @@ final class PreviewVoiceIntegrationTests: XCTestCase {
             target: 12, activeSeconds: 6, source: .camera, reason: .voluntary,
             repDurations: Array(repeating: 1.2, count: 5))
         store.history = [.init(id: UUID(), date: Date(timeIntervalSince1970: 100), sets: [baseline])]
-        store.start()
+        store.beginAuthorizedSession()
         store.setVoiceFeedback(true)
         // Synthetic observed movement samples use the same public counter flow as existing coaching tests.
         for (time, angle) in [(0.0, 170.0), (0.2, 170), (0.6, 90), (0.8, 90),
@@ -83,7 +83,7 @@ final class PreviewVoiceIntegrationTests: XCTestCase {
             let cached = PreviewRecordingVoice()
             let store = TrainingStore(historyURL: historyURL(), previewMode: true, previewPlayback: cached)
             defer { store.cancelCoaching() }
-            store.start()
+            store.beginAuthorizedSession()
             store.setVoiceFeedback(true)
             store.session.cue = .alignment
             store.coachingTick()

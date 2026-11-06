@@ -42,7 +42,8 @@ final class TrainingStore {
     var image: UIImage?
     var source: InputSource = .camera
     var hasInput = false
-    var selectedExercise: Exercise = .squat
+    @ObservationIgnored weak var launchCoordinator: WorkoutLaunchCoordinator?
+    var selectedExercise: Exercise = .squat { didSet { if oldValue != selectedExercise { launchCoordinator?.cancel() } } }
     let spokenReps: any SpokenRepListening
     let vision: VisionWorker
     let companion = CompanionLink()
@@ -433,6 +434,7 @@ final class TrainingStore {
     }
     private func command(_ command: CompanionCommand) {
         guard accountActive else { return }
+        guard sessionPhase != .idle && sessionPhase != .finished else { publish(); return }
         guard command.sessionID == (configured?.id ?? session.id),
               command.generation == (configured?.generation ?? session.generation) else { publish(); return }
         switch command.action {
@@ -453,6 +455,15 @@ final class TrainingStore {
 
     var now: Double { monotonicClock() }
     func start() {
+        guard let launchCoordinator else { error = "Sign in and complete your training profile before starting."; return }
+        guard let plan = try? CoachSavedPlan.catalogue(exerciseID: selectedExercise.rawValue, sets: 3, target: selectedExercise.target, restSeconds: 60) else { return }
+        launchCoordinator.request(plan: plan, origin: .today)
+    }
+    func startPlan(_ plan: CoachSavedPlan, availableSupport: Set<String>, origin: WorkoutLaunchOrigin = .library) {
+        guard let launchCoordinator else { error = "Sign in and complete your training profile before starting."; return }
+        launchCoordinator.request(plan: plan, origin: origin)
+    }
+    func beginAuthorizedSession() {
         guard !selectedExercise.isTimed else { error = "Start timed exercises from the exercise library."; return }
         defer { publish() }
         remoteVoice?.reloadPreferences()
@@ -463,9 +474,9 @@ final class TrainingStore {
         reportedDiscomfort = false
         session.start(at: now); presented = true; error = nil; clearInput()
     }
-    func startPlan(_ plan: CoachSavedPlan, availableSupport: Set<String>) {
+    func beginAuthorizedPlan(_ plan: CoachSavedPlan, availableSupport: Set<String>, plannedWorkoutID: String? = nil) {
         do {
-            var run = try ConfigurableSession(plan: plan, availableSupport: availableSupport)
+            var run = try ConfigurableSession(plan: plan, availableSupport: availableSupport, plannedWorkoutID: plannedWorkoutID)
             run.start(at: now)
             stopCapture(); clearInput(); configured = run
             configuredInput = .manual; source = .manual; remoteVoice?.reloadPreferences()

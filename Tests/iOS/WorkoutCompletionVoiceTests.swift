@@ -19,7 +19,7 @@ final class WorkoutCompletionVoiceTests: XCTestCase {
     func testExplicitFinishAfterEndedWorkPlaysOneTypedCompletionAndTicksDoNotCancelIt() throws {
         let (store, cached) = makeStore()
         defer { store.cancelCoaching() }
-        store.start(); store.setVoiceFeedback(true); endManualSet(store)
+        store.beginAuthorizedSession(); store.setVoiceFeedback(true); endManualSet(store)
         XCTAssertTrue(cached.spoken.isEmpty)
         store.finish()
         let event = try XCTUnwrap(cached.spoken.first)
@@ -38,7 +38,7 @@ final class WorkoutCompletionVoiceTests: XCTestCase {
     func testSelectedArnoldCompletesActualWorkoutOutsidePreview() {
         let (store, cached) = makeStore(previewMode: false)
         defer { store.cancelCoaching() }
-        store.start(); store.setVoiceFeedback(true); endManualSet(store)
+        store.beginAuthorizedSession(); store.setVoiceFeedback(true); endManualSet(store)
         store.finish()
         XCTAssertEqual(cached.spoken.map(\.reason), [.workoutCompleted])
     }
@@ -47,7 +47,7 @@ final class WorkoutCompletionVoiceTests: XCTestCase {
         let (store, cached) = makeStore()
         defer { store.cancelCoaching() }
         let plan = try JSONDecoder().decode(CoachSavedPlan.self, from: Data(#"{"items":[{"exerciseID":"squat","sets":1,"target":2,"unit":"reps","restSeconds":30}],"approvedAt":0,"rationale":"Synthetic completion fixture"}"#.utf8))
-        store.startPlan(plan, availableSupport: [])
+        store.beginAuthorizedPlan(plan, availableSupport: [])
         store.setVoiceFeedback(true); store.beginConfiguredSet(); store.setConfiguredReps(2); store.endSet()
         XCTAssertEqual(store.configured?.phase, .rest)
         XCTAssertTrue(cached.spoken.isEmpty)
@@ -62,7 +62,7 @@ final class WorkoutCompletionVoiceTests: XCTestCase {
     func testFinalLegacyNextAfterSixEndedSetsPlaysCompletionOnce() {
         let (store, cached) = makeStore()
         defer { store.cancelCoaching() }
-        store.start(); store.setVoiceFeedback(true)
+        store.beginAuthorizedSession(); store.setVoiceFeedback(true)
         for index in 0..<6 {
             endManualSet(store)
             XCTAssertTrue(cached.spoken.isEmpty, "Ending a set is not workout completion")
@@ -80,7 +80,7 @@ final class WorkoutCompletionVoiceTests: XCTestCase {
         for scenario in ["empty", "background", "discomfort", "cancel"] {
             let (store, cached) = makeStore()
             defer { store.cancelCoaching() }
-            store.start(); store.setVoiceFeedback(true)
+            store.beginAuthorizedSession(); store.setVoiceFeedback(true)
             if scenario != "empty" { endManualSet(store) }
             switch scenario {
             case "background": store.setAppActive(false); store.finish(); store.setAppActive(true)
@@ -97,7 +97,7 @@ final class WorkoutCompletionVoiceTests: XCTestCase {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("history.json")
         let (store, cached) = makeStore(url: url)
         defer { store.cancelCoaching() }
-        store.start(); endManualSet(store); store.finish()
+        store.beginAuthorizedSession(); endManualSet(store); store.finish()
         store.setVoiceFeedback(true); store.coachingTick()
         XCTAssertTrue(cached.spoken.isEmpty)
         let (reopened, reopenedCache) = makeStore(url: url)

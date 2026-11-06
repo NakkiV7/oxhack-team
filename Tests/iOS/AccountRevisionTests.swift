@@ -120,7 +120,7 @@ import CryptoKit
         let scope = AccountDataScope(accountID: UUID(), profileID: UUID(), root: root)
         var clock = 100.0
         let store = TrainingStore(historyURL: scope.file("history.json"), accountScope: scope, clock: { clock })
-        store.startPlan(try CoachSavedPlan.catalogue(exerciseID: "wallSit", sets: 1, target: 30, restSeconds: 30, availableSupport: ["Wall"]), availableSupport: ["Wall"])
+        store.beginAuthorizedPlan(try CoachSavedPlan.catalogue(exerciseID: "wallSit", sets: 1, target: 30, restSeconds: 30, availableSupport: ["Wall"]), availableSupport: ["Wall"])
         store.beginConfiguredSet(); clock = 107
         store.setAccountActive(false)
         try store.preservePendingWorkout()
@@ -139,9 +139,9 @@ import CryptoKit
         defer { try? FileManager.default.removeItem(at: root) }
         let scope = AccountDataScope(accountID: UUID(), profileID: UUID(), root: root)
         let first = TrainingStore(historyURL: scope.file("history.json"), accountScope: scope)
-        first.start(); first.switchToManualReps(); first.setManualReps(4); first.pause(); try first.preservePendingWorkout()
+        first.beginAuthorizedSession(); first.switchToManualReps(); first.setManualReps(4); first.pause(); try first.preservePendingWorkout()
         let second = TrainingStore(historyURL: scope.file("history.json"), accountScope: scope)
-        second.start(); second.switchToManualReps(); second.setManualReps(9); second.pause(); try second.preservePendingWorkout()
+        second.beginAuthorizedSession(); second.switchToManualReps(); second.setManualReps(9); second.pause(); try second.preservePendingWorkout()
         XCTAssertNotEqual(first.session.id, second.session.id)
         let snapshots = try scope.unfinishedSnapshots()
         XCTAssertEqual(Set(snapshots.map(\.snapshot.record.id)), [first.session.id, second.session.id])

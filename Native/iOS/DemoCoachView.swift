@@ -55,6 +55,9 @@ struct DemoCoachView: View {
             .background(Color(.systemBackground))
             .accessibilityIdentifier("demo-coach-conversation")
             .safeAreaInset(edge: .bottom) { approvalBar }
+            .sheet(isPresented: Binding(get: { store.launchCoordinator?.needsAttention == true && store.launchCoordinator?.pendingOrigin == .coach }, set: { if !$0 { store.launchCoordinator?.cancel() } })) {
+                if let launch = store.launchCoordinator { WorkoutLaunchAccessView(launch: launch) }
+            }
             .navigationTitle("Coach")
             .navigationBarTitleDisplayMode(.inline)
         }
@@ -191,7 +194,7 @@ struct DemoCoachView: View {
         guard approved else { return }
         do {
             let plan = try DemoCoachTranscript.plan(dayID: day.id, selected: selected, support: support)
-            store.startPlan(plan, availableSupport: support)
+            store.startPlan(plan, availableSupport: support, origin: .coach)
             error = store.error
         } catch {
             self.error = "Select at least one exercise for this day and confirm its required support."

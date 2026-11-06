@@ -37,7 +37,7 @@ import XCTest
         let folder=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at:folder) }
         let store=TrainingStore(historyURL:folder.appendingPathComponent("history.json"))
-        store.start();store.switchToManualReps();store.setManualReps(3);store.pause();store.resume();store.endSet();store.finish()
+        store.beginAuthorizedSession();store.switchToManualReps();store.setManualReps(3);store.pause();store.resume();store.endSet();store.finish()
         let saved=try XCTUnwrap(store.history.first)
         XCTAssertNotNil(saved.endedAt)
         XCTAssertTrue(saved.timeline.contains { $0.phase == .paused })

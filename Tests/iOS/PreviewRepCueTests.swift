@@ -59,7 +59,7 @@ final class PreviewRepCueTests: XCTestCase {
             let store = TrainingStore(historyURL: url, voicePlayback: remote, vision: vision, previewMode: true, previewPlayback: cached)
             store.repVoice.coach = nil   // the rep counter replaces this encouragement when on; see testPreviewEncouragementGivesWayToTheRepCounter
             defer { store.cancelCoaching(); vision.stop() }
-            store.startPlan(try CoachSavedPlan.catalogue(exerciseID: exercise.rawValue, sets: 2, target: 2, restSeconds: 0), availableSupport: [])
+            store.beginAuthorizedPlan(try CoachSavedPlan.catalogue(exerciseID: exercise.rawValue, sets: 2, target: 2, restSeconds: 0), availableSupport: [])
             store.setVoiceFeedback(true)
             for set in 0..<2 {
                 XCTAssertTrue(store.selectConfiguredInput(.phoneCamera))
@@ -211,7 +211,7 @@ final class PreviewRepCueTests: XCTestCase {
         store.repVoice = RepVoicePlayer(defaults: UserDefaults(suiteName: UUID().uuidString)!, makeOutput: recorder.make)
         store.repVoice.coach = repCounter
         store.selectedExercise = exercise
-        store.start()
+        store.beginAuthorizedSession()
         store.hasInput = true
         store.setVoiceFeedback(true)
         return (store, cached, clock)
@@ -278,7 +278,7 @@ final class RepCounterVoiceTests: XCTestCase {
         store.repVoice = RepVoicePlayer(defaults: UserDefaults(suiteName: UUID().uuidString)!, makeOutput: clips.make)
         store.repVoice.coach = coach
         store.selectedExercise = .squat
-        store.start()
+        store.beginAuthorizedSession()
         store.hasInput = true
         store.setVoiceFeedback(true)
         store.coachingTick(at: clock.now)

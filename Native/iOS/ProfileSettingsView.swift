@@ -93,14 +93,15 @@ struct ProfileSettingsView: View {
     @State private var message: String?
     @State private var error: String?
     @State private var persistence: ProfileDraftPersistence
-    @State private var membership = MembershipStore()
+    private let membership: MembershipStore
     @State private var healthStore: HealthDataStore
     @FocusState private var editingName: Bool
 
     init(profileStore: NativeProfileStore, history: [SessionRecord],
          exportData: @escaping () throws -> URL, resetHistory: @escaping () throws -> Void,
          rewards: NativeRewardsStore? = nil, historyAvailable: Bool = true, workspace: PreviewWorkspace? = nil,
-         healthStore: HealthDataStore? = nil) {
+         healthStore: HealthDataStore? = nil, membership: MembershipStore? = nil) {
+        self.membership = membership ?? MembershipStore()
         self.profileStore = profileStore
         self.history = history
         self.exportData = exportData
@@ -118,10 +119,10 @@ struct ProfileSettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Spottr beta") {
-                    Text("All features available during beta")
+                Section("Membership") {
+                    Text("Account and membership required to train")
                         .font(.subheadline.weight(.semibold))
-                        .accessibilityIdentifier("profile-beta-access")
+                        .accessibilityIdentifier("profile-membership-required")
                     NavigationLink {
                         MembershipView(store: membership)
                     } label: {
@@ -130,7 +131,7 @@ struct ProfileSettingsView: View {
                             Text("Membership & Apple purchases")
                         }
                     }.accessibilityIdentifier("profile-membership")
-                    Text("Membership is optional during this beta. Plans and prices are available only when confirmed by the App Store.")
+                    Text("Plans, prices and trial eligibility are confirmed by the App Store. Restore remains available if membership has ended.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Section {
@@ -245,9 +246,9 @@ struct ProfileSettingsView: View {
                         .accessibilityIdentifier("profile-privacy")
                     Link("Spottr support", destination: URL(string: "https://spottr.omarchoudhry.co.uk/support")!)
                         .accessibilityIdentifier("profile-support")
-                    Link("Optional website account", destination: URL(string: "https://spottr.omarchoudhry.co.uk/account")!)
+                    Link("Account website", destination: URL(string: "https://spottr.omarchoudhry.co.uk/account")!)
                         .accessibilityIdentifier("profile-website-account")
-                    Text("A website account is optional and separate from your local training profile and Apple membership. Creating an account does not upload your workouts or unlock an Apple purchase.")
+                    Text("Your secure account keeps training profiles separate. Membership requires a verified Apple purchase; creating an account does not upload your workouts.")
                         .font(.caption).foregroundStyle(.secondary)
                         .accessibilityIdentifier("profile-account-separation")
                 }

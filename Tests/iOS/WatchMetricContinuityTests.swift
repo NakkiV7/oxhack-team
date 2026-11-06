@@ -16,8 +16,8 @@ final class WatchMetricContinuityTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: folder) }
         let store = TrainingStore(historyURL: folder.appendingPathComponent("history.json"))
         if configured {
-            store.startPlan(try CoachSavedPlan.catalogue(exerciseID: "squat", sets: 1, target: 2, restSeconds: 0), availableSupport: [])
-        } else { store.start() }
+            store.beginAuthorizedPlan(try CoachSavedPlan.catalogue(exerciseID: "squat", sets: 1, target: 2, restSeconds: 0), availableSupport: [])
+        } else { store.beginAuthorizedSession() }
         let sessionID = store.configured?.id ?? store.session.id
         let now = Date()
         func packet(_ offset: Double, heartRate: SensorReading? = nil, motion: SensorReading? = nil,

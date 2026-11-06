@@ -41,7 +41,7 @@ struct OfflineCoachView: View {
                     if choice != "Review my work" {
                         Text("Choose a comfortable exercise").font(.headline)
                         ForEach(suggestions) { entry in
-                            NavigationLink { CatalogueWorkoutSetupView(store: store, entry: entry) } label: {
+                            NavigationLink { CatalogueWorkoutSetupView(store: store, entry: entry, origin: .coach) } label: {
                                 HStack(spacing: 16) {
                                     ExerciseArtwork(entry: entry).frame(width: 52, height: 60)
                                     VStack(alignment: .leading, spacing: 5) {

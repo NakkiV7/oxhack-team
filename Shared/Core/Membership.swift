@@ -13,6 +13,7 @@ public enum MembershipProductKind: Sendable {
 
 public struct MembershipTransaction: Sendable {
     public let id: UInt64
+    public let appAccountToken: UUID?
     public let productID: String
     public let kind: MembershipProductKind
     public let expirationDate: Date?
@@ -20,9 +21,10 @@ public struct MembershipTransaction: Sendable {
     public let revocationDate: Date?
     public let isUpgraded: Bool
 
-    public init(id: UInt64 = 0, productID: String, kind: MembershipProductKind, expirationDate: Date? = nil,
+    public init(id: UInt64 = 0, appAccountToken: UUID? = nil, productID: String, kind: MembershipProductKind, expirationDate: Date? = nil,
                 gracePeriodExpirationDate: Date? = nil, revocationDate: Date? = nil, isUpgraded: Bool = false) {
         self.id = id
+        self.appAccountToken = appAccountToken
         self.productID = productID
         self.kind = kind
         self.expirationDate = expirationDate

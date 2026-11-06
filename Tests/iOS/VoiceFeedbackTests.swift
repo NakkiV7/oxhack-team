@@ -7,7 +7,7 @@ final class VoiceFeedbackTests: XCTestCase {
         let spoken = RecoverySpokenRepInput()
         let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { _ in })
         let store = TrainingStore(voicePlayback: FakeVoicePlayback(), vision: vision, spokenReps: spoken)
-        store.repVoice.coach = nil; store.start(); store.hasInput = true
+        store.repVoice.coach = nil; store.beginAuthorizedSession(); store.hasInput = true
         defer { store.finish(); store.cancelCoaching(); vision.stop() }
         vision.onFrame?(.init(time: 1, width: 640, height: 480, points: [], observation: .multiplePeople), UIImage(), store.session.generation)
         for _ in 0..<20 { await Task.yield() }
@@ -33,7 +33,7 @@ final class VoiceFeedbackTests: XCTestCase {
         let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { _ in })
         let store = TrainingStore(voicePlayback: playback, vision: vision)
         store.repVoice.coach = nil
-        store.start(); store.hasInput = true; store.setVoiceFeedback(true)
+        store.beginAuthorizedSession(); store.hasInput = true; store.setVoiceFeedback(true)
         store.session.cue = .alignment; store.coachingTick()
         XCTAssertEqual(playback.spoken.count, 1)
         let generation = store.session.generation
@@ -62,7 +62,7 @@ final class VoiceFeedbackTests: XCTestCase {
         let vision=VisionWorker(cameraAvailable:{true},requestAccess:{_ in})
         let store=TrainingStore(voicePlayback:playback,vision:vision)
         store.repVoice=RepVoicePlayer(defaults:UserDefaults(suiteName:UUID().uuidString)!,makeOutput:clips.make)
-        store.start(); store.hasInput=true; store.setVoiceFeedback(true); store.coachingTick()
+        store.beginAuthorizedSession(); store.hasInput=true; store.setVoiceFeedback(true); store.coachingTick()
         XCTAssertFalse(store.repVoice.started.isEmpty)
         clips.finish()
         let started=store.repVoice.started, generation=store.session.generation
@@ -80,7 +80,7 @@ final class VoiceFeedbackTests: XCTestCase {
         let store = TrainingStore(voicePlayback: playback)
         store.repVoice.coach = nil
         defer { store.cancelCoaching() }
-        store.start(); store.setVoiceFeedback(true)
+        store.beginAuthorizedSession(); store.setVoiceFeedback(true)
         store.session.cue = .alignment
         store.coachingTick()
         let first = try XCTUnwrap(playback.spoken.first)
@@ -95,7 +95,7 @@ final class VoiceFeedbackTests: XCTestCase {
         let playback = FakeVoicePlayback()
         let store = TrainingStore(voicePlayback: playback)
         store.repVoice.coach = nil
-        store.start(); store.setVoiceFeedback(true)
+        store.beginAuthorizedSession(); store.setVoiceFeedback(true)
         store.session.cue = .alignment; store.coachingTick()
         XCTAssertEqual(playback.spoken.count, 1)
         store.presented = false
@@ -182,7 +182,7 @@ final class VoiceFeedbackTests: XCTestCase {
         })
         let injected = TrainingStore(voicePlayback: remote)
         XCTAssertTrue(injected.remoteVoice === remote)
-        injected.start()
+        injected.beginAuthorizedSession()
         XCTAssertTrue(injected.remoteVoice === remote)
         XCTAssertFalse(injected.voiceFeedbackEnabled)
 
@@ -255,7 +255,7 @@ final class VoiceFeedbackTests: XCTestCase {
         store.session.cue = .alignment
         store.coachingTick(at: 10)
         XCTAssertTrue(playback.spoken.isEmpty)
-        store.start()
+        store.beginAuthorizedSession()
         XCTAssertTrue(store.voiceFeedbackEnabled)
     }
 

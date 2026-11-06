@@ -185,7 +185,7 @@ final class ProfileDataControlsTests: XCTestCase {
         otherStore.persist(record)
         let otherExport = try otherStore.exportHistory()
         defer { try? FileManager.default.removeItem(at: otherExport.deletingLastPathComponent()) }
-        store.start()
+        store.beginAuthorizedSession()
         XCTAssertThrowsError(try store.clearHistory())
         XCTAssertTrue(FileManager.default.fileExists(atPath: export.path))
         store.pause()

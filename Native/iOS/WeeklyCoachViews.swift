@@ -116,7 +116,7 @@ struct WeeklyCoachPanel: View {
                         Text("\(ExerciseCatalog.find(item.exerciseID)?.name ?? item.exerciseID), \(item.sets) × \(item.target) \(item.unit == .reps ? "reps" : "sec")")
                             .font(.caption).foregroundStyle(.secondary)
                     }
-                    Button { store.startPlan(day.plan, availableSupport: support) } label: { Label("Start this workout", systemImage: "play.fill") }
+                    Button { store.startPlan(day.plan, availableSupport: support, origin: .coach) } label: { Label("Start this workout", systemImage: "play.fill") }
                         .font(.subheadline.weight(.semibold)).foregroundStyle(Palette.blue).disabled(model.isLoading)
                 }
             }

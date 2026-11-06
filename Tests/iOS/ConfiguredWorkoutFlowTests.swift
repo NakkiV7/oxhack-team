@@ -10,7 +10,7 @@ final class ConfiguredWorkoutFlowTests: XCTestCase {
         let vision=VisionWorker(cameraAvailable:{true},requestAccess:{_ in})
         let store=TrainingStore(historyURL:cameraHistoryURL(),vision:vision)
         store.repVoice.coach=nil
-        store.startPlan(try CoachSavedPlan.catalogue(exerciseID:"squat",sets:1,target:6,restSeconds:30),availableSupport:[])
+        store.beginAuthorizedPlan(try CoachSavedPlan.catalogue(exerciseID:"squat",sets:1,target:6,restSeconds:30),availableSupport:[])
         XCTAssertTrue(store.selectConfiguredInput(.phoneCamera)); store.beginConfiguredSet()
         let token=try XCTUnwrap(store.configured?.generation)
         for offset in [0.0,2.0] {
@@ -76,7 +76,7 @@ final class ConfiguredWorkoutFlowTests: XCTestCase {
     func testCameraRecoveryPublishesEvenWhenTrackingCueAndQuantityStayUnchanged() async throws {
         let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { _ in })
         let store = TrainingStore(historyURL: cameraHistoryURL(), vision: vision)
-        store.startPlan(try cameraPlan(), availableSupport: [])
+        store.beginAuthorizedPlan(try cameraPlan(), availableSupport: [])
         XCTAssertTrue(store.selectConfiguredInput(.phoneCamera)); store.beginConfiguredSet()
         let generation = try XCTUnwrap(store.configured?.generation)
         vision.onFrame?(.init(time: 0, width: 640, height: 480, points: []), UIImage(), generation)
@@ -121,7 +121,7 @@ final class ConfiguredWorkoutFlowTests: XCTestCase {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
         let store = TrainingStore(historyURL: folder.appendingPathComponent("history.json"))
-        store.startPlan(try cameraPlan(), availableSupport: [])
+        store.beginAuthorizedPlan(try cameraPlan(), availableSupport: [])
         store.beginConfiguredSet()
         XCTAssertTrue(store.skipConfiguredSet())
         XCTAssertTrue(store.configured?.currentWasSkipped == true)
@@ -142,7 +142,7 @@ final class ConfiguredWorkoutFlowTests: XCTestCase {
         let plan = try CoachSavedPlan.catalogue(exerciseID: "squat", sets: 2, target: 2, restSeconds: 30)
         let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
         let bytes = try encoder.encode(plan)
-        store.startPlan(plan, availableSupport: [])
+        store.beginAuthorizedPlan(plan, availableSupport: [])
         store.beginConfiguredSet(); store.setConfiguredReps(1); store.endSet()
         XCTAssertEqual(store.configured?.steps.map(\.target), [2, 2])
         XCTAssertTrue(store.useOneRepForRemainingConfiguredSets())
@@ -161,7 +161,7 @@ final class ConfiguredWorkoutFlowTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: folder) }
         let store = TrainingStore(historyURL: folder.appendingPathComponent("history.json"))
         let plan = try JSONDecoder().decode(CoachSavedPlan.self, from: Data(#"{"items":[{"exerciseID":"squat","sets":2,"target":2,"unit":"reps","restSeconds":30}],"approvedAt":0,"rationale":"Offline guidance fixture"}"#.utf8))
-        store.startPlan(plan, availableSupport: [])
+        store.beginAuthorizedPlan(plan, availableSupport: [])
         store.beginConfiguredSet(); store.setConfiguredReps(2); store.endSet()
 
         XCTAssertEqual(ConfiguredRecoveryView(store: store).continuationGuidance,
@@ -188,7 +188,7 @@ final class ConfiguredWorkoutFlowTests: XCTestCase {
         "approvedAt":0,"rationale":"Offline test fixture"}
         """.utf8))
 
-        store.startPlan(plan, availableSupport: ["Wall"])
+        store.beginAuthorizedPlan(plan, availableSupport: ["Wall"])
         XCTAssertTrue(store.presented)
         XCTAssertEqual(store.configured?.current.exerciseID, "wallPushup")
         XCTAssertFalse(store.configured?.hasStarted ?? true)
@@ -227,7 +227,7 @@ extension ConfiguredWorkoutFlowTests {
         let store = TrainingStore(historyURL: cameraHistoryURL())
         let plan = try CoachSavedPlan.catalogue(exerciseID: "squat", sets: 2, target: 12, restSeconds: 45)
 
-        store.startPlan(plan, availableSupport: [])
+        store.beginAuthorizedPlan(plan, availableSupport: [])
         XCTAssertTrue(store.presented)
         XCTAssertEqual(store.configured?.current.exerciseID, "squat")
         XCTAssertEqual(store.configured?.steps.count, 2)
@@ -261,7 +261,7 @@ extension ConfiguredWorkoutFlowTests {
             let support = Set(entry.support.map { [$0] } ?? [])
             let plan = try CoachSavedPlan.catalogue(exerciseID: entry.id, sets: 2,
                                                    target: entry.goal, restSeconds: 30, availableSupport: support)
-            store.startPlan(plan, availableSupport: support)
+            store.beginAuthorizedPlan(plan, availableSupport: support)
             XCTAssertEqual(store.configured?.current.unit, entry.unit, entry.id)
             XCTAssertEqual(store.configured?.steps.count, 2, entry.id)
             XCTAssertEqual(store.configured?.source, .manual, entry.id)
@@ -311,7 +311,7 @@ extension ConfiguredWorkoutFlowTests {
     func testConfiguredPhoneCameraStartsOnlyOnBeginAndRejectsStaleFrames() async throws {
         let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { _ in })
         let store = TrainingStore(historyURL: cameraHistoryURL(), vision: vision)
-        store.startPlan(try cameraPlan(), availableSupport: [])
+        store.beginAuthorizedPlan(try cameraPlan(), availableSupport: [])
         XCTAssertEqual(store.configured?.source, .manual)
         XCTAssertTrue(store.selectConfiguredInput(.phoneCamera))
         XCTAssertFalse(store.configured?.hasStarted ?? true)
@@ -335,10 +335,10 @@ extension ConfiguredWorkoutFlowTests {
     func testUnsupportedExerciseCannotCaptureAndPhoneFailureAllowsExplicitManualFallback() async throws {
         let vision = VisionWorker(cameraAvailable: { false }, requestAccess: { _ in XCTFail("Unavailable camera must not request access") })
         let store = TrainingStore(historyURL: cameraHistoryURL(), vision: vision)
-        store.startPlan(try cameraPlan(exerciseID: "catCow"), availableSupport: ["Wall"])
+        store.beginAuthorizedPlan(try cameraPlan(exerciseID: "catCow"), availableSupport: ["Wall"])
         XCTAssertFalse(store.selectConfiguredInput(.phoneCamera))
         store.finish()
-        store.startPlan(try cameraPlan(), availableSupport: [])
+        store.beginAuthorizedPlan(try cameraPlan(), availableSupport: [])
         XCTAssertTrue(store.selectConfiguredInput(.phoneCamera))
         XCTAssertFalse(store.hasInput)
         store.beginConfiguredSet()
@@ -357,7 +357,7 @@ extension ConfiguredWorkoutFlowTests {
         let voice = ConfiguredRecordingVoice()
         let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { _ in })
         let store = TrainingStore(historyURL: cameraHistoryURL(), voicePlayback: voice, vision: vision)
-        store.startPlan(try cameraPlan(), availableSupport: [])
+        store.beginAuthorizedPlan(try cameraPlan(), availableSupport: [])
         store.selectConfiguredInput(.phoneCamera); store.beginConfiguredSet(); store.setVoiceFeedback(true)
         let run = try XCTUnwrap(store.configured)
         vision.onFrame?(PoseFrame(time: 1, width: 1, height: 1, points: []), UIImage(), run.generation)
@@ -375,7 +375,7 @@ extension ConfiguredWorkoutFlowTests {
         store.pause()
         XCTAssertEqual(voice.stops, 1)
         XCTAssertNil(store.coachingEvent)
-        store.startPlan(try cameraPlan(), availableSupport: [])
+        store.beginAuthorizedPlan(try cameraPlan(), availableSupport: [])
         XCTAssertTrue(store.voiceFeedbackEnabled)
         store.finish()
     }
@@ -407,7 +407,7 @@ extension ConfiguredWorkoutFlowTests {
     func testCameraHoldFramesAdvanceDisplayedSecondsWithoutRepChangesAndExcludeMissingFrames() async throws {
         let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { _ in })
         let store = TrainingStore(historyURL: cameraHistoryURL(), vision: vision)
-        store.startPlan(try CoachSavedPlan.catalogue(exerciseID: "plank", sets: 1, target: 20, restSeconds: 30), availableSupport: [])
+        store.beginAuthorizedPlan(try CoachSavedPlan.catalogue(exerciseID: "plank", sets: 1, target: 20, restSeconds: 30), availableSupport: [])
         XCTAssertTrue(store.selectConfiguredInput(.phoneCamera)); store.beginConfiguredSet()
         let generation = try XCTUnwrap(store.configured?.generation)
         var points = Array(repeating: PosePoint(x: 0, y: 0, confidence: 0), count: 33)
@@ -436,7 +436,7 @@ extension ConfiguredWorkoutFlowTests {
             let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { _ in })
             let store = TrainingStore(historyURL: cameraHistoryURL(), vision: vision)
             let support = Set(ExerciseCatalog.find(exercise.rawValue)?.support.map { [$0] } ?? [])
-            store.startPlan(try CoachSavedPlan.catalogue(exerciseID: exercise.rawValue, sets: 1, target: 8, restSeconds: 30, availableSupport: support), availableSupport: support)
+            store.beginAuthorizedPlan(try CoachSavedPlan.catalogue(exerciseID: exercise.rawValue, sets: 1, target: 8, restSeconds: 30, availableSupport: support), availableSupport: support)
             XCTAssertTrue(store.selectConfiguredInput(.phoneCamera)); store.beginConfiguredSet()
             let generation = try XCTUnwrap(store.configured?.generation)
             let timeline: [(Double,Double)] = exercise == .sitToStand ? [(0,100),(0.2,100),(0.5,140),(0.8,170),(1,170)] : [(0,170),(0.2,170),(0.4,140),(0.6,90),(0.8,90),(1.2,170),(1.4,170)]
@@ -471,7 +471,7 @@ extension ConfiguredWorkoutFlowTests {
         let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { _ in })
         let store = TrainingStore(historyURL: cameraHistoryURL(), vision: vision)
         defer { store.pause(); store.finish() }
-        store.startPlan(try CoachSavedPlan.catalogue(exerciseID: "plank", sets: 1, target: 1, restSeconds: 30), availableSupport: [])
+        store.beginAuthorizedPlan(try CoachSavedPlan.catalogue(exerciseID: "plank", sets: 1, target: 1, restSeconds: 30), availableSupport: [])
         store.beginConfiguredSet()
         try await Task.sleep(for: .milliseconds(1100))
         XCTAssertTrue(store.selectConfiguredInput(.phoneCamera))
@@ -506,7 +506,7 @@ extension ConfiguredWorkoutFlowTests {
         let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { _ in })
         let store = TrainingStore(historyURL: cameraHistoryURL(), vision: vision)
         defer { store.pause(); store.finish() }
-        store.startPlan(try CoachSavedPlan.catalogue(exerciseID: "plank", sets: 1, target: 1, restSeconds: 30), availableSupport: [])
+        store.beginAuthorizedPlan(try CoachSavedPlan.catalogue(exerciseID: "plank", sets: 1, target: 1, restSeconds: 30), availableSupport: [])
         XCTAssertTrue(store.selectConfiguredInput(.phoneCamera)); store.beginConfiguredSet()
         let run = try XCTUnwrap(store.configured)
         let start = store.now

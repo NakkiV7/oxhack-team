@@ -21,6 +21,7 @@ import CryptoKit
     private var credential: StoredAccountCredential?
     private var refreshTask: Task<Void, Never>?
     private var epoch = UUID()
+    var authenticationGeneration: UUID { epoch }
     private let client: AccountClient
     private let credentials: any AccountCredentialStorage
     let authorization: any NativeAccountAuthorization

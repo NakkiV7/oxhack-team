@@ -2,12 +2,15 @@ import SwiftUI
 
 @MainActor @Observable final class AccountWorkspaceCoordinator {
     let account: NativeAccountStore
+    let membership: MembershipCoordinator
     let root: URL
     private(set) var directory: AccountProfileDirectory?
     private(set) var workspace: AccountWorkspace?
     private(set) var message: String?
-    init(account: NativeAccountStore? = nil, root: URL? = nil) {
+    private var pendingWorkoutURL: URL?
+    init(account: NativeAccountStore? = nil, root: URL? = nil, membership: MembershipCoordinator? = nil) {
         self.account = account ?? NativeAccountStore()
+        self.membership = membership ?? MembershipStore()
         let base = URL.applicationSupportDirectory.appendingPathComponent("Spottr")
         let namespace = ProcessInfo.processInfo.environment["SPOTTR_DATA_NAMESPACE"].flatMap(UUID.init(uuidString:))
         self.root = root ?? namespace.map { base.appendingPathComponent($0.uuidString) } ?? base
@@ -24,11 +27,28 @@ import SwiftUI
         return workspace
     }
     func accountChanged() {
+        membership.setAccount(account.trusted ? account.appAccountToken : nil)
+        if account.state == .pendingMFA { workspace?.launch?.authenticationWillBegin() }
+        if account.trusted && account.step == .complete { workspace?.launch?.authenticationDidComplete() }
+        if account.state == .revoked { cancelPendingLaunch() }
         do {
-            guard let id = account.accountID, account.trusted else { workspace?.suspend(); directory = nil; return }
+            guard let id = account.accountID, account.trusted else { workspace?.suspend(preservingLaunchIntent: account.state != .signedOut && account.state != .revoked); directory = nil; return }
             if directory?.accountID != id { directory = try AccountProfileDirectory(accountID: id, root: root) }
             if let selected = directory?.selectedID { try select(selected) }
+            deliverWorkoutURL()
         } catch { message = "This profile could not be opened. Saved data has not been changed." }
+    }
+    func openWorkoutURL(_ url: URL) {
+        cancelPendingLaunch()
+        guard url.scheme == "spottr", url.host == "workout" else { return }
+        pendingWorkoutURL = url
+        deliverWorkoutURL()
+    }
+    func cancelPendingLaunch() { pendingWorkoutURL = nil; workspace?.launch?.cancel() }
+    private func deliverWorkoutURL() {
+        guard let workspace = visibleWorkspace, let url = pendingWorkoutURL else { return }
+        pendingWorkoutURL = nil
+        workspace.launch?.open(url)
     }
     @discardableResult func createProfile(name: String, age: TrainingAgeContext) async -> Bool {
         do {
@@ -40,10 +60,12 @@ import SwiftUI
             let profile = try directory.add(age: age, name: name)
             if isFirstProfile { account.consumeInitialProfileCheckpoint() }
             try select(profile.id)
+            deliverWorkoutURL()
             return true
         } catch { message = error.localizedDescription; return false }
     }
     func choose(_ id: UUID) async {
+        cancelPendingLaunch()
         do {
             guard let directory, account.accountID == directory.accountID else { throw AccountFailure.reauthenticate }
             try await account.authorization.guardian()
@@ -58,8 +80,19 @@ import SwiftUI
         try requireNoOtherWorkout()
         workspace?.suspend()
         let next = try AccountWorkspace(scope: scope)
+        configureLaunch(next)
         try directory.select(id)
         workspace = next
+    }
+    private func configureLaunch(_ workspace: AccountWorkspace) {
+        let scope = workspace.scope
+        let launch = WorkoutLaunchCoordinator(training: workspace.training, profile: workspace.profile, membership: membership,
+            owner: { [weak self, weak workspace] in
+                guard let self, let workspace, self.visibleWorkspace === workspace, self.account.trusted,
+                      self.account.accountID == scope.accountID else { return nil }
+                return .init(accountID: scope.accountID, profileID: scope.profileID)
+            }, generation: { [weak account] in account?.authenticationGeneration ?? UUID() })
+        workspace.launch = launch; workspace.training.launchCoordinator = launch
     }
     private func requireNoOtherWorkout() throws {
         guard workspace?.hasOngoingWorkout != true else { throw WorkspaceFailure.unfinished }
@@ -84,6 +117,7 @@ import SwiftUI
             try requireNoOtherWorkout()
             try workspace.scope.importLegacy(from: root, age: age)
             self.workspace = try AccountWorkspace(scope: workspace.scope)
+            if let next = self.workspace { configureLaunch(next) }
             message = "Your selected records were copied. Original files and a verified local archive are preserved."
         } catch { message = error.localizedDescription }
     }
@@ -105,7 +139,7 @@ struct AccountRootView: View {
                         FamilyMovementView(authorization: coordinator.account.authorization)
                     } else {
                         SpottrRoot(store: workspace.training, profileStore: workspace.profile, healthStore: workspace.health,
-                                   guardianAuthorization: coordinator.account.authorization)
+                                   guardianAuthorization: coordinator.account.authorization, membership: coordinator.membership)
                     }
                 }
                 .safeAreaInset(edge: .top) {
@@ -131,6 +165,7 @@ struct AccountRootView: View {
                 AccountSetupView(account: coordinator.account, coordinator: coordinator)
             }
         }
+        .onOpenURL { url in coordinator.openWorkoutURL(url) }
         .sheet(isPresented: $controls) { AccountControlsView(coordinator: coordinator) }
         .task { await coordinator.account.restore(); coordinator.accountChanged() }
         .onChange(of: coordinator.account.accountID) { _, _ in coordinator.accountChanged(); controls = false }
@@ -173,6 +208,10 @@ struct AccountSetupView: View {
                     }
                 }
                 if let message = localMessage ?? account.message ?? coordinator.message { Section { Text(message).foregroundStyle(.secondary) } }
+                Section("Membership and help") {
+                    NavigationLink("Membership & restore purchases") { MembershipView(store: coordinator.membership) }.accessibilityIdentifier("account-membership")
+                    Link("Spottr support", destination: URL(string: "https://spottr.omarchoudhry.co.uk/support")!)
+                }
                 Section("Saved local data") {
                     NavigationLink("View or export existing phone records") { ProtectedLegacyRecordsView(root: coordinator.root, authorization: account.authorization) }
                     NavigationLink("Unlock retained account records") { LocalAccountArchivesView(root: coordinator.root, authorization: account.authorization) }
@@ -227,7 +266,7 @@ struct AccountSetupView: View {
                 Button("Complete secure sign-in") { let entered = code; code = ""; Task { await account.complete(code: entered, useBackup: backup) } }.disabled(account.busy)
             }
         }
-        if account.step != .identity { Section { Button("Cancel setup") { account.cancelSetup(); code = "" }.disabled(account.busy) } }
+        if account.step != .identity { Section { Button("Cancel setup") { coordinator.cancelPendingLaunch(); account.cancelSetup(); code = "" }.disabled(account.busy) } }
     }
     private var initialProfileCheckpoint: TrainingAgeContext? {
         coordinator.directory?.profiles.isEmpty == true ? account.checkpoint : nil
@@ -286,12 +325,14 @@ struct AccountControlsView: View {
                     Button("Add a training profile") { creatingProfile = true }
                     Button("Import old phone records into this adult profile") { Task { await coordinator.importLegacy() } }
                 }
+                Section("Membership") { NavigationLink("Membership & restore purchases") { MembershipView(store: coordinator.membership) } }
                 Section("Account security") {
                     TextField("Adult email to link", text: $linkEmail).textContentType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
                     Button("Link verified email") { Task { await coordinator.account.startEmail(email: linkEmail, purpose: .link); creatingProfile = true } }
                     Button("Link Apple identity") { Task { await coordinator.account.startApple(purpose: .link); creatingProfile = true } }
                     Button("Verify passkey and Authenticator again") { Task { await coordinator.account.login(); creatingProfile = true } }
                     Button("Sign out") {
+                        coordinator.cancelPendingLaunch()
                         do { coordinator.workspace?.training.setAccountActive(false); try coordinator.workspace?.training.preservePendingWorkout(); coordinator.workspace?.suspend(); Task { await coordinator.account.signOut() } }
                         catch { message = "The paused workout could not be saved. Retry before signing out." }
                     }

@@ -1,60 +1,28 @@
 import XCTest
 
 final class MembershipFlowTests: XCTestCase {
-    @MainActor func testBetaAccessAndMembershipNavigationDoNotRequireAccountOrPurchase() {
+    @MainActor func testSignedOutMembershipRestoreAndHelpRemainReachableWithoutWorkoutAccess() {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
         app.launch()
-        XCTAssertTrue(app.buttons["profile-settings"].waitForExistence(timeout: 8))
-        app.buttons["profile-settings"].tap()
-        XCTAssertTrue(app.staticTexts["profile-beta-access"].waitForExistence(timeout: 4))
-        let membership = app.buttons["profile-membership"]
+        XCTAssertTrue(app.navigationBars["Account setup"].waitForExistence(timeout: 8))
+        XCTAssertFalse(app.buttons["today-start-session"].exists)
+        let membership = app.buttons["account-membership"]
+        for _ in 0..<8 where !membership.isHittable { app.swipeUp() }
         XCTAssertTrue(membership.isHittable)
         membership.tap()
-        XCTAssertTrue(app.staticTexts["membershipBetaAccess"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["membershipAppleConfirmation"].exists)
+        XCTAssertTrue(app.navigationBars["Membership"].waitForExistence(timeout: 5))
+        let restore = app.buttons["membershipRestore"]
+        XCTAssertTrue(restore.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["membershipBetaAccess"].exists)
+        XCTAssertFalse(app.buttons["membershipPurchase-monthly"].exists && app.buttons["membershipPurchase-monthly"].isEnabled)
         let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = "Spottr beta membership"
+        attachment.name = "Signed-out membership and restore"
         attachment.lifetime = .keepAlways
         add(attachment)
-        app.navigationBars.buttons.element(boundBy: 0).tap()
-        let account = app.descendants(matching: .any).matching(identifier: "profile-website-account").firstMatch
-        for _ in 0..<10 where !account.isHittable { app.swipeUp() }
-        XCTAssertTrue(account.exists)
-        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "profile-privacy").firstMatch.exists)
-        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "profile-support").firstMatch.exists)
-        XCTAssertTrue(app.staticTexts["profile-account-separation"].exists)
-        XCTAssertTrue(app.buttons["prepare-history-export"].exists)
-        app.navigationBars.buttons["Done"].tap()
-        XCTAssertTrue(app.buttons["profile-settings"].waitForExistence(timeout: 3))
-    }
-
-    @MainActor func testPausedSquatGuideShowsTimingForBetaReview() {
-        continueAfterFailure = false
-        let app = XCUIApplication()
-        app.launchEnvironment["SPOTTR_DATA_NAMESPACE"] = UUID().uuidString
-        app.launch()
-        XCTAssertTrue(app.buttons["profile-settings"].waitForExistence(timeout: 8))
-        app.buttons["profile-settings"].tap()
-        let lessons = app.buttons["Movement guides"]
-        for _ in 0..<8 where !lessons.isHittable { app.swipeUp() }
-        lessons.tap()
-        let guide = app.buttons["guide-pausedSquat"]
-        for _ in 0..<20 where !guide.isHittable { app.swipeUp() }
-        XCTAssertTrue(guide.isHittable)
-        guide.tap()
-        XCTAssertTrue(app.navigationBars["Paused squats"].waitForExistence(timeout: 4))
-        let graphic = XCTAttachment(screenshot: app.screenshot())
-        graphic.name = "Paused squat guide beta"
-        graphic.lifetime = .keepAlways
-        add(graphic)
-        let timing = app.staticTexts["Lower to depth and hold for at least 2 seconds"]
-        for _ in 0..<4 where !timing.isHittable { app.swipeUp() }
-        XCTAssertTrue(timing.isHittable)
-        let instructions = XCTAttachment(screenshot: app.screenshot())
-        instructions.name = "Paused squat timing beta"
-        instructions.lifetime = .keepAlways
-        add(instructions)
+        let support = app.descendants(matching: .any).matching(identifier: "membershipSupport").firstMatch
+        for _ in 0..<8 where !support.isHittable { app.swipeUp() }
+        XCTAssertTrue(support.exists)
     }
 }

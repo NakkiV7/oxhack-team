@@ -9,7 +9,7 @@ final class PhoneCaptureRecoveryTests: XCTestCase {
         let vision = VisionWorker(cameraAvailable: { true }, requestAccess: { $0(true) }, cameraDriver: camera)
         let store = TrainingStore(historyURL: historyURL(), vision: vision)
         defer { store.finish() }
-        store.start()
+        store.beginAuthorizedSession()
         store.setRestCameraEnabled(true)
         XCTAssertFalse(store.restCameraEnabled)
         XCTAssertEqual(camera.starts, 0)
@@ -57,7 +57,7 @@ final class PhoneCaptureRecoveryTests: XCTestCase {
     func testUnavailablePhonePausesLegacyAndWaitingForConfirmationPreservesObservedCount() async throws {
         let vision = VisionWorker(cameraAvailable: { false }, requestAccess: { _ in XCTFail("Unavailable camera must not request access") })
         let store = TrainingStore(historyURL: historyURL(), vision: vision)
-        store.start(); store.camera()
+        store.beginAuthorizedSession(); store.camera()
         try await waitUntil { store.session.phase == .paused }
         let identity = store.session.id
         store.resume()
@@ -84,7 +84,7 @@ final class PhoneCaptureRecoveryTests: XCTestCase {
 
     func testClearingManualQuantityThenFinishingFromWatchKeepsOnlyPriorEndedSets() async throws {
         let store = TrainingStore(historyURL: historyURL())
-        store.start(); store.endSet(); store.next(); store.switchToManualReps()
+        store.beginAuthorizedSession(); store.endSet(); store.next(); store.switchToManualReps()
         let identity = store.session.id
         let ended = store.session.sets
         store.setManualReps(4)

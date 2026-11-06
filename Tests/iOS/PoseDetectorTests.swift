@@ -47,7 +47,7 @@ final class TrackingContinuityFlowTests: XCTestCase {
             let vision = VisionWorker(cameraAvailable: { false }, requestAccess: { _ in })
             let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("history.json")
             let store = TrainingStore(historyURL: url, vision: vision)
-            store.selectedExercise = .squat; store.start(); store.hasInput = true
+            store.selectedExercise = .squat; store.beginAuthorizedSession(); store.hasInput = true
             defer { store.cancelCoaching(); vision.stop() }
             for (time, angle) in [(0.0, 170.0), (0.2, 170), (0.6, 90), (0.8, 90)] {
                 try await deliver(pose(time, angle, sides: [1]), to: store)
@@ -65,7 +65,7 @@ final class TrackingContinuityFlowTests: XCTestCase {
         let vision = VisionWorker(cameraAvailable: { false }, requestAccess: { _ in })
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("history.json")
         let store = TrainingStore(historyURL: url, vision: vision)
-        store.selectedExercise = .squat; store.start(); store.hasInput = true
+        store.selectedExercise = .squat; store.beginAuthorizedSession(); store.hasInput = true
         defer { store.cancelCoaching(); vision.stop() }
         for (time, angle, visible) in [(0.0, 170.0, true), (0.2, 170, true), (0.6, 90, false),
                                        (0.8, 90, false), (1.2, 170, true), (1.4, 170, true)] {

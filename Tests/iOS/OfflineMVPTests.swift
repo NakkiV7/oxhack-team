@@ -20,8 +20,8 @@ import XCTest
     func testNewConfiguredSpeechStartsAtZeroAndManualCorrectionsStopListening() throws {
         let speech = FakeSpokenRepInput()
         let store = TrainingStore(historyURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("history.json"), spokenReps: speech)
-        store.start(); store.switchToManualReps(); store.setManualReps(12); store.endSet(); store.finish()
-        store.startPlan(try CoachSavedPlan.catalogue(exerciseID: "halfSquat", sets: 1, target: 10, restSeconds: 30), availableSupport: [])
+        store.beginAuthorizedSession(); store.switchToManualReps(); store.setManualReps(12); store.endSet(); store.finish()
+        store.beginAuthorizedPlan(try CoachSavedPlan.catalogue(exerciseID: "halfSquat", sets: 1, target: 10, restSeconds: 30), availableSupport: [])
         store.beginConfiguredSet(); store.startSpokenReps()
         XCTAssertEqual(speech.startingCount, 0)
         speech.onCount?(1)

@@ -198,7 +198,7 @@ import CryptoKit
         XCTAssertEqual(reloaded.selectedID, junior.scope.profileID)
         await coordinator.choose(adult.scope.profileID)
         let resumed = try XCTUnwrap(coordinator.visibleWorkspace)
-        resumed.training.start(); resumed.training.pause()
+        resumed.training.beginAuthorizedSession(); resumed.training.pause()
         let workoutID = resumed.training.session.id
         await coordinator.choose(junior.scope.profileID)
         XCTAssertEqual(coordinator.visibleWorkspace?.scope, adult.scope)

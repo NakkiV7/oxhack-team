@@ -87,6 +87,7 @@ struct TrainingProfileDescriptor: Codable, Identifiable, Equatable {
 @MainActor @Observable final class AccountWorkspace {
     let scope: AccountDataScope
     let profile: NativeProfileStore
+    var launch: WorkoutLaunchCoordinator?
     let training: TrainingStore
     let health: HealthDataStore
     let path: TrainingPathStore
@@ -100,7 +101,8 @@ struct TrainingProfileDescriptor: Codable, Identifiable, Equatable {
         health = HealthDataStore(client: ScopedHealthReadingClient(profile: profile), defaults: try FileHealthPreferences(url: scope.file("health-preferences.plist")))
     }
     var hasOngoingWorkout: Bool { training.sessionPhase != .idle && training.sessionPhase != .finished }
-    func suspend() {
+    func suspend(preservingLaunchIntent: Bool = false) {
+        if !preservingLaunchIntent { launch?.cancel() }
         training.setAccountActive(false)
         do { try training.preservePendingWorkout() } catch { training.error = "The paused workout could not be archived. Keep this app open and retry before switching accounts." }
         health.disconnect()

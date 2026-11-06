@@ -146,7 +146,7 @@ final class PreviewWorkspaceTests: XCTestCase {
         defer { fixture.clean() }
         let workspace = PreviewWorkspace(defaults: fixture.defaults, rootURL: fixture.root)
         let realBytes = try snapshots(fixture.folder)
-        workspace.store.start()
+        workspace.store.beginAuthorizedSession()
         let id = workspace.store.session.id
         XCTAssertThrowsError(try workspace.setPreview(true))
         XCTAssertEqual(workspace.store.session.phase, .active)

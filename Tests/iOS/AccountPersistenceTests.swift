@@ -93,7 +93,7 @@ import XCTest
         XCTAssertEqual(try FileHealthPreferences(url: b.file("health-preferences.plist")).double(forKey: "health.zoneMaximum"), 0)
         XCTAssertTrue(try a.file("health-preferences.plist").resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup == true)
         let training = TrainingStore(historyURL: a.file("history.json"), accountScope: a)
-        training.start()
+        training.beginAuthorizedSession()
         training.pause()
         try training.preservePendingWorkout()
         let saved = try JSONDecoder().decode(PendingPhoneWorkout.self, from: Data(contentsOf: a.file("pending-phone-workout.json")))

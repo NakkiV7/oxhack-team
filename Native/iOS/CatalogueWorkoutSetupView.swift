@@ -3,6 +3,7 @@ import SwiftUI
 struct CatalogueWorkoutSetupView: View {
     let store: TrainingStore
     let entry: ExerciseEntry
+    let origin: WorkoutLaunchOrigin
     @State private var sets = "3"
     @State private var target: String
     @State private var restSeconds = "60"
@@ -10,12 +11,22 @@ struct CatalogueWorkoutSetupView: View {
     @State private var error: String?
     @FocusState private var enteringQuantity: Bool
 
-    init(store: TrainingStore, entry: ExerciseEntry) {
-        self.store = store; self.entry = entry
+    init(store: TrainingStore, entry: ExerciseEntry, origin: WorkoutLaunchOrigin = .library) {
+        self.store = store; self.entry = entry; self.origin = origin
         _target = State(initialValue: String(entry.goal))
     }
 
     var body: some View {
+        Group {
+            if let launch = store.launchCoordinator, launch.needsAttention, launch.pendingOrigin == origin {
+                WorkoutLaunchAccessView(launch: launch)
+            } else { setup }
+        }
+        .onDisappear {
+            if store.launchCoordinator?.pendingOrigin == origin { store.launchCoordinator?.cancel() }
+        }
+    }
+    private var setup: some View {
         Form {
             Section(entry.name) {
                 Text(entry.instruction).font(.subheadline)
@@ -84,7 +95,7 @@ struct CatalogueWorkoutSetupView: View {
         do {
             let plan = try CoachSavedPlan.catalogue(exerciseID: entry.id, sets: sets, target: target,
                                                     restSeconds: rest, availableSupport: support)
-            store.startPlan(plan, availableSupport: support)
+            store.startPlan(plan, availableSupport: support, origin: origin)
             error = store.error
         } catch {
             self.error = "Check the quantities and confirm the support shown above. Your workout hasn’t started."
