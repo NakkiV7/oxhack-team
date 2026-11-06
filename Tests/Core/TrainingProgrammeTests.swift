@@ -231,3 +231,31 @@ private func programmeProfile(goals: Set<TrainingGoal> = [.strength], days: Set<
     let legacy = fixture.replacingOccurrences(of: #","ageContext":{"ageYears":30,"guardianManaged":false}"#, with: "")
     #expect(try JSONDecoder().decode(ProgrammePreferences.self, from: Data(legacy.utf8)).ageContext == nil)
 }
+
+@Test func programmeUnknownAbilityOmitsAdvancedOnlyFamiliesWhenSupportAndExclusionsRemoveGentleChoices() throws {
+    let profile = try programmeProfile(days: Set(1...7), excluded: ["standingBicepsCurl", "kneePushup"])
+    let week = try ProgrammePlanner.makeWeek(profile: profile, history: [], start: programmeStart, calendar: programmeCalendar)
+    #expect(week.days.contains { $0.kind == .recovery })
+    for day in week.days {
+        let items = try #require(day.plan?.items)
+        #expect(items.count >= 2)
+        #expect(items.allSatisfy { ExerciseCatalog.find($0.exerciseID)?.family != .push })
+        #expect(items.allSatisfy { ExerciseCatalog.find($0.exerciseID)?.level == 1 })
+        _ = try ConfigurableSession(plan: #require(day.plan), availableSupport: [])
+    }
+}
+
+@Test func programmeRecoveryOmitsAdvancedOnlyFamiliesEvenWithExperiencedPlacement() throws {
+    let excluded = Set(ExerciseCatalog.all.filter { [.mobility, .balance, .conditioning].contains($0.family) }.map(\.id))
+        .union(["standingBicepsCurl", "kneePushup"])
+    let profile = try programmeProfile(days: Set(1...7), starting: .experienced, excluded: excluded, comfortable: ["pushup"])
+    let week = try ProgrammePlanner.makeWeek(profile: profile, history: [], start: programmeStart, calendar: programmeCalendar)
+    #expect(week.days.filter { $0.kind == .workout }.compactMap(\.plan).flatMap(\.items).contains { $0.exerciseID == "pushup" })
+    let recoveries = week.days.filter { $0.kind == .recovery }
+    #expect(!recoveries.isEmpty)
+    for day in recoveries {
+        let items = try #require(day.plan?.items)
+        #expect(Set(items.compactMap { ExerciseCatalog.find($0.exerciseID)?.family }) == [.legs, .core])
+        #expect(items.allSatisfy { ExerciseCatalog.find($0.exerciseID)?.level == 1 })
+    }
+}

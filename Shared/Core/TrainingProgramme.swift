@@ -200,13 +200,15 @@ public enum ProgrammePlanner {
         }
         let selected = families.compactMap { family -> ExerciseEntry? in
             let entries = usable.filter { $0.family == family }
-            guard let minimum = entries.map(\.level).min() else { return nil }
             let placed = entries.filter { profile.comfortableExercises.contains($0.id) ||
                 ((evidence.node(exerciseID: $0.id)?.qualifyingSets ?? 0) >= 3 && (evidence.node(exerciseID: $0.id)?.trainingDays ?? 0) >= 2) }
-            let level = recovery || isChild ? minimum : max(minimum, placed.map(\.level).max() ?? prefs.startingPoint?.suggestedLevel ?? 1)
-            let candidates = entries.filter { $0.level <= level }
-            let hardest = candidates.map(\.level).max() ?? minimum
-            let peers = candidates.filter { $0.level == hardest }.sorted { $0.id < $1.id }
+            let abilityLevel = placed.map(\.level).max() ?? prefs.startingPoint?.suggestedLevel ?? 1
+            let gentleOnly = recovery || isChild || abilityLevel == 1
+            let candidates = entries.filter {
+                gentleOnly ? $0.level == 1 || $0.id == "standingBicepsCurl" : $0.level <= abilityLevel
+            }
+            let selectedLevel = gentleOnly ? candidates.map(\.level).min() : candidates.map(\.level).max()
+            let peers = candidates.filter { $0.level == selectedLevel }.sorted { $0.id < $1.id }
             guard !peers.isEmpty else { return nil }
             return peers[ordinal % peers.count]
         }
