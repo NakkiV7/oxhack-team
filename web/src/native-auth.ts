@@ -4,7 +4,7 @@ import { context, challenge, authorize, rotate, NativeError, denied, tokenSchema
 import { generateRegistrationOptions, verifyRegistrationResponse, generateAuthenticationOptions, verifyAuthenticationResponse } from '@simplewebauthn/server';
 import { registrationSchema, authenticationSchema } from './auth.ts';
 import { newTOTPSecret, encryptSecret, decryptSecret, verifyTOTP, recoveryCodes, normalizeRecovery, bytesToBase64URL, base64URLToBytes, randomToken, equalText } from './crypto.ts';
-import { emailStart, emailVerify, appleStart, appleVerify, revokeApple, newFlow, readFlow, advanceFlow, identityProof, type LinkAuthority } from './identity.ts';
+import { emailStart, emailVerify, appleStart, appleVerify, deleteAfterAppleRevocation, newFlow, readFlow, advanceFlow, identityProof, type LinkAuthority } from './identity.ts';
 export type { NativeEnv } from './native-sessions.ts';
 const nativeRegistration=registrationSchema.strict().extend({response:registrationSchema.shape.response.strict(),clientExtensionResults:z.object({credProps:z.object({rk:z.boolean().optional()}).strict().optional()}).strict()});
 const credentialSchema=z.object({id:z.string(),publicKey:z.string(),counter:z.number()}).strict();
@@ -152,10 +152,9 @@ async function revokeDevice(c:Context,d:Device,input:unknown,self=false) {
 async function deleteAccount(c:Context,d:Device,input:unknown) {
  z.object({confirm:z.literal('DELETE')}).strict().parse(input);
  if(c.now()-d.mfa_at>=300000) return denied();
- const identities=await c.sql("SELECT subject,provider_cipher FROM native_identities WHERE user_id=? AND provider='apple'",d.user_id).all<{subject:string;provider_cipher:string}>();
- for(const identity of identities.results) await revokeApple(c,identity.subject,identity.provider_cipher);
- const result=await c.sql(`DELETE FROM users WHERE id=? AND ${deviceGuard} AND EXISTS(SELECT 1 FROM native_devices WHERE id=? AND mfa_at>?) RETURNING id`,d.user_id,...deviceArgs(c,d),d.id,c.now()-300000).first();
- if(!result) return denied();
+ const result=await deleteAfterAppleRevocation(c,{userID:d.user_id,authorization:`${deviceGuard} AND EXISTS(SELECT 1 FROM native_devices WHERE id=? AND mfa_at>?)`,authorizationArgs:()=>[...deviceArgs(c,d),d.id,c.now()-300000]});
+ if(result==='retry') throw new NativeError(503,'temporarily_unavailable');
+ if(result!=='deleted') return denied();
  return {deleted:true,phoneHistoryUnchanged:true};
 }
 export function createNativeAuthHandler(env:NativeEnv,deps:Dependencies={}) {

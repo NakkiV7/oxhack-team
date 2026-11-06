@@ -62,31 +62,32 @@ export async function authorize(c:Context,request:Request,rawBody:string,refresh
  }catch(error){if(error instanceof NativeError) throw error;if(error instanceof Error&&error.message.includes('UNIQUE constraint failed: native_proof_nonces')) return denied();throw error;}
  return {...d,presentedHash};
 }
+async function resolveRotation(c:Context,d:Device & {presentedHash:string},requestHash:string) {
+ const cached=await c.sql('SELECT h.reply_cipher FROM native_refresh_history h JOIN native_devices d ON d.id=h.device_id JOIN users u ON u.id=d.user_id WHERE h.token_hash=? AND d.id=? AND d.user_id=? AND d.auth_version=? AND d.auth_version=u.auth_version AND d.refresh_expires>? AND h.expires_at>? AND h.request_id=? AND h.retry_until>? AND h.successor_hash=d.refresh_hash AND h.reply_cipher<>?',d.presentedHash,d.id,d.user_id,d.auth_version,c.now(),c.now(),requestHash,c.now(),'').first<{reply_cipher:string}>();
+ if(cached) return JSON.parse(await decryptSecret(cached.reply_cipher,c.env.AUTH_ENCRYPTION_KEY,'refresh:'+d.id));
+ await c.sql('DELETE FROM native_devices WHERE id=? AND user_id=? AND auth_version=? AND refresh_expires>? AND EXISTS(SELECT 1 FROM users u WHERE u.id=native_devices.user_id AND u.auth_version=native_devices.auth_version) AND EXISTS(SELECT 1 FROM native_refresh_history h WHERE h.device_id=native_devices.id AND h.token_hash=? AND h.expires_at>? AND (h.request_id<>? OR h.retry_until<=? OR h.successor_hash<>native_devices.refresh_hash))',d.id,d.user_id,d.auth_version,c.now(),d.presentedHash,c.now(),requestHash,c.now()).run();
+ return denied();
+}
 export async function rotate(c:Context,d:Device & {presentedHash:string},input:unknown) {
  const {requestID}=z.object({requestID:z.uuid()}).strict().parse(input),requestHash=await c.hash('rotation:'+requestID);
- const existing=await c.sql('SELECT * FROM native_refresh_history WHERE token_hash=? AND device_id=?',d.presentedHash,d.id).first<{request_id:string;reply_cipher:string;retry_until:number;successor_hash:string}>();
- if(existing){
- if(existing.request_id===requestHash && existing.retry_until>c.now() && existing.successor_hash===d.refresh_hash) return JSON.parse(await decryptSecret(existing.reply_cipher,c.env.AUTH_ENCRYPTION_KEY,'refresh:'+d.id));
- await c.sql('DELETE FROM native_devices WHERE id=?',d.id).run();return denied();
- }
- const material=await sessionMaterial(c,d.user_id,d.auth_version,deviceKeySchema.parse(JSON.parse(d.public_key)));
- const reply={...material.reply,deviceID:d.id};
+ const current=await c.sql('SELECT d.* FROM native_devices d JOIN users u ON d.user_id=u.id WHERE d.id=? AND d.user_id=? AND d.auth_version=? AND d.auth_version=u.auth_version AND d.refresh_expires>?',d.id,d.user_id,d.auth_version,c.now()).first<Device>();
+ if(!current) return denied();
+ if(current.refresh_hash!==d.presentedHash) return resolveRotation(c,d,requestHash);
+ const material=await sessionMaterial(c,current.user_id,current.auth_version,deviceKeySchema.parse(JSON.parse(current.public_key)));
+ const reply={...material.reply,deviceID:current.id};
  const successor=await c.hash('native:refresh:'+reply.refreshToken);
- const guard='EXISTS(SELECT 1 FROM native_devices d JOIN users u ON d.user_id=u.id WHERE d.id=? AND d.refresh_hash=? AND d.refresh_expires>? AND d.auth_version=u.auth_version)';
+ const guard='EXISTS(SELECT 1 FROM native_devices d JOIN users u ON d.user_id=u.id WHERE d.id=? AND d.refresh_hash=? AND d.refresh_expires>? AND d.auth_version=? AND d.auth_version=u.auth_version)';
  const result=await c.env.DB.batch([
- c.sql(`INSERT OR IGNORE INTO native_refresh_history(token_hash,device_id,request_id,reply_cipher,retry_until,expires_at,successor_hash) SELECT ?,?,?,?,?,?,? WHERE ${guard}`,d.presentedHash,d.id,requestHash,await encryptSecret(JSON.stringify(reply),c.env.AUTH_ENCRYPTION_KEY,'refresh:'+d.id),c.now()+60000,d.refresh_expires,successor,d.id,d.presentedHash,c.now()),
- c.sql('UPDATE native_devices SET access_hash=?,access_expires=?,refresh_hash=?,refresh_expires=? WHERE id=? AND refresh_hash=? AND EXISTS(SELECT 1 FROM native_refresh_history WHERE token_hash=? AND successor_hash=?)',await c.hash('native:access:'+reply.accessToken),Date.parse(reply.accessExpiresAt),successor,Date.parse(reply.refreshExpiresAt),d.id,d.presentedHash,d.presentedHash,successor)
+ c.sql(`INSERT OR IGNORE INTO native_refresh_history(token_hash,device_id,request_id,reply_cipher,retry_until,expires_at,successor_hash) SELECT ?,?,?,?,?,?,? WHERE ${guard}`,d.presentedHash,current.id,requestHash,await encryptSecret(JSON.stringify(reply),c.env.AUTH_ENCRYPTION_KEY,'refresh:'+current.id),c.now()+60000,current.refresh_expires,successor,current.id,d.presentedHash,c.now(),current.auth_version),
+ c.sql('UPDATE native_devices SET access_hash=?,access_expires=?,refresh_hash=?,refresh_expires=? WHERE id=? AND refresh_hash=? AND EXISTS(SELECT 1 FROM native_refresh_history WHERE token_hash=? AND successor_hash=?)',await c.hash('native:access:'+reply.accessToken),Date.parse(reply.accessExpiresAt),successor,Date.parse(reply.refreshExpiresAt),current.id,d.presentedHash,d.presentedHash,successor)
  ]);
- if(result[1]?.meta.changes!==1){
- const current=await c.sql('SELECT d.* FROM native_devices d JOIN users u ON d.user_id=u.id WHERE d.id=? AND d.auth_version=u.auth_version AND d.refresh_expires>?',d.id,c.now()).first<Device>();
- if(current && current.refresh_hash!==d.presentedHash) return rotate(c,{...current,presentedHash:d.presentedHash},input);
- return denied();
- }
+ if(result[1]?.meta.changes!==1) return resolveRotation(c,d,requestHash);
  return reply;
 }
 
 export async function cleanupNative(c:Context) {
  await c.env.DB.batch([
+ c.sql("UPDATE native_refresh_history SET reply_cipher='',request_id='',successor_hash='' WHERE retry_until<=? AND (reply_cipher<>'' OR request_id<>'' OR successor_hash<>'')",c.now()),
  ...['native_flows','native_challenges','native_proof_nonces','native_refresh_history'].map(table=>c.sql(`DELETE FROM ${table} WHERE expires_at<=?`,c.now())),
  c.sql('DELETE FROM native_devices WHERE refresh_expires<=?',c.now()),
  c.sql('DELETE FROM native_mail_reservations WHERE created_at<?',c.now()-38*86400000)

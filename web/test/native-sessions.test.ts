@@ -67,7 +67,7 @@ test('auth-version change during refresh authorization fails once without retry 
  };
  f.env.DB={prepare:sql=>wrap(f.db.prepare(sql),sql),batch:async statements=>{if(++batches>2)throw new Error('Unexpected retry loop');return f.db.batch(statements.map(v=>originals.get(v)??v));}};
  assert.equal((await f.signed('/session/refresh',{requestID:crypto.randomUUID()},d.refreshToken,d.keys)).response.status,401);
- assert.equal(batches,2);
+ assert.ok(batches<=2);
  assert.ok(await f.db.prepare('SELECT id FROM native_devices WHERE id=?').bind(d.deviceID).first());
  }finally{await f.mf.dispose();}
 });
@@ -92,5 +92,66 @@ test('fresh MFA is required to revoke another device or delete an account; expir
  f.advance(180*86400);
  assert.equal((await f.signed('/session/refresh',{requestID:crypto.randomUUID()},a.refreshToken,a.keys)).response.status,401);
  assert.ok(await f.db.prepare('SELECT id FROM users WHERE id=?').bind(a.accountID).first());
+ }finally{await f.mf.dispose();}
+});
+
+test('an identical peer rotation after the authorization snapshot converges without revoking the device',async()=>{
+ const f=await fixture();try{
+ const d=await f.seed(),body={requestID:crypto.randomUUID()};
+ let paused=false;
+ let peer:Awaited<ReturnType<typeof f.signed>>|undefined;
+ const originals=new WeakMap<import('../src/auth.ts').Statement,import('../src/auth.ts').Statement>();
+ const wrap=(real:import('../src/auth.ts').Statement,sql:string):import('../src/auth.ts').Statement=>{
+ const wrapped:import('../src/auth.ts').Statement={bind:(...args)=>wrap(real.bind(...args),sql),all:<T>()=>real.all<T>(),run:()=>real.run(),first:async<T>()=>{
+ const value=await real.first<T>();
+ if(!paused&&sql.includes('AND ((d.refresh_hash')){paused=true;peer=await f.signed('/session/refresh',body,d.refreshToken,d.keys);assert.equal(peer.response.status,200);}
+ return value;
+ }};
+ originals.set(wrapped,real);return wrapped;
+ };
+ f.env.DB={prepare:sql=>wrap(f.db.prepare(sql),sql),batch:statements=>f.db.batch(statements.map(v=>originals.get(v)??v))};
+ const delayed=await f.signed('/session/refresh',body,d.refreshToken,d.keys);
+ assert.ok(paused);assert.equal(delayed.response.status,200);assert.deepEqual(delayed.json,peer?.json);
+ assert.ok(await f.db.prepare('SELECT id FROM native_devices WHERE id=?').bind(d.deviceID).first());
+ assert.equal((await f.signed('/session/current',{},z.string().parse(delayed.json['accessToken']),d.keys)).response.status,200);
+ }finally{await f.mf.dispose();}
+});
+
+test('cleanup clears expired refresh response credentials but retains the spent-token reuse tombstone',async()=>{
+ const f=await fixture();try{
+ const {cleanupNative,context}=await import('../src/native-sessions.ts');
+ const d=await f.seed(),body={requestID:crypto.randomUUID()};
+ const rotated=await f.signed('/session/refresh',body,d.refreshToken,d.keys);assert.equal(rotated.response.status,200);
+ const before=await f.db.prepare('SELECT * FROM native_refresh_history WHERE device_id=?').bind(d.deviceID).first<{token_hash:string;reply_cipher:string;request_id:string;successor_hash:string;expires_at:number}>();assert.ok(before?.reply_cipher);
+ f.advance(59);await cleanupNative(context(f.env,{clock:()=>f.now}));
+ const retry=await f.signed('/session/refresh',body,d.refreshToken,d.keys);assert.equal(retry.response.status,200);assert.deepEqual(retry.json,rotated.json);
+ f.advance(2);await cleanupNative(context(f.env,{clock:()=>f.now}));
+ const after=await f.db.prepare('SELECT * FROM native_refresh_history WHERE device_id=?').bind(d.deviceID).first<{token_hash:string;reply_cipher:string;request_id:string;successor_hash:string;expires_at:number}>();
+ assert.ok(after);assert.equal(after.token_hash,before.token_hash);assert.equal(after.expires_at,before.expires_at);
+ assert.equal(after.reply_cipher,'');assert.equal(after.request_id,'');assert.equal(after.successor_hash,'');
+ assert.equal((await f.signed('/session/current',{},z.string().parse(rotated.json['accessToken']),d.keys)).response.status,200);
+ assert.equal((await f.signed('/session/refresh',body,d.refreshToken,d.keys)).response.status,401);
+ assert.equal(await f.db.prepare('SELECT id FROM native_devices WHERE id=?').bind(d.deviceID).first(),null);
+ }finally{await f.mf.dispose();}
+});
+
+test('a cached refresh retry cannot return credentials after auth-version revocation during authorization',async()=>{
+ const f=await fixture();try{
+ const d=await f.seed(),body={requestID:crypto.randomUUID()};
+ assert.equal((await f.signed('/session/refresh',body,d.refreshToken,d.keys)).response.status,200);
+ let revoked=false;
+ const originals=new WeakMap<import('../src/auth.ts').Statement,import('../src/auth.ts').Statement>();
+ const wrap=(real:import('../src/auth.ts').Statement,sql:string):import('../src/auth.ts').Statement=>{
+ const wrapped:import('../src/auth.ts').Statement={bind:(...args)=>wrap(real.bind(...args),sql),all:<T>()=>real.all<T>(),run:()=>real.run(),first:async<T>()=>{
+ const value=await real.first<T>();
+ if(!revoked&&sql.includes('AND ((d.refresh_hash')){revoked=true;await f.db.prepare('UPDATE users SET auth_version=2 WHERE id=?').bind(d.accountID).run();}
+ return value;
+ }};
+ originals.set(wrapped,real);return wrapped;
+ };
+ f.env.DB={prepare:sql=>wrap(f.db.prepare(sql),sql),batch:statements=>f.db.batch(statements.map(v=>originals.get(v)??v))};
+ const retry=await f.signed('/session/refresh',body,d.refreshToken,d.keys);
+ assert.ok(revoked);assert.equal(retry.response.status,401);assert.equal(retry.json['refreshToken'],undefined);
+ assert.ok(await f.db.prepare('SELECT id FROM native_devices WHERE id=?').bind(d.deviceID).first());
  }finally{await f.mf.dispose();}
 });

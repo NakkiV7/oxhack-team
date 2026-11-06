@@ -111,3 +111,15 @@ export async function revokeApple(c:Context,subject:string,cipher:string) {
  const response=await c.fetch('https://appleid.apple.com/auth/revoke',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:config.clientID,client_secret:await appleClientSecret(c),token,token_type_hint:'refresh_token'}).toString()});
  if(!response.ok) throw new NativeError(503,'temporarily_unavailable');
 }
+
+export async function deleteAfterAppleRevocation(c:Context,options:{userID:string;authorization:string;authorizationArgs:()=>(string|number|null)[]}) {
+ const snapshotQuery="SELECT json_group_array(json_array(subject,provider_cipher)) FROM (SELECT subject,provider_cipher FROM native_identities WHERE user_id=? AND provider='apple' ORDER BY subject)";
+ const snapshot=await c.sql(`SELECT (${snapshotQuery}) AS value`,options.userID).first<{value:string}>();
+ if(!snapshot) throw new NativeError(503,'temporarily_unavailable');
+ const identities=z.array(z.tuple([z.string(),z.string()])).parse(JSON.parse(snapshot.value));
+ for(const [subject,cipher] of identities) await revokeApple(c,subject,cipher);
+ const deleted=await c.sql(`DELETE FROM users WHERE id=? AND (${options.authorization}) AND (${snapshotQuery})=? RETURNING id`,options.userID,...options.authorizationArgs(),options.userID,snapshot.value).first();
+ if(deleted) return 'deleted';
+ const current=await c.sql(`SELECT id FROM users WHERE id=? AND (${options.authorization})`,options.userID,...options.authorizationArgs()).first();
+ return current?'retry':'unauthorized';
+}
