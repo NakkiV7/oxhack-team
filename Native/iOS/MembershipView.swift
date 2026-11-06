@@ -55,7 +55,7 @@ struct MembershipView: View {
                             HStack {
                                 Text(offer.displayName).font(.headline)
                                 Spacer()
-                                Image(systemName: selection == offer.plan ? "checkmark.circle.fill" : "circle")
+                                Image(systemName: selectedOffer?.plan == offer.plan ? "checkmark.circle.fill" : "circle")
                             }
                             Text(offer.plan == .monthly ? "\(offer.displayPrice) per month" : "\(offer.displayPrice) one-time payment")
                                 .font(.title2.bold()).accessibilityIdentifier("membershipPrice-\(offer.plan.rawValue)")
@@ -66,11 +66,11 @@ struct MembershipView: View {
                             Text(offer.plan == .monthly ? "Renews automatically each month until cancelled in Apple subscription settings." : "No renewal. Lifetime does not cancel an existing monthly subscription.")
                                 .font(.footnote).foregroundStyle(.secondary)
                         }.frame(maxWidth: .infinity, alignment: .leading).padding(20)
-                            .background(selection == offer.plan ? Palette.blue.opacity(0.08) : Palette.surface, in: RoundedRectangle(cornerRadius: 22))
-                            .overlay { RoundedRectangle(cornerRadius: 22).stroke(selection == offer.plan ? Palette.blue : .clear, lineWidth: 2) }
-                    }.buttonStyle(.plain).accessibilityAddTraits(selection == offer.plan ? .isSelected : [])
+                            .background(selectedOffer?.plan == offer.plan ? Palette.blue.opacity(0.08) : Palette.surface, in: RoundedRectangle(cornerRadius: 22))
+                            .overlay { RoundedRectangle(cornerRadius: 22).stroke(selectedOffer?.plan == offer.plan ? Palette.blue : .clear, lineWidth: 2) }
+                    }.buttonStyle(.plain).accessibilityAddTraits(selectedOffer?.plan == offer.plan ? .isSelected : [])
                 }
-                if let offer = visibleOffers.first(where: { $0.plan == selection }) ?? visibleOffers.first {
+                if let offer = selectedOffer {
                     Button(purchaseTitle(offer)) { Task { await store.buy(offer.plan) } }
                         .buttonStyle(.borderedProminent).foregroundStyle(.white).controlSize(.large).frame(maxWidth: .infinity, minHeight: 48)
                         .disabled(store.accountID == nil || store.busy || !store.access.mayPurchase(offer.plan))
@@ -81,8 +81,11 @@ struct MembershipView: View {
                         .font(.subheadline).accessibilityIdentifier("membershipOverlapNotice")
                 }
                 VStack(spacing: 12) {
-                    if !store.hasAccess { Text(store.status).font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("membershipStoreStatus") }
-                    if let error = store.error { Text(error).font(.subheadline).foregroundStyle(Palette.red).accessibilityIdentifier("membershipError") }
+                    if !store.hasAccess && store.offers.isEmpty { Text(store.status).font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("membershipStoreStatus") }
+                    if let error = store.accessError { Text(error).font(.subheadline).foregroundStyle(Palette.red).accessibilityIdentifier("membershipError") }
+                    if let catalogueError = store.catalogueError, !store.hasAccess || showOtherPlans {
+                        Text(catalogueError).font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("membershipCatalogueStatus")
+                    }
                     if !store.hasAccess { Text("Apple confirms prices and trial eligibility. Redeem offer codes through Apple.")
                         .font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("membershipAppleConfirmation")
                     }
@@ -107,6 +110,7 @@ struct MembershipView: View {
         .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await store.load() } } }
         .offerCodeRedemption(isPresented: $redeemPresented) { result in Task { await store.completeRedemption(result) } }
     }
+    private var selectedOffer: MembershipOffer? { visibleOffers.first { $0.plan == selection } ?? visibleOffers.first }
     private var canChoosePlan: Bool { MembershipPlan.allCases.contains { store.access.mayPurchase($0) } }
     private var visibleOffers: [MembershipOffer] {
         guard !store.hasAccess || showOtherPlans else { return [] }

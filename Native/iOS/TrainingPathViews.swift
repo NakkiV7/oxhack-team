@@ -414,12 +414,12 @@ private struct PathStepSheet: View {
                         }
                     }
                     section("To earn it") {
-                        Text("3 sets of \(entry.goal) \(entry.unit == .reps ? "reps" : "seconds") across at least 2 training days. Manual and camera sets both count; sets with pain or discomfort don’t.")
+                        Text("3 sets of \(entry.goal) \(entry.unit == .reps ? "reps" : "seconds") across at least 2 training days. Manual and camera sets both count. Sets with pain or discomfort don’t.")
                             .font(.subheadline)
                         Text("\(min(3, step.qualifyingSets))/3 goal sets, \(min(2, step.trainingDays))/2 days, manual \(step.manualSets), camera \(step.cameraSets)")
                             .font(.subheadline.weight(.semibold)).foregroundStyle(stepTint(step))
                         if let target = node.practiceTarget, target.target < entry.goal {
-                            Text("Your practice target builds towards it; only sets of \(entry.goal) or more count.").font(.caption).foregroundStyle(.secondary)
+                            Text("Your practice target builds towards it. Only sets of \(entry.goal) or more count.").font(.caption).foregroundStyle(.secondary)
                         }
                     }
                     if !node.prerequisites.isEmpty {

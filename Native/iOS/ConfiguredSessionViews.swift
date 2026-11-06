@@ -259,19 +259,19 @@ struct ConfiguredRecoveryView: View {
                         }
                     }
                     if store.configured?.current.unit == .reps {
-                        Text("Optional: clean reps left").font(.subheadline)
+                        Text("Clean reps left, if you know").font(.subheadline)
                         HStack {
                             ForEach(0..<4) { count in
                                 Button(count == 3 ? "3+" : "\(count)") { reserve = count; feedback() }
                                     .padding(16).background(reserve == count ? Palette.blue : Palette.surface, in: RoundedRectangle(cornerRadius: 12))
                                     .foregroundStyle(reserve == count ? .white : Palette.ink)
                             }
-                            Button("Skip") { reserve = nil; feedback() }.font(.caption)
+                            Button("Skip") { reserve = nil; feedback() }.font(.caption).buttonStyle(.bordered)
                         }
                     }
                     Picker("Why did you stop?", selection: $reason) {
                         ForEach(StopReason.allCases, id: \.self) { Text($0.title).tag($0) }
-                    }.onChange(of: reason) { _, _ in feedback() }
+                    }.pickerStyle(.menu).padding(12).background(Palette.surface, in: RoundedRectangle(cornerRadius: 14)).overlay(RoundedRectangle(cornerRadius: 14).stroke(Palette.blue.opacity(0.25))).onChange(of: reason) { _, _ in feedback() }
                     PrimaryButton(title: isLast ? "Review session" : "Ready for next set", symbol: "arrow.right", action: store.next)
                         .accessibilityIdentifier("configured-next")
                     Text(continuationGuidance)
@@ -335,7 +335,7 @@ private struct ConfiguredFinishedView: View {
                             Text("\(ExerciseCatalog.find(set.exerciseID)?.name ?? set.exerciseID), Set \(set.number ?? 1)").font(.headline)
                             Text("\(set.seconds > 0 ? "\(Int(set.seconds)) sec" : "\(set.reps) \(set.reps == 1 ? "rep" : "reps")"), \(set.quantityOrigin == .mixed ? "camera + manual" : (set.source == .camera ? "camera observation" : (set.quantityOrigin == .activeTimer ? "active hold timer" : "manual self-report")))")
                                 .font(.subheadline)
-                            Text("\(set.reason.title) · Effort: \(set.effort.map { "\($0.rawValue) · \($0.title)" } ?? "Unrated")").font(.caption).foregroundStyle(.secondary)
+                            Text("\(set.reason.title). Effort \(set.effort.map { "\($0.rawValue), \($0.title)" } ?? "Unrated").").font(.caption).foregroundStyle(.secondary)
                             if let rest = set.restSecondsBefore { Text("\(Int(rest)) sec recorded rest before this set").font(.caption).foregroundStyle(.secondary) }
                         }
                         Divider()

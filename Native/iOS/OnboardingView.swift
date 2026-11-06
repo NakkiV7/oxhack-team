@@ -26,15 +26,16 @@ struct OnboardingView: View {
     @State private var previewAnchor = Date.now
     @AccessibilityFocusState private var focusedFamily: ExerciseFamily?
     @AppStorage("trainer.audioEnabled") private var audioEnabled = false
-    @State private var playback: RemoteVoicePlayback
+    @State private var previews: VoicePreviewCoordinator
+    private var playback: RemoteVoicePlayback { previews.preferences }
 
     init(profileStore: NativeProfileStore, healthStore: HealthDataStore? = nil,
          guardianAuthorization: (any NativeAccountAuthorization)? = nil, history: [SessionRecord] = [], programme: ProgrammeStore? = nil, onComplete: @escaping () -> Void = {}) {
         self.profileStore = profileStore; self.healthStore = healthStore ?? HealthDataStore()
         self.guardianAuthorization = guardianAuthorization; self.history = history; self.onComplete = onComplete; self.programme = programme
         _audioEnabled = AppStorage(wrappedValue: false, "trainer.audioEnabled", store: profileStore.preferencesDefaults)
-        _playback = State(initialValue: RemoteVoicePlayback(offlineOnly: true, defaults: profileStore.preferencesDefaults,
-            gentleOnly: (profileStore.profile?.programmePreferences?.ageContext?.ageYears ?? 0) < 18))
+        _previews = State(initialValue: VoicePreviewCoordinator(preferences: RemoteVoicePlayback(offlineOnly: true, defaults: profileStore.preferencesDefaults,
+            gentleOnly: (profileStore.profile?.programmePreferences?.ageContext?.ageYears ?? 0) < 18), permitsSelection: { profileStore.permitsPolicyCallbacks }))
         let profile = profileStore.profile
         let preferences = profile?.effectiveProgrammePreferences
         _name = State(initialValue: profile?.name ?? "")
@@ -87,6 +88,8 @@ struct OnboardingView: View {
                     MeasurementsSettingsView(measurements: measurements, isIntroduction: true, profileStore: profileStore) { measurements = $0; error = nil }
                 }
         }.interactiveDismissDisabled(!AccountPolicy.setupComplete(profile: profileStore.profile))
+            .onDisappear { previews.stop() }
+            .onChange(of: stage) { _, _ in previews.stop() }
             .environment(\.profileWebsiteAccess, ProfileWebsiteAccess(profile: profileStore, guardian: guardianAuthorization))
     }
     private var bodyProfile: some View {
@@ -184,6 +187,7 @@ struct OnboardingView: View {
     }
     private var coach: some View {
         VStack(alignment: .leading, spacing: 20) {
+            VoicePreviewControls(previews: previews)
             TrainerSelection(onSelect: { voice in preview(voice, tone: adult ? playback.tone : .gentle) },
                 gentleOnly: !adult, onToneSelect: { tone in preview(playback.preference, tone: tone) }, defaults: profileStore.preferencesDefaults)
             Toggle("Voice feedback during workouts", isOn: $audioEnabled)
@@ -211,8 +215,7 @@ struct OnboardingView: View {
         return try ProgrammePlanner.makeWeek(profile: profile, history: history, start: previewAnchor)
     }
     private func preview(_ voice: VoiceCoachPreference, tone: TrainerTone) {
-        do { try playback.previewSelection(voice, tone: tone); error = nil }
-        catch { self.error = "A recorded preview is not available for this voice yet. Choose Maya or Leo to hear natural coaching." }
+        previews.select(voice, tone: tone)
     }
     private func preferences() throws -> ProgrammePreferences {
         try ProgrammePreferences(goals: goals, weekdays: weekdays, minutesPerSession: minutes, preferredLocalHour: hour,

@@ -7,6 +7,40 @@ final class RemoteVoicePlaybackTests: XCTestCase {
     private let baseURL = URL(string: "http://127.0.0.1:8788")!
     private let wall = Date(timeIntervalSince1970: 1_792_915_200)
 
+    func testGogginsOrdinaryCoachingNeverMasqueradesAsSystemSpeech() throws {
+        let local = SilentLocalVoice()
+        var recordings: [Data] = []
+        let playback = RemoteVoicePlayback(local: local, offlineOnly: true,
+            defaults: UserDefaults(suiteName: UUID().uuidString)!,
+            makeAudio: { recordings.append($0); return SilentRemoteAudio(onPlay: {}) }, uptime: { 2 })
+        try playback.select(.david)
+        playback.speak(cue(kind: .coaching(.pacing), reason: .steadyRhythm))
+        XCTAssertTrue(local.spoken.isEmpty, "Goggins general encouragement must use an actual recording")
+        XCTAssertEqual(recordings.count, 1)
+        playback.stop()
+    }
+
+    func testUnsupportedGogginsTrackingDoesNotClaimAnAudiblePromptFinished() throws {
+        let playback = RemoteVoicePlayback(local: SilentLocalVoice(), offlineOnly: true, defaults: UserDefaults(suiteName: UUID().uuidString)!, uptime: { 2 })
+        try playback.select(.david)
+        let controller = VoiceCuePlaybackController(playback: playback, uptime: { 2 })
+        let tracking = cue(reason: .tracking)
+        controller.update(context: .init(sessionID: tracking.sessionID, generation: tracking.generation, phase: .active), event: tracking, enabled: true, now: 2)
+        XCTAssertNil(controller.completedTrackingPrompt, "A missing recording is not an audible completion")
+        XCTAssertFalse(controller.isSpeaking)
+    }
+
+    func testRouteChangeDeliberatelyCancelsExplicitPreview() async throws {
+        var outputs: [SilentRemoteAudio] = []
+        let playback = RemoteVoicePlayback(offlineOnly: true, defaults: UserDefaults(suiteName: UUID().uuidString)!,
+            makeAudio: { _ in let output = SilentRemoteAudio(onPlay: {}); outputs.append(output); return output }, uptime: { 2 })
+        try playback.previewSelection(.maya, tone: .gentle)
+        NotificationCenter.default.post(name: AVAudioSession.routeChangeNotification, object: nil)
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertEqual(outputs.first?.stops, 1, "Headphone removal must stop an explicit preview")
+        playback.stop()
+    }
+
     func testExplicitCoachAndTonePreviewsUseNaturalBankWithoutSystemImitation() throws {
         let defaults = UserDefaults(suiteName: UUID().uuidString)!
         let local = SilentLocalVoice()

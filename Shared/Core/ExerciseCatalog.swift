@@ -30,7 +30,7 @@ public struct ExerciseEntry: Identifiable, Sendable {
     public let support: String?
     public let tracking: Exercise?
     public var levelName: String { "\(family.title) \(["I", "II", "III", "IV", "V"][min(4, max(0, level - 1))])" }
-    public var goalText: String { "3 × \(goal) \(unit == .reps ? "reps" : "sec") · 2 days" }
+    public var goalText: String { "3 × \(goal) \(unit == .reps ? "reps" : "sec") across 2 days" }
     public var art: String {
         ["widePushup", "diamondPushup", "wallSit", "calfRaise", "birdDog", "seatedKneeExtension"].contains(id)
             ? "stick-\(id)" : (tracking?.art ?? id)

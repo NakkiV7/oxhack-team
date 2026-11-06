@@ -36,7 +36,9 @@ public protocol MembershipClient: AnyObject {
 public final class MembershipCoordinator {
     public private(set) var offers: [MembershipOffer] = []
     public private(set) var busy = false
-    public var error: String? { claimError ?? operationError }
+    public var error: String? { accessError ?? catalogueError }
+    public var accessError: String? { claimError ?? operationError }
+    public private(set) var catalogueError: String?
     private var operationError: String?
     private var claimError: String?
     public private(set) var status = "Checking App Store availability…"
@@ -110,11 +112,11 @@ public final class MembershipCoordinator {
         do {
             let loaded = try await client.products()
             guard generation == accountGeneration else { return }
-            offers = loaded
+            offers = loaded; catalogueError = nil
             status = offers.isEmpty ? "App Store plans are unavailable right now." : "Prices and eligible trials are supplied by the App Store."
         } catch {
             guard generation == accountGeneration else { return }
-            offers = []; self.operationError = "App Store plans could not be loaded. Check your connection and try again."
+            offers = []; self.catalogueError = "App Store plans could not be loaded. Check your connection and try again."
             status = "App Store plans are unavailable right now."
         }
     }

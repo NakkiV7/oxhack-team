@@ -237,7 +237,7 @@ public struct ReportSignal: Sendable {
     public var gapCount: Int { samples.last?.segment ?? 0 }
 
     init(record: SessionRecord, keyPath: KeyPath<WatchTelemetry, SensorReading?>, validRange: ClosedRange<Double>) {
-        sourceLabel = keyPath == \WatchTelemetry.heartRate ? "Apple Watch · HealthKit" : "Apple Watch · Core Motion"
+        sourceLabel = keyPath == \WatchTelemetry.heartRate ? "Apple Watch readings from HealthKit" : "Apple Watch motion readings"
         let readings = record.telemetry.filter { $0.sessionID == record.id }
             .sorted { $0.sentAt < $1.sentAt }.compactMap { message -> SensorReading? in
             guard let reading = message[keyPath: keyPath], reading.value.isFinite,

@@ -69,11 +69,11 @@ private struct WorkoutTimeCard: View {
                 AnalyticsValue(title: "Rest", value: analysis.restSeconds.map(clockText) ?? "Not recorded")
             }
             if let ratio = analysis.workRestRatio {
-                Text("Work / rest: \(ratio, format: .number.precision(.fractionLength(2))) : 1")
+                Text("Work to rest ratio of \(ratio, format: .number.precision(.fractionLength(2))) to 1")
                     .font(.subheadline).monospacedDigit()
             }
             if let elapsed = analysis.elapsedSeconds {
-                Text("\(clockText(elapsed)) elapsed · \(clockText(analysis.pausedSeconds)) paused")
+                Text("\(clockText(elapsed)) elapsed, including \(clockText(analysis.pausedSeconds)) paused.")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 Text("Session start and finish times weren’t recorded.").font(.caption).foregroundStyle(.secondary)
@@ -107,7 +107,7 @@ private struct WorkoutHeartCard: View {
     let configuration: HeartRateZoneConfiguration?
     var body: some View {
         AnalyticsCard(title: "Watch heart rate", symbol: "heart") {
-            Text("Apple Watch · HealthKit · this session").font(.caption).foregroundStyle(.secondary)
+            Text("Apple Watch readings from HealthKit for this session.").font(.caption).foregroundStyle(.secondary)
             if heart.samples.isEmpty {
                 Text("No Watch heart-rate readings recorded.").font(.subheadline).foregroundStyle(.secondary)
             } else {
@@ -120,13 +120,13 @@ private struct WorkoutHeartCard: View {
                 AnalyticsSignalChart(samples: heart.samples, unit: "bpm", color: Palette.red)
                 VStack(alignment: .leading, spacing: 7) {
                     Text("Observation coverage").font(.subheadline.weight(.semibold))
-                    Text("\(clockText(heart.observedSeconds)) observed of \(clockText(heart.eligibleSeconds)) · \(heart.coverageBasis)")
+                    Text("\(clockText(heart.observedSeconds)) observed of \(clockText(heart.eligibleSeconds)). \(heart.coverageBasis)")
                     if let fraction = heart.coverageFraction {
                         Text(fraction, format: .percent.precision(.fractionLength(0)))
                     } else {
                         Text("Coverage cannot be estimated from a single reading.")
                     }
-                    Text("\(heart.samples.count) readings · \(heart.gapCount) gaps")
+                    Text("\(heart.samples.count) readings with \(heart.gapCount) gaps.")
                 }.font(.caption).foregroundStyle(.secondary)
                 DisclosureGroup("About heart-rate coverage") {
                     Text("Nearby readings estimate observed time. Averages weight intervals of at most 12 seconds, excluding known pauses. Longer gaps remain unknown.")
@@ -146,17 +146,17 @@ private struct WorkoutHeartCard: View {
                     ForEach(heart.zones) { zone in
                         ViewThatFits(in: .horizontal) {
                             HStack {
-                                Text("Band \(zone.id): \(Int(zone.lowerBPM.rounded()))–\(Int(zone.upperBPM.rounded())) bpm")
+                                Text("Band \(zone.id) covers \(Int(zone.lowerBPM.rounded()))–\(Int(zone.upperBPM.rounded())) bpm")
                                 Spacer()
                                 Text(clockText(zone.seconds)).monospacedDigit()
                             }.fixedSize(horizontal: true, vertical: false)
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Band \(zone.id): \(Int(zone.lowerBPM.rounded()))–\(Int(zone.upperBPM.rounded())) bpm")
+                                Text("Band \(zone.id) covers \(Int(zone.lowerBPM.rounded()))–\(Int(zone.upperBPM.rounded())) bpm")
                                 Text(clockText(zone.seconds)).monospacedDigit()
                             }
                         }.font(.caption)
                     }
-                    Text("Below 50%: \(clockText(heart.belowZoneSeconds)) · Above configured maximum: \(clockText(heart.aboveMaximumSeconds))")
+                    Text("\(clockText(heart.belowZoneSeconds)) below 50%. \(clockText(heart.aboveMaximumSeconds)) above your configured maximum.")
                         .font(.caption).foregroundStyle(.secondary)
                 } else {
                     Text("Not enough nearby readings to estimate time in bands.").font(.caption).foregroundStyle(.secondary)
@@ -189,7 +189,7 @@ private struct WorkoutPaceCard: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 if let variation = pace.variabilityPercent {
-                    Text("Rep-duration variation: \(variation.formatted(.number.precision(.fractionLength(1))))%")
+                    Text("Rep-duration variation of \(variation.formatted(.number.precision(.fractionLength(1))))%")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Text("\(pace.timedReps) of \(pace.recordedCameraReps) camera reps have complete timings")
@@ -209,7 +209,7 @@ private struct WorkoutMotionCard: View {
     let motion: MotionAnalysis
     var body: some View {
         AnalyticsCard(title: "Wrist movement", symbol: "waveform.path") {
-            Text("Apple Watch · Core Motion").font(.caption).foregroundStyle(.secondary)
+            Text("Wrist movement recorded by Apple Watch.").font(.caption).foregroundStyle(.secondary)
             if let rms = motion.rmsAccelerationG, let peak = motion.peakAccelerationG {
                 AnalyticsValueGrid {
                     AnalyticsValue(title: "RMS acceleration", value: rms.formatted(.number.precision(.fractionLength(2))) + " g")
@@ -220,10 +220,10 @@ private struct WorkoutMotionCard: View {
                 Text("Sampled wrist acceleration").font(.subheadline.weight(.medium))
                 AnalyticsSignalChart(samples: motion.accelerationSamples, unit: "g")
                 if let peak = motion.peakAccelerationG {
-                    Text("Highest sampled reading: \(peak.formatted(.number.precision(.fractionLength(2)))) g")
+                    Text("Highest sampled reading of \(peak.formatted(.number.precision(.fractionLength(2)))) g")
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                Text("Individual Watch readings are available; a motion-window summary wasn’t recorded.")
+                Text("Individual Watch readings are available. A motion-window summary wasn’t recorded.")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 Text("No Watch acceleration readings recorded.").font(.subheadline).foregroundStyle(.secondary)
@@ -238,10 +238,10 @@ private struct WorkoutMotionCard: View {
                 Text("No Watch rotation readings recorded.").font(.subheadline).foregroundStyle(.secondary)
             }
             if motion.windowCount > 0 {
-                Text("\(motion.windowCount) motion windows · \(motion.sampleCount) samples · \(clockText(motion.observedSeconds)) observed")
+                Text("\(motion.windowCount) motion windows with \(motion.sampleCount) samples across \(clockText(motion.observedSeconds)).")
                     .font(.caption).foregroundStyle(.secondary)
                 if let variation = motion.variationPercent {
-                    Text("Window RMS variation: \(variation.formatted(.number.precision(.fractionLength(1))))%")
+                    Text("Window RMS variation of \(variation.formatted(.number.precision(.fractionLength(1))))%")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
@@ -291,7 +291,7 @@ struct TrainingOverviewSection: View {
                     }.chartXAxis {
                         AxisMarks(values: .stride(by: .day)) { _ in AxisValueLabel(format: .dateTime.weekday(.narrow)) }
                     }.chartYAxisLabel("sets").frame(height: 135)
-                    Text("This calendar week · saved sessions, excluding video replays. Unlogged activity isn’t included.")
+                    Text("Saved sessions from this calendar week exclude video replays and unlogged activity.")
                         .font(.caption).foregroundStyle(.secondary)
                 } else {
                     Text("Saved history is unavailable. Try again to see your totals.").font(.subheadline).foregroundStyle(.secondary)
@@ -403,7 +403,7 @@ private struct HealthHistoryRow: View {
                     readingValue
                 }
             }
-            Text("\(observation.date.formatted(date: .abbreviated, time: .shortened)) · \(observation.source)")
+            Text("\(observation.date.formatted(date: .abbreviated, time: .shortened)). \(observation.source)")
                 .font(.caption).foregroundStyle(.secondary)
         }.padding(.vertical, 8).accessibilityElement(children: .combine)
     }

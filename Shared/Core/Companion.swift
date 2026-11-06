@@ -71,9 +71,9 @@ public struct CompanionSnapshot: Codable, Sendable {
     public var manualRepInstruction: String? {
         guard configured == nil, source == .manual else { return nil }
         switch phase {
-        case .active: return "Manual · iPhone"
-        case .paused: return "Manual · Paused"
-        case .rest: return "Manual · Rest"
+        case .active: return "Enter reps on iPhone"
+        case .paused: return "Manual entry is paused"
+        case .rest: return "Rest after manual entry"
         default: return nil
         }
     }

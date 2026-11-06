@@ -21,21 +21,21 @@ struct SkillsView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 22) {
-                        ScreenHeading(title: "One journey, every movement", subtitle: "53 skills · Six chapters · Your own pace")
+                        ScreenHeading(title: "One journey, every movement", subtitle: "Explore 53 skills across six chapters at your own pace.")
                         HStack {
                             Text("\(progress?.nodes.filter { $0.state == .earned }.count ?? 0) earned").font(.subheadline.weight(.semibold))
                             Spacer()
-                            Button("Jump to current") {
+                            Button("Jump to current", systemImage: "location.north.line") {
                                 selectedChapter = nil; expanded = false
                                 withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) { proxy.scrollTo(currentChapter.id, anchor: .top) }
-                            }.font(.subheadline.weight(.semibold)).accessibilityIdentifier("skills-jump-current")
+                            }.font(.subheadline.weight(.semibold)).buttonStyle(.bordered).accessibilityIdentifier("skills-jump-current")
                         }
                         ForEach(SkillCurriculum.chapters) { chapter in
                             chapterSection(chapter).id(chapter.id)
                         }
                         if let quests = store.quests { QuestCardsView(store: store, quests: quests) }
                         TrainingRewardWidget(store: store, profile: profile)
-                        NavigationLink("Browse every exercise") { ExerciseLibraryView(store: store) }
+                        NavigationLink { ExerciseLibraryView(store: store) } label: { Label("Browse every exercise", systemImage: "square.grid.2x2") }.buttonStyle(.bordered)
                             .font(.subheadline.weight(.semibold))
                         Text("Chapters help you explore. Progress in one movement family never blocks another. Placement is self-reported and earns no XP.")
                             .font(.caption).foregroundStyle(.secondary)
@@ -126,8 +126,8 @@ struct SkillsView: View {
                     .foregroundStyle(tint).background(.white, in: Circle()).accessibilityHidden(true)
             }.accessibilityHidden(true)
             Text(entry.name).font(.headline).foregroundStyle(Palette.ink).multilineTextAlignment(.center)
-            Text("Level \(entry.level) · \(stateLabel(node))").font(.caption.weight(.semibold)).foregroundStyle(tint)
-            if focused { Text("Explore this movement").font(.caption.weight(.semibold)).foregroundStyle(Palette.blue) }
+            Text("Level \(entry.level). \(stateLabel(node))").font(.caption.weight(.semibold)).foregroundStyle(tint)
+            if focused { Label("Explore this movement", systemImage: "arrow.right").font(.caption.weight(.semibold)).foregroundStyle(Palette.blue).padding(.horizontal, 14).padding(.vertical, 10).background(Palette.blue.opacity(0.08), in: Capsule()) }
         }.padding(.vertical, 10).frame(maxWidth: .infinity).contentShape(Rectangle())
     }
     private func stateLabel(_ node: SkillCurriculum.Node) -> String {
@@ -156,13 +156,13 @@ private struct CurriculumPracticeSheet: View {
                             StickFigureArtwork(exerciseID: entry.id).frame(height: 140).frame(maxWidth: .infinity).accessibilityHidden(true)
                             Text(entry.instruction).font(.subheadline)
                             if age >= 5 && node.isUsable {
-                                Label("One comfortable set · \(target) \(entry.unit == .reps ? "reps" : "seconds")", systemImage: "figure.strengthtraining.traditional").font(.headline)
+                                Label("One comfortable set of \(target) \(entry.unit == .reps ? "reps" : "seconds")", systemImage: "figure.strengthtraining.traditional").font(.headline)
                             }
                             if age >= 18 {
                                 Text("Earn this skill with three sets of \(entry.goal) \(entry.unit == .reps ? "reps" : "seconds") over two days. Manual and camera practice both count.").font(.subheadline)
-                                Text("\(node.qualifyingSets) qualifying sets · \(node.trainingDays) days · \(node.manualSets) manual · \(node.cameraSets) camera").font(.caption).foregroundStyle(.secondary)
+                                Text("\(node.qualifyingSets) qualifying sets across \(node.trainingDays) days. \(node.manualSets) manual and \(node.cameraSets) camera sets.").font(.caption).foregroundStyle(.secondary)
                             } else {
-                                Text("Comfortable practice is progress. Your daily practice quest celebrates your own age-appropriate target; adult benchmarks stay separate.").font(.subheadline)
+                                Text("Comfortable practice is progress. Your daily practice quest celebrates your own age-appropriate target. Adult benchmarks stay separate.").font(.subheadline)
                             }
                             if let support = PathSurvey.requiredEquipment(for: entry) { Label(support, systemImage: "checkmark.shield").font(.subheadline) }
                             if !node.isUsable { Text("This movement is outside your current age, support or movement preferences. Choose a suitable movement from your programme.").font(.subheadline) }

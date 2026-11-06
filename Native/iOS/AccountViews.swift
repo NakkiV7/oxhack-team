@@ -458,13 +458,14 @@ struct FamilyMovementView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
+                    ScreenHeading(title: "Family movement")
                     ProgrammeTodayCard(store: workspace.training, profileStore: workspace.profile, openSetup: {}, openLibrary: {})
                     if let quests = workspace.training.quests { QuestCardsView(store: workspace.training, quests: quests) }
                     TrainingRewardWidget(store: workspace.training, profile: workspace.profile.profile)
                     WebsiteLink(title: "NHS activity guidance for under fives", url: URL(string: "https://www.nhs.uk/live-well/exercise/physical-activity-guidelines-children-under-five-years/")!)
                 }.padding()
 
-            }.navigationTitle("Family movement")
+            }.navigationTitle("Family").navigationBarTitleDisplayMode(.inline)
                 .environment(\.profileWebsiteAccess, ProfileWebsiteAccess(profile: workspace.profile, guardian: authorization))
         }
     }

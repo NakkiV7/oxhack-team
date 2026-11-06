@@ -93,7 +93,7 @@ struct ProgrammeWithdrawReply: Decodable { let withdrawn: Bool; let revision: In
         let fresh = saved.slotState == .absentWithUnknownRevision
         try persist(Saved(profileSlot: fresh ? UUID() : profileSlot, consented: true, serverRevision: fresh ? 0 : serverRevision,
             withdrawalPending: false, policyAge: capturedAge, slotState: fresh ? .fresh : saved.slotState))
-        message = "Plan sync enabled for this adult profile. Choose Save to upload its configuration."
+        message = "Cloud saving is on. Choose Save this plan to keep a copy in your account."
     }
     func upload() async {
         guard valid, consented, !withdrawalPending, !busy, !hasPendingWrite, let local = profile.profile else { return }

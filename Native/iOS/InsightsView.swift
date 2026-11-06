@@ -211,15 +211,55 @@ struct DayDetail: View {
                         }
                     }
                 }
-                ForEach(records.filter { !$0.sets.isEmpty || !$0.loggedSets.isEmpty }) { record in
-                    NavigationLink { SessionReportView(record: record, profile: profile, history: history, zones: zones) } label: {
-                        Label("Open the \(record.date.formatted(date: .omitted, time: .shortened)) \(sample ? "sample" : "session") report", systemImage: "doc.text")
-                            .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, alignment: .leading)
-                    }.foregroundStyle(Palette.blue)
-                }
+            }
+            ForEach(records.filter { !$0.sets.isEmpty || !$0.loggedSets.isEmpty }) { record in
+                SessionHistoryLink(record: record, profile: profile, history: history, zones: zones)
             }
         }.padding(18).background(.white, in: RoundedRectangle(cornerRadius: 22))
             .overlay { RoundedRectangle(cornerRadius: 22).stroke(Palette.surface, lineWidth: 2) }
+    }
+}
+
+
+private struct SessionHistoryLink: View {
+    let record: SessionRecord
+    let profile: LocalProfile?
+    let history: [SessionRecord]
+    let zones: HeartRateZoneConfiguration?
+    private var report: WorkoutReport { WorkoutReport(record: record) }
+    private var time: String { record.date.formatted(.dateTime.hour().minute().second()) }
+    private var quantities: String {
+        let practice = report.sets.filter { $0.source != .video }
+        let video = report.sets.filter { $0.source == .video }
+        func summary(_ sets: [ReportSet], reviewed: Bool) -> String {
+            let reps = sets.reduce(0) { $0 + $1.reps }, seconds = sets.reduce(0) { $0 + $1.holdSeconds }
+            var values = ["\(sets.count) \(sets.count == 1 ? "set" : "sets")"]
+            if reps > 0 { values.append("\(reps) \(reviewed ? "reviewed" : "recorded") \(reps == 1 ? "rep" : "reps")") }
+            if seconds > 0 { values.append("\(Int(seconds)) \(reviewed ? "reviewed seconds" : "seconds held")") }
+            return values.joined(separator: " and ")
+        }
+        return [practice.isEmpty ? nil : summary(practice, reviewed: false), video.isEmpty ? nil : summary(video, reviewed: true)].compactMap { $0 }.joined(separator: ". ")
+    }
+    private var sources: String {
+        Array(Set(report.sets.map { $0.source == .video ? "Video review" : $0.sourceLabel })).sorted().joined(separator: ", ")
+    }
+    var body: some View {
+        NavigationLink { SessionReportView(record: record, profile: profile, history: history, zones: zones) } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "doc.text").foregroundStyle(Palette.blue)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(time).font(.headline)
+                    Text(Array(Set(report.sets.map(\.exerciseName))).sorted().joined(separator: ", ")).font(.subheadline)
+                    Text(quantities).font(.caption).foregroundStyle(.secondary)
+                    Text(sources).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+            }.frame(maxWidth: .infinity, alignment: .leading).padding(14)
+                .background(Palette.surface, in: RoundedRectangle(cornerRadius: 16))
+        }.buttonStyle(SpottrPressStyle()).accessibilityIdentifier("session-report-\(record.id)")
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("View session report from \(time). \(quantities). \(sources).")
     }
 }
 
@@ -254,7 +294,7 @@ private struct ReportsSection: View {
         let records = store.history.filter { !$0.sets.isEmpty || !$0.loggedSets.isEmpty }.sorted { $0.date > $1.date }
         VStack(alignment: .leading, spacing: 10) {
             if records.isEmpty {
-                Empty(symbol: "doc.text", title: "No session reports yet", detail: "Each workout you finish becomes a report: sets, tempo, Watch readings and coaching.")
+                Empty(symbol: "doc.text", title: "No session reports yet", detail: "Each workout you finish creates a report of your recorded work.")
             }
             ForEach(records) { record in
                 let report = WorkoutReport(record: record)
@@ -365,7 +405,7 @@ private struct ResearchSection: View {
     var body: some View {
         let registry = try? CoachGuidanceRegistry.bundled()
         VStack(alignment: .leading, spacing: 12) {
-            Text("Reviewed guidance the coach can cite. General education for the population each source names; it is not individual medical advice.")
+            Text("Reviewed guidance the coach can cite. This is general education for the population each source names. It is not individual medical advice.")
                 .font(.subheadline).foregroundStyle(.secondary)
             if let registry {
                 ForEach(registry.sources) { source in

@@ -45,7 +45,7 @@ struct SpottrRoot: View {
                         .tabItem { Label("Skills", systemImage: "point.3.connected.trianglepath.dotted") }.tag("skills")
                     InsightsView(store: store, profile: profileStore.profile, healthStore: healthStore)
                         .tabItem { Label("Insights", systemImage: "chart.xyaxis.line") }.tag("insights")
-                    OfflineCoachView(store: store, profile: profileStore.profile)
+                    OfflineCoachView(store: store, profileStore: profileStore, openProgress: { selectedTab = "insights" })
                         .tabItem { Label("Coach", systemImage: "bubble") }.tag("coach")
                 }
             }
@@ -95,7 +95,7 @@ struct TodayView: View {
                     Button(action: openPath) {
                         Label("Explore your next skill", systemImage: "point.3.connected.trianglepath.dotted")
                             .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, alignment: .leading)
-                    }.buttonStyle(.plain).foregroundStyle(Palette.blue).accessibilityIdentifier("first-session-path")
+                    }.buttonStyle(.bordered).foregroundStyle(Palette.blue).accessibilityIdentifier("first-session-path")
                     if let warning = store.archiveDataWarning {
                         VStack(alignment: .leading, spacing: 10) {
                             Label("Watch sync needs attention", systemImage: "applewatch").font(.subheadline.weight(.semibold))
@@ -177,7 +177,7 @@ struct TodayView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 7) {
                             Text(report.category.rawValue).font(.headline)
-                            Text("\(report.setCount) sets · \(report.reps) reps").font(.subheadline)
+                            Text("\(report.setCount) sets and \(report.reps) reps").font(.subheadline)
                             Text(record.date.formatted(date: .abbreviated, time: .shortened)).font(.caption).foregroundStyle(.secondary)
                         }
                         Spacer()

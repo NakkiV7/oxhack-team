@@ -45,7 +45,7 @@ struct ProgrammeTodayCard: View {
                             .font(.subheadline)
                         Text("Play ideas, with no formal sets, camera test or workout target.").font(.caption).foregroundStyle(.secondary)
                     } else if let plan = day.plan {
-                        Text("\(plan.items.count) movements · \(plan.items.reduce(0) { $0 + $1.sets }) planned sets")
+                        Text("\(plan.items.count) movements and \(plan.items.reduce(0) { $0 + $1.sets }) planned sets.")
                             .font(.subheadline).foregroundStyle(.secondary)
                         ForEach(plan.items) { item in
                             HStack(alignment: .center, spacing: 12) {
@@ -53,7 +53,7 @@ struct ProgrammeTodayCard: View {
                                     ExerciseArtwork(entry: entry).frame(width: 58, height: 70).accessibilityHidden(true)
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(entry.name).font(.subheadline.weight(.semibold))
-                                        Text("\(item.sets) × \(item.target) \(item.unit.rawValue) · \(item.restSeconds)s rest")
+                                        Text("\(item.sets) × \(item.target) \(item.unit.rawValue), with \(item.restSeconds)s rest.")
                                             .font(.caption).foregroundStyle(.secondary)
                                     }
                                 }
@@ -61,7 +61,7 @@ struct ProgrammeTodayCard: View {
                             }.accessibilityElement(children: .combine)
                         }
                         if let actual = progress.first(where: { $0.id == day.id }), actual.recordedSets > 0 {
-                            Text("\(actual.recordedSets) of \(actual.plannedSets) planned sets recorded · \(actual.recordedReps) actual reps")
+                            Text("\(actual.recordedSets) of \(actual.plannedSets) planned sets recorded, with \(actual.recordedReps) actual reps.")
                                 .font(.subheadline.weight(.medium)).accessibilityIdentifier("programme-actual-progress")
                         }
                     } else {
@@ -93,7 +93,7 @@ struct ProgrammeTodayCard: View {
                 PrimaryButton(title: "Complete your training profile", action: openSetup)
             }
             if profileStore.profile?.programmePreferences?.ageContext?.allowsCloudPlanSync == true, let sync = store.programme?.sync {
-                NavigationLink("Optional programme sync") { ProgrammeSyncView(sync: sync) }.font(.subheadline)
+                NavigationLink { ProgrammeSyncView(sync: sync) } label: { Label("Save your programme", systemImage: "icloud") }.buttonStyle(.bordered).font(.subheadline)
             }
             if let error = error ?? store.programme?.error { Text(error).font(.caption).foregroundStyle(Palette.red) }
             if (profileStore.profile?.programmePreferences?.ageContext?.ageYears ?? 0) >= 5 {

@@ -104,18 +104,18 @@ struct TrainingRewardWidget: View {
                     VStack(alignment: .leading, spacing: 12) { numbers(summary) }
                 }
                 if let next = nextWindow {
-                    Label("Next bonus window: \(next.start.formatted(date: .abbreviated, time: .shortened))", systemImage: "sparkles")
+                    Label("Your next bonus window begins \(next.start.formatted(date: .abbreviated, time: .shortened)).", systemImage: "sparkles")
                         .font(.subheadline).fixedSize(horizontal: false, vertical: true)
                 } else { Text("No bonus window selected").font(.subheadline).foregroundStyle(.secondary) }
-                Button("Manage rewards & reminders") { manage = true }.font(.subheadline.weight(.semibold))
+                Button("Manage rewards & reminders", systemImage: "slider.horizontal.3") { manage = true }.font(.subheadline.weight(.semibold)).buttonStyle(.bordered)
                     .accessibilityIdentifier("manage-training-rewards")
             } else {
-                Text("\(summary.actualTrainingDays) days of recorded practice. Small comfortable steps count; rest whenever you need it.").font(.subheadline)
+                Text("\(summary.actualTrainingDays) days of recorded practice. Small comfortable steps count. Rest whenever you need it.").font(.subheadline)
             }
             if store.quests != nil {
-                Button("Review check-ins") { checkIns = true }.font(.subheadline.weight(.semibold)).accessibilityIdentifier("quest-checkin-history")
+                Button("Review check-ins", systemImage: "checklist") { checkIns = true }.font(.subheadline.weight(.semibold)).buttonStyle(.bordered).accessibilityIdentifier("quest-checkin-history")
             }
-            Text("Rewards reflect recorded practice and check-ins, not physical ability.").font(.caption).foregroundStyle(.secondary)
+            DisclosureGroup("How progress is recorded") { Text("Your recorded practice and check-ins earn progress. Placement helps you choose a starting point and earns no XP.").font(.caption).foregroundStyle(.secondary) }.font(.subheadline)
         }.padding(20).background(Palette.blue.opacity(0.055), in: RoundedRectangle(cornerRadius: 22))
             .accessibilityIdentifier("training-rewards-widget")
             .sheet(isPresented: $manage) { TrainingRewardsSettingsView(store: store.rewards, reminders: store.rewardReminders, programme: store.programme) }

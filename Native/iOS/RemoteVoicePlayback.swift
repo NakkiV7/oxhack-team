@@ -1,6 +1,7 @@
 import AVFoundation
 import Foundation
 import Observation
+import UIKit
 
 enum VoiceCoachPreference: String, CaseIterable, Identifiable, Sendable {
     case local, david, arnold, maya, leo
@@ -134,6 +135,8 @@ final class RemoteVoicePlayback: VoicePlayback {
     var onFinish: ((UUID) -> Void)?
     var onInterrupt: (() -> Void)?
     @ObservationIgnored private var interruptionObserver: NSObjectProtocol?
+    @ObservationIgnored private var previewObservers: [NSObjectProtocol] = []
+    private var explicitPreview = false
     private(set) var preference: VoiceCoachPreference = .arnold
     private(set) var configuredVoices: [VoiceCoachPreference] = [.arnold]
     private(set) var errorMessage: String?
@@ -177,6 +180,14 @@ final class RemoteVoicePlayback: VoicePlayback {
         if previewPlayback != nil { preference = .arnold; configuredVoices = [.arnold] }
         self.local.onFinish = { [weak self] id in self?.finishedPlayback(id) }
         self.arnoldPlayback.onFinish = { [weak self] id in self?.finishedPlayback(id) }
+        for name in [AVAudioSession.routeChangeNotification, UIApplication.didEnterBackgroundNotification] {
+            previewObservers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    guard self?.explicitPreview == true else { return }
+                    self?.stop()
+                }
+            })
+        }
         interruptionObserver = NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification,
             object: nil, queue: .main) { [weak self] notification in
             guard (notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt) == AVAudioSession.InterruptionType.began.rawValue else { return }
@@ -186,7 +197,10 @@ final class RemoteVoicePlayback: VoicePlayback {
             }
         }
     }
-    deinit { if let interruptionObserver { NotificationCenter.default.removeObserver(interruptionObserver) } }
+    deinit {
+        if let interruptionObserver { NotificationCenter.default.removeObserver(interruptionObserver) }
+        previewObservers.forEach(NotificationCenter.default.removeObserver)
+    }
 
     func refreshVoices() async throws {
         guard previewPlayback == nil, !offlineOnly else { return }
@@ -204,26 +218,45 @@ final class RemoteVoicePlayback: VoicePlayback {
         stop(); onInterrupt?(); self.preference = preference; errorMessage = nil
         if offlineOnly { defaults.set(preference.rawValue, forKey: "trainer.voice") }
     }
+    func supportsAudio(for event: CoachingEvent?) -> Bool {
+        guard let event else { return false }
+        return !offlineOnly || preference != .david || (event.decision.priority == .pacing && event.decision.reason == .steadyRhythm)
+    }
+    func configureSelection(_ preference: VoiceCoachPreference, tone: TrainerTone) throws {
+        guard offlineOnly, configuredVoices.contains(preference) else { throw RemoteVoiceError.unavailable }
+        self.preference = preference
+        defaults.set(preference.rawValue, forKey: "trainer.voice")
+        defaults.set((gentleOnly ? .gentle : tone).rawValue, forKey: "trainer.tone")
+    }
     /// Explicit setup interaction only. Never sends a synthesis request or substitutes an imitation.
     func previewSelection(_ preference: VoiceCoachPreference, tone: TrainerTone) throws {
         guard offlineOnly else { throw RemoteVoiceError.unavailable }
-        try select(preference)
-        defaults.set((gentleOnly ? .gentle : tone).rawValue, forKey: "trainer.tone")
-        if preference == .david {
-            stop()
-            guard let url = Bundle.main.url(forResource: "start", withExtension: "mp3", subdirectory: "DemoVoice/goggins-reps") else { throw RemoteVoiceError.unavailable }
-            let player = try makeAudio(Data(contentsOf: url, options: .mappedIfSafe))
-            try player.prepare()
-            let token = UUID(); active = (UUID(), token)
-            player.onFinish = { [weak self] in self?.complete(token: token) }
-            output = player
-            guard player.play() else { stop(); throw RemoteVoiceError.unavailable }
+        stop(); errorMessage = nil
+        try configureSelection(preference, tone: tone)
+        let currentTone = self.tone
+        if preference == .local {
+            let now = uptime()
+            speak(.init(id: UUID(), sessionID: UUID(), generation: UUID(),
+                text: TrainerCueLibrary.lines(reason: .steadyRhythm, tone: currentTone)[0],
+                kind: .coaching(.pacing), issuedAt: now, expiresAt: now + 6, reason: .steadyRhythm))
+            explicitPreview = true
             return
         }
-        let now = uptime()
-        speak(.init(id: UUID(), sessionID: UUID(), generation: UUID(),
-            text: TrainerCueLibrary.lines(reason: .steadyRhythm, tone: tone)[0],
-            kind: .coaching(.pacing), issuedAt: now, expiresAt: now + 6, reason: .steadyRhythm))
+        let folder: String, clip: String
+        switch preference {
+        case .maya, .leo:
+            folder = "DemoVoice/\(preference.rawValue)/\(currentTone.rawValue)"; clip = "steadyRhythm-1"
+        case .arnold: folder = "DemoVoice/arnold"; clip = "positive-1"
+        case .david: folder = "DemoVoice/goggins-reps"; clip = currentTone == .direct ? "motivate-4" : "start"
+        case .local: return
+        }
+        guard let url = Bundle.main.url(forResource: clip, withExtension: "mp3", subdirectory: folder) else { throw RemoteVoiceError.unavailable }
+        let player = try makeAudio(Data(contentsOf: url, options: .mappedIfSafe))
+        try player.prepare()
+        let token = UUID(); active = (UUID(), token); explicitPreview = true
+        player.onFinish = { [weak self] in self?.complete(token: token) }
+        output = player
+        guard player.play() else { stop(); throw RemoteVoiceError.unavailable }
     }
     func speak(_ cue: VoiceCue) {
         stop(); errorMessage = nil
@@ -258,6 +291,22 @@ final class RemoteVoicePlayback: VoicePlayback {
                             text: text, kind: cue.kind, issuedAt: cue.issuedAt, expiresAt: cue.expiresAt, reason: reason))
                     } else { complete(token: token, error: error) }
                 }
+                return
+            }
+            if preference == .david {
+                guard cue.kind == .coaching(.pacing), reason == .steadyRhythm else {
+                    errorMessage = "Goggins has recorded encouragement and rep counts. Follow the on-screen form and stop guidance."
+                    stop(); onInterrupt?()
+                    return
+                }
+                do {
+                    guard let url = Bundle.main.url(forResource: "motivate-4", withExtension: "mp3", subdirectory: "DemoVoice/goggins-reps") else { throw CocoaError(.fileNoSuchFile) }
+                    let player = try makeAudio(Data(contentsOf: url, options: .mappedIfSafe))
+                    try player.prepare()
+                    player.onFinish = { [weak self] in self?.complete(token: token) }
+                    output = player
+                    guard player.play() else { throw CocoaError(.fileReadCorruptFile) }
+                } catch { complete(token: token, error: error) }
                 return
             }
             if let system = local as? LocalVoicePlayback {
@@ -319,6 +368,7 @@ final class RemoteVoicePlayback: VoicePlayback {
         }
     }
     func stop() {
+        explicitPreview = false
         active = nil; pending?.cancel(); pending = nil
         output?.onFinish = nil; output?.stop(); output = nil
         if localCueID != nil { localCueID = nil; local.stop() }

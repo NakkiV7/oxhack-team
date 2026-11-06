@@ -29,6 +29,7 @@
 		0DE573BABE8AD59B22692A73 /* DemoProgressFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 070C63BEC45074C12EFDF3F8 /* DemoProgressFlowTests.swift */; };
 		0EA2DF1BEF724E236CA10222 /* WorkoutReports.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F47944DCE7AD8915EFE64C /* WorkoutReports.swift */; };
 		0F97CBCF8FF481EF7DD7A77C /* SmartSpectraDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF8D0439C90D732C1F2C2182 /* SmartSpectraDriver.swift */; };
+		0F9BE7BDD07875E95F1DE1CA /* CoachProgrammeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9600BE20F72F33FB9AD1B768 /* CoachProgrammeTests.swift */; };
 		0FB9F0E721E866A8DA3F7BC4 /* RepCounter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E39A3916FF78B4BCB5517A9 /* RepCounter.swift */; };
 		1095919BFF21DF0E30CAD0EE /* ExerciseDemonstrationGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B7B840A9DB5EDDBDAF72A8D /* ExerciseDemonstrationGuide.swift */; };
 		1211AF15F661D250D2E048FA /* MembershipFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2275E5820717F48491A0A3E /* MembershipFlowTests.swift */; };
@@ -41,6 +42,7 @@
 		14CC33241622C47AB16A8C32 /* MediaPipeTaskGraphs_library.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = B5A4DCE69B20F0DA6429666C /* MediaPipeTaskGraphs_library.xcframework */; };
 		151DCC883F4CB9F1F0991B88 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0C0511A8B70E92F9FCD0BDDE /* QuartzCore.framework */; };
 		15BAE29204E5FB0828A94228 /* TrainingDashboardFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0F222D562930D0DEC4EE2EB /* TrainingDashboardFlowTests.swift */; };
+		169D3EB2A51F352C26369C2A /* VoicePreviewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA639C1DF95C704BD127D0D6 /* VoicePreviewTests.swift */; };
 		176B3E71C187D5714E6FD498 /* ReportPolishFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 709AF8EE829F60F65E09127C /* ReportPolishFlowTests.swift */; };
 		183AD0E8B07C09149550C427 /* AccountFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B04A769C4D2D477B72ACC0F2 /* AccountFlowTests.swift */; };
 		187F6D22195F21C2A8FBDDFF /* QuestNativeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E39FC4B3D8246A2A74A012C2 /* QuestNativeTests.swift */; };
@@ -77,6 +79,7 @@
 		2FAB9DC97AB5C8DE3ED2EEC6 /* MeasurementsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BF016ECFA952D74E771F1F5 /* MeasurementsSettingsView.swift */; };
 		30F67D6CB7D73B0F7649CDCB /* MovementFeedback.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9C7AA47F73D3094059D2E74 /* MovementFeedback.swift */; };
 		32D7DCB23F30147C0F5985EB /* DemonstrationVideoLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58B1F2074B65EE6D19B37239 /* DemonstrationVideoLibrary.swift */; };
+		3380855B246E5ED8BA301D7F /* CoachPolishRenderedTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A7AD6F0A50A53D9B8CB4DE1 /* CoachPolishRenderedTests.swift */; };
 		339A36B0A1169162B005CA4A /* QuestStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F85A9E28EDBFAB337E4F139 /* QuestStore.swift */; };
 		33E7848A7AF94216885E4AEF /* TrainingSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17B44A525CF1577A66B7861B /* TrainingSetup.swift */; };
 		34C5255B383BCEBEC713F695 /* ReportFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2F37EE28E8437DEDBDE7DE2 /* ReportFlowTests.swift */; };
@@ -275,6 +278,7 @@
 		D60DC1214C8D6A01DFEADBEA /* PhoneCaptureRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 494995CF85E45BC64BD35BFA /* PhoneCaptureRecoveryTests.swift */; };
 		D7A22CBF5C0DA0FFDD7713F1 /* CoachingFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3FAFFEB61DBACF83FA30A91 /* CoachingFlowTests.swift */; };
 		D7B3F3993EBE95D4AB0F44A5 /* MediaPipeTasksVision.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = F62D31EE84AC65B5B3819323 /* MediaPipeTasksVision.xcframework */; };
+		D97702BFED7EADB0FC9FE992 /* CoachPolishExternalTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B11CD3551DB840D69204D8E /* CoachPolishExternalTests.swift */; };
 		D9B587125304F0A4A69F7CCA /* WatchMotionAccumulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D5A6BC36233D99FB8E6B1D3 /* WatchMotionAccumulator.swift */; };
 		DC6334F68422E0AA658FAF43 /* Vision.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6F4DC4590448E84F8D69F458 /* Vision.framework */; };
 		DCC8B45F5F5CB123E5BCE2DE /* HealthSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF772404162EC2DDE9E39E71 /* HealthSnapshot.swift */; };
@@ -295,6 +299,7 @@
 		EB414E4B70D41D7DD4B5CFB8 /* ProtectedLocalStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = C886472DB50F197DD5CF4D0F /* ProtectedLocalStorage.swift */; };
 		EB41F204E0D1AE74DDF51DF3 /* ConfiguredSessionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F69717B0CBD36ED26C6BBA4 /* ConfiguredSessionViews.swift */; };
 		EBAFB540E0C8CB0B1C6EB357 /* HealthQuantityConversionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 647898121FDD9F08480EFB2E /* HealthQuantityConversionTests.swift */; };
+		EE2E8F40DF300B39B34A1C9D /* VoicePreviewCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 929F9A3DD948D469BFC693C5 /* VoicePreviewCoordinator.swift */; };
 		F32476959D2A843867188F92 /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 48F2B8968C72509637B9D642 /* Accelerate.framework */; };
 		F50E3A45BD9A26233A1C0EF0 /* AccountViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C6C54CBAACDED06A405AB56 /* AccountViews.swift */; };
 		F5FF8BB313F1006C3306E658 /* MovementIllustration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41C1BDEF367097290C7A93B8 /* MovementIllustration.swift */; };
@@ -521,14 +526,18 @@
 		89AE54653868C1023C472671 /* TrainingSetupTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TrainingSetupTests.swift; path = Tests/iOS/TrainingSetupTests.swift; sourceTree = "<group>"; };
 		89CEBEC0C4D5D14521601812 /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMedia.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/CoreMedia.framework; sourceTree = DEVELOPER_DIR; };
 		8A4966BEC56507F88DEC0295 /* OfflineMVPTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OfflineMVPTests.swift; path = Tests/iOS/OfflineMVPTests.swift; sourceTree = "<group>"; };
+		8A7AD6F0A50A53D9B8CB4DE1 /* CoachPolishRenderedTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CoachPolishRenderedTests.swift; path = Tests/iOS/CoachPolishRenderedTests.swift; sourceTree = "<group>"; };
 		8AC9556F899DDDE2DD268498 /* SpottrTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpottrTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8B11CD3551DB840D69204D8E /* CoachPolishExternalTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CoachPolishExternalTests.swift; path = Tests/iOS/CoachPolishExternalTests.swift; sourceTree = "<group>"; };
 		8B94FBBFD781CD54A9F04439 /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/HealthKit.framework; sourceTree = DEVELOPER_DIR; };
 		8C5B9F87DCE10069F1B0F34B /* coach-guidance.json */ = {isa = PBXFileReference; includeInIndex = 1; name = "coach-guidance.json"; path = "Shared/Core/Resources/coach-guidance.json"; sourceTree = "<group>"; };
 		8E23F09A5D4D21EB4AAD915B /* PhonePermissionsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PhonePermissionsView.swift; path = Native/iOS/PhonePermissionsView.swift; sourceTree = "<group>"; };
 		8E435DC73C29B6B9896BEA1B /* MembershipView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MembershipView.swift; path = Native/iOS/MembershipView.swift; sourceTree = "<group>"; };
 		8FAA26650F99E889D1B805AE /* ConfigurableSession.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ConfigurableSession.swift; path = Shared/Core/ConfigurableSession.swift; sourceTree = "<group>"; };
+		929F9A3DD948D469BFC693C5 /* VoicePreviewCoordinator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VoicePreviewCoordinator.swift; path = Native/iOS/VoicePreviewCoordinator.swift; sourceTree = "<group>"; };
 		93D1F592EC0016BE6C18657E /* DemoPreviewData.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DemoPreviewData.swift; path = Shared/Core/DemoPreviewData.swift; sourceTree = "<group>"; };
 		9583192C269B9F655B62B6D2 /* CoachViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CoachViews.swift; path = Native/iOS/CoachViews.swift; sourceTree = "<group>"; };
+		9600BE20F72F33FB9AD1B768 /* CoachProgrammeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CoachProgrammeTests.swift; path = Tests/iOS/CoachProgrammeTests.swift; sourceTree = "<group>"; };
 		96481B5D71749A5B4EF61300 /* LocalProfile.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LocalProfile.swift; path = Shared/Core/LocalProfile.swift; sourceTree = "<group>"; };
 		9650BC5FC1DB94A28255241D /* DemoVoicePlaybackTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DemoVoicePlaybackTests.swift; path = Tests/iOS/DemoVoicePlaybackTests.swift; sourceTree = "<group>"; };
 		96D97BDB35C88B6C16F85191 /* pose.jpg */ = {isa = PBXFileReference; includeInIndex = 1; name = pose.jpg; path = Tests/iOS/Resources/pose.jpg; sourceTree = "<group>"; };
@@ -622,6 +631,7 @@
 		E736D90F125FED131525B6AE /* Components.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Components.swift; path = Native/iOS/Components.swift; sourceTree = "<group>"; };
 		E74BEADBA145904BF4953BB9 /* WatchSetup.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WatchSetup.swift; path = Shared/Core/WatchSetup.swift; sourceTree = "<group>"; };
 		E766A9B12966872CF270002D /* WatchWorkoutJournal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WatchWorkoutJournal.swift; path = Shared/Core/WatchWorkoutJournal.swift; sourceTree = "<group>"; };
+		EA639C1DF95C704BD127D0D6 /* VoicePreviewTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VoicePreviewTests.swift; path = Tests/iOS/VoicePreviewTests.swift; sourceTree = "<group>"; };
 		EB47408C8B96B91216ACC1B1 /* MembershipStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MembershipStore.swift; path = Native/iOS/MembershipStore.swift; sourceTree = "<group>"; };
 		ED05EAE35BCB0EE81442618C /* TrainingPathSurvey.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TrainingPathSurvey.swift; path = Shared/Core/TrainingPathSurvey.swift; sourceTree = "<group>"; };
 		ED142119364B887D14168833 /* MembershipStoreKitTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MembershipStoreKitTests.swift; path = Tests/iOS/MembershipStoreKitTests.swift; sourceTree = "<group>"; };
@@ -994,6 +1004,11 @@
 				E766A9B12966872CF270002D /* WatchWorkoutJournal.swift */,
 				24F131FE9C508DC64D2C2577 /* WatchWorkoutBridge.swift */,
 				BD61253B33BE1D711699794C /* WatchWorkoutIntegrationTests.swift */,
+				9600BE20F72F33FB9AD1B768 /* CoachProgrammeTests.swift */,
+				EA639C1DF95C704BD127D0D6 /* VoicePreviewTests.swift */,
+				929F9A3DD948D469BFC693C5 /* VoicePreviewCoordinator.swift */,
+				8A7AD6F0A50A53D9B8CB4DE1 /* CoachPolishRenderedTests.swift */,
+				8B11CD3551DB840D69204D8E /* CoachPolishExternalTests.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -1237,6 +1252,10 @@
 				D00C94307D71B39C42AF3CDE /* QuestRenderedTests.swift in Sources */,
 				365F9743C0229D85C1972E87 /* QuestExternalAcceptanceTests.swift in Sources */,
 				B7AD4835CE6F2DAC725C221C /* WatchWorkoutIntegrationTests.swift in Sources */,
+				0F9BE7BDD07875E95F1DE1CA /* CoachProgrammeTests.swift in Sources */,
+				169D3EB2A51F352C26369C2A /* VoicePreviewTests.swift in Sources */,
+				3380855B246E5ED8BA301D7F /* CoachPolishRenderedTests.swift in Sources */,
+				D97702BFED7EADB0FC9FE992 /* CoachPolishExternalTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1446,6 +1465,7 @@
 				C98C6CEC05A72FCE5F3FF28C /* QuestViews.swift in Sources */,
 				D367C348905A040A9DBA18B1 /* WatchWorkoutJournal.swift in Sources */,
 				FE9BE414F5F2825BD4899EFF /* WatchWorkoutBridge.swift in Sources */,
+				EE2E8F40DF300B39B34A1C9D /* VoicePreviewCoordinator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

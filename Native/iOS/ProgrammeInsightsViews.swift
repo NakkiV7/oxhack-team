@@ -47,7 +47,7 @@ struct ProgrammeInsightsSection: View {
                     Text("\(points.filter { $0.effort == nil }.count) unrated of \(points.count) recent sets. Unrated is not zero.")
                         .font(.caption).foregroundStyle(.secondary)
                     ForEach(points.suffix(5).reversed()) { point in
-                        HStack { Text(point.date.formatted(date: .abbreviated, time: .shortened)); Spacer(); Text(point.effort.map { "\($0.rawValue) · \($0.title)" } ?? "Unrated") }.font(.caption)
+                        HStack { Text(point.date.formatted(date: .abbreviated, time: .shortened)); Spacer(); Text(point.effort.map { "\($0.rawValue), \($0.title)" } ?? "Unrated") }.font(.caption)
                     }
                     Text("Self-reported effort is personal, not a clinical assessment or camera measurement. Higher effort earns no extra credit.")
                         .font(.caption).foregroundStyle(.secondary)

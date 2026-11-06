@@ -69,7 +69,7 @@ import UIKit
         let labels = elements(window).compactMap(\.accessibilityLabel)
         XCTAssertTrue(labels.contains("Your recorded weight"))
         XCTAssertTrue(labels.contains { $0.contains("73.2") })
-        XCTAssertTrue(labels.contains { $0.contains("4 · Easy") })
+        XCTAssertTrue(labels.contains { $0.contains("4, Easy") })
         XCTAssertEqual(workspace.programme.weights.first?.date, dated)
     }
     func testLargeWorkoutRestShowsUnratedAndJuniorReportOmitsHealth() async throws {

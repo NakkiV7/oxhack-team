@@ -16,6 +16,29 @@ final class WorkoutCompletionVoiceTests: XCTestCase {
         store.switchToManualReps(); store.setManualReps(2); store.endSet()
     }
 
+    func testFinishedWorkoutPreviewWaitsForActualClosingSentence() throws {
+        let defaults = UserDefaults(suiteName: UUID().uuidString)!
+        defaults.set("arnold", forKey: "trainer.voice")
+        let voice = CompletionRecordingVoice()
+        let remote = RemoteVoicePlayback(offlineOnly: true, defaults: defaults, arnoldPlayback: voice)
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = TrainingStore(historyURL: root.appendingPathComponent("history.json"), voicePlayback: remote, defaults: defaults)
+        let previews = try XCTUnwrap(store.voicePreviews)
+        defer { previews.stop(); store.cancelCoaching() }
+        store.beginAuthorizedSession(); store.setVoiceFeedback(true); endManualSet(store); store.finish()
+        let closing = try XCTUnwrap(voice.spoken.first { $0.reason == .workoutCompleted })
+        XCTAssertEqual(store.sessionPhase, .finished)
+        previews.select(.maya, tone: .gentle)
+        XCTAssertFalse(previews.isPlaying, "Finished phase must not permit a preview over a live closing sentence")
+        XCTAssertEqual(voice.stops, 0)
+        XCTAssertEqual(store.history.first?.sets.first?.reps, 2)
+        voice.onFinish?(closing.id)
+        previews.select(.maya, tone: .gentle)
+        XCTAssertTrue(previews.isPlaying, "A fresh deliberate selection can preview after the actual closing callback")
+        XCTAssertEqual(store.history.first?.sets.first?.reps, 2)
+    }
+
     func testExplicitFinishAfterEndedWorkPlaysOneTypedCompletionAndTicksDoNotCancelIt() throws {
         let (store, cached) = makeStore()
         defer { store.cancelCoaching() }

@@ -92,6 +92,7 @@ final class TrainingStore {
     private var repVoiceState: (set: SpokenSet, phase: SessionPhase, reps: Int)?
     private var appActive = true
     let remoteVoice: RemoteVoicePlayback?
+    var voicePreviews: VoicePreviewCoordinator?
     let previewMode: Bool
     private let coachingVoice: CoachingVoiceBridge
     private var restGeneration: UUID?
@@ -121,6 +122,7 @@ final class TrainingStore {
     }
 
     func cancelCoaching() {
+        voicePreviews?.stop()
         pendingRepClosing = nil
         activeCoachingEvent = nil
         trackingLoss = nil; trackingContext = nil; lastTrackingPromptAt = nil; handledTrackingCompletion = nil
@@ -185,7 +187,10 @@ final class TrainingStore {
         let time = time ?? now
         let context = feedbackContext
         remoteVoice?.exercise = trackingExercise
-        defer { coachingVoice.update(context: context, event: coachingEvent, enabled: voiceFeedbackEnabled, now: time) }
+        defer {
+            let audible = remoteVoice.map { $0.supportsAudio(for: coachingEvent) } ?? true
+            coachingVoice.update(context: context, event: audible ? coachingEvent : nil, enabled: voiceFeedbackEnabled, now: time)
+        }
         guard time.isFinite else { return }
         let mixedOrManual = configured.map { [.mixed, .selfReport, .activeTimer].contains($0.quantityOrigin(at: time)) } ?? false
         let reps = mixedOrManual ? 0 : (configured?.actualReps ?? session.actualReps ?? 0)
@@ -365,6 +370,16 @@ final class TrainingStore {
         historyStore = HistoryStore(url: historyURL ?? folder.appendingPathComponent("history.json"))
         watchInbox = WatchTelemetryInbox(url: historyStore.url.deletingLastPathComponent().appendingPathComponent("watch-inbox.json"))
         rewards = rewardsStore ?? NativeRewardsStore(url: historyStore.url.deletingLastPathComponent().appendingPathComponent("rewards.json"))
+        if let remoteVoice {
+            voicePreviews = VoicePreviewCoordinator(preferences: remoteVoice,
+                permitsSelection: { [weak self] in self?.accountActive == true },
+                canPreview: { [weak self] in
+                    guard let self else { return false }
+                    return self.accountActive && self.appActive && !self.spokenReps.isListening
+                        && !self.coachingVoice.isSpeaking && !self.repVoice.isPlaying
+                        && (self.sessionPhase == .idle || self.sessionPhase == .finished)
+                })
+        }
         coachingVoice.repVoice = repVoice
         coachingVoice.onCancellation = { [weak self] in self?.cancelCoaching() }
         if remoteVoice?.gentleOnly == true { repVoice.choose(nil) }
@@ -489,6 +504,7 @@ final class TrainingStore {
         launchCoordinator.request(plan: plan, origin: origin)
     }
     func beginAuthorizedSession() {
+        voicePreviews?.stop()
         guard !selectedExercise.isTimed else { error = "Start timed exercises from the exercise library."; return }
         defer { publish() }
         remoteVoice?.reloadPreferences()
@@ -500,6 +516,7 @@ final class TrainingStore {
         session.start(at: now); presented = true; error = nil; clearInput()
     }
     func beginAuthorizedPlan(_ plan: CoachSavedPlan, availableSupport: Set<String>, plannedWorkoutID: String? = nil, trainingContext: SessionTrainingContext? = nil) {
+        voicePreviews?.stop()
         do {
             var run = try ConfigurableSession(plan: plan, availableSupport: availableSupport, plannedWorkoutID: plannedWorkoutID, trainingContext: trainingContext)
             run.start(at: now)

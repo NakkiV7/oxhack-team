@@ -89,7 +89,7 @@ final class AppleHealthReadingClient: HealthReadingClient {
                 if let error { continuation.resume(throwing: error); return }
                 guard let quantity = statistics?.sumQuantity() else { continuation.resume(returning: nil); return }
                 let names = Set(statistics?.sources?.map(\.name) ?? []).sorted()
-                let source = names.isEmpty ? "Apple Health (merged sources)" : "Apple Health — \(names.joined(separator: ", "))"
+                let source = names.isEmpty ? "Apple Health (merged sources)" : "Apple Health, \(names.joined(separator: ", "))"
                 continuation.resume(returning: Self.observation(metric: metric, quantity: quantity, date: end, source: source))
             }
             store.execute(query)

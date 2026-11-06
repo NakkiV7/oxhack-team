@@ -56,7 +56,7 @@ struct WatchTrainingView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Your workouts").font(.headline)
                 if let completed = store.lastCompleted {
-                    Text("Saved on Watch · \(completed.completed.count) sets").font(.caption).foregroundStyle(.green)
+                    Text("\(completed.completed.count) sets saved on Watch.").font(.caption).foregroundStyle(.green)
                 }
                 ForEach(store.programme?.choices ?? []) { choice in
                     Button {
@@ -83,13 +83,13 @@ struct WatchTrainingView: View {
     private func localMetrics(_ journal: WatchWorkoutJournal, now: Date) -> some View {
         VStack(spacing: 6) {
             Text(ExerciseCatalog.find(journal.current.exerciseID)?.name ?? "Workout").font(.headline).lineLimit(2)
-            Text("Set \(journal.setNumber) · \(journal.index + 1) of \(journal.items.count)").font(.caption2).foregroundStyle(.secondary)
+            Text("Set \(journal.setNumber), \(journal.index + 1) of \(journal.items.count)").font(.caption2).foregroundStyle(.secondary)
             Text(journal.current.unit == .seconds ? "\(Int(journal.activeSeconds)) s" : journal.reps.map(String.init) ?? "—")
                 .font(.system(size: min(countFontSize, 48), weight: .semibold, design: .rounded)).monospacedDigit()
                 .accessibilityIdentifier("watch-local-quantity")
             if !journal.policyRestricted { Text("Target \(journal.current.target) \(journal.current.unit == .seconds ? "seconds" : "reps")").font(.caption2).foregroundStyle(.secondary) }
             Text(journal.current.unit == .seconds ? "Manual active timer" : "Manual reps").font(.caption2)
-            if journal.phase == .rest { Text("Rest · \(max(0, journal.current.restSeconds - Int(journal.restSeconds))) s").font(.caption) }
+            if journal.phase == .rest { Text("Rest for \(max(0, journal.current.restSeconds - Int(journal.restSeconds))) s").font(.caption) }
             else if journal.phase == .paused { Text("Paused").font(.caption) }
             else if !journal.hasStarted { Text("Start when ready").font(.caption) }
             if journal.current.unit == .reps, [.active, .paused].contains(journal.phase) {
@@ -114,7 +114,7 @@ struct WatchTrainingView: View {
             VStack(spacing: 10) {
                 Text("Workout controls").font(.headline)
                 if journal.policyRestricted {
-                    Text("Profile or sharing changed. Save your actual work here; review the next workout on iPhone.").font(.caption2)
+                    Text("Profile or sharing changed. Save your actual work here. Review the next workout on iPhone.").font(.caption2)
                 }
                 if !journal.hasStarted && journal.phase == .active && !journal.policyRestricted {
                     Button("Start set") { store.beginLocalSet() }.buttonStyle(.borderedProminent)
@@ -260,8 +260,8 @@ struct WatchTrainingView: View {
                 metric("Instant angular speed", reading: store.rotation, unit: "rad/s", now: now)
                 if let window = store.latestMotionWindow, (-2...12).contains(now.timeIntervalSince(window.end)) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Wrist window · \(window.sampleCount) samples").font(.caption2).foregroundStyle(.secondary)
-                        Text(String(format: "RMS %.2f g · peak %.2f g", window.rmsAccelerationG, window.peakAccelerationG)).font(.caption)
+                        Text("Wrist window with \(window.sampleCount) samples").font(.caption2).foregroundStyle(.secondary)
+                        Text(String(format: "RMS %.2f g, peak %.2f g", window.rmsAccelerationG, window.peakAccelerationG)).font(.caption)
                         Text(String(format: "Mean %.2f rad/s", window.meanRotationRadiansPerSecond)).font(.caption)
                     }
                 }

@@ -5,6 +5,21 @@ private let testAccount = UUID()
 
 @MainActor
 final class MembershipJourneyTests: XCTestCase {
+    func testCatalogueFailureStaysSeparateFromVerifiedAccessAndRestoreErrors() async {
+        let client = MembershipTestClient()
+        client.entitlements = [.verified(.init(appAccountToken: testAccount, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable))]
+        client.productError = URLError(.notConnectedToInternet)
+        let store = MembershipCoordinator(client: client, claims: MembershipTestClaims())
+        store.setAccount(testAccount)
+        await store.load()
+        XCTAssertTrue(store.hasAccess)
+        XCTAssertNotNil(store.catalogueError)
+        XCTAssertNil(store.accessError)
+        client.restoreError = URLError(.cannotConnectToHost)
+        await store.restore()
+        XCTAssertNotNil(store.accessError, "Purchase, claim and restore errors must remain visible")
+    }
+
     func testExplicitLegacyRestoreSurvivesSameAccountReauthentication() async {
         let client = MembershipTestClient()
         client.entitlements = [.verified(.init(id: 97, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable))]

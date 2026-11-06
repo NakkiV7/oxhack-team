@@ -321,9 +321,9 @@ func reportRejectsInvalidOrIncompleteRecordedTempo(durations: [Double]) {
     #expect(report.acceleration.samples.map(\.value) == [121, 130])
     #expect(report.rotation.samples.map(\.value) == [121, 130])
     #expect(report.heartRate.average == 125.5)
-    #expect(report.heartRate.sourceLabel == "Apple Watch · HealthKit")
-    #expect(report.acceleration.sourceLabel == "Apple Watch · Core Motion")
-    #expect(report.rotation.sourceLabel == "Apple Watch · Core Motion")
+    #expect(report.heartRate.sourceLabel == "Apple Watch readings from HealthKit")
+    #expect(report.acceleration.sourceLabel == "Apple Watch motion readings")
+    #expect(report.rotation.sourceLabel == "Apple Watch motion readings")
 }
 
 @Test func watchEnergyTimelineKeepsCumulativeRunsSeparateAndAcceptsCorrectionsWithoutSumming() {

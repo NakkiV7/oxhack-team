@@ -2,58 +2,87 @@ import SwiftUI
 
 struct ProgrammeSyncView: View {
     @Bindable var sync: ProgrammeSyncStore
-    @State private var slot = ""
+    @State private var code = ""
+    @State private var enteringCode = false
     @State private var error: String?
+    private var shareCode: String { "Spottr programme code\n\(sync.profileSlot.uuidString.lowercased())" }
     var body: some View {
         Form {
-            Section("Optional cloud programme") {
-                Text("Save your training preferences and planned week to your signed-in account. Your age, profile details, comfort answers, measurements, workouts and effort stay on this device.")
-                Text(sync.consented ? "Sync consent is on for this adult profile." : "Local syncing is off.").font(.subheadline.weight(.semibold))
+            Section("Your saved programme") {
+                Text("Keep a copy of your preferences and planned week in your account.")
+                Label(sync.consented ? "Cloud saving is on" : "Saved on this phone", systemImage: sync.consented ? "icloud" : "iphone")
+                    .font(.subheadline.weight(.semibold))
                 if sync.withdrawalPending {
-                    Text("Removal is pending. This action checks the saved copy once, then removes it. It does not turn syncing back on.").font(.caption)
-                    Button("Remove saved programme") { Task { await sync.removeSavedProgramme() } }.disabled(sync.busy)
+                    Text("Your cloud copy still needs to be removed. Retry when you have a connection.").font(.subheadline)
+                    Button("Retry removal", systemImage: "arrow.clockwise") { Task { await sync.removeSavedProgramme() } }.buttonStyle(.bordered).disabled(sync.busy)
                 } else if sync.consented {
-                    Button("Save this phone’s plan") { Task { await sync.upload() } }.disabled(sync.busy)
-                    Button("Read saved plan") { Task { await sync.read() } }.disabled(sync.busy)
-                    Button("Turn off and remove cloud programme", role: .destructive) { Task { await sync.withdraw() } }
+                    Text("Save again whenever you want to update the cloud copy.").font(.caption).foregroundStyle(.secondary)
+                    Button("Save this plan", systemImage: "icloud.and.arrow.up") { Task { await sync.upload() } }.buttonStyle(.borderedProminent).disabled(sync.busy)
+                    Button("Review saved plan", systemImage: "icloud.and.arrow.down") { Task { await sync.read() } }.buttonStyle(.bordered).disabled(sync.busy)
+                    Button("Turn off and remove cloud copy", role: .destructive) { Task { await sync.withdraw() } }.buttonStyle(.bordered)
                 } else {
-                    Button("Allow plan sync") { do { try sync.consent(); error = nil } catch { self.error = "This profile cannot enable sync right now." } }.disabled(sync.busy)
+                    Button("Allow cloud saving", systemImage: "icloud") {
+                        do { try sync.consent(); error = nil } catch { self.error = "Cloud saving is unavailable for this profile right now." }
+                    }.buttonStyle(.bordered).disabled(sync.busy)
                 }
-                if sync.busy { ProgressView("Checking your saved configuration…") }
+                if sync.busy { ProgressView("Checking your saved programme…") }
                 if let message = sync.message { Text(message).font(.caption).accessibilityIdentifier("programme-sync-status") }
                 if let error { Text(error).font(.caption).foregroundStyle(Palette.red) }
             }
             if let remote = sync.pendingRemote {
-                Section("Review saved configuration") {
+                Section("Review before replacing your plan") {
                     Text("Saved \(remote.updatedAt.formatted(date: .abbreviated, time: .shortened))")
-                    Text("\(remote.preferences.weekdays.count) days each week · \(remote.preferences.minutesPerSession) minutes per session")
+                    Text("\(remote.preferences.weekdays.count) days each week, with \(remote.preferences.minutesPerSession) minutes per session.")
                     if let week = remote.programme {
-                        ForEach(week.days, id: \.id) { day in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(day.date.formatted(.dateTime.weekday(.wide).day().month())).font(.subheadline.weight(.semibold))
-                                Text(day.plan?.items.map { "\(ExerciseCatalog.find($0.exerciseID)?.name ?? $0.exerciseID): \($0.sets) × \($0.target) \($0.unit.rawValue)" }.joined(separator: ", ") ?? "Rest").font(.caption)
+                        DisclosureGroup("See the saved week") {
+                            ForEach(week.days, id: \.id) { day in
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text(day.date.formatted(.dateTime.weekday(.wide).day().month())).font(.subheadline.weight(.semibold))
+                                    if let plan = day.plan {
+                                        ForEach(plan.items, id: \.exerciseID) { item in
+                                            Text("\(ExerciseCatalog.find(item.exerciseID)?.name ?? item.exerciseID), \(item.sets) × \(item.target) \(item.unit.rawValue).").font(.caption)
+                                        }
+                                    } else { Text("Rest day").font(.caption) }
+                                }.padding(.vertical, 6)
                             }
                         }
                     }
-                    Button("Use saved future programme") {
+                    Text("Check that this plan belongs to the person using this profile. Recorded work stays on this phone.").font(.caption).foregroundStyle(.secondary)
+                    Button("Use saved future plan", systemImage: "checkmark") {
                         do { try sync.restoreReviewed(); error = nil }
-                        catch { self.error = "Finish your active workout first. Recorded and past days cannot be replaced." }
-                    }.disabled(sync.busy)
-                    Button("Keep this phone’s plan") { Task { await sync.keepLocalReviewed() } }.disabled(sync.busy)
+                        catch { self.error = "Finish your active workout first. Recorded and past days stay protected." }
+                    }.buttonStyle(.borderedProminent).disabled(sync.busy)
+                    Button("Keep this phone’s plan", systemImage: "iphone") { Task { await sync.keepLocalReviewed() } }.buttonStyle(.bordered).disabled(sync.busy)
                 }
             }
             if sync.consented && !sync.withdrawalPending {
-                Section("Use this profile on another device") {
-                    Text("Only link the saved programme belonging to this same adult training profile. This reference is not your account or local profile ID.").font(.caption)
-                    Text(sync.profileSlot.uuidString.lowercased()).font(.caption.monospaced()).textSelection(.enabled)
-                    TextField("Saved programme reference", text: $slot).textInputAutocapitalization(.never).autocorrectionDisabled()
-                    Button("Link this profile’s saved programme") {
-                        guard let id = UUID(uuidString: slot) else { error = "Enter a valid saved programme reference."; return }
-                        do { try sync.linkSlot(id); error = nil }
-                        catch { self.error = "Finish the current workout or request before linking a saved programme." }
-                    }.disabled(sync.busy)
+                Section("Continue on another device") {
+                    Text("Save your plan, then share its code with your other device. Sign in to the same account and choose the matching adult training profile.").font(.subheadline)
+                    ShareLink(item: shareCode) { Label("Share programme code", systemImage: "square.and.arrow.up") }.buttonStyle(.bordered)
+                    DisclosureGroup("Enter a saved programme code", isExpanded: $enteringCode) {
+                        Text("Paste a code to review its plan. Pasting never replaces your current plan.").font(.caption).foregroundStyle(.secondary)
+                        PasteButton(payloadType: String.self) { values in code = values.first ?? ""; error = nil }
+                        TextField("Programme code", text: $code, axis: .vertical).textInputAutocapitalization(.never).autocorrectionDisabled()
+                            .textFieldStyle(.roundedBorder).accessibilityIdentifier("programme-restore-code")
+                        Button("Review this code", systemImage: "doc.text.magnifyingglass", action: reviewCode).buttonStyle(.bordered).disabled(sync.busy || code.isEmpty)
+                    }
                 }
             }
-        }.navigationTitle("Programme sync")
+            Section {
+                DisclosureGroup("What is saved online?") {
+                    Text("Only training preferences and the planned week are saved. Your age, profile details, comfort answers, measurements, completed workouts and effort stay on this device. Cloud saving is optional and is available only for adult profiles.").font(.caption)
+                    Text("Turning it off requests removal of the cloud copy. If removal is pending, retry to finish it.").font(.caption)
+                }
+            }
+        }.navigationTitle("Saved programme").navigationBarTitleDisplayMode(.inline)
+    }
+    private func reviewCode() {
+        let value = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        let prefix = "Spottr programme code\n"
+        let reference = value.hasPrefix(prefix) ? String(value.dropFirst(prefix.count)) : value
+        guard let id = UUID(uuidString: reference) else { error = "Paste a complete Spottr programme code and try again."; return }
+        do { try sync.linkSlot(id); error = nil }
+        catch { self.error = "Finish the current workout or request before reviewing another saved programme."; return }
+        Task { await sync.read() }
     }
 }

@@ -119,7 +119,7 @@ struct XPWindowSettingsView: View {
                         Image("xp-double").resizable().scaledToFit().frame(width: 32, height: 32).accessibilityHidden(true)
                         Text("Your two-hour bonus window").font(.headline)
                     }
-                    Text("Eligible base XP earned when you finish a workout in the window receives an equal bonus. Train at a comfortable time; the window is optional.")
+                    Text("Eligible base XP earned when you finish a workout in the window receives an equal bonus. Train at a comfortable time. The window is optional.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 if let reminders {

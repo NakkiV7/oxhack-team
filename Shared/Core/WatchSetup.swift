@@ -101,11 +101,11 @@ public struct WatchSetupPresentation: Sendable {
         else if !paired { summary = "Pair a Watch to get started" }
         else if !installed { summary = "Install Spottr on your Watch" }
         else if !reachable { summary = "Open Spottr on your Watch to connect" }
-        else { summary = confirmed ? "Your Watch companion responded" : "Your Watch is reachable — check the companion" }
+        else { summary = confirmed ? "Your Watch companion responded" : "Your Watch is reachable. Check the companion." }
         guard confirmed, let confirmation = observation.confirmation else { queueText = nil; return }
         if let message = confirmation.queueMessage { queueText = message }
         else if confirmation.droppedSamples > 0 {
-            queueText = "\(confirmation.pendingSamples) waiting · \(confirmation.droppedSamples) removed at the Watch queue limit"
+            queueText = "\(confirmation.pendingSamples) waiting. \(confirmation.droppedSamples) removed at the Watch queue limit."
         } else {
             queueText = confirmation.pendingSamples > 0
                 ? "\(confirmation.pendingSamples) Watch samples waiting for iPhone"

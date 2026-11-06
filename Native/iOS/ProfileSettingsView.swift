@@ -175,8 +175,8 @@ struct ProfileSettingsView: View {
                 }
                 Section("Your trainer") {
                     NavigationLink("Voice and coaching style") {
-                        VoiceCoachSettingsView(playback: RemoteVoicePlayback(offlineOnly: true, defaults: profileStore.preferencesDefaults,
-                            gentleOnly: (profileStore.profile?.programmePreferences?.ageContext?.ageYears ?? 0) < 18), cancelCoaching: {})
+                        VoiceCoachSettingsView(previews: VoicePreviewCoordinator(preferences: RemoteVoicePlayback(offlineOnly: true, defaults: profileStore.preferencesDefaults,
+                            gentleOnly: (profileStore.profile?.programmePreferences?.ageContext?.ageYears ?? 0) < 18), permitsSelection: { profileStore.permitsPolicyCallbacks }))
                     }
                 }
                 Section("Phone and Watch") {

@@ -70,7 +70,7 @@ struct HealthSetupView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Choose resting/walking heart rate, SDNN heart rate variability, cardio fitness, one-minute recovery, oxygen, respiration, steps and walking/running distance when available.")
                     Text("Readings stay in memory on this iPhone. They are not uploaded or added to training history.")
-                    Text("Review sharing permissions in the Health app. Spottr cannot tell which read permissions you granted; missing data can have several causes.")
+                    Text("Review sharing permissions in the Health app. Missing readings can have several causes. Spottr cannot see which read permissions you granted.")
                 }.font(.caption).foregroundStyle(.secondary).padding(.top, 8)
             }.accessibilityIdentifier("health-data-details")
             if store.isBusy { ProgressView("Reading Apple Health…") }
@@ -150,7 +150,7 @@ struct WatchSetupView: View {
                     Toggle("Share this profile’s workouts with Watch", isOn: Binding(get: { sharing.enabled }, set: { enabled in
                         do { try sharing.setEnabled(enabled); sharingError = nil } catch { sharingError = "Sharing could not be saved. Reopen this profile and try again." }
                     })).disabled(store.selectedModel == .noWatch).accessibilityIdentifier("watch-profile-sharing")
-                    Text(sharing.enabled ? "This profile can use cached workouts on Watch after account and membership verification." : "Workout sharing is off for this profile. Your Watch model choice is kept separately.")
+                    Text(sharing.enabled ? "This profile can use cached workouts on Watch after account and membership verification." : "Turn on sharing to make this profile’s planned workouts available on your Watch.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 if sharing?.persistencePending == true {

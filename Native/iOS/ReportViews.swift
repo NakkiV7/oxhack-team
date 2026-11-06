@@ -169,7 +169,7 @@ struct SessionReportView: View {
                                 }
                                 Text(set.reason.title).font(.caption)
                                     .foregroundStyle(set.reason == .discomfort ? Palette.red : ([StopReason.form, .failure].contains(set.reason) ? Palette.amber : Palette.muted))
-                                Text("Effort: \(record.loggedSets.first(where: { $0.id == set.id })?.effort.map { "\($0.rawValue) · \($0.title)" } ?? "Unrated")").font(.caption).foregroundStyle(.secondary)
+                                Text("Effort \(record.loggedSets.first(where: { $0.id == set.id })?.effort.map { "\($0.rawValue), \($0.title)" } ?? "Unrated")").font(.caption).foregroundStyle(.secondary)
                                 if let reserve = set.reserve {
                                     Text("\(reserve == 3 ? "3+" : "\(reserve)") reps in reserve").font(.caption).foregroundStyle(.secondary)
                                 }
@@ -191,7 +191,7 @@ struct SessionReportView: View {
                 if !record.skippedSets.isEmpty {
                     VStack(alignment: .leading, spacing: 14) {
                         Text("Skipped sets").font(.headline)
-                        Text("Skipped by choice · excluded from completed sets, reps, active time and XP")
+                        Text("Skipped by choice. This set adds no completed sets, reps, active time or XP.")
                             .font(.caption).foregroundStyle(.secondary)
                         ForEach(record.skippedSets) { skipped in
                             VStack(alignment: .leading, spacing: 6) {
@@ -214,12 +214,12 @@ struct SessionReportView: View {
                         if previewEnabled {
                             Text("Sample history is stored separately from your workouts. These values are examples, including any missing readings.")
                         }
-                        Text("Camera counts are observations; manual reps are self-reported. Video results describe replayed footage.")
+                        Text("Camera counts are observations. Manual reps are self-reported. Video results describe replayed footage.")
                         Text("Recorded time includes tracked sets, live manual set timers and logged hold durations. Bulk manual rep entries have no recorded duration.")
                         Text("Acceleration is the magnitude of Core Motion user acceleration with gravity removed, in g. Rotation is angular-speed magnitude in radians per second. The Watch sends sampled magnitudes, not continuous raw motion.")
                         Text("Heart-rate averages weight observed intervals of at most 12 seconds, excluding known pauses. Longer gaps remain unknown. Wrist motion windows do not establish exercise form.")
-                        Text("Active energy uses cumulative Watch recording deltas. Repeated readings are not added together; decreases within a recording are flagged. These estimates stay in local history and exports; they are not included in Coach requests or cloud sync.")
-                        Text("Count highlights compare earlier saved sets of the same exercise and source; they do not establish strength or fitness changes.")
+                        Text("Active energy uses cumulative Watch recording deltas. Repeated readings are not added together. Decreases within a recording are flagged. These estimates stay in local history and exports. They are not included in Coach requests or cloud saving.")
+                        Text("Count highlights compare earlier saved sets of the same exercise and source. They do not establish strength or fitness changes.")
                     }.font(.caption).foregroundStyle(.secondary).padding(.top, 8)
                 }.font(.subheadline)
                 Label("Saved locally on this iPhone", systemImage: "iphone").font(.caption.weight(.semibold))
