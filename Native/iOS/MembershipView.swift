@@ -5,6 +5,7 @@ struct MembershipView: View {
     let store: MembershipStore
     @State private var redeemPresented = false
     @State private var selection: MembershipPlan = .monthly
+    @State private var showOtherPlans = false
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -34,7 +35,11 @@ struct MembershipView: View {
                     ProgressView("Contacting the App Store…").frame(maxWidth: .infinity).padding(20)
                         .accessibilityIdentifier("membershipLoading")
                 }
-                if store.offers.isEmpty && !store.busy && !store.hasAccess {
+                if store.hasAccess && canChoosePlan {
+                    Button(showOtherPlans ? "Hide membership options" : "Explore membership options") { showOtherPlans.toggle() }
+                        .buttonStyle(.bordered).frame(minHeight: 44).accessibilityIdentifier("membershipOtherPlans")
+                }
+                if visibleOffers.isEmpty && !store.busy && canChoosePlan && (!store.hasAccess || showOtherPlans) {
                     VStack(spacing: 12) {
                         Image(systemName: "wifi.exclamationmark").font(.title).foregroundStyle(Palette.blue)
                         Text("Plans are temporarily unavailable").font(.headline)
@@ -44,7 +49,7 @@ struct MembershipView: View {
                     }.multilineTextAlignment(.center).frame(maxWidth: .infinity).padding(22)
                         .background(Palette.surface, in: RoundedRectangle(cornerRadius: 22))
                 }
-                ForEach(store.hasAccess ? [] : store.offers) { offer in
+                ForEach(visibleOffers) { offer in
                     Button { selection = offer.plan } label: {
                         VStack(alignment: .leading, spacing: 10) {
                             HStack {
@@ -65,7 +70,7 @@ struct MembershipView: View {
                             .overlay { RoundedRectangle(cornerRadius: 22).stroke(selection == offer.plan ? Palette.blue : .clear, lineWidth: 2) }
                     }.buttonStyle(.plain).accessibilityAddTraits(selection == offer.plan ? .isSelected : [])
                 }
-                if !store.hasAccess, let offer = store.offers.first(where: { $0.plan == selection }) ?? store.offers.first {
+                if let offer = visibleOffers.first(where: { $0.plan == selection }) ?? visibleOffers.first {
                     Button(purchaseTitle(offer)) { Task { await store.buy(offer.plan) } }
                         .buttonStyle(.borderedProminent).foregroundStyle(.white).controlSize(.large).frame(maxWidth: .infinity, minHeight: 48)
                         .disabled(store.accountID == nil || store.busy || !store.access.mayPurchase(offer.plan))
@@ -101,6 +106,11 @@ struct MembershipView: View {
         .task { await store.load() }
         .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await store.load() } } }
         .offerCodeRedemption(isPresented: $redeemPresented) { result in Task { await store.completeRedemption(result) } }
+    }
+    private var canChoosePlan: Bool { MembershipPlan.allCases.contains { store.access.mayPurchase($0) } }
+    private var visibleOffers: [MembershipOffer] {
+        guard !store.hasAccess || showOtherPlans else { return [] }
+        return store.offers.filter { store.access.mayPurchase($0.plan) }
     }
     private var accessTitle: String {
         if store.access.lifetime { return "Lifetime membership active" }

@@ -86,6 +86,7 @@ struct OnboardingView: View {
                     MeasurementsSettingsView(measurements: measurements, isIntroduction: true, profileStore: profileStore) { measurements = $0; error = nil }
                 }
         }.interactiveDismissDisabled(!AccountPolicy.setupComplete(profile: profileStore.profile))
+            .environment(\.profileWebsiteAccess, ProfileWebsiteAccess(profile: profileStore, guardian: guardianAuthorization))
     }
     private var bodyProfile: some View {
         VStack(alignment: .leading, spacing: 18) {

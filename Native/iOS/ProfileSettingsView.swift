@@ -318,6 +318,7 @@ struct ProfileSettingsView: View {
                 Button("OK", role: .cancel) { error = nil }
             } message: { Text(error ?? "") }
         }.preferredColorScheme(.light).interactiveDismissDisabled(persistence.blocksDismissal)
+            .environment(\.profileWebsiteAccess, ProfileWebsiteAccess(profile: profileStore, guardian: guardianAuthorization))
     }
 
     private func queueSave() {

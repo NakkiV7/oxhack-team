@@ -236,12 +236,63 @@ extension TrainingGoal {
         switch self { case .strength: "dumbbell"; case .stamina: "heart"; case .mobility: "arrow.up.and.down.and.arrow.left.and.right"; case .balance: "circle.lefthalf.filled"; case .weightManagement: "scalemass" }
     }
 }
+@MainActor struct ProfileWebsiteAccess {
+    private let profile: NativeProfileStore
+    private let guardian: (any NativeAccountAuthorization)?
+    private let requiresGuardian: Bool
+    init(profile: NativeProfileStore, guardian: (any NativeAccountAuthorization)?) {
+        self.profile = profile; self.guardian = guardian
+        requiresGuardian = (profile.profile?.programmePreferences?.ageContext?.ageYears ?? 0) < 18
+    }
+    func authorize() async throws {
+        guard profile.permitsPolicyCallbacks else { throw AccountFailure.reauthenticate }
+        if requiresGuardian {
+            guard let guardian else { throw AccountFailure.reauthenticate }
+            try await guardian.guardian()
+        }
+        guard profile.permitsPolicyCallbacks, !Task.isCancelled else { throw AccountFailure.reauthenticate }
+    }
+}
+private struct ProfileWebsiteAccessKey: EnvironmentKey {
+    static let defaultValue: ProfileWebsiteAccess? = nil
+}
+extension EnvironmentValues {
+    var profileWebsiteAccess: ProfileWebsiteAccess? {
+        get { self[ProfileWebsiteAccessKey.self] }
+        set { self[ProfileWebsiteAccessKey.self] = newValue }
+    }
+}
 struct WebsiteLink: View {
     let title: String
     let url: URL
+    @Environment(\.openURL) private var openURL
+    @Environment(\.profileWebsiteAccess) private var access
+    @State private var requestID = UUID()
+    @State private var busy = false
+    @State private var needsApproval = false
+    private var label: some View {
+        Label { Text(title).underline().fixedSize(horizontal: false, vertical: true) } icon: { Image(systemName: "arrow.up.right.square") }
+    }
     var body: some View {
-        Link(destination: url) { Label { Text(title).underline().fixedSize(horizontal: false, vertical: true) } icon: { Image(systemName: "arrow.up.right.square") } }
-            .foregroundStyle(Palette.blue).frame(minHeight: 44, alignment: .leading)
+        VStack(alignment: .leading, spacing: 6) {
+            if let access {
+                Button {
+                    let request = UUID(); requestID = request; busy = true; needsApproval = false
+                    Task {
+                        do {
+                            try await access.authorize()
+                            guard requestID == request else { return }
+                            openURL(url)
+                        } catch {
+                            if requestID == request { needsApproval = true }
+                        }
+                        if requestID == request { busy = false }
+                    }
+                } label: { label }.disabled(busy)
+            } else { Link(destination: url) { label } }
+            if needsApproval { Text("Guardian approval is needed to open this website.").font(.caption).foregroundStyle(.secondary) }
+        }.foregroundStyle(Palette.blue).frame(minHeight: 44, alignment: .leading)
+            .onDisappear { requestID = UUID(); busy = false }
     }
 }
 enum SpottrHaptics {

@@ -206,6 +206,111 @@ import CryptoKit
         capture(window, "additional-junior-created")
     }
 
+    func testExternalMonthlyMemberCanChooseLifetimeWithoutStartingPendingWorkout() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let scope = AccountDataScope(accountID: UUID(), profileID: UUID(), root: root)
+        let workspace = try AccountWorkspace(scope: scope)
+        try workspace.profile.save(acceptedProfile())
+        let client = SetupRenderedMembershipClient()
+        client.offers = [.init(plan: .monthly, displayName: "Monthly from Apple", displayPrice: "£6.49"),
+                         .init(plan: .lifetime, displayName: "Lifetime from Apple", displayPrice: "£87.99")]
+        let membership = MembershipCoordinator(client: client, claims: ProtectedMembershipClaimStore(root: root))
+        membership.setAccount(scope.accountID)
+        let generation = UUID()
+        let launch = WorkoutLaunchCoordinator(training: workspace.training, profile: workspace.profile, membership: membership,
+            owner: { .init(accountID: scope.accountID, profileID: scope.profileID) }, generation: { generation })
+        workspace.training.launchCoordinator = launch
+        workspace.training.startPlan(try .catalogue(exerciseID: "frontArmRaise", sets: 3, target: 10, restSeconds: 60), availableSupport: [])
+        let pending = try XCTUnwrap(launch.pendingID)
+        client.entitlements = [.verified(.init(id: 91, appAccountToken: scope.accountID, productID: MembershipPlan.monthly.productID,
+            kind: .autoRenewable, expirationDate: .now.addingTimeInterval(86400)))]
+        await membership.load()
+        XCTAssertTrue(membership.access.mayPurchase(.lifetime))
+        let window = try host(WorkoutLaunchAccessView(launch: launch))
+        try await Task.sleep(for: .seconds(1))
+        try await wait(seconds: 30) { self.renderedElements(window).contains { $0.accessibilityLabel == "Explore membership options" } }
+        capture(window, "monthly-active-default")
+        XCTAssertTrue(renderedElements(window).contains { $0.accessibilityLabel == "Explore membership options" })
+        try await wait(seconds: 90) { self.renderedElements(window).contains { $0.accessibilityLabel?.contains("£87.99") == true } }
+        XCTAssertTrue(renderedElements(window).contains { $0.accessibilityLabel?.contains("Lifetime from Apple") == true })
+        XCTAssertTrue(renderedElements(window).contains { $0.accessibilityLabel?.contains("£87.99") == true })
+        XCTAssertTrue(renderedElements(window).contains { $0.accessibilityLabel?.contains("Lifetime does not cancel") == true })
+        capture(window, "monthly-lifetime-offer-visible")
+        try await wait(seconds: 90) { client.purchases.count == 1 && !membership.busy }
+        XCTAssertEqual(client.purchases.first?.0, .lifetime)
+        XCTAssertEqual(client.purchases.first?.1, scope.accountID)
+        XCTAssertTrue(membership.access.hasOverlappingSubscription)
+        XCTAssertEqual(launch.pendingID, pending)
+        XCTAssertEqual(workspace.training.sessionPhase, .idle)
+        XCTAssertFalse(workspace.training.presented)
+        XCTAssertGreaterThan(renderedElements(window).compactMap(\.accessibilityLabel).count, 5, "Absence checks require a populated rendered tree")
+        XCTAssertFalse(renderedElements(window).contains { $0.accessibilityLabel == "Explore membership options" || $0.accessibilityLabel == "Hide membership options" || ($0 as? any UIAccessibilityIdentification)?.accessibilityIdentifier == "membershipOtherPlans" })
+        XCTAssertFalse(renderedElements(window).contains { ($0 as? any UIAccessibilityIdentification)?.accessibilityIdentifier?.hasPrefix("membershipPurchase-") == true || $0.accessibilityLabel == "Buy lifetime membership" || $0.accessibilityLabel == "Subscribe monthly" })
+        client.productsFail = true
+        await membership.load()
+        try await Task.sleep(for: .milliseconds(300))
+        XCTAssertTrue(membership.hasAccess)
+        XCTAssertTrue(renderedElements(window).contains { $0.accessibilityLabel == "Continue to workout" })
+        XCTAssertFalse(renderedElements(window).contains { $0.accessibilityLabel == "Plans are temporarily unavailable" })
+        capture(window, "lifetime-overlap-offline-pending-preserved")
+    }
+
+    func testExternalJuniorOnboardingWatchLinksRequireCurrentGuardianApproval() async throws {
+        let originalWatchModel = UserDefaults.standard.object(forKey: "Spottr.watch-model")
+        defer {
+            if let originalWatchModel { UserDefaults.standard.set(originalWatchModel, forKey: "Spottr.watch-model") }
+            else { UserDefaults.standard.removeObject(forKey: "Spottr.watch-model") }
+            XCTAssertEqual(UserDefaults.standard.string(forKey: "Spottr.watch-model"), originalWatchModel as? String)
+        }
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = NativeProfileStore(url: root.appendingPathComponent("profile.json"))
+        try store.save(LocalProfile(name: "Junior", onboardingRevision: 2, programmePreferences: .init(goals: [.balance], weekdays: [1], startingPoint: .startingOut,
+            ageContext: .init(ageYears: 12, guardianManaged: true),
+            comfortAnswers: Dictionary(uniqueKeysWithValues: ExerciseFamily.allCases.map { ($0, TrainingSetup.Comfort.unsure) }))))
+        let authorization = SetupRenderedAuthorization()
+        authorization.guardianAllowed = false
+        var opened: [URL] = []
+        let window = try host(OnboardingView(profileStore: store, guardianAuthorization: authorization)
+            .environment(\.openURL, OpenURLAction { opened.append($0); return .handled }))
+        capture(window, "junior-revision-watch-link-gate")
+        try await wait(seconds: 120) { authorization.guardianCalls >= 1 || !opened.isEmpty }
+        XCTAssertEqual(authorization.guardianCalls, 1, "The actual Watch link must request guardian authorization")
+        XCTAssertTrue(opened.isEmpty, "Denied authorization must not open TestFlight")
+        guard authorization.guardianCalls == 1, opened.isEmpty else { throw CocoaError(.userCancelled) }
+        print("LINK_GATE_DENIED_TESTFLIGHT")
+        try await wait { authorization.guardianCalls == 2 }
+        try await Task.sleep(for: .milliseconds(300))
+        XCTAssertTrue(opened.isEmpty, "Denied authorization must not open Apple support")
+        authorization.guardianAllowed = true
+        print("LINK_GATE_ALLOW_BOTH")
+        try await wait { opened.count == 2 }
+        XCTAssertEqual(opened.map(\.absoluteString), ["https://testflight.apple.com/join/f3MhePbf", "https://support.apple.com/guide/watch/get-apps-apd99e3c6a68/watchos"])
+        XCTAssertEqual(authorization.guardianCalls, 4)
+        authorization.holdGuardian = true
+        print("LINK_GATE_STALE_NEXT")
+        try await wait { authorization.pendingGuardian != nil }
+        store.invalidatePolicy()
+        authorization.pendingGuardian?.resume(); authorization.pendingGuardian = nil
+        try await Task.sleep(for: .milliseconds(500))
+        XCTAssertEqual(opened.count, 2, "Retired junior policy must not open a website after a late approval")
+        XCTAssertEqual(authorization.guardianCalls, 5)
+        capture(window, "junior-watch-stale-approval-blocked")
+    }
+
+    private func renderedElements(_ root: NSObject) -> [NSObject] {
+        var result: [NSObject] = []; var seen = Set<ObjectIdentifier>()
+        func visit(_ value: NSObject) {
+            guard seen.insert(ObjectIdentifier(value)).inserted else { return }
+            result.append(value)
+            (value as? UIView)?.subviews.forEach(visit)
+            value.accessibilityElements?.compactMap { $0 as? NSObject }.forEach(visit)
+            let count = value.accessibilityElementCount()
+            if count > 0 && count < 500 { for index in 0..<count { if let child = value.accessibilityElement(at: index) as? NSObject { visit(child) } } }
+        }
+        visit(root); return result
+    }
     private func acceptedProfile() throws -> LocalProfile {
         try LocalProfile(name: "Adult", bodyMeasurements: .init(heightCM: 170, weightKG: 70), onboardingRevision: TrainingSetup.revision,
             programmePreferences: .init(goals: [.balance], weekdays: [1, 3, 5], startingPoint: .startingOut,
@@ -239,18 +344,33 @@ import CryptoKit
 @MainActor private final class SetupRenderedMembershipClient: MembershipClient {
     var entitlements: [MembershipVerification] = []
     var restoreCalls = 0
-    func products() async throws -> [MembershipOffer] { [] }
+    var offers: [MembershipOffer] = []
+    var productsFail = false
+    var purchases: [(MembershipPlan, UUID)] = []
+    func products() async throws -> [MembershipOffer] { if productsFail { throw URLError(.notConnectedToInternet) }; return offers }
     func currentEntitlements() async -> [MembershipVerification] { entitlements }
     func updates() -> AsyncStream<MembershipVerification> { AsyncStream { $0.finish() } }
-    func purchase(_ plan: MembershipPlan, appAccountToken: UUID) async throws -> MembershipPurchaseResult { .cancelled }
+    func purchase(_ plan: MembershipPlan, appAccountToken: UUID) async throws -> MembershipPurchaseResult {
+        purchases.append((plan, appAccountToken))
+        let transaction = MembershipTransaction(id: 92, appAccountToken: appAccountToken, productID: plan.productID, kind: plan.kind)
+        entitlements.append(.verified(transaction))
+        return .completed(.verified(transaction))
+    }
     func restore() async throws { restoreCalls += 1 }
     func finish(transactionID: UInt64) async {}
 }
 
 @MainActor private final class SetupRenderedAuthorization: NativeAccountAuthorization {
     var guardianCalls = 0
+    var guardianAllowed = true
+    var holdGuardian = false
+    var pendingGuardian: CheckedContinuation<Void, Never>?
     func apple(nonce: String) async throws -> AppleIdentityResult { throw AccountFailure.cancelled }
     func register(options: PasskeyCreationOptions) async throws -> RegistrationCredential { throw AccountFailure.cancelled }
     func authenticate(options: PasskeyRequestOptions) async throws -> AssertionCredential { throw AccountFailure.cancelled }
-    func guardian() async throws { guardianCalls += 1 }
+    func guardian() async throws {
+        guardianCalls += 1
+        if holdGuardian { await withCheckedContinuation { pendingGuardian = $0 } }
+        guard guardianAllowed else { throw AccountFailure.cancelled }
+    }
 }
