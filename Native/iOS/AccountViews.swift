@@ -8,12 +8,12 @@ import SwiftUI
     private(set) var workspace: AccountWorkspace?
     private(set) var message: String?
     private var pendingWorkoutURL: URL?
-    init(account: NativeAccountStore? = nil, root: URL? = nil, membership: MembershipCoordinator? = nil) {
+    init(account: NativeAccountStore? = nil, root: URL? = nil, membership: MembershipCoordinator? = nil, membershipClient: (any MembershipClient)? = nil) {
         self.account = account ?? NativeAccountStore()
-        self.membership = membership ?? MembershipStore()
         let base = URL.applicationSupportDirectory.appendingPathComponent("Spottr")
         let namespace = ProcessInfo.processInfo.environment["SPOTTR_DATA_NAMESPACE"].flatMap(UUID.init(uuidString:))
         self.root = root ?? namespace.map { base.appendingPathComponent($0.uuidString) } ?? base
+        self.membership = membership ?? MembershipStore(root: self.root, client: membershipClient)
         do {
             try ProtectedLocalStorage.prepare(self.root)
             for name in ["profile.json", "history.json", "rewards.json", "training-path.json", "watch-inbox.json"] {

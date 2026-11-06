@@ -82,7 +82,7 @@ import CryptoKit
         wire.failure = URLError(.notConnectedToInternet)
         let authorization = AccountTestAuthorization(); authorization.succeed = true
         let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: authorization)
-        let client = LaunchMembershipClient(), membership = MembershipCoordinator(client: client)
+        let client = LaunchMembershipClient(), membership = MembershipCoordinator(client: client, claims: ProtectedMembershipClaimStore(root: root))
         let coordinator = AccountWorkspaceCoordinator(account: account, root: root, membership: membership)
         coordinator.openWorkoutURL(URL(string: "spottr://workout?exercise=frontArmRaise")!)
         await account.restore(); coordinator.accountChanged()
@@ -219,7 +219,7 @@ import CryptoKit
     }
 
     func testMembershipSurfaceRequiresAccountAndKeepsRestoreWhenProductsFail() async throws {
-        let store = MembershipCoordinator(client: LaunchMembershipClient())
+        let store = MembershipCoordinator(client: LaunchMembershipClient(), claims: ProtectedMembershipClaimStore(root: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)))
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         let window = UIWindow(windowScene: scene); window.frame = scene.coordinateSpace.bounds
         let host = UIHostingController(rootView: NavigationStack { MembershipView(store: store) })
@@ -252,7 +252,7 @@ import CryptoKit
             let scope = AccountDataScope(accountID: UUID(), profileID: UUID(), root: root)
             workspace = try AccountWorkspace(scope: scope)
             owner = .init(accountID: scope.accountID, profileID: scope.profileID)
-            membership = MembershipCoordinator(client: client); membership.setAccount(scope.accountID)
+            membership = MembershipCoordinator(client: client, claims: ProtectedMembershipClaimStore(root: root)); membership.setAccount(scope.accountID)
             try workspace.profile.save(.init(bodyMeasurements: .init(heightCM: 170, weightKG: 70), programmePreferences: .init(goals: [.balance], weekdays: [1], ageContext: .init(ageYears: 30, guardianManaged: false))))
         }
         func clean() { try? FileManager.default.removeItem(at: root) }

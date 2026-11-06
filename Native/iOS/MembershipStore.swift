@@ -4,7 +4,9 @@ import StoreKit
 typealias MembershipStore = MembershipCoordinator
 
 extension MembershipCoordinator {
-    convenience init() { self.init(client: AppleMembershipClient()) }
+    convenience init(root: URL = URL.applicationSupportDirectory.appendingPathComponent("Spottr"), client: (any MembershipClient)? = nil) {
+        self.init(client: client ?? AppleMembershipClient(), claims: ProtectedMembershipClaimStore(root: root))
+    }
 }
 
 @MainActor
@@ -140,7 +142,7 @@ final class AppleMembershipClient: MembershipClient {
     }
 
     private static func snapshot(_ transaction: StoreKit.Transaction, graceDeadline: Date? = nil) -> MembershipTransaction {
-        .init(id: transaction.id, appAccountToken: transaction.appAccountToken, productID: transaction.productID, kind: kind(transaction.productType),
+        .init(id: transaction.id, originalID: transaction.originalID, appAccountToken: transaction.appAccountToken, productID: transaction.productID, kind: kind(transaction.productType),
               expirationDate: transaction.expirationDate, gracePeriodExpirationDate: graceDeadline,
               revocationDate: transaction.revocationDate, isUpgraded: transaction.isUpgraded)
     }

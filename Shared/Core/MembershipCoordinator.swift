@@ -36,20 +36,23 @@ public protocol MembershipClient: AnyObject {
 public final class MembershipCoordinator {
     public private(set) var offers: [MembershipOffer] = []
     public private(set) var busy = false
-    public private(set) var error: String?
+    public var error: String? { claimError ?? operationError }
+    private var operationError: String?
+    private var claimError: String?
     public private(set) var status = "Checking App Store availability…"
     public private(set) var accountID: UUID?
     private var entitlements: [MembershipVerification] = []
-    private var restoredLegacyIDs: Set<UInt64> = []
+    private var restoredClaims: Set<MembershipClaim> = []
     private var accountGeneration = UUID()
     private let client: any MembershipClient
+    private let claims: any MembershipClaimStore
     private let now: @MainActor () -> Date
     @ObservationIgnored private var transactionUpdates: Task<Void, Never>?
     @ObservationIgnored private var expirationRefresh: Task<Void, Never>?
     @ObservationIgnored private var entitlementRefreshID = UUID()
 
-    public init(client: any MembershipClient, now: @escaping @MainActor () -> Date = { .now }) {
-        self.client = client; self.now = now
+    public init(client: any MembershipClient, claims: any MembershipClaimStore, now: @escaping @MainActor () -> Date = { .now }) {
+        self.client = client; self.claims = claims; self.now = now
         let stream = client.updates()
         transactionUpdates = Task { [weak self] in
             for await result in stream {
@@ -63,7 +66,7 @@ public final class MembershipCoordinator {
     public func setAccount(_ accountID: UUID?) {
         guard self.accountID != accountID else { return }
         self.accountID = accountID; accountGeneration = UUID(); entitlementRefreshID = UUID()
-        entitlements = []; restoredLegacyIDs = []; error = nil
+        entitlements = []; restoredClaims = []; operationError = nil; claimError = nil
         expirationRefresh?.cancel()
         status = accountID == nil ? "Sign in to use membership. Restore purchases remains available." : "Checking your Apple membership…"
     }
@@ -72,7 +75,7 @@ public final class MembershipCoordinator {
         return entitlements.compactMap { result in
             guard case .verified(let transaction) = result,
                   let plan = MembershipPlan.allCases.first(where: { $0.productID == transaction.productID }), plan.kind == transaction.kind,
-                  transaction.appAccountToken == accountID || (transaction.appAccountToken == nil && restoredLegacyIDs.contains(transaction.id)) else { return nil }
+                  transaction.appAccountToken == accountID || (transaction.appAccountToken == nil && MembershipClaim(transaction: transaction).map(restoredClaims.contains) == true) else { return nil }
             return transaction
         }
     }
@@ -96,7 +99,7 @@ public final class MembershipCoordinator {
     public func load() async {
         guard !busy else { return }
         let generation = accountGeneration
-        busy = true; error = nil
+        busy = true; operationError = nil
         defer { busy = false }
         await refreshEntitlements()
         guard generation == accountGeneration else { return }
@@ -111,14 +114,14 @@ public final class MembershipCoordinator {
             status = offers.isEmpty ? "App Store plans are unavailable right now." : "Prices and eligible trials are supplied by the App Store."
         } catch {
             guard generation == accountGeneration else { return }
-            offers = []; self.error = "App Store plans could not be loaded. Check your connection and try again."
+            offers = []; self.operationError = "App Store plans could not be loaded. Check your connection and try again."
             status = "App Store plans are unavailable right now."
         }
     }
     public func buy(_ plan: MembershipPlan) async {
         guard let accountID, !busy, offers.contains(where: { $0.plan == plan }), access.mayPurchase(plan) else { return }
         let generation = accountGeneration
-        busy = true; error = nil
+        busy = true; operationError = nil
         defer { busy = false }
         do {
             let result = try await client.purchase(plan, appAccountToken: accountID)
@@ -130,7 +133,7 @@ public final class MembershipCoordinator {
                 guard case .verified(let transaction) = result,
                       transaction.productID == plan.productID, transaction.kind == plan.kind,
                       transaction.appAccountToken == accountID else {
-                    error = "The App Store purchase couldn’t be verified for this account. Access has not changed."
+                    operationError = "The App Store purchase couldn’t be verified for this account. Access has not changed."
                     return
                 }
                 await refreshEntitlements()
@@ -142,25 +145,36 @@ public final class MembershipCoordinator {
             }
         } catch {
             guard generation == accountGeneration else { return }
-            self.error = "The App Store purchase could not be completed. Try again."
+            self.operationError = "The App Store purchase could not be completed. Try again."
         }
     }
     public func restore() async {
         guard !busy else { return }
-        let generation = accountGeneration
-        busy = true; error = nil
+        let generation = accountGeneration, restoringAccount = accountID
+        busy = true; operationError = nil
         defer { busy = false }
         do {
             try await client.restore()
             guard generation == accountGeneration else { return }
             await refreshEntitlements()
             guard generation == accountGeneration else { return }
-            if accountID != nil {
-                restoredLegacyIDs = Set(entitlements.compactMap { result in
-                    guard case .verified(let transaction) = result, transaction.appAccountToken == nil else { return nil }
-                    return transaction.id
+            if let restoringAccount {
+                let verifiedClaims = Set(entitlements.compactMap { result -> MembershipClaim? in
+                    guard case .verified(let transaction) = result, transaction.appAccountToken == nil,
+                          MembershipAccess.resolve([result], now: now()).hasAccess else { return nil }
+                    return MembershipClaim(transaction: transaction)
                 })
-                await refreshEntitlements()
+                if !verifiedClaims.isEmpty {
+                    do {
+                        // No await between this captured-owner check and the atomic protected write.
+                        guard generation == accountGeneration, accountID == restoringAccount else { return }
+                        try claims.save(restoredClaims.union(verifiedClaims), accountID: restoringAccount)
+                    } catch {
+                        claimError = "Your restored membership claim could not be saved on this device. Try Restore purchases again."
+                        return
+                    }
+                    await refreshEntitlements()
+                }
             }
             guard generation == accountGeneration else { return }
             await refreshOffers()
@@ -168,7 +182,7 @@ public final class MembershipCoordinator {
             status = hasAccess ? "Membership is active." : "No active membership for this account. Sign in and restore a previous Apple purchase."
         } catch {
             guard generation == accountGeneration else { return }
-            self.error = "Purchases could not be restored. Check your connection and try again."
+            self.operationError = "Purchases could not be restored. Check your connection and try again."
         }
     }
     public func completeRedemption(_ result: Result<Void, Error>) async {
@@ -177,10 +191,10 @@ public final class MembershipCoordinator {
         guard generation == accountGeneration else { return }
         await refreshOffers()
         guard generation == accountGeneration else { return }
-        error = nil
+        operationError = nil
         switch result {
         case .success: status = hasAccess ? "Membership is active." : "If Apple completed your redemption, use Restore purchases to verify it for this account."
-        case .failure: error = "Code redemption was not completed. Try again with the App Store."
+        case .failure: operationError = "Code redemption was not completed. Try again with the App Store."
         }
     }
     public func refreshEntitlements() async {
@@ -189,6 +203,12 @@ public final class MembershipCoordinator {
         let current = await client.currentEntitlements()
         guard generation == accountGeneration, entitlementRefreshID == refreshID else { return }
         entitlements = current
+        restoredClaims = []
+        claimError = nil
+        if let accountID {
+            do { restoredClaims = try claims.load(accountID: accountID) }
+            catch { claimError = "Your saved membership claim could not be read. Try again or use Restore purchases." }
+        }
         expirationRefresh?.cancel()
         guard let deadline = access.expiresAt else { return }
         expirationRefresh = Task { [weak self] in

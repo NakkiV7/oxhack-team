@@ -1,6 +1,6 @@
 import Foundation
 
-public enum MembershipPlan: String, CaseIterable, Sendable {
+public enum MembershipPlan: String, CaseIterable, Codable, Sendable {
     case monthly, lifetime
 
     public var productID: String { "com.omarchoudhry.spottr.\(rawValue)" }
@@ -13,6 +13,7 @@ public enum MembershipProductKind: Sendable {
 
 public struct MembershipTransaction: Sendable {
     public let id: UInt64
+    public let originalID: UInt64
     public let appAccountToken: UUID?
     public let productID: String
     public let kind: MembershipProductKind
@@ -21,9 +22,10 @@ public struct MembershipTransaction: Sendable {
     public let revocationDate: Date?
     public let isUpgraded: Bool
 
-    public init(id: UInt64 = 0, appAccountToken: UUID? = nil, productID: String, kind: MembershipProductKind, expirationDate: Date? = nil,
+    public init(id: UInt64 = 0, originalID: UInt64? = nil, appAccountToken: UUID? = nil, productID: String, kind: MembershipProductKind, expirationDate: Date? = nil,
                 gracePeriodExpirationDate: Date? = nil, revocationDate: Date? = nil, isUpgraded: Bool = false) {
         self.id = id
+        self.originalID = originalID ?? id
         self.appAccountToken = appAccountToken
         self.productID = productID
         self.kind = kind

@@ -1,7 +1,46 @@
 import XCTest
+import CryptoKit
 @testable import Spottr
 
 @MainActor final class AccountPersistenceTests: XCTestCase {
+    func testRestoredMembershipClaimUsesProtectedAccountRootAcrossTrustedReconstruction() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let id = UUID(), vault = MemoryAccountCredentials(), wire = AccountTestTransport()
+        try vault.save(.init(session: NativeAccountSession(authenticated: true, accountID: id, appAccountToken: id, deviceID: UUID(), accessToken: "access", refreshToken: "refresh", accessExpiresAt: .now.addingTimeInterval(900), refreshExpiresAt: .now.addingTimeInterval(86400)), privateKey: P256.Signing.PrivateKey().rawRepresentation))
+        wire.failure = URLError(.notConnectedToInternet)
+        func account() -> NativeAccountStore {
+            NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: AccountTestAuthorization())
+        }
+        let apple = ClaimMembershipClient()
+        let first = AccountWorkspaceCoordinator(account: account(), root: root, membershipClient: apple)
+        await first.account.restore(); first.accountChanged()
+        XCTAssertTrue(first.account.trusted)
+        await first.membership.restore()
+        XCTAssertTrue(first.membership.hasAccess)
+        let file = root.appendingPathComponent("Accounts/\(id.uuidString)/membership-claims.json")
+        XCTAssertTrue(try file.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup == true)
+        XCTAssertTrue(try file.deletingLastPathComponent().resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup == true)
+        #if !targetEnvironment(simulator)
+        XCTAssertEqual(try FileManager.default.attributesOfItem(atPath: file.path)[.protectionKey] as? FileProtectionType, .completeUntilFirstUserAuthentication)
+        #endif
+        let returned = AccountWorkspaceCoordinator(account: account(), root: root, membershipClient: apple)
+        await returned.account.restore(); returned.accountChanged()
+        XCTAssertTrue(returned.account.trusted)
+        XCTAssertFalse(returned.membership.hasAccess)
+        await returned.membership.load()
+        XCTAssertTrue(returned.membership.hasAccess)
+        XCTAssertEqual(apple.restores, 1)
+        let differentRoot = root.appendingPathComponent("separate-install-namespace")
+        let separate = AccountWorkspaceCoordinator(account: account(), root: differentRoot, membershipClient: apple)
+        await separate.account.restore(); separate.accountChanged()
+        await separate.membership.load()
+        XCTAssertFalse(separate.membership.hasAccess)
+        apple.entitlements = []
+        await returned.membership.load()
+        XCTAssertFalse(returned.membership.hasAccess)
+    }
+
     func testMeasurementAndProfileEditsPreserveAgeAndProgrammePreferences() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -125,4 +164,15 @@ import XCTest
         #endif
         XCTAssertThrowsError(try a.importLegacy(from: root, age: TrainingAgeContext(ageYears: 30, guardianManaged: false)))
     }
+}
+
+@MainActor private final class ClaimMembershipClient: MembershipClient {
+    var restores = 0
+    var entitlements: [MembershipVerification] = [.verified(.init(id: 71, originalID: 70, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable))]
+    func products() async throws -> [MembershipOffer] { [] }
+    func currentEntitlements() async -> [MembershipVerification] { entitlements }
+    func updates() -> AsyncStream<MembershipVerification> { AsyncStream { $0.finish() } }
+    func purchase(_ plan: MembershipPlan, appAccountToken: UUID) async throws -> MembershipPurchaseResult { .cancelled }
+    func restore() async throws { restores += 1 }
+    func finish(transactionID: UInt64) async {}
 }
