@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { context } from './native-sessions.ts';
+import { revokeApple } from './identity.ts';
 import { generateRegistrationOptions, verifyRegistrationResponse, generateAuthenticationOptions, verifyAuthenticationResponse } from '@simplewebauthn/server';
 import { randomToken, hashToken, encryptSecret, decryptSecret, newTOTPSecret, verifyTOTP, recoveryCodes, normalizeRecovery, bytesToBase64URL, base64URLToBytes, equalText } from './crypto.ts';
 
@@ -17,8 +19,8 @@ class AuthError extends Error { constructor(readonly status: number, message: st
 const fail = (): never => { throw new AuthError(401, 'Sign-in could not be verified. Try again with a new code.'); };
 const publicKeyString = z.string().min(1).max(20_000).regex(/^[A-Za-z0-9_-]+$/);
 const clientExtensions = z.object({ credProps: z.object({ rk: z.boolean().optional() }).optional(), appid: z.boolean().optional() }).passthrough();
-const registrationSchema = z.object({ id: publicKeyString, rawId: publicKeyString, type: z.literal('public-key'), clientExtensionResults: clientExtensions, authenticatorAttachment: z.enum(['platform', 'cross-platform']).optional(), response: z.object({ clientDataJSON: publicKeyString, attestationObject: publicKeyString, transports: z.array(z.enum(['usb','nfc','ble','internal','hybrid','smart-card','cable'])).optional() }) });
-const authenticationSchema = z.object({ id: publicKeyString, rawId: publicKeyString, type: z.literal('public-key'), clientExtensionResults: clientExtensions, authenticatorAttachment: z.enum(['platform', 'cross-platform']).optional(), response: z.object({ clientDataJSON: publicKeyString, authenticatorData: publicKeyString, signature: publicKeyString, userHandle: publicKeyString.optional() }) });
+export const registrationSchema = z.object({ id: publicKeyString, rawId: publicKeyString, type: z.literal('public-key'), clientExtensionResults: clientExtensions, authenticatorAttachment: z.enum(['platform', 'cross-platform']).optional(), response: z.object({ clientDataJSON: publicKeyString, attestationObject: publicKeyString, transports: z.array(z.enum(['usb','nfc','ble','internal','hybrid','smart-card','cable'])).optional() }) });
+export const authenticationSchema = z.object({ id: publicKeyString, rawId: publicKeyString, type: z.literal('public-key'), clientExtensionResults: clientExtensions, authenticatorAttachment: z.enum(['platform', 'cross-platform']).optional(), response: z.object({ clientDataJSON: publicKeyString, authenticatorData: publicKeyString, signature: publicKeyString, userHandle: publicKeyString.optional() }) });
 const credentialSchema = z.object({ id: z.string(), publicKey: z.string(), counter: z.number().int().nonnegative() });
 const registrationPending = z.object({ userID: z.string(), username: z.string(), challenge: z.string() });
 const enrollmentPending = z.object({ userID: z.string(), username: z.string(), cipher: z.string(), credential: credentialSchema });
@@ -60,7 +62,7 @@ async function readJSON(request: Request): Promise<unknown> {
 export async function cleanup(env: AuthEnv, now = Date.now()): Promise<void> {
   await env.DB.batch(['pending','sessions','rate_limits'].map(table => env.DB.prepare(`DELETE FROM ${table} WHERE expires_at < ?`).bind(now)));
 }
-export function createAuthHandler(env: AuthEnv, clock: () => number = Date.now): (request: Request) => Promise<Response> {
+export function createAuthHandler(env: AuthEnv, clock: () => number = Date.now, fetcher: typeof fetch = fetch): (request: Request) => Promise<Response> {
   const rpID = new URL(env.ORIGIN).hostname;
   const statement = (sql: string, ...args: SQLValue[]): Statement => env.DB.prepare(sql).bind(...args);
   const tokenHash = (value: string): Promise<string> => hashToken(value, env.AUTH_TOKEN_PEPPER);
@@ -242,6 +244,8 @@ export function createAuthHandler(env: AuthEnv, clock: () => number = Date.now):
       if (path === '/api/account/delete') {
         const current = await session(request, true, true);
         if (z.object({confirm:z.literal('DELETE')}).parse(body).confirm !== 'DELETE') return fail();
+        const identities = await statement("SELECT subject,provider_cipher FROM native_identities WHERE user_id=? AND provider='apple'", current.id).all<{subject:string;provider_cipher:string}>();
+        for (const identity of identities.results) await revokeApple(context(env,{clock,fetch:fetcher}),identity.subject,identity.provider_cipher);
         const deleted = await statement('DELETE FROM users WHERE id=? AND auth_version=? AND EXISTS(SELECT 1 FROM sessions WHERE token_hash=? AND auth_version=? AND expires_at>? AND mfa_at>=?) RETURNING id', current.id, current.auth_version, current.token_hash, current.auth_version, clock(), clock()-freshTTL).first<{id:string}>();
         if (!deleted) return fail();
         return json({ deleted: true, phoneHistoryUnchanged: true }, 200, [cookie(sessionCookie,'',0),cookie(pendingCookie,'',0)]);

@@ -13,6 +13,7 @@ async function fixture() {
   const mf = new Miniflare({ modules: true, script: 'export default { fetch() { return new Response("test"); }}', d1Databases: ['DB'] });
   const db = await mf.getD1Database('DB');
   await db.exec((await readFile(new URL('../migrations/0001_accounts.sql', import.meta.url), 'utf8')).replace(/\n/g, ' '));
+  await db.exec((await readFile(new URL('../migrations/0002_native_accounts.sql', import.meta.url), 'utf8')).replace(/\n/g, ' '));
   let afterSessionRead: (() => Promise<void>) | null = null;
   const originals = new WeakMap<Statement, Statement>();
   const instrument = (real: Statement, sql: string): Statement => {

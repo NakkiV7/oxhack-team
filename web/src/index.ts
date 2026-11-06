@@ -1,5 +1,7 @@
-import { createAuthHandler, cleanup, type AuthEnv } from './auth.ts';
-export interface SiteEnv extends AuthEnv { ASSETS: { fetch(request: Request): Promise<Response> }; }
+import { createAuthHandler, cleanup } from './auth.ts';
+import { createNativeAuthHandler, type NativeEnv } from './native-auth.ts';
+import { context, cleanupNative } from './native-sessions.ts';
+export interface SiteEnv extends NativeEnv { ASSETS: { fetch(request: Request): Promise<Response> }; }
 function secured(response: Response, path: string): Response {
   const headers = new Headers(response.headers);
   headers.set('X-Content-Type-Options','nosniff');
@@ -16,8 +18,9 @@ export default {
     const url=new URL(request.url);
     if (url.protocol==='http:') {url.protocol='https:';return Response.redirect(url.href,308);}
     if (url.pathname==='/api/health') return secured(Response.json({service:'Spottr',status:'available'}),url.pathname);
+    if (url.pathname.startsWith('/api/native/v1/')) return secured(await createNativeAuthHandler(env)(request),url.pathname);
     if (url.pathname.startsWith('/api/')) return secured(await createAuthHandler(env)(request),url.pathname);
     return secured(await env.ASSETS.fetch(request),url.pathname);
   },
-  async scheduled(_event: unknown, env: SiteEnv): Promise<void> { await cleanup(env); }
+  async scheduled(_event: unknown, env: SiteEnv): Promise<void> { await cleanup(env); await cleanupNative(context(env)); }
 };

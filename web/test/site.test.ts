@@ -28,3 +28,20 @@ test('health endpoint is non-sensitive and HTTP is upgraded to the same HTTPS pa
   assert.equal(redirect.status, 308);
   assert.equal(redirect.headers.get('Location'), origin + '/privacy/?x=1');
 });
+test('native v1 routes reach the additive handler without a browser Origin header',async()=>{
+ const {fixture}=await import('./native-fixture.ts');const f=await fixture();try{
+ const response=await site.fetch(new Request(origin+'/api/native/v1/passkey/login/options',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}),{...f.env,ASSETS:env.ASSETS});
+ assert.equal(response.status,200);assert.equal(response.headers.get('Cache-Control'),'no-store');
+ }finally{await f.mf.dispose();}
+});
+test('scheduled retention removes expired native challenges and flows without deleting active accounts',async()=>{
+ const {fixture}=await import('./native-fixture.ts');const f=await fixture();try{
+ await f.seed();
+ await f.db.prepare('INSERT INTO native_flows(id,stage,payload,expires_at) VALUES(?,?,?,?)').bind('expired','email','test-only',1).run();
+ await f.db.prepare('INSERT INTO native_mail_reservations VALUES(?,?,?,?,?)').bind('old','2000-01-01','2000-01','hashed-test',1).run();
+ await site.scheduled({}, {...f.env,ASSETS:env.ASSETS});
+ assert.equal((await f.db.prepare('SELECT COUNT(*) AS n FROM native_flows').first<{n:number}>())?.n,0);
+ assert.equal((await f.db.prepare('SELECT COUNT(*) AS n FROM native_mail_reservations').first<{n:number}>())?.n,0);
+ assert.equal((await f.db.prepare('SELECT COUNT(*) AS n FROM users').first<{n:number}>())?.n,1);
+ }finally{await f.mf.dispose();}
+});
