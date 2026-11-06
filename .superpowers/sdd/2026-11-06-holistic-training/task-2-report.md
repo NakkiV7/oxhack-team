@@ -111,3 +111,72 @@ The eligibility boolean is a client declaration, not legal age verification; Tas
 Handler re-creation is tested against durable D1 state; this is Worker-isolate restart behavior, not a claim that a production regional outage or real device/network restore was exercised. A completed initial enrollment response can be lost; the new user can still perform normal full MFA with their saved passkey/Authenticator. Refresh response loss has the explicitly tested bounded idempotent contract. No indefinite replay acceptance or support bypass was introduced.
 
 Independent fresh task/security-aware review remains required before Task 3 integration. This report does not mark that review, deployment or live readiness complete.
+
+## Review round 1 — refresh/deletion races and credential-cache retention
+
+Review findings: P1/P2 and low-cost P3 in `task-2-review.md`. All three are addressed in **`73ecacf`** (`fix: fence refresh retries and provider deletion against current state`). Base for this fix wave is root's `7dbe184` (the intervening age-checkpoint spec-only commit); that spec and all other root work remain unchanged. Independent scoped rereview is still required before Task 3.
+
+### P1: durable refresh retry/reuse decisions
+
+The original authorization object could be stale after an identical peer rotation. The fix reads the current device with current account/auth-version/lease guards, retrieves retry ciphertext only through a current D1 join matching request ID, successor, lease and retry deadline, and makes reuse deletion conditional on the current durable mismatch. An old JavaScript refresh hash no longer triggers unconditional device deletion. A losing rotation batch resolves its history once without recursion.
+
+The deterministic public regression pauses request B immediately after its actual D1 authorization read, fully completes identical request A, then resumes B before its history resolution. Before the fix B returned 401 and the device was lost; after the fix both return the same tokens and a subsequent signed current-session request succeeds. An additional deterministic regression revokes the account auth version after the retry's authorization read: cached credentials are not returned, and the stale device row is not destructively deleted merely because the snapshot was old. Existing genuine-reuse, bounded-window, transient-failure and no-retry-loop checks still pass. The old retry-loop test now asserts at most two batches rather than requiring exactly two; the new early current-state rejection needs only the proof-consumption batch.
+
+### P2: snapshot-fenced native and legacy deletion
+
+Both deletion routes now call one shared operation. It captures an ordered SQLite JSON snapshot of all Apple `(subject, provider_cipher)` pairs, revokes those grants, and deletes the user only if the exact snapshot and current session/account/auth-version/freshness authorization still match **inside the DELETE statement**. This covers both a new subject and a replacement grant for the same subject without a variable-length SQL parameter list.
+
+A concurrently changed grant snapshot returns retryable 503 and leaves the account and new grant intact. The next deletion attempt enumerates/revokes the then-current snapshot before deleting. No persistent deletion lock/state is introduced; abandoning or failing an attempt does not lock out passkey/TOTP/native session use. A revoked/stale authorization returns 401 instead. Time-dependent authorization parameters are evaluated after provider I/O, so a slow revoke cannot reuse the pre-I/O MFA freshness window.
+
+Four deterministic real-D1 regressions exercise native/legacy deletion × new Apple link/same-subject grant replacement. During the first fake revoke call they complete an independently prepared verified identity link through the actual signed `/identity/link/complete` route. Each originally returned 200 and lost the unrevoked grant; now the first deletion returns 503, the account/new cipher remain, the current session remains usable, and retry revokes the new grant before the cascade. The prepared pending identity is a test fixture; no production proof bypass was added, and the existing actual Apple JWT/signature tests still run in the full suite. Two further regressions advance the clock during provider I/O and prove both deletion surfaces recheck MFA freshness before mutation.
+
+### P3: retain a minimal spent-token tombstone
+
+At the first successful scheduled cleanup after `retry_until`, the server blanks `reply_cipher`, `request_id` and `successor_hash`. The spent-token hash, device linkage and expiry metadata remain for bounded reuse detection until the old lease expires. The current hourly schedule is unchanged: this is **not** a claim of exact 60-second storage erasure, but ciphertext no longer survives to the 180-day tombstone expiry. Retrieval is already blocked immediately at the retry deadline.
+
+The regression confirms a retry still returns the identical response at 59 seconds, cleanup at 61 seconds erases the cached credentials and obsolete hashes, the healthy successor still works, and signed late reuse of the predecessor remains detectable and revokes that device.
+
+### API and migration implications
+
+No route, request, response field, signature format, session lifetime or native adapter DTO changed. The contract now explicitly documents current-state refresh decisions, retryable 503 when deletion encounters a changed grant snapshot, post-provider freshness checks, and scheduled ciphertext erasure. Clients preserve credentials/data on 503 and can retry deletion; they do not infer successful account deletion from a provider-revocation attempt alone.
+
+No migration change or new migration is required. Existing `0002` NOT NULL text columns accept the empty-string tombstone sentinels; old rows are minimized by the next successful cleanup. No account-deletion lock/backfill or schema-destructive operation is needed. All earlier backup/deploy/rollback precautions and unverified live-provider/native/runtime boundaries remain applicable.
+
+### Red/green and covering evidence
+
+All new receipts are under `/Volumes/Spottr Development/Audio/Holistic-Training-20261106/task2/`, using the existing symlinked dependencies and SSD `TMPDIR`. No suites overlapped; Node file concurrency remained two.
+
+- `review-round1-red-refresh.log`: deterministic identical-peer race failed (401 versus expected 200) before production changes.
+- `review-round1-green-refresh.log`: **8/8** session tests passed, including the forced interleaving.
+- `review-round1-red-deletion.log`: all **four** native/legacy new-link/replacement cases failed (200 versus expected 503) before the snapshot fence.
+- `review-round1-green-deletion.log`: **22/22** combined existing legacy auth and deletion/link tests passed.
+- `review-round1-red-deletion-freshness.log`: both slow-provider cases exposed early capture of freshness arguments in the first helper revision; corrected with post-I/O argument evaluation.
+- `review-round1-green-deletion-freshness.log`: **6/6** focused race/freshness cases passed.
+- `review-round1-red-retention.log`: cached ciphertext remained after the retry deadline before cleanup minimization.
+- `review-round1-green-retention.log`: **9/9** session tests passed, including before/after-window retrieval and retained reuse detection.
+- `review-round1-full-web.log`: **59/59 tests passed, 0 failed**, 21.588 seconds. This is one full run including migration preservation, every legacy/native web test and the extra cached-retry auth-version revocation regression.
+- `review-round1-typecheck-final.log`: strict `npm run typecheck` passed.
+- `git diff --check` and `git diff --cached --check`: clean before code commit.
+
+Commands (from `web/`):
+
+```sh
+TMPDIR='/Volumes/Spottr Development/Audio/Holistic-Training-20261106/task2/tmp' \
+  node --import tsx --test --test-concurrency=2 \
+  --test-name-pattern='identical peer rotation' test/native-sessions.test.ts
+TMPDIR='/Volumes/Spottr Development/Audio/Holistic-Training-20261106/task2/tmp' \
+  node --import tsx --test --test-concurrency=2 \
+  --test-name-pattern='deletion retains' test/native-legacy.test.ts
+TMPDIR='/Volumes/Spottr Development/Audio/Holistic-Training-20261106/task2/tmp' \
+  node --import tsx --test --test-concurrency=2 \
+  --test-name-pattern='rechecks MFA freshness|deletion retains' test/native-legacy.test.ts
+TMPDIR='/Volumes/Spottr Development/Audio/Holistic-Training-20261106/task2/tmp' \
+  node --import tsx --test --test-concurrency=2 test/native-sessions.test.ts
+TMPDIR='/Volumes/Spottr Development/Audio/Holistic-Training-20261106/task2/tmp' \
+  node --import tsx --test --test-concurrency=2 test/native-legacy.test.ts test/auth.test.ts
+TMPDIR='/Volumes/Spottr Development/Audio/Holistic-Training-20261106/task2/tmp' \
+  node --import tsx --test --test-concurrency=2 test/*.test.ts
+npm run typecheck
+```
+
+Self-review checked the durable SQL conditions, exact grant snapshot comparison, zero-row behavior, current auth-version/expiry checks, no recursion, retry-window erasure sentinels and shared legacy/native behavior. No public-page/client source changed, so the prior public-site checks and client bundle were not needlessly repeated. No native build/simulator/Chrome/subagent, new dependency/worktree, cleanup, real provider/mail/deploy operation or secret read occurred. Protected files and the unrelated untracked directories remain untouched. The next action is the root's fresh scoped review, not native integration or live activation.
