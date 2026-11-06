@@ -16,25 +16,42 @@ import CryptoKit
         let adultHealth = HealthDataStore(client: adultClient, defaults: try FileHealthPreferences(url: adult.scope.file("ui-health.plist")))
         let juniorHealth = HealthDataStore(client: juniorClient, defaults: try FileHealthPreferences(url: junior.scope.file("ui-health.plist")))
         let replacementHealth = HealthDataStore(client: replacementClient, defaults: try FileHealthPreferences(url: adult.scope.file("ui-health-replacement.plist")))
-        let host = UIHostingController(rootView: SpottrRoot(store: adult.training, profileStore: adult.profile, healthStore: adultHealth))
+        let guardian = AccountTestAuthorization(); guardian.succeed = true
+        let host = UIHostingController(rootView: RevisionWorkspaceView(workspace: adult, health: adultHealth, guardian: guardian))
         let window = try mount(host)
         defer { window.isHidden = true }
         for (workspace, health, expectedAdultRequests) in [(adult, adultHealth, 1), (junior, juniorHealth, 1), (adult, adultHealth, 2)] {
-            host.rootView = SpottrRoot(store: workspace.training, profileStore: workspace.profile, healthStore: health)
+            host.rootView = RevisionWorkspaceView(workspace: workspace, health: health, guardian: guardian)
             try await settle(window)
-            try await scrollToBottom(window)
-            try activate("today-health-setup", in: window)
+            try await waitForOldSheetToClose(window)
+            try activate("profile-settings", in: window)
             try await settle(window)
-            try activate("health-connect", in: window)
+            try await reveal("profile-permissions", in: window)
+            try activate("profile-permissions", in: window)
             try await settle(window)
+            if AccountPolicy.allowsHealth(profile: workspace.profile.profile) {
+                try await reveal("setup-health", in: window)
+                try activate("setup-health", in: window)
+                try await settle(window)
+                try activate("health-connect", in: window)
+                try await settle(window)
+            } else {
+                XCTAssertFalse(elements(window).contains { $0.accessibilityLabel == "Choose Apple Health readings" })
+            }
             XCTAssertEqual(adultClient.requests, expectedAdultRequests)
             XCTAssertEqual(juniorClient.requests, 0)
         }
         let replacement = try AccountWorkspace(scope: adult.scope)
-        host.rootView = SpottrRoot(store: replacement.training, profileStore: replacement.profile, healthStore: replacementHealth)
+        host.rootView = RevisionWorkspaceView(workspace: replacement, health: replacementHealth, guardian: guardian)
         try await settle(window)
-        try await scrollToBottom(window)
-        try activate("today-health-setup", in: window)
+        try await waitForOldSheetToClose(window)
+        try activate("profile-settings", in: window)
+        try await settle(window)
+        try await reveal("profile-permissions", in: window)
+        try activate("profile-permissions", in: window)
+        try await settle(window)
+        try await reveal("setup-health", in: window)
+        try activate("setup-health", in: window)
         try await settle(window)
         try activate("health-connect", in: window)
         try await settle(window)
@@ -172,7 +189,11 @@ import CryptoKit
     private func makeWorkspace(root: URL, age: Int) throws -> AccountWorkspace {
         let directory = try AccountProfileDirectory(accountID: UUID(), root: root)
         let profile = try directory.add(age: TrainingAgeContext(ageYears: age, guardianManaged: age < 18), name: "Test profile")
-        return try AccountWorkspace(scope: directory.scope(profile.id))
+        let workspace = try AccountWorkspace(scope: directory.scope(profile.id))
+        try workspace.profile.save(LocalProfile(bodyMeasurements: age >= 18 ? .init(heightCM: 170, weightKG: 70) : nil,
+            onboardingRevision: TrainingSetup.revision, programmePreferences: .init(goals: [.balance], weekdays: [1], startingPoint: .startingOut,
+                ageContext: profile.age, comfortAnswers: Dictionary(uniqueKeysWithValues: ExerciseFamily.allCases.map { ($0, TrainingSetup.Comfort.unsure) }))))
+        return workspace
     }
     private func trustedAccount() async throws -> NativeAccountStore {
         let id = UUID(); let vault = MemoryAccountCredentials()
@@ -199,6 +220,23 @@ import CryptoKit
         }
         try await settle(window)
     }
+    private func reveal(_ identifier: String, in window: UIWindow) async throws {
+        for _ in 0..<8 {
+            let surface = window.rootViewController?.presentedViewController?.view ?? window
+            if elements(surface).contains(where: { ($0 as? any UIAccessibilityIdentification)?.accessibilityIdentifier == identifier }) { return }
+            for scroll in elements(surface).compactMap({ $0 as? UIScrollView }) where scroll.isScrollEnabled && scroll.contentSize.height > scroll.bounds.height {
+                let bottom = max(0, scroll.contentSize.height - scroll.bounds.height + scroll.adjustedContentInset.bottom)
+                scroll.setContentOffset(CGPoint(x: 0, y: min(bottom, scroll.contentOffset.y + scroll.bounds.height * 0.6)), animated: false)
+            }
+            try await settle(window)
+        }
+    }
+    private func waitForOldSheetToClose(_ window: UIWindow) async throws {
+        for _ in 0..<20 where window.rootViewController?.presentedViewController != nil {
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        XCTAssertNil(window.rootViewController?.presentedViewController, "Policy replacement must dismiss the old profile sheet before another action")
+    }
     private func elements(_ root: NSObject) -> [NSObject] {
         var result: [NSObject] = []; var seen = Set<ObjectIdentifier>()
         func visit(_ object: NSObject) {
@@ -213,15 +251,29 @@ import CryptoKit
     }
     private func textFields(_ root: UIView) -> [UITextField] { elements(root).compactMap { $0 as? UITextField } }
     private func activate(_ id: String, in window: UIWindow) throws {
-        let labels = ["today-health-setup": "Health history & heart-rate zones", "health-connect": "Choose Health data"]
-        let element = try XCTUnwrap(elements(window).first { ($0 as? any UIAccessibilityIdentification)?.accessibilityIdentifier == id || $0.accessibilityLabel == labels[id] }, "Missing rendered accessibility element \(id). Rendered elements: \(elements(window).compactMap { $0.accessibilityLabel }.prefix(70))")
-        XCTAssertTrue(element.accessibilityActivate(), "Rendered action did not activate: \(id)")
+        let labels = ["profile-settings": "Profile and settings", "profile-permissions": "Permissions and connection", "setup-health": "Choose Apple Health readings", "health-connect": "Choose Health data"]
+        let element = try XCTUnwrap(elements(window).first {
+            $0.accessibilityTraits.contains(.button) && (($0 as? any UIAccessibilityIdentification)?.accessibilityIdentifier == id || $0.accessibilityLabel == labels[id])
+        }, "Missing rendered accessibility button \(id). Rendered elements: \(elements(window).compactMap { $0.accessibilityLabel }.prefix(70))")
+        if let control = element as? UIControl { control.sendActions(for: .touchUpInside) }
+        else { XCTAssertTrue(element.accessibilityActivate(), "Rendered action did not activate: \(id)") }
     }
     private func activate(label: String, in window: UIWindow) throws {
         let element = try XCTUnwrap(elements(window).first { ($0.accessibilityLabel == label || $0.accessibilityValue == label) && $0.accessibilityTraits.contains(.button) }, "Missing rendered button \(label)")
         XCTAssertTrue(element.accessibilityActivate(), "Rendered button did not activate: \(label)")
     }
 
+}
+
+private struct RevisionWorkspaceView: View {
+    let workspace: AccountWorkspace
+    let health: HealthDataStore
+    let guardian: any NativeAccountAuthorization
+    var body: some View {
+        // AccountRootView uses this outer workspace identity, including for same-UUID policy replacement.
+        SpottrRoot(store: workspace.training, profileStore: workspace.profile, healthStore: health, guardianAuthorization: guardian)
+            .id(ObjectIdentifier(workspace))
+    }
 }
 
 @MainActor private final class RevisionHealthClient: HealthReadingClient {

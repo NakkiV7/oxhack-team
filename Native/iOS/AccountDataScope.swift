@@ -73,6 +73,20 @@ struct TrainingProfileDescriptor: Codable, Identifiable, Equatable {
         try save(candidate, selectedID: profile.id)
         return profile
     }
+    func updateIdentity(id: UUID, name: String, age: TrainingAgeContext) throws {
+        guard let index = profiles.firstIndex(where: { $0.id == id }) else { throw AccountFailure.invalidResponse }
+        let store = NativeProfileStore(url: scope(id).file("profile.json"))
+        guard let current = store.profile, current.programmePreferences?.ageContext == profiles[index].age else { throw AccountFailure.invalidResponse }
+        let preferences = try current.effectiveProgrammePreferences.changingAge(to: age)
+        let next = try LocalProfile(name: name, weeklyTarget: current.weeklyTarget, goals: current.goals,
+            baselineAbility: current.baselineAbility, bodyMeasurements: current.bodyMeasurements,
+            comfortableExercises: [], weightManagementGoal: age.ageYears >= 18 && current.weightManagementGoal,
+            onboardingRevision: 0, programmePreferences: preferences)
+        try store.save(next)
+        var candidate = profiles
+        candidate[index] = TrainingProfileDescriptor(id: id, age: age, name: next.name)
+        try save(candidate, selectedID: selectedID ?? id)
+    }
     func select(_ id: UUID) throws {
         guard profiles.contains(where: { $0.id == id }) else { throw AccountFailure.invalidResponse }
         try save(profiles, selectedID: id)
@@ -86,6 +100,7 @@ struct TrainingProfileDescriptor: Codable, Identifiable, Equatable {
 
 @MainActor @Observable final class AccountWorkspace {
     let scope: AccountDataScope
+    let policyEpoch = UUID()
     let profile: NativeProfileStore
     var launch: WorkoutLaunchCoordinator?
     let training: TrainingStore
@@ -93,13 +108,23 @@ struct TrainingProfileDescriptor: Codable, Identifiable, Equatable {
     let path: TrainingPathStore
     init(scope: AccountDataScope) throws {
         try scope.prepare(); self.scope = scope
-        profile = NativeProfileStore(url: scope.file("profile.json"))
-        path = TrainingPathStore(url: scope.file("training-path.json"))
+        let directoryURL = scope.root.appendingPathComponent("Accounts").appendingPathComponent(scope.accountID.uuidString).appendingPathComponent("profiles.json")
+        var knownAge: TrainingAgeContext?
+        if FileManager.default.fileExists(atPath: directoryURL.path) {
+            let directory = try AccountProfileDirectory(accountID: scope.accountID, root: scope.root)
+            guard let descriptor = directory.profiles.first(where: { $0.id == scope.profileID }),
+                  NativeProfileStore(url: scope.file("profile.json")).profile?.programmePreferences?.ageContext == descriptor.age else { throw AccountFailure.invalidResponse }
+            knownAge = descriptor.age
+        }
         let defaults = UserDefaults(suiteName: "Spottr.Scope.\(scope.accountID.uuidString).\(scope.profileID.uuidString)")!
+        profile = NativeProfileStore(url: scope.file("profile.json"), fixedAge: knownAge, preferencesDefaults: defaults)
+        path = TrainingPathStore(url: scope.file("training-path.json"))
         let rewards = NativeRewardsStore(url: scope.file("rewards.json"), allowsTimePressureRewards: profile.profile?.programmePreferences?.ageContext?.allowsTimePressureRewards == true)
-        training = TrainingStore(historyURL: scope.file("history.json"), rewardsStore: rewards, defaults: defaults, accountScope: scope)
+        let voice = RemoteVoicePlayback(offlineOnly: true, defaults: defaults, gentleOnly: (profile.profile?.programmePreferences?.ageContext?.ageYears ?? 0) < 18)
+        training = TrainingStore(historyURL: scope.file("history.json"), voicePlayback: voice, rewardsStore: rewards, defaults: defaults, accountScope: scope)
         health = HealthDataStore(client: ScopedHealthReadingClient(profile: profile), defaults: try FileHealthPreferences(url: scope.file("health-preferences.plist")))
     }
+    func invalidatePolicy() { suspend(); profile.invalidatePolicy() }
     var hasOngoingWorkout: Bool { training.sessionPhase != .idle && training.sessionPhase != .finished }
     func suspend(preservingLaunchIntent: Bool = false) {
         if !preservingLaunchIntent { launch?.cancel() }
@@ -111,16 +136,23 @@ struct TrainingProfileDescriptor: Codable, Identifiable, Equatable {
 
 @MainActor final class ScopedHealthReadingClient: HealthReadingClient {
     private let profile: NativeProfileStore
-    private lazy var client = AppleHealthReadingClient()
-    init(profile: NativeProfileStore) { self.profile = profile }
-    var isAvailable: Bool { AccountPolicy.allowsHealth(profile: profile.profile) && client.isAvailable }
+    private let suppliedClient: (any HealthReadingClient)?
+    private lazy var client: any HealthReadingClient = suppliedClient ?? AppleHealthReadingClient()
+    private let capturedAge: TrainingAgeContext?
+    init(profile: NativeProfileStore, client: (any HealthReadingClient)? = nil) {
+        self.profile = profile; suppliedClient = client; capturedAge = profile.profile?.programmePreferences?.ageContext
+    }
+    var isAvailable: Bool { capturedAge?.allowsHealthIntegration == true && profile.permitsPolicyCallbacks && client.isAvailable }
     func requestReadAuthorization() async throws {
-        guard AccountPolicy.allowsHealth(profile: profile.profile) else { throw AccountFailure.checkpointRequired }
+        guard capturedAge?.allowsHealthIntegration == true && profile.permitsPolicyCallbacks else { throw AccountFailure.checkpointRequired }
         try await client.requestReadAuthorization()
+        guard profile.permitsPolicyCallbacks else { throw AccountFailure.reauthenticate }
     }
     func read(asOf: Date, dayStart: Date, dayEnd: Date) async throws -> [HealthObservation] {
-        guard AccountPolicy.allowsHealth(profile: profile.profile) else { throw AccountFailure.checkpointRequired }
-        return try await client.read(asOf: asOf, dayStart: dayStart, dayEnd: dayEnd)
+        guard capturedAge?.allowsHealthIntegration == true && profile.permitsPolicyCallbacks else { throw AccountFailure.checkpointRequired }
+        let result = try await client.read(asOf: asOf, dayStart: dayStart, dayEnd: dayEnd)
+        guard profile.permitsPolicyCallbacks else { throw AccountFailure.reauthenticate }
+        return result
     }
 }
 

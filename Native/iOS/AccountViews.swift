@@ -64,6 +64,19 @@ import SwiftUI
             return true
         } catch { message = error.localizedDescription; return false }
     }
+    func updateSelectedIdentity(name: String, age: TrainingAgeContext) async {
+        do {
+            guard let captured = visibleWorkspace, let directory else { throw AccountFailure.reauthenticate }
+            let generation = account.authenticationGeneration
+            try await account.authorization.guardian()
+            guard visibleWorkspace === captured, account.authenticationGeneration == generation else { throw AccountFailure.reauthenticate }
+            try requireNoOtherWorkout()
+            captured.invalidatePolicy()
+            workspace = nil
+            try directory.updateIdentity(id: captured.scope.profileID, name: name, age: age)
+            try select(captured.scope.profileID)
+        } catch { message = "The profile policy could not be updated. Reopen the matching profile before training. " + error.localizedDescription }
+    }
     func choose(_ id: UUID) async {
         cancelPendingLaunch()
         do {
@@ -92,6 +105,7 @@ import SwiftUI
                       self.account.accountID == scope.accountID else { return nil }
                 return .init(accountID: scope.accountID, profileID: scope.profileID)
             }, generation: { [weak account] in account?.authenticationGeneration ?? UUID() })
+        launch.healthStore = workspace.health; launch.guardianAuthorization = account.authorization
         workspace.launch = launch; workspace.training.launchCoordinator = launch
     }
     private func requireNoOtherWorkout() throws {
@@ -135,7 +149,13 @@ struct AccountRootView: View {
         Group {
             if let workspace = coordinator.visibleWorkspace, coordinator.account.backupCodes.isEmpty {
                 Group {
-                    if workspace.profile.profile?.programmePreferences?.ageContext?.ageYears ?? 0 < 5 {
+                    if !workspace.hasOngoingWorkout && !AccountPolicy.setupComplete(profile: workspace.profile.profile) {
+                        OnboardingView(profileStore: workspace.profile, healthStore: workspace.health, guardianAuthorization: coordinator.account.authorization, history: workspace.training.history) {
+                            workspace.training.remoteVoice?.reloadPreferences()
+                            workspace.training.repVoice.choose(workspace.training.remoteVoice?.gentleOnly == true ? nil : RepVoicePlan.Coach(rawValue: workspace.profile.preferencesDefaults.string(forKey: RepVoicePlayer.defaultsKey) ?? "off"))
+                            workspace.training.setVoiceFeedback(workspace.profile.preferencesDefaults.bool(forKey: "trainer.audioEnabled"))
+                        }
+                    } else if workspace.profile.profile?.programmePreferences?.ageContext?.ageYears ?? 0 < 5 {
                         FamilyMovementView(authorization: coordinator.account.authorization)
                     } else {
                         SpottrRoot(store: workspace.training, profileStore: workspace.profile, healthStore: workspace.health,
@@ -191,10 +211,12 @@ struct AccountSetupView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Account and privacy") {
-                    Text("Use an adult account or an adult guardian’s account. A child does not need an email address. Guardianship is self-declared, not legally verified.")
-                    if account.trusted { Text("Your account is signed in with passkey and Authenticator verification.") }
-                    else { Text("A passkey with device verification and an Authenticator code are both required. Backup codes can replace Authenticator codes after your passkey.") }
+                Section {
+                    Text(account.trusted ? "Create a training profile for yourself or someone you care for." : "Start with your age, then sign in securely. An adult guardian manages children’s profiles.")
+                    DisclosureGroup("How your account is protected") {
+                        Text("Sign-in uses a passkey and an Authenticator code. A saved backup code can replace your Authenticator code.")
+                        Text("Children do not need an email address. Guardians confirm their role themselves. Spottr does not verify legal guardianship.")
+                    }
                 }
                 if account.trusted {
                     profileSetup
@@ -210,14 +232,15 @@ struct AccountSetupView: View {
                 if let message = localMessage ?? account.message ?? coordinator.message { Section { Text(message).foregroundStyle(.secondary) } }
                 Section("Membership and help") {
                     NavigationLink("Membership & restore purchases") { MembershipView(store: coordinator.membership) }.accessibilityIdentifier("account-membership")
-                    Link("Spottr support", destination: URL(string: "https://spottr.omarchoudhry.co.uk/support")!)
+                    WebsiteLink(title: "Spottr support", url: URL(string: "https://spottr.omarchoudhry.co.uk/support")!)
                 }
                 Section("Saved local data") {
                     NavigationLink("View or export existing phone records") { ProtectedLegacyRecordsView(root: coordinator.root, authorization: account.authorization) }
                     NavigationLink("Unlock retained account records") { LocalAccountArchivesView(root: coordinator.root, authorization: account.authorization) }
                     Text("Existing records stay on this phone. Importing them into an adult training profile is an explicit choice after sign-in.")
                 }
-            }.navigationTitle("Account setup")
+            }.navigationTitle("Account and privacy").navigationBarTitleDisplayMode(.inline)
+                .safeAreaInset(edge: .top) { SetupProgressHeader(stage: .account) }
         }
     }
     @ViewBuilder private var authentication: some View {
@@ -225,11 +248,12 @@ struct AccountSetupView: View {
             Section("Who is the training profile for?") {
                 TextField("Training person’s age in years", text: $age).keyboardType(.numberPad)
                 Picker("Account owner", selection: $role) { Text("Adult training for myself").tag(AccountPolicy.Role.adultSelf); Text("Adult guardian managing a profile").tag(AccountPolicy.Role.guardian) }
-                Button("Save local age and account role") {
+                Button("Confirm age and role") {
                     do { guard let age = Int(age) else { throw AccountFailure.checkpointRequired }; try account.setCheckpoint(ageYears: age, role: role); localMessage = nil }
                     catch { localMessage = error.localizedDescription }
                 }
-                if account.checkpoint != nil { Label("Local checkpoint saved", systemImage: "checkmark.circle") }
+                .buttonStyle(.borderedProminent).tint(Palette.blue)
+                if account.checkpoint != nil { Label("Age and role confirmed", systemImage: "checkmark.circle") }
             }
             Section("Create or recover") {
                 Picker("Purpose", selection: $purpose) { Text("Create account").tag(IdentityPurpose.enroll); Text("Recover account").tag(IdentityPurpose.recover) }
@@ -284,7 +308,7 @@ struct AccountSetupView: View {
                 Button("I have saved my backup codes") { account.dismissBackupCodes() }
             }
         }
-        Section("Local training profile") {
+        Section("Training profile") {
             TextField("Profile name", text: $name)
             if initialProfileCheckpoint == nil {
                 TextField("Training person’s age", text: $age).keyboardType(.numberPad)
@@ -314,6 +338,8 @@ struct AccountControlsView: View {
     @State private var creatingProfile = false
     @State private var confirmDelete = false
     @State private var linkEmail = ""
+    @State private var revisedAge = ""
+    @State private var revisedRole = AccountPolicy.Role.adultSelf
     @State private var message: String?
     var body: some View {
         NavigationStack {
@@ -324,6 +350,24 @@ struct AccountControlsView: View {
                     }
                     Button("Add a training profile") { creatingProfile = true }
                     Button("Import old phone records into this adult profile") { Task { await coordinator.importLegacy() } }
+                }
+                if let workspace = coordinator.visibleWorkspace {
+                    Section("Age and guardian settings") {
+                        Text("Changing age reviews this profile’s safety policy before another workout. Existing records stay saved.")
+                        TextField("Training person’s age", text: $revisedAge).keyboardType(.numberPad)
+                        Picker("Profile role", selection: $revisedRole) {
+                            Text("Adult self").tag(AccountPolicy.Role.adultSelf)
+                            Text("Adult guardian").tag(AccountPolicy.Role.guardian)
+                        }
+                        Button("Confirm age and guardian settings") {
+                            Task {
+                                do {
+                                    let age = try AccountPolicy.checkpoint(ageYears: Int(revisedAge) ?? -1, role: revisedRole)
+                                    await coordinator.updateSelectedIdentity(name: workspace.profile.profile?.name ?? "", age: age)
+                                } catch { message = "Enter a valid age and guardian role." }
+                            }
+                        }.disabled(workspace.hasOngoingWorkout)
+                    }
                 }
                 Section("Membership") { NavigationLink("Membership & restore purchases") { MembershipView(store: coordinator.membership) } }
                 Section("Account security") {

@@ -180,3 +180,71 @@ struct CameraPreview: UIViewRepresentable {
     }
     func updateUIView(_ view: Preview, context: Context) {}
 }
+
+struct SetupProgressHeader: View {
+    let stage: TrainingSetup.Stage
+    var skip: (() -> Void)? = nil
+    var body: some View {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("\(stage.rawValue) of 6").font(.subheadline.weight(.semibold))
+            }.accessibilityElement(children: .combine).accessibilityIdentifier("setup-progress")
+            Spacer()
+            if let skip, stage.canSkip {
+                Button(action: skip) { Label("Skip", systemImage: "arrow.right").padding(12) }
+                    .buttonStyle(SpottrPressStyle()).background(Palette.surface, in: Capsule())
+                    .accessibilityIdentifier("setup-skip")
+            }
+        }.padding(.horizontal, 24).padding(.vertical, 12)
+    }
+}
+
+struct ChoiceCard<Icon: View>: View {
+    let title: String
+    var detail: String? = nil
+    let selected: Bool
+    let action: () -> Void
+    @ViewBuilder var icon: Icon
+    var body: some View {
+        Button { SpottrHaptics.selection(); action() } label: {
+            HStack(spacing: 14) {
+                icon.frame(width: 36, height: 44).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title).font(.body.weight(.semibold))
+                    if let detail { Text(detail).font(.caption).foregroundStyle(.secondary) }
+                }.fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 4)
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle").foregroundStyle(selected ? Palette.blue : Palette.muted)
+            }.padding(16).frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+                .foregroundStyle(Palette.ink)
+                .background(selected ? Palette.blue.opacity(0.08) : Palette.surface, in: RoundedRectangle(cornerRadius: 18))
+                .overlay(RoundedRectangle(cornerRadius: 18).stroke(selected ? Palette.blue : .clear, lineWidth: 1.5))
+        }.buttonStyle(SpottrPressStyle()).accessibilityLabel(title)
+            .accessibilityValue(selected ? "Selected" : "Not selected").accessibilityAddTraits(selected ? [.isSelected] : [])
+    }
+}
+
+struct GoalGlyph: View {
+    let goal: TrainingGoal
+    var body: some View { Image(systemName: goal.symbol).font(.title2.weight(.medium)).foregroundStyle(Palette.blue) }
+}
+extension TrainingGoal {
+    var title: String {
+        switch self { case .strength: "Strength"; case .stamina: "Stamina"; case .mobility: "Mobility"; case .balance: "Balance"; case .weightManagement: "Weight management" }
+    }
+    var symbol: String {
+        switch self { case .strength: "dumbbell"; case .stamina: "heart"; case .mobility: "arrow.up.and.down.and.arrow.left.and.right"; case .balance: "circle.lefthalf.filled"; case .weightManagement: "scalemass" }
+    }
+}
+struct WebsiteLink: View {
+    let title: String
+    let url: URL
+    var body: some View {
+        Link(destination: url) { Label { Text(title).underline().fixedSize(horizontal: false, vertical: true) } icon: { Image(systemName: "arrow.up.right.square") } }
+            .foregroundStyle(Palette.blue).frame(minHeight: 44, alignment: .leading)
+    }
+}
+enum SpottrHaptics {
+    @MainActor static func selection() { UISelectionFeedbackGenerator().selectionChanged() }
+    @MainActor static func success() { UINotificationFeedbackGenerator().notificationOccurred(.success) }
+}

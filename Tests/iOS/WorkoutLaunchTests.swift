@@ -93,6 +93,9 @@ import CryptoKit
         try workspace.profile.saveMeasurements(.init(heightCM: 170, weightKG: 70))
         let pending = try XCTUnwrap(workspace.launch?.pendingID)
         workspace.launch?.continuePending(id: pending)
+        XCTAssertEqual(workspace.launch?.decision, .requiresSetup)
+        try finishReviewedSetup(workspace.profile)
+        workspace.launch?.continuePending(id: pending)
         XCTAssertEqual(workspace.launch?.decision, .requiresMembership)
         workspace.launch?.cancel()
         workspace.training.start()
@@ -152,8 +155,11 @@ import CryptoKit
         window.rootViewController = UIHostingController(rootView: WorkoutLaunchAccessView(launch: fixture.launch))
         window.makeKeyAndVisible(); defer { window.isHidden = true }
         try await Task.sleep(for: .milliseconds(400)); render(window)
-        _ = try await waitForElement("Add required measurements", in: window)
+        _ = try await waitForElement("Complete training setup", in: window)
         try fixture.workspace.profile.saveMeasurements(.init(heightCM: 170, weightKG: 70))
+        fixture.launch.continuePending(id: id)
+        XCTAssertEqual(fixture.launch.decision, .requiresSetup)
+        try finishReviewedSetup(fixture.workspace.profile)
         fixture.launch.continuePending(id: id)
         XCTAssertEqual(fixture.launch.pendingID, id)
         XCTAssertEqual(fixture.launch.decision, .requiresMembership)
@@ -186,6 +192,14 @@ import CryptoKit
         XCTAssertTrue([UIModalPresentationStyle.fullScreen, .overFullScreen].contains(workoutController.modalPresentationStyle))
         XCTAssertNotNil(workoutController.view.window)
         XCTAssertTrue(fixture.workspace.training.presented)
+    }
+
+    private func finishReviewedSetup(_ store: NativeProfileStore) throws {
+        let old = try XCTUnwrap(store.profile)
+        let p = old.effectiveProgrammePreferences
+        let preferences = try ProgrammePreferences(goals: p.goals, weekdays: p.weekdays, startingPoint: .startingOut, ageContext: p.ageContext,
+            comfortAnswers: Dictionary(uniqueKeysWithValues: ExerciseFamily.allCases.map { ($0, TrainingSetup.Comfort.unsure) }))
+        try store.save(LocalProfile(name: old.name, bodyMeasurements: old.bodyMeasurements, onboardingRevision: TrainingSetup.revision, programmePreferences: preferences))
     }
 
     private func waitForElement(_ label: String, in window: UIWindow) async throws -> NSObject {
@@ -253,7 +267,7 @@ import CryptoKit
             workspace = try AccountWorkspace(scope: scope)
             owner = .init(accountID: scope.accountID, profileID: scope.profileID)
             membership = MembershipCoordinator(client: client, claims: ProtectedMembershipClaimStore(root: root)); membership.setAccount(scope.accountID)
-            try workspace.profile.save(.init(bodyMeasurements: .init(heightCM: 170, weightKG: 70), programmePreferences: .init(goals: [.balance], weekdays: [1], ageContext: .init(ageYears: 30, guardianManaged: false))))
+            try workspace.profile.save(.init(bodyMeasurements: .init(heightCM: 170, weightKG: 70), onboardingRevision: TrainingSetup.revision, programmePreferences: .init(goals: [.balance], weekdays: [1], startingPoint: .startingOut, ageContext: .init(ageYears: 30, guardianManaged: false), comfortAnswers: Dictionary(uniqueKeysWithValues: ExerciseFamily.allCases.map { ($0, TrainingSetup.Comfort.unsure) }))))
         }
         func clean() { try? FileManager.default.removeItem(at: root) }
     }

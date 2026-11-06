@@ -2,268 +2,277 @@ import SwiftUI
 
 struct OnboardingView: View {
     let profileStore: NativeProfileStore
+    let healthStore: HealthDataStore
+    let history: [SessionRecord]
+    var guardianAuthorization: (any NativeAccountAuthorization)? = nil
     var onComplete: () -> Void = {}
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var step = 0
+    @State private var stage = TrainingSetup.Stage.body
     @State private var name: String
-    @State private var weeklyTarget: Int
-    @State private var goals: Set<TrainingAttribute>
-    @State private var baselineAbility: LocalProfile.BaselineAbility?
-    @State private var comfortableExercises: Set<String>
-    @State private var weightManagementGoal: Bool
-    @AppStorage("trainer.audioEnabled") private var audioEnabled = false
-    @State private var bodyMeasurements: LocalBodyMeasurements?
+    @State private var goals: Set<TrainingGoal>
+    @State private var weekdays: Set<Int>
+    @State private var minutes: Int
+    @State private var hour: Int
+    @State private var support: Set<String>
+    @State private var floor: Bool
+    @State private var startingPoint: TrainingStartingPoint?
+    @State private var answers: [ExerciseFamily: TrainingSetup.Comfort]
+    @State private var expanded: Set<ExerciseFamily> = []
+    @State private var measurements: LocalBodyMeasurements?
     @State private var measurementsPresented = false
     @State private var error: String?
-    @State private var healthStore: HealthDataStore
-    @State private var optionalSetup: OptionalSetup?
+    @State private var previewAnchor = Date.now
+    @AccessibilityFocusState private var focusedFamily: ExerciseFamily?
+    @AppStorage("trainer.audioEnabled") private var audioEnabled = false
+    @State private var playback: RemoteVoicePlayback
 
-    init(profileStore: NativeProfileStore, healthStore: HealthDataStore? = nil, onComplete: @escaping () -> Void = {}) {
-        self.profileStore = profileStore
-        self.onComplete = onComplete
-        _healthStore = State(initialValue: healthStore ?? HealthDataStore())
-        _name = State(initialValue: profileStore.profile?.name ?? "")
-        _weeklyTarget = State(initialValue: profileStore.profile?.weeklyTarget ?? 3)
-        _goals = State(initialValue: profileStore.profile?.goals ?? [.strength])
-        _baselineAbility = State(initialValue: profileStore.profile?.baselineAbility)
-        _comfortableExercises = State(initialValue: profileStore.profile?.comfortableExercises ?? [])
-        _weightManagementGoal = State(initialValue: profileStore.profile?.weightManagementGoal ?? false)
-        _bodyMeasurements = State(initialValue: profileStore.profile?.bodyMeasurements)
+    init(profileStore: NativeProfileStore, healthStore: HealthDataStore? = nil,
+         guardianAuthorization: (any NativeAccountAuthorization)? = nil, history: [SessionRecord] = [], onComplete: @escaping () -> Void = {}) {
+        self.profileStore = profileStore; self.healthStore = healthStore ?? HealthDataStore()
+        self.guardianAuthorization = guardianAuthorization; self.history = history; self.onComplete = onComplete
+        _audioEnabled = AppStorage(wrappedValue: false, "trainer.audioEnabled", store: profileStore.preferencesDefaults)
+        _playback = State(initialValue: RemoteVoicePlayback(offlineOnly: true, defaults: profileStore.preferencesDefaults,
+            gentleOnly: (profileStore.profile?.programmePreferences?.ageContext?.ageYears ?? 0) < 18))
+        let profile = profileStore.profile
+        let preferences = profile?.effectiveProgrammePreferences
+        _name = State(initialValue: profile?.name ?? "")
+        _goals = State(initialValue: preferences?.goals ?? [])
+        _weekdays = State(initialValue: preferences?.weekdays ?? [])
+        _minutes = State(initialValue: preferences?.minutesPerSession ?? 20)
+        _hour = State(initialValue: preferences?.preferredLocalHour ?? 18)
+        _support = State(initialValue: preferences?.availableSupport ?? [])
+        _floor = State(initialValue: preferences?.allowsFloorWork ?? true)
+        _startingPoint = State(initialValue: preferences?.startingPoint)
+        _answers = State(initialValue: preferences?.comfortAnswers ?? [:])
+        _measurements = State(initialValue: profile?.bodyMeasurements)
     }
-
+    private var age: TrainingAgeContext? { profileStore.profile?.programmePreferences?.ageContext }
+    private var adult: Bool { (age?.ageYears ?? -1) >= 18 }
+    private var underFive: Bool { (age?.ageYears ?? 0) < 5 }
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                if step > 0 {
-                    Button { step -= 1 } label: {
-                        Image(systemName: "chevron.left").frame(width: 44, height: 44)
-                    }.accessibilityLabel("Previous step").buttonStyle(SpottrPressStyle())
+        NavigationStack {
+            VStack(spacing: 0) {
+                SetupProgressHeader(stage: stage, skip: stage.canSkip ? advance : nil)
+                    .background(.white).zIndex(1)
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 24) {
+                            ScreenHeading(title: stage.title)
+                            switch stage {
+                            case .account: EmptyView()
+                            case .body: bodyProfile
+                            case .goals: rhythm
+                            case .comfort: comfort(proxy)
+                            case .permissions: PhonePermissionsView(profileStore: profileStore, healthStore: healthStore)
+                            case .coach: coach
+                            }
+                            if let error { Text(error).foregroundStyle(Palette.red).accessibilityIdentifier("setup-error") }
+                        }.padding(24).id(stage)
+                    }.scrollDismissesKeyboard(.interactively).clipped()
+                        .onChange(of: stage) { _, next in proxy.scrollTo(next, anchor: .top) }
                 }
-                Spacer()
-                Text("\(step + 1) of 6").font(.subheadline.weight(.medium)).foregroundStyle(Palette.muted)
-                if profileStore.profile != nil {
-                    Button("Cancel introduction") { dismiss() }
-                        .font(.subheadline).frame(minHeight: 44).buttonStyle(SpottrPressStyle())
-                }
-            }.padding(.horizontal, 24).padding(.vertical, 8)
-            ScrollView {
-                VStack(alignment: .leading, spacing: 23) {
-                    if step == 0 { introduction }
-                    if step == 1 { optionalHealthSetup }
-                    if step == 2 { goalSelection }
-                    if step == 3 { personalDetails }
-                    if step == 4 { comfortableMovements }
-                    if step == 5 { trainer }
-                    if let issue = profileStore.loadError { Text(issue).font(.caption).foregroundStyle(Palette.red) }
-                    if let error { Text(error).font(.callout).foregroundStyle(Palette.red).accessibilityAddTraits(.updatesFrequently) }
-                }.padding(.horizontal, 24).padding(.bottom, 24)
-                    .id(step).transition(.opacity)
-            }.scrollDismissesKeyboard(.interactively)
-                .id(step)
-                .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: step)
-            VStack(spacing: 12) {
-                PrimaryButton(title: step == 5 ? "Let’s get moving" : (step == 1 ? "Continue without setup" : "Continue")) { advance() }
-                    .disabled(step == 2 && goals.isEmpty && !weightManagementGoal)
-                    .opacity(step == 2 && goals.isEmpty && !weightManagementGoal ? 0.4 : 1)
-                    .accessibilityIdentifier("onboarding-continue")
-                Text("Your training profile stays on this phone")
-                    .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
-            }.padding(.horizontal, 24).padding(.vertical, 18)
-        }.background(.white).foregroundStyle(Palette.ink).preferredColorScheme(.light)
-            .sheet(isPresented: $measurementsPresented) {
-                MeasurementsSettingsView(measurements: bodyMeasurements, isIntroduction: true, profileStore: profileStore) { bodyMeasurements = $0 }
-            }
-            .sheet(item: $optionalSetup) { setup in
-                NavigationStack {
-                    Group {
-                        if setup == .health { HealthSetupView(store: healthStore) }
-                        else { WatchSetupView() }
+                VStack(spacing: 10) {
+                    PrimaryButton(title: stage == .coach ? "Save my training setup" : "Continue", action: advance)
+                        .accessibilityIdentifier("onboarding-continue")
+                    if stage != .body {
+                        Button("Back", systemImage: "arrow.left") { stage = TrainingSetup.Stage(rawValue: stage.rawValue - 1) ?? .body; error = nil }
+                            .frame(minHeight: 44).buttonStyle(.bordered).tint(Palette.blue)
                     }
-                    .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { optionalSetup = nil } } }
+                }.padding(.horizontal, 24).padding(.vertical, 12)
+            }.background(.white).foregroundStyle(Palette.ink).tint(Palette.blue)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: stage)
+                .sheet(isPresented: $measurementsPresented) {
+                    MeasurementsSettingsView(measurements: measurements, isIntroduction: true, profileStore: profileStore) { measurements = $0; error = nil }
                 }
-            }
+        }.interactiveDismissDisabled(!AccountPolicy.setupComplete(profile: profileStore.profile))
     }
-
-    private var introduction: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            Text("spottr").font(.title3.weight(.bold)).tracking(-0.6)
-            VStack(spacing: 8) {
-                MovementDemonstration(exercise: .halfSquat, isActive: optionalSetup == nil && !measurementsPresented)
-                    .frame(maxWidth: .infinity).frame(height: 224).accessibilityHidden(true)
-                Text("A comfortable squat").font(.caption.weight(.medium)).foregroundStyle(Palette.muted)
-            }.padding(.vertical, 16).frame(maxWidth: .infinity)
-                .background(Palette.surface, in: RoundedRectangle(cornerRadius: 24))
-            ScreenHeading(title: "Move a little.\nBuild from there.",
-                          subtitle: "Find a comfortable starting point, practise with clear feedback and see your progress over time.")
-            Label("Your pace. One achievable step at a time.", systemImage: "figure.walk").font(.subheadline.weight(.medium))
+    private var bodyProfile: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            TextField("Profile name", text: $name).textFieldStyle(.roundedBorder).textContentType(.givenName)
+            if let age {
+                Label("Age \(age.ageYears)", systemImage: "calendar").font(.headline)
+                Text(age.guardianManaged ? "This profile is managed by an adult guardian." : "Your local age answer is saved with this profile.").foregroundStyle(.secondary)
+            } else { Text("Return to Account and profiles to confirm this person’s age.").foregroundStyle(Palette.red) }
+            MovementDemonstration(exercise: .halfSquat, isActive: !reduceMotion && !measurementsPresented)
+                .frame(maxWidth: .infinity).frame(height: 170).accessibilityHidden(true)
+            Text(adult ? "Confirm your height and weight to prepare your training profile." : "Measurements are optional. Your guardian can add them for growth context.")
+            Button {
+                Task {
+                    if !adult {
+                        guard let guardianAuthorization else { error = "An adult guardian must unlock measurements."; return }
+                        do { try await guardianAuthorization.guardian() } catch { self.error = error.localizedDescription; return }
+                    }
+                    guard profileStore.permitsPolicyCallbacks else { return }
+                    measurementsPresented = true
+                }
+            } label: {
+                Label(measurements == nil ? "Add height and weight" : "Review height and weight", systemImage: "ruler").padding(16).frame(maxWidth: .infinity, alignment: .leading)
+            }.background(Palette.surface, in: RoundedRectangle(cornerRadius: 18)).accessibilityIdentifier("onboarding-measurements")
+            if let measurements {
+                Text("\(measurements.heightCM.formatted()) cm and \(measurements.weightKG.formatted()) kg").font(.headline)
+            }
+            Text("You can change age and guardian settings in Account and profiles. Changing age reviews the safety policy before another workout.").font(.caption).foregroundStyle(.secondary)
         }
     }
-
-    private var goalSelection: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            ScreenHeading(title: "What are you\nworking towards?", subtitle: "Choose one or more goals. You can change them whenever you like.")
-            ProfileGoalPicker(goals: $goals)
-            Toggle(isOn: $weightManagementGoal) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Label("Weight management", systemImage: "scalemass").font(.headline)
-                    Text("Build a movement habit and track your activity.").font(.caption).foregroundStyle(.secondary)
+    private var rhythm: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            TrainingGoalPicker(goals: $goals, adult: adult)
+            Text("Choose your activity days").font(.headline)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 80))]) {
+                ForEach(1...7, id: \.self) { day in
+                    Button { toggle(day, in: &weekdays); SpottrHaptics.selection() } label: {
+                        Text(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][day - 1]).frame(maxWidth: .infinity, minHeight: 48)
+                    }.buttonStyle(.bordered).tint(weekdays.contains(day) ? Palette.blue : Palette.muted)
+                        .accessibilityValue(weekdays.contains(day) ? "Selected" : "Not selected")
                 }
-            }.padding(17).background(Palette.surface, in: RoundedRectangle(cornerRadius: 17)).accessibilityIdentifier("goal-weightManagement")
-        }.padding(.top, 20)
-    }
-
-    private var optionalHealthSetup: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            Image(systemName: "applewatch").font(.system(size: 44, weight: .regular))
-                .frame(width: 80, height: 80).background(Palette.surface, in: RoundedRectangle(cornerRadius: 24))
-                .accessibilityHidden(true)
-            ScreenHeading(title: "Your Watch\nYour choice")
-            Text("Connect your Watch for workout metrics, or continue with your iPhone.")
-                .foregroundStyle(.secondary).accessibilityIdentifier("onboarding-health-optional")
-            Button { optionalSetup = .health } label: { setupAction("Choose Apple Health data", symbol: "heart.text.square") }
-                .buttonStyle(SpottrPressStyle())
-                .accessibilityIdentifier("onboarding-health-setup")
-            Button { optionalSetup = .watch } label: { setupAction("Connect Apple Watch", symbol: "applewatch") }
-                .buttonStyle(SpottrPressStyle())
-                .accessibilityIdentifier("onboarding-watch-guide")
-            if healthStore.hasRequestedAccess {
-                Text(healthStore.statusMessage).font(.caption).foregroundStyle(.secondary)
             }
-        }.padding(.top, 20)
-    }
-
-    private var personalDetails: some View {
-        VStack(alignment: .leading, spacing: 23) {
-            ScreenHeading(title: "Make it yours", subtitle: "Start with a rhythm you can make time for.")
-            VStack(alignment: .leading, spacing: 9) {
-                Text("What should we call you?").font(.subheadline.weight(.medium))
-                TextField("Your name (optional)", text: $name).textContentType(.givenName)
-                    .textInputAutocapitalization(.words).textFieldStyle(.roundedBorder)
-                Text("Leave this blank to train as a guest.").font(.caption).foregroundStyle(.secondary)
+            Text("Easier days and rest are part of your week.").font(.caption).foregroundStyle(.secondary)
+            Picker("Minutes per session", selection: $minutes) { ForEach([10, 20, 30, 45], id: \.self) { Text("\($0) minutes").tag($0) } }
+            Picker("Preferred time", selection: $hour) { ForEach(0..<24, id: \.self) { Text(String(format: "%02d:00", $0)).tag($0) } }
+            Text("Available support").font(.headline)
+            ForEach(PathSurvey.equipmentChoices, id: \.self) { item in
+                ChoiceCard(title: item, selected: support.contains(item), action: { toggle(item, in: &support) }) { Image(systemName: "square.dashed") }
             }
-            ProfileWeeklyTarget(target: $weeklyTarget)
-            VStack(alignment: .leading, spacing: 9) {
-                Text("Your starting point (optional)").font(.subheadline.weight(.medium))
-                Picker("Starting point", selection: $baselineAbility) {
-                    Text("Skip for now").tag(nil as LocalProfile.BaselineAbility?)
-                    ForEach(LocalProfile.BaselineAbility.allCases, id: \.self) { ability in
-                        Text(ability.title).tag(Optional(ability))
-                    }
-                }.pickerStyle(.menu).accessibilityIdentifier("onboarding-baseline")
-                Text("Your self-report helps suggest practice ideas. It doesn’t verify ability, log sets or award achievements.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            VStack(alignment: .leading, spacing: 9) {
-                Label("Start simply", systemImage: "checkmark.circle").font(.headline)
-                Text("Your first session can be a few controlled reps. Take breaks and tell your coach how the work feels.")
-                    .font(.subheadline).foregroundStyle(.secondary)
-            }.padding(18).frame(maxWidth: .infinity, alignment: .leading).background(Palette.surface, in: RoundedRectangle(cornerRadius: 17))
-            Button { measurementsPresented = true } label: {
-                Label("Height, weight & BMI (optional)", systemImage: "scalemass")
-            }.accessibilityIdentifier("onboarding-measurements")
-            Text("Skip this or add measurements later in Profile & settings. They stay on this iPhone.")
-                .font(.caption).foregroundStyle(.secondary)
-        }.padding(.top, 20)
+            Toggle("Floor movements are comfortable", isOn: $floor)
+        }
     }
-
-    private var comfortableMovements: some View {
+    private func comfort(_ proxy: ScrollViewProxy) -> some View {
         VStack(alignment: .leading, spacing: 24) {
-            ScreenHeading(title: "Where do you feel comfortable?", subtitle: "Choose the hardest movement you can comfortably repeat. Unsure is a good place to start too.")
-            ForEach([ExerciseFamily.push, .legs], id: \.self) { family in
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(family.title).font(.headline)
-                    let ids = LocalSkillPath.chain(family: family)
-                    ForEach(ids.prefix(family == .push ? 4 : 3), id: \.self) { id in
-                        if let entry = ExerciseCatalog.find(id) {
-                            Button {
-                                comfortableExercises.subtract(ids)
-                                comfortableExercises.insert(id)
-                            } label: {
-                                HStack(spacing: 13) {
-                                    ExerciseArtwork(entry: entry).frame(width: 42, height: 48)
-                                    Text(entry.name).font(.subheadline.weight(.semibold))
-                                    Spacer()
-                                    Image(systemName: comfortableExercises.contains(id) ? "checkmark.circle.fill" : "circle")
-                                }.padding(13).background(Palette.surface, in: RoundedRectangle(cornerRadius: 16))
-                            }.buttonStyle(SpottrPressStyle()).accessibilityIdentifier("comfortable-\(id)")
-                                .accessibilityValue(comfortableExercises.contains(id) ? "Selected" : "Not selected")
-                        }
+            if underFive {
+                Text("Start with supervised movement and play. Formal rep targets and camera assessments are not used for children under five.")
+            } else {
+                Text("Choose a starting point").font(.headline)
+                if let startingPoint {
+                    Text(startingPoint.title).font(.title3.bold()).accessibilityIdentifier("starting-point-value")
+                    if let entry = ExerciseCatalog.find(["sitToStand", "halfSquat", "squat", "tempoSquat"][startingPoint.suggestedLevel - 1]) {
+                        ExerciseArtwork(entry: entry).frame(height: 130).frame(maxWidth: .infinity).accessibilityHidden(true)
                     }
-                    Button("Not sure yet") { comfortableExercises.subtract(ids) }
-                        .font(.subheadline).frame(minHeight: 44).buttonStyle(SpottrPressStyle())
+                } else { Text("Choose the experience that feels closest.").foregroundStyle(.secondary) }
+                Slider(value: Binding(get: { Double((startingPoint?.suggestedLevel ?? 1) - 1) }, set: {
+                    let next = TrainingStartingPoint.allCases[min(3, max(0, Int($0.rounded())))]
+                    if startingPoint != next { startingPoint = next; SpottrHaptics.selection() }
+                }), in: 0...3, step: 1).accessibilityLabel("Starting point").accessibilityValue(startingPoint?.title ?? "Not answered")
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 130))]) {
+                    ForEach(TrainingStartingPoint.allCases, id: \.self) { point in
+                        Button(point.title) { startingPoint = point; SpottrHaptics.selection() }.buttonStyle(.bordered)
+                            .tint(startingPoint == point ? Palette.blue : Palette.muted)
+                    }
                 }
+                Text("Choose a comfortable movement in each family. Not sure yet is a useful answer.").foregroundStyle(.secondary)
+                ForEach(ExerciseFamily.allCases, id: \.self) { family in
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text(family.title).font(.title3.bold()).accessibilityAddTraits(.isHeader).accessibilityFocused($focusedFamily, equals: family)
+                        let choices = comfortChoices(family)
+                        ForEach(Array(choices.prefix(expanded.contains(family) ? choices.count : 3)), id: \.id) { entry in
+                            ChoiceCard(title: entry.name, selected: answers[family] == .movement(entry.id), action: { answer(.movement(entry.id), family: family, proxy: proxy) }) { ExerciseArtwork(entry: entry) }
+                                .accessibilityIdentifier("comfortable-\(entry.id)")
+                        }
+                        ChoiceCard(title: "Not sure yet", detail: "Start gently and explore with support.", selected: answers[family] == .unsure,
+                                   action: { answer(.unsure, family: family, proxy: proxy) }) { Image(systemName: "questionmark.circle") }
+                            .accessibilityIdentifier("comfortable-unsure-\(family.rawValue)")
+                        if choices.count > 3 {
+                            Button(expanded.contains(family) ? "Fewer variations" : "More variations", systemImage: "slider.horizontal.3") { toggle(family, in: &expanded) }.buttonStyle(.bordered).frame(minHeight: 44)
+                        }
+                    }.id(family)
+                }
+                Text("These answers help place your starting point. They do not add recorded sets or XP.").font(.caption).foregroundStyle(.secondary)
             }
-            Text("Your starting skills will be marked on your path. They don’t add workouts, camera results or XP.").font(.caption).foregroundStyle(.secondary)
-        }.padding(.top, 16)
+        }
     }
-
-    private var trainer: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            ScreenHeading(title: "Find your voice", subtitle: "Pick the coach and style you enjoy. You can change both later.")
-            TrainerSelection()
+    private var coach: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            TrainerSelection(onSelect: { voice in preview(voice, tone: adult ? playback.tone : .gentle) },
+                gentleOnly: !adult, onToneSelect: { tone in preview(playback.preference, tone: tone) }, defaults: profileStore.preferencesDefaults)
             Toggle("Voice feedback during workouts", isOn: $audioEnabled)
-            Text("No faces or avatars. Just a voice and clear movement guidance.").font(.caption).foregroundStyle(.secondary)
-        }.padding(.top, 16)
+            Text("Your prepared week").font(.title3.bold())
+            if let profile = try? candidate(), let week = try? ProgrammePlanner.makeWeek(profile: profile, history: history, start: previewAnchor) {
+                if let next = week.days.first(where: { $0.plan != nil }), let plan = next.plan {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Next practice on \(next.date.formatted(.dateTime.weekday(.wide)))").font(.headline)
+                        Text(plan.items.compactMap { ExerciseCatalog.find($0.exerciseID)?.name }.joined(separator: ", "))
+                    }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(Palette.surface, in: RoundedRectangle(cornerRadius: 18))
+                }
+                ForEach(week.days) { day in
+                    HStack(alignment: .top, spacing: 12) {
+                        Text(day.date.formatted(.dateTime.weekday(.abbreviated))).fontWeight(.semibold).frame(minWidth: 44, alignment: .leading)
+                        Text(day.kind == .rest ? "Rest" : day.kind == .recovery ? "Easier movement" : day.kind == .familyMovement ? "Family movement and play" : "Practice")
+                        Spacer(minLength: 0)
+                    }.font(.subheadline)
+                }
+                Text("Adjust your week whenever you need. Rest days are part of your plan.").font(.caption).foregroundStyle(.secondary)
+            } else { Text("Review your days and available support to prepare a week.").foregroundStyle(.secondary) }
+        }
     }
-
-    private func setupAction(_ title: String, symbol: String) -> some View {
-        HStack(spacing: 12) {
-            Label(title, systemImage: symbol).multilineTextAlignment(.leading)
-            Spacer(minLength: 8)
-            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).accessibilityHidden(true)
-        }.font(.body.weight(.semibold)).foregroundStyle(Palette.blue)
-            .padding(16).frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
-            .background(Palette.surface, in: RoundedRectangle(cornerRadius: 18))
+    private func preview(_ voice: VoiceCoachPreference, tone: TrainerTone) {
+        do { try playback.previewSelection(voice, tone: tone); error = nil }
+        catch { self.error = "A recorded preview is not available for this voice yet. Choose Maya or Leo to hear natural coaching." }
     }
-
+    private func preferences() throws -> ProgrammePreferences {
+        try ProgrammePreferences(goals: goals, weekdays: weekdays, minutesPerSession: minutes, preferredLocalHour: hour,
+            availableSupport: support, allowsFloorWork: floor,
+            excludedExerciseIDs: profileStore.profile?.programmePreferences?.excludedExerciseIDs ?? [],
+            startingPoint: startingPoint, ageContext: age, comfortAnswers: answers)
+    }
+    private func candidate() throws -> LocalProfile {
+        let prefs = try preferences()
+        let legacyGoals = Set(goals.compactMap { TrainingAttribute(rawValue: $0.rawValue) })
+        return try LocalProfile(name: name, weeklyTarget: weekdays.count, goals: legacyGoals.isEmpty ? profileStore.profile?.goals ?? [.stamina] : legacyGoals,
+            baselineAbility: startingPoint.flatMap { LocalProfile.BaselineAbility(rawValue: $0.rawValue) }, bodyMeasurements: measurements,
+            comfortableExercises: Set(answers.values.compactMap { if case .movement(let id) = $0 { return id }; return nil }),
+            weightManagementGoal: goals.contains(.weightManagement), onboardingRevision: TrainingSetup.revision, programmePreferences: prefs)
+    }
     private func advance() {
-        guard step == 5 else { step += 1; return }
+        error = nil
+        guard age != nil else { error = "Confirm this person’s age in Account and profiles."; return }
+        if stage == .body && adult && measurements == nil { error = "Enter your height and weight to continue."; return }
+        if stage == .goals && (goals.isEmpty || weekdays.isEmpty) { error = "Choose at least one goal and activity day."; return }
+        if stage == .comfort && !underFive {
+            guard startingPoint != nil, let prefs = try? preferences(), TrainingSetup.comfortComplete(prefs) else { error = "Choose your starting point and answer each movement family. Not sure yet is valid."; return }
+        }
+        if stage != .coach { stage = TrainingSetup.Stage(rawValue: stage.rawValue + 1) ?? .coach; SpottrHaptics.selection(); return }
         do {
-            try profileStore.save(LocalProfile(name: name, weeklyTarget: weeklyTarget, goals: goals.isEmpty ? [.stamina] : goals,
-                                               baselineAbility: baselineAbility, bodyMeasurements: bodyMeasurements,
-                                               comfortableExercises: comfortableExercises, weightManagementGoal: weightManagementGoal,
-                                               programmePreferences: profileStore.profile?.programmePreferences))
-            onComplete()
-            dismiss()
+            let profile = try candidate()
+            guard AccountPolicy.setupComplete(profile: profile) else { error = "Complete the required profile and movement choices first."; return }
+            try profileStore.save(profile); SpottrHaptics.success(); onComplete(); dismiss()
         } catch { self.error = error.localizedDescription }
     }
-
-    private enum OptionalSetup: String, Identifiable { case health, watch; var id: String { rawValue } }
+    private func comfortChoices(_ family: ExerciseFamily) -> [ExerciseEntry] {
+        guard let prefs = try? preferences() else { return [] }
+        return ExerciseCatalog.all.filter { $0.family == family && prefs.canUse($0) }.sorted { $0.level == $1.level ? $0.id < $1.id : $0.level < $1.level }
+    }
+    private func answer(_ answer: TrainingSetup.Comfort, family: ExerciseFamily, proxy: ScrollViewProxy) {
+        answers[family] = answer
+        guard let next = TrainingSetup.nextUnanswered(answers) else { return }
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { proxy.scrollTo(next, anchor: .top) }
+        focusedFamily = next
+    }
+    private func toggle<Value: Hashable>(_ value: Value, in set: inout Set<Value>) { if set.contains(value) { set.remove(value) } else { set.insert(value) } }
 }
 
+extension TrainingStartingPoint {
+    var title: String {
+        switch self { case .startingOut: "Starting out"; case .somePractice: "Some practice"; case .regularPractice: "Regular practice"; case .experienced: "Experienced" }
+    }
+}
+struct TrainingGoalPicker: View {
+    @Binding var goals: Set<TrainingGoal>
+    var adult = true
+    var body: some View {
+        VStack(spacing: 12) {
+            ForEach(TrainingGoal.allCases.filter { adult || $0 != .weightManagement }, id: \.self) { goal in
+                ChoiceCard(title: goal.title, selected: goals.contains(goal), action: {
+                    if goals.contains(goal) { goals.remove(goal) } else { goals.insert(goal) }
+                }) { GoalGlyph(goal: goal) }.accessibilityIdentifier("goal-\(goal.rawValue)")
+            }
+        }
+    }
+}
 struct ProfileGoalPicker: View {
     @Binding var goals: Set<TrainingAttribute>
     var body: some View {
-        VStack(spacing: 11) {
-            ForEach(TrainingAttribute.allCases, id: \.self) { goal in
-                Button {
-                    if goals.contains(goal) { goals.remove(goal) } else { goals.insert(goal) }
-                } label: {
-                    HStack(spacing: 15) {
-                        Image(goal.rawValue).resizable().scaledToFit().frame(width: 27, height: 27).accessibilityHidden(true)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(goal.title).font(.subheadline.weight(.semibold))
-                            Text(detail(goal)).font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Image(systemName: goals.contains(goal) ? "checkmark.circle.fill" : "circle").font(.title3)
-                            .foregroundStyle(goals.contains(goal) ? Palette.blue : Palette.muted)
-                    }.padding(17).foregroundStyle(Palette.ink)
-                        .background(goals.contains(goal) ? Palette.blue.opacity(0.07) : Palette.surface, in: RoundedRectangle(cornerRadius: 17))
-                }.buttonStyle(SpottrPressStyle()).accessibilityLabel(goal.title)
-                    .accessibilityValue(goals.contains(goal) ? "Selected" : "Not selected")
-                    .accessibilityIdentifier("goal-\(goal.rawValue)")
-            }
-        }
-    }
-    private func detail(_ goal: TrainingAttribute) -> String {
-        switch goal {
-        case .strength: return "Build controlled, consistent reps."
-        case .stamina: return "Keep a steady training rhythm."
-        case .mobility: return "Make time to move comfortably."
-        case .balance: return "Practise stability and control."
-        }
+        TrainingGoalPicker(goals: Binding(get: { Set(goals.compactMap { TrainingGoal(rawValue: $0.rawValue) }) },
+                                         set: { goals = Set($0.compactMap { TrainingAttribute(rawValue: $0.rawValue) }) }), adult: false)
     }
 }
 

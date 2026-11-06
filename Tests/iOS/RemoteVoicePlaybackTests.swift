@@ -7,6 +7,26 @@ final class RemoteVoicePlaybackTests: XCTestCase {
     private let baseURL = URL(string: "http://127.0.0.1:8788")!
     private let wall = Date(timeIntervalSince1970: 1_792_915_200)
 
+    func testExplicitCoachAndTonePreviewsUseNaturalBankWithoutSystemImitation() throws {
+        let defaults = UserDefaults(suiteName: UUID().uuidString)!
+        let local = SilentLocalVoice()
+        var recordings: [Data] = []
+        let playback = RemoteVoicePlayback(local: local, offlineOnly: true, defaults: defaults,
+            client: { XCTFail("Setup previews must stay offline"); throw TestFailure.invalid },
+            makeAudio: { recordings.append($0); return SilentRemoteAudio(onPlay: {}) }, uptime: { 2 })
+        try playback.previewSelection(.maya, tone: .gentle)
+        try playback.previewSelection(.leo, tone: .direct)
+        XCTAssertEqual(recordings.count, 2)
+        XCTAssertNotEqual(recordings.first, recordings.last)
+        XCTAssertTrue(local.spoken.isEmpty)
+        try playback.previewSelection(.david, tone: .encouraging)
+        XCTAssertEqual(recordings.count, 3, "Goggins uses its existing bundled start recording")
+        XCTAssertTrue(local.spoken.isEmpty, "A named recorded voice cannot silently become a system imitation")
+        try playback.previewSelection(.local, tone: .gentle)
+        XCTAssertEqual(local.spoken.count, 1)
+        playback.stop()
+    }
+
     func testOriginalCoachesPlayBundledRecordingsInsteadOfSystemSpeechOrNetworking() throws {
         let local = SilentLocalVoice()
         var recordings: [Data] = []

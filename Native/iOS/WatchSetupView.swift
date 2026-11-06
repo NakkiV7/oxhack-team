@@ -106,7 +106,7 @@ struct HealthSetupView: View {
     private func healthRow(_ observation: HealthObservation) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             LabeledContent(observation.title, value: "\(observation.value.formatted(.number.precision(.fractionLength(0...1)))) \(observation.unit)")
-            Text("\(observation.date.formatted(date: .abbreviated, time: .shortened)) · \(observation.source)")
+            Text("\(observation.date.formatted(date: .abbreviated, time: .shortened)) from \(observation.source)")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }
@@ -224,7 +224,7 @@ struct WatchSetupView: View {
                 Text("Last Watch data received \(date.formatted(date: .abbreviated, time: .shortened))")
                     .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("watch-last-data")
             } else {
-                Text("Last Watch data received: not available").font(.caption).foregroundStyle(.secondary)
+                Text("No Watch data has arrived yet").font(.caption).foregroundStyle(.secondary)
                     .accessibilityIdentifier("watch-last-data")
             }
         }.animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: store.presentation.milestones)
@@ -250,11 +250,11 @@ struct WatchSetupView: View {
                     Text("2. Open the iPhone Watch app → My Watch → Available Apps. Tap Install next to Spottr if it appears.")
                     Text("3. In TestFlight, you can also open Spottr → App Details. Use Install or Update if a compatible Watch app is offered.")
                     Text("4. Open Spottr on both devices and keep them nearby. Return here and check the connection.")
-                    Link("Open Spottr in TestFlight", destination: URL(string: "https://testflight.apple.com/join/f3MhePbf")!)
+                    WebsiteLink(title: "Open Spottr in TestFlight", url: URL(string: "https://testflight.apple.com/join/f3MhePbf")!)
                         .frame(minHeight: 44, alignment: .leading)
                     Text("If no Watch app is offered, continue on iPhone and check for a compatible beta later.")
                         .foregroundStyle(.secondary)
-                    Link("Apple’s Watch installation guide", destination: URL(string: "https://support.apple.com/guide/watch/get-apps-apd99e3c6a68/watchos")!)
+                    WebsiteLink(title: "Apple’s Watch installation guide", url: URL(string: "https://support.apple.com/guide/watch/get-apps-apd99e3c6a68/watchos")!)
                         .frame(minHeight: 44, alignment: .leading)
                 }.font(.subheadline).padding(.top, 12)
             }.accessibilityIdentifier("watch-installation-guide")

@@ -26,20 +26,34 @@ struct TrainerSelection: View {
     @AppStorage("trainer.voice") private var selection = "maya"
     @AppStorage("trainer.tone") private var tone = TrainerTone.encouraging.rawValue
     var onSelect: ((VoiceCoachPreference) -> Void)? = nil
+    var gentleOnly = false
+    var onToneSelect: ((TrainerTone) -> Void)? = nil
+    private let defaults: UserDefaults
+    init(onSelect: ((VoiceCoachPreference) -> Void)? = nil, gentleOnly: Bool = false,
+         onToneSelect: ((TrainerTone) -> Void)? = nil, defaults: UserDefaults = .standard) {
+        self.onSelect = onSelect; self.gentleOnly = gentleOnly; self.onToneSelect = onToneSelect
+        self.defaults = defaults
+        _selection = AppStorage(wrappedValue: "maya", "trainer.voice", store: defaults)
+        _tone = AppStorage(wrappedValue: TrainerTone.encouraging.rawValue, "trainer.tone", store: defaults)
+    }
     var body: some View {
         VStack(alignment: .leading, spacing: 15) {
             Text("Your coaching style").font(.headline).padding(.top, 10)
+            if gentleOnly { Label("Gentle encouragement", systemImage: "waveform").font(.subheadline) }
+            else {
             Slider(value: Binding(get: { Double(TrainerTone.allCases.firstIndex(of: TrainerTone(rawValue: tone) ?? .encouraging) ?? 1) },
-                                  set: { tone = TrainerTone.allCases[min(2, max(0, Int($0.rounded())))].rawValue }), in: 0...2, step: 1)
+                                  set: { let next = TrainerTone.allCases[min(2, max(0, Int($0.rounded())))]; guard tone != next.rawValue else { return }; tone = next.rawValue; SpottrHaptics.selection(); onToneSelect?(next) }), in: 0...2, step: 1)
                 .accessibilityLabel("Coaching style").accessibilityValue(tone)
             HStack { Text("Gentle"); Spacer(); Text("Encouraging"); Spacer(); Text("Direct") }.font(.caption).foregroundStyle(.secondary)
+            }
             Text("Style changes encouragement. Form and stop instructions stay clear and calm.").font(.caption).foregroundStyle(.secondary)
-            ForEach([VoiceCoachPreference.maya, .leo, .arnold, .david, .local]) { voice in
+            ForEach(gentleOnly ? [VoiceCoachPreference.maya, .leo, .local] : [.maya, .leo, .arnold, .david, .local]) { voice in
                 Button {
                     selection = voice.rawValue
+                    SpottrHaptics.selection()
                     if voice == .arnold || voice == .david {
-                        UserDefaults.standard.set(voice == .arnold ? "arnold" : "goggins", forKey: RepVoicePlayer.defaultsKey)
-                    } else { UserDefaults.standard.set("off", forKey: RepVoicePlayer.defaultsKey) }
+                        defaults.set(voice == .arnold ? "arnold" : "goggins", forKey: RepVoicePlayer.defaultsKey)
+                    } else { defaults.set("off", forKey: RepVoicePlayer.defaultsKey) }
                     onSelect?(voice)
                 } label: {
                     HStack(spacing: 15) {
@@ -92,11 +106,11 @@ struct VoiceCoachSettingsView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    TrainerSelection { voice in
+                    TrainerSelection(onSelect: { voice in
                         cancelCoaching(); try? playback.select(voice)
                         repVoice?.choose(voice == .arnold ? .arnold : voice == .david ? .goggins : nil)
-                    }
-                    if let repVoice {
+                    }, gentleOnly: playback.gentleOnly, defaults: playback.preferencesDefaults)
+                    if let repVoice, !playback.gentleOnly {
                         Toggle("Speak rep counts", isOn: Binding(get: { repVoice.coach != nil }, set: { enabled in
                             repVoice.choose(enabled ? (playback.preference == .david ? .goggins : .arnold) : nil)
                         }))

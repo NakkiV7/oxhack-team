@@ -100,6 +100,23 @@ final class HealthAccessTests: XCTestCase {
         XCTAssertFalse(reopened.hasRequestedAccess)
     }
 
+    func testLateAuthorizationFailureCannotReplaceDisconnectedStatus() async throws {
+        let defaults = UserDefaults(suiteName: "Spottr.Health.Tests.\(UUID().uuidString)")!
+        let client = HealthTestClient(); client.deferAuthorization = true
+        let store = HealthSnapshotStore(client: client, defaults: defaults)
+        let pending = Task { await store.connect() }
+        for _ in 0..<100 where client.pendingAuthorization == nil { await Task.yield() }
+        XCTAssertNotNil(client.pendingAuthorization)
+        store.disconnect()
+        let disconnected = store.statusMessage
+        client.pendingAuthorization?.resume(throwing: CocoaError(.userCancelled))
+        await pending.value
+        XCTAssertEqual(store.statusMessage, disconnected)
+        XCTAssertFalse(store.hasRequestedAccess)
+        XCTAssertNil(store.snapshot)
+        XCTAssertEqual(client.reads, 0)
+    }
+
     func testExplicitZoneBasisPersistsLocallyWithoutPersistingHealthObservations() async throws {
         let domain = "Spottr.Health.Tests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: domain))
@@ -120,6 +137,8 @@ final class HealthAccessTests: XCTestCase {
 @MainActor
 private final class HealthTestClient: HealthReadingClient {
     var isAvailable = true
+    var deferAuthorization = false
+    var pendingAuthorization: CheckedContinuation<Void, Error>?
     var requests = 0
     var reads = 0
     var observations: [HealthObservation] = []
@@ -130,6 +149,7 @@ private final class HealthTestClient: HealthReadingClient {
     var pendingRead: CheckedContinuation<[HealthObservation], Error>?
     func requestReadAuthorization() async throws {
         requests += 1
+        if deferAuthorization { try await withCheckedThrowingContinuation { pendingAuthorization = $0 } }
         if let authorizationError { throw authorizationError }
     }
     func read(asOf: Date, dayStart: Date, dayEnd: Date) async throws -> [HealthObservation] {

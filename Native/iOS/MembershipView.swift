@@ -34,7 +34,7 @@ struct MembershipView: View {
                     ProgressView("Contacting the App Store…").frame(maxWidth: .infinity).padding(20)
                         .accessibilityIdentifier("membershipLoading")
                 }
-                if store.offers.isEmpty && !store.busy {
+                if store.offers.isEmpty && !store.busy && !store.hasAccess {
                     VStack(spacing: 12) {
                         Image(systemName: "wifi.exclamationmark").font(.title).foregroundStyle(Palette.blue)
                         Text("Plans are temporarily unavailable").font(.headline)
@@ -44,7 +44,7 @@ struct MembershipView: View {
                     }.multilineTextAlignment(.center).frame(maxWidth: .infinity).padding(22)
                         .background(Palette.surface, in: RoundedRectangle(cornerRadius: 22))
                 }
-                ForEach(store.offers) { offer in
+                ForEach(store.hasAccess ? [] : store.offers) { offer in
                     Button { selection = offer.plan } label: {
                         VStack(alignment: .leading, spacing: 10) {
                             HStack {
@@ -65,7 +65,7 @@ struct MembershipView: View {
                             .overlay { RoundedRectangle(cornerRadius: 22).stroke(selection == offer.plan ? Palette.blue : .clear, lineWidth: 2) }
                     }.buttonStyle(.plain).accessibilityAddTraits(selection == offer.plan ? .isSelected : [])
                 }
-                if let offer = store.offers.first(where: { $0.plan == selection }) ?? store.offers.first {
+                if !store.hasAccess, let offer = store.offers.first(where: { $0.plan == selection }) ?? store.offers.first {
                     Button(purchaseTitle(offer)) { Task { await store.buy(offer.plan) } }
                         .buttonStyle(.borderedProminent).foregroundStyle(.white).controlSize(.large).frame(maxWidth: .infinity, minHeight: 48)
                         .disabled(store.accountID == nil || store.busy || !store.access.mayPurchase(offer.plan))
@@ -76,10 +76,11 @@ struct MembershipView: View {
                         .font(.subheadline).accessibilityIdentifier("membershipOverlapNotice")
                 }
                 VStack(spacing: 12) {
-                    Text(store.status).font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("membershipStoreStatus")
+                    if !store.hasAccess { Text(store.status).font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("membershipStoreStatus") }
                     if let error = store.error { Text(error).font(.subheadline).foregroundStyle(Palette.red).accessibilityIdentifier("membershipError") }
-                    Text("Apple confirms prices and trial eligibility. Redeem offer codes through Apple.")
+                    if !store.hasAccess { Text("Apple confirms prices and trial eligibility. Redeem offer codes through Apple.")
                         .font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("membershipAppleConfirmation")
+                    }
                     Button("Redeem Apple offer code") { redeemPresented = true }.buttonStyle(.bordered).foregroundStyle(Palette.blue).frame(minHeight: 44).disabled(store.busy).accessibilityIdentifier("membershipRedeem")
                     Link(destination: URL(string: "https://apps.apple.com/account/subscriptions")!) {
                         Label { Text("Manage Apple subscriptions").underline() } icon: { Image(systemName: "arrow.up.right.square") }
@@ -128,8 +129,8 @@ struct WorkoutLaunchAccessView: View {
                 } else {
                     VStack(spacing: 16) {
                         ContentUnavailableView(title, systemImage: "figure.mind.and.body", description: Text(detail))
-                        if launch.decision == .requiresSetup, (launch.profile.profile?.programmePreferences?.ageContext?.ageYears ?? 0) >= 18 {
-                            Button("Add required measurements") { measurementsPresented = true }
+                        if launch.decision == .requiresSetup {
+                            Button("Complete training setup") { measurementsPresented = true }
                                 .buttonStyle(.borderedProminent).foregroundStyle(.white).controlSize(.large).padding(.bottom)
                         }
                     }
@@ -139,12 +140,12 @@ struct WorkoutLaunchAccessView: View {
                 if let id = launch.pendingID {
                     Button("Continue to workout") { launch.continuePending(id: id) }
                         .buttonStyle(.borderedProminent).foregroundStyle(.white).controlSize(.large).padding()
+                        .frame(maxWidth: .infinity).background(.white)
                         .disabled(launch.decision == .requiresMembership && !launch.membership.hasAccess)
                 }
             }
             .sheet(isPresented: $measurementsPresented) {
-                MeasurementsSettingsView(measurements: launch.profile.profile?.bodyMeasurements, profileStore: launch.profile,
-                                         persist: launch.profile.saveMeasurements)
+                OnboardingView(profileStore: launch.profile, healthStore: launch.healthStore, guardianAuthorization: launch.guardianAuthorization, history: launch.history)
             }
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { launch.cancel() } } }
         }

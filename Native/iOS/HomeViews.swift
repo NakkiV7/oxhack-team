@@ -24,10 +24,10 @@ struct SpottrRoot: View {
     var body: some View {
         Group {
             if introductionPresented {
-                OnboardingView(profileStore: profileStore, healthStore: healthStore) {
+                OnboardingView(profileStore: profileStore, healthStore: healthStore, guardianAuthorization: guardianAuthorization, history: store.history) {
                     store.remoteVoice?.reloadPreferences()
-                    store.repVoice.choose(RepVoicePlan.Coach(rawValue: UserDefaults.standard.string(forKey: RepVoicePlayer.defaultsKey) ?? "off"))
-                    store.setVoiceFeedback(UserDefaults.standard.bool(forKey: "trainer.audioEnabled"))
+                    store.repVoice.choose(store.remoteVoice?.gentleOnly == true ? nil : RepVoicePlan.Coach(rawValue: profileStore.preferencesDefaults.string(forKey: RepVoicePlayer.defaultsKey) ?? "off"))
+                    store.setVoiceFeedback(profileStore.preferencesDefaults.bool(forKey: "trainer.audioEnabled"))
                     introductionPresented = false
                 }
             } else {
@@ -53,12 +53,13 @@ struct SpottrRoot: View {
         .fullScreenCover(isPresented: $store.presented) { SessionView(store: store).interactiveDismissDisabled() }
         .sheet(isPresented: $settingsPresented, onDismiss: {
             store.remoteVoice?.reloadPreferences()
-            store.repVoice.choose(RepVoicePlan.Coach(rawValue: UserDefaults.standard.string(forKey: RepVoicePlayer.defaultsKey) ?? "off"))
+            store.repVoice.choose(store.remoteVoice?.gentleOnly == true ? nil : RepVoicePlan.Coach(rawValue: profileStore.preferencesDefaults.string(forKey: RepVoicePlayer.defaultsKey) ?? "off"))
+            store.setVoiceFeedback(profileStore.preferencesDefaults.bool(forKey: "trainer.audioEnabled"))
             if profileStore.profile == nil { introductionPresented = profileStore.shouldShowIntroduction() }
         }) {
             ProfileSettingsView(profileStore: profileStore, history: store.history,
                                 exportData: store.exportHistory, resetHistory: store.clearHistory, rewards: store.rewards.allowsTimePressureRewards ? store.rewards : nil,
-                                historyAvailable: store.historyAvailable, workspace: workspace, healthStore: healthStore, membership: membership)
+                                historyAvailable: store.historyAvailable, workspace: workspace, healthStore: healthStore, membership: membership, guardianAuthorization: guardianAuthorization)
         }
         .sheet(isPresented: Binding(get: { store.launchCoordinator?.needsAttention == true && [WorkoutLaunchOrigin.today, .url, .watch].contains { $0 == store.launchCoordinator?.pendingOrigin } }, set: { if !$0 { store.launchCoordinator?.cancel() } })) {
             if let launch = store.launchCoordinator { WorkoutLaunchAccessView(launch: launch) }
@@ -104,7 +105,6 @@ struct TodayView: View {
                     }
                     weeklyRhythm
                     recentReport
-                    watchSetup
                     if store.rewards.allowsTimePressureRewards {
                     Button { rewardsPresented = true } label: {
                         Label("Training rewards & streaks", systemImage: "flame")
@@ -237,25 +237,6 @@ struct TodayView: View {
         }
     }
 
-    private var watchSetup: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Image(systemName: "applewatch").font(.title2).foregroundStyle(Palette.blue)
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("Apple Watch").font(.headline)
-                    Text(store.watchReachable ? "Ready for live controls" : "Connect your Watch when you’re ready")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-            }
-            NavigationLink("Watch setup") { WatchSetupView() }
-                .font(.subheadline.weight(.semibold)).accessibilityIdentifier("today-watch-setup")
-            if let healthStore {
-                NavigationLink("Health history & heart-rate zones") { HealthSetupView(store: healthStore) }
-                    .font(.subheadline).accessibilityIdentifier("today-health-setup")
-            }
-        }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
-            .background(Palette.surface, in: RoundedRectangle(cornerRadius: 22))
-    }
 
     private var greeting: String {
         let name = profileStore.profile?.name ?? ""

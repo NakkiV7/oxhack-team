@@ -1,0 +1,201 @@
+import XCTest
+import CryptoKit
+@testable import Spottr
+
+@MainActor final class TrainingSetupTests: XCTestCase {
+    func testScopedProfileResetPreservesCanonicalAgeAndRequiresFreshSetup() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let directory = try AccountProfileDirectory(accountID: UUID(), root: root)
+        let age = try TrainingAgeContext(ageYears: 10, guardianManaged: true)
+        let person = try directory.add(age: age, name: "Junior")
+        let workspace = try AccountWorkspace(scope: directory.scope(person.id))
+        try workspace.profile.resetProfile()
+        XCTAssertEqual(workspace.profile.profile?.programmePreferences?.ageContext, age)
+        XCTAssertFalse(AccountPolicy.setupComplete(profile: workspace.profile.profile))
+        XCTAssertNoThrow(try AccountWorkspace(scope: directory.scope(person.id)))
+    }
+    func testSetupCoachPreferencesReachOnlyTheirWorkspaceAndJuniorPolicyForcesGentle() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let directory = try AccountProfileDirectory(accountID: UUID(), root: root)
+        let adult = try directory.add(age: .init(ageYears: 30, guardianManaged: false), name: "Adult")
+        let junior = try directory.add(age: .init(ageYears: 10, guardianManaged: true), name: "Junior")
+        let first = try AccountWorkspace(scope: directory.scope(adult.id))
+        first.profile.preferencesDefaults.set("leo", forKey: "trainer.voice")
+        first.profile.preferencesDefaults.set("direct", forKey: "trainer.tone")
+        first.training.remoteVoice?.reloadPreferences()
+        XCTAssertEqual(first.training.remoteVoice?.preference, .leo)
+        let child = try AccountWorkspace(scope: directory.scope(junior.id))
+        child.profile.preferencesDefaults.set("david", forKey: "trainer.voice")
+        child.profile.preferencesDefaults.set("direct", forKey: "trainer.tone")
+        child.training.remoteVoice?.reloadPreferences()
+        XCTAssertEqual(child.training.remoteVoice?.tone, .gentle)
+        XCTAssertEqual(child.training.remoteVoice?.preference, .maya)
+        XCTAssertFalse(child.training.remoteVoice?.configuredVoices.contains(.david) == true)
+        XCTAssertEqual(first.training.remoteVoice?.tone, .direct)
+        child.profile.preferencesDefaults.set("goggins", forKey: RepVoicePlayer.defaultsKey)
+        let reopenedJunior = try AccountWorkspace(scope: directory.scope(junior.id))
+        XCTAssertNil(reopenedJunior.training.repVoice.coach, "An adult rep pack cannot survive a junior policy rebuild")
+        first.profile.preferencesDefaults.set(true, forKey: "trainer.audioEnabled")
+        let reopened = try AccountWorkspace(scope: directory.scope(adult.id))
+        XCTAssertTrue(reopened.training.voiceFeedbackEnabled)
+    }
+    func testCanonicalAgeUpdateRebuildsPolicyAndRejectsDirectAgeMutation() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let directory = try AccountProfileDirectory(accountID: UUID(), root: root)
+        let person = try directory.add(age: try .init(ageYears: 30, guardianManaged: false), name: "Person")
+        let old = try AccountWorkspace(scope: directory.scope(person.id))
+        let oldProfile = try XCTUnwrap(old.profile.profile)
+        let junior = try TrainingAgeContext(ageYears: 10, guardianManaged: true)
+        XCTAssertThrowsError(try old.profile.save(LocalProfile(programmePreferences: oldProfile.effectiveProgrammePreferences.changingAge(to: junior))))
+        try directory.updateIdentity(id: person.id, name: "Junior", age: junior)
+        let next = try AccountWorkspace(scope: directory.scope(person.id))
+        XCTAssertEqual(next.profile.profile?.programmePreferences?.ageContext, junior)
+        XCTAssertEqual(directory.profiles.first?.age, junior)
+        XCTAssertFalse(next.training.rewards.allowsTimePressureRewards)
+        XCTAssertNotEqual(next.policyEpoch, old.policyEpoch)
+        XCTAssertFalse(AccountPolicy.setupComplete(profile: next.profile.profile))
+    }
+
+    func testSameProfileAgeChangeCancelsOldAdultPendingContinueAndBlocksUnfinishedWork() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let id = UUID(), vault = MemoryAccountCredentials(), wire = AccountTestTransport()
+        try vault.save(.init(session: NativeAccountSession(authenticated: true, accountID: id, appAccountToken: id, deviceID: UUID(), accessToken: "access", refreshToken: "refresh", accessExpiresAt: .now.addingTimeInterval(900), refreshExpiresAt: .now.addingTimeInterval(86400)), privateKey: P256.Signing.PrivateKey().rawRepresentation))
+        wire.failure = URLError(.notConnectedToInternet)
+        let authorization = AccountTestAuthorization(); authorization.succeed = true
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: authorization)
+        let membershipClient = SetupMembershipFake()
+        let coordinator = AccountWorkspaceCoordinator(account: account, root: root, membershipClient: membershipClient)
+        await account.restore(); coordinator.accountChanged()
+        let created = await coordinator.createProfile(name: "Adult", age: try .init(ageYears: 30, guardianManaged: false))
+        XCTAssertTrue(created)
+        let old = try XCTUnwrap(coordinator.visibleWorkspace)
+        try old.profile.save(LocalProfile(bodyMeasurements: .init(heightCM: 170, weightKG: 70), onboardingRevision: TrainingSetup.revision,
+            programmePreferences: .init(goals: [.strength], weekdays: [1], startingPoint: .experienced,
+                ageContext: .init(ageYears: 30, guardianManaged: false),
+                comfortAnswers: Dictionary(uniqueKeysWithValues: ExerciseFamily.allCases.map { ($0, TrainingSetup.Comfort.unsure) }))))
+        let launch = try XCTUnwrap(old.launch)
+        let plan = try CoachSavedPlan.catalogue(exerciseID: "pushup", sets: 3, target: 20, restSeconds: 60)
+        launch.request(plan: plan, origin: .library)
+        let pending = try XCTUnwrap(launch.pendingID)
+        XCTAssertEqual(launch.decision, .requiresMembership)
+        membershipClient.entitlements = [.verified(.init(appAccountToken: id, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable))]
+        await coordinator.membership.refreshEntitlements()
+        XCTAssertTrue(coordinator.membership.hasAccess)
+        let profileID = old.scope.profileID
+        await coordinator.updateSelectedIdentity(name: "Junior", age: try .init(ageYears: 10, guardianManaged: true))
+        let next = try XCTUnwrap(coordinator.visibleWorkspace)
+        XCTAssertEqual(next.scope.profileID, profileID)
+        XCTAssertFalse(next === old)
+        XCTAssertFalse(old.profile.permitsPolicyCallbacks)
+        launch.continuePending(id: pending)
+        XCTAssertNil(launch.pendingID)
+        XCTAssertEqual(old.training.sessionPhase, .idle)
+        XCTAssertEqual(next.training.sessionPhase, .idle)
+        next.training.beginAuthorizedPlan(try .catalogue(exerciseID: "frontArmRaise", sets: 1, target: 6, restSeconds: 30), availableSupport: [])
+        next.training.beginConfiguredSet(); next.training.setConfiguredReps(3)
+        await coordinator.updateSelectedIdentity(name: "Adult again", age: try .init(ageYears: 30, guardianManaged: false))
+        XCTAssertTrue(coordinator.visibleWorkspace === next)
+        XCTAssertEqual(next.training.configured?.actualReps, 3)
+        XCTAssertEqual(next.profile.profile?.programmePreferences?.ageContext?.ageYears, 10)
+    }
+
+    func testMismatchedDirectoryAndProfileFailClosed() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let directory = try AccountProfileDirectory(accountID: UUID(), root: root)
+        let person = try directory.add(age: try .init(ageYears: 30, guardianManaged: false), name: "Person")
+        let scope = directory.scope(person.id)
+        try NativeProfileStore(url: scope.file("profile.json")).save(LocalProfile(programmePreferences: .init(goals: [.balance], weekdays: [1], ageContext: .init(ageYears: 10, guardianManaged: true))))
+        XCTAssertThrowsError(try AccountWorkspace(scope: scope))
+    }
+
+    func testImperialMeasurementDraftPersistsConvertedValuesAndWeightOnlyGoalStaysDistinct() throws {
+        var saved: LocalBodyMeasurements?
+        let measurements = MeasurementsDraftPersistence { saved = $0 }
+        measurements.edit(heightCM: "70", weightKG: "154", bmiEligible: true, thresholds: .standard, units: .imperial)
+        XCTAssertTrue(measurements.prepareToLeave())
+        XCTAssertEqual(try XCTUnwrap(saved).heightCM, 177.8, accuracy: 0.0001)
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = NativeProfileStore(url: root.appendingPathComponent("profile.json"))
+        try store.save(.init(programmePreferences: .init(goals: [.strength], weekdays: [1], ageContext: .init(ageYears: 30, guardianManaged: false))))
+        let draft = ProfileDraftPersistence(store: store)
+        XCTAssertTrue(draft.save(name: "Adult", weeklyTarget: 1, goals: [.weightManagement]))
+        XCTAssertEqual(store.profile?.trainingGoals, [.weightManagement])
+        XCTAssertEqual(store.profile?.programmePreferences?.ageContext?.ageYears, 30)
+    }
+
+    func testOldAdultHealthRequestCannotReturnAfterPolicyInvalidation() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = NativeProfileStore(url: root.appendingPathComponent("profile.json"))
+        try store.save(.init(programmePreferences: .init(goals: [.balance], weekdays: [1], ageContext: .init(ageYears: 30, guardianManaged: false))))
+        let underlying = SetupHealthFake()
+        let client = ScopedHealthReadingClient(profile: store, client: underlying)
+        let read = Task { try await client.read(asOf: .now, dayStart: .now, dayEnd: .now) }
+        for _ in 0..<100 where underlying.pending == nil { await Task.yield() }
+        XCTAssertNotNil(underlying.pending)
+        store.invalidatePolicy()
+        underlying.pending?.resume(returning: [])
+        do { _ = try await read.value; XCTFail("Old adult Health results must be rejected") } catch {}
+        XCTAssertFalse(client.isAvailable)
+    }
+
+    func testDeniedPermissionsKeepManualCompletion() async throws {
+        let client = SetupPermissionFake()
+        let store = PhonePermissionStore(client: client)
+        await store.refresh()
+        XCTAssertEqual(store.camera, .denied)
+        XCTAssertEqual(store.microphone, .denied)
+        XCTAssertEqual(store.notifications, .denied)
+        XCTAssertTrue(store.manualAvailable)
+        await store.request(.speech)
+        XCTAssertEqual(store.speech, .unavailable)
+    }
+    func testPermissionResultCannotPublishAfterPolicyInvalidation() async throws {
+        let client = SetupDelayedPermissionFake()
+        let store = PhonePermissionStore(client: client)
+        let request = Task { await store.request(.microphone) }
+        for _ in 0..<100 where client.pending == nil { await Task.yield() }
+        XCTAssertNotNil(client.pending)
+        store.invalidate()
+        client.pending?.resume()
+        await request.value
+        XCTAssertEqual(store.microphone, .notRequested)
+        XCTAssertFalse(store.busy)
+    }
+}
+
+@MainActor private final class SetupMembershipFake: MembershipClient {
+    var entitlements: [MembershipVerification] = []
+    func products() async throws -> [MembershipOffer] { [] }
+    func currentEntitlements() async -> [MembershipVerification] { entitlements }
+    func updates() -> AsyncStream<MembershipVerification> { AsyncStream { $0.finish() } }
+    func purchase(_ plan: MembershipPlan, appAccountToken: UUID) async throws -> MembershipPurchaseResult { .cancelled }
+    func restore() async throws {}
+    func finish(transactionID: UInt64) async {}
+}
+
+@MainActor private final class SetupDelayedPermissionFake: PhonePermissionClient {
+    var pending: CheckedContinuation<Void, Never>?
+    func status(_ feature: PhonePermissionFeature) async -> PhonePermissionState { .allowed }
+    func request(_ feature: PhonePermissionFeature) async { await withCheckedContinuation { pending = $0 } }
+}
+
+@MainActor private final class SetupPermissionFake: PhonePermissionClient {
+    func status(_ feature: PhonePermissionFeature) async -> PhonePermissionState { feature == .speech ? .unavailable : .denied }
+    func request(_ feature: PhonePermissionFeature) async {}
+}
+
+@MainActor private final class SetupHealthFake: HealthReadingClient {
+    var isAvailable = true
+    var pending: CheckedContinuation<[HealthObservation], Error>?
+    func requestReadAuthorization() async throws {}
+    func read(asOf: Date, dayStart: Date, dayEnd: Date) async throws -> [HealthObservation] {
+        try await withCheckedThrowingContinuation { pending = $0 }
+    }
+}

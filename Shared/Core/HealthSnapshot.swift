@@ -153,14 +153,17 @@ public final class HealthSnapshotStore {
             statusMessage = "Apple Health is not available on this device."
             return
         }
+        let request = UUID(); readingID = request
         isBusy = true
         hasRequestedAccess = true
         defaults.set(true, forKey: "health.accessRequested")
         defer { isBusy = false }
         do {
             try await client.requestReadAuthorization()
+            guard readingID == request, hasRequestedAccess else { return }
             await readSnapshot()
         } catch {
+            guard readingID == request, hasRequestedAccess else { return }
             latestSnapshot = nil
             statusMessage = "Apple Health setup wasn’t completed. Try again or continue without it."
         }

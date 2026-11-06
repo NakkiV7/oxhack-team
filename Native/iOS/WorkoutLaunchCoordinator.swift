@@ -12,12 +12,15 @@ import Observation
     }
     private let training: TrainingStore
     let profile: NativeProfileStore
+    var healthStore: HealthDataStore?
+    var guardianAuthorization: (any NativeAccountAuthorization)?
     let membership: MembershipCoordinator
     private let owner: () -> WorkoutOwner?
     private let generation: () -> UUID
     private var pending: Intent?
     private var expectedAuthenticationIntent: UUID?
     private(set) var decision: WorkoutAccessPolicy.Decision?
+    var history: [SessionRecord] { training.history }
     var pendingOrigin: WorkoutLaunchOrigin? { pending?.origin }
     var pendingID: UUID? { pending?.id }
     var needsAttention: Bool { pending != nil && decision != .start && decision != .resumeExisting }

@@ -48,11 +48,12 @@ public struct ProgrammePreferences: Codable, Equatable, Sendable {
     public let excludedExerciseIDs: Set<String>
     public let startingPoint: TrainingStartingPoint?
     public let ageContext: TrainingAgeContext?
+    public let comfortAnswers: [ExerciseFamily: TrainingSetup.Comfort]
 
     public init(goals: Set<TrainingGoal>, weekdays: Set<Int>, minutesPerSession: Int = 20,
                 preferredLocalHour: Int = 18, availableSupport: Set<String> = [], allowsFloorWork: Bool = true,
                 excludedExerciseIDs: Set<String> = [], startingPoint: TrainingStartingPoint? = nil,
-                ageContext: TrainingAgeContext? = nil) throws {
+                ageContext: TrainingAgeContext? = nil, comfortAnswers: [ExerciseFamily: TrainingSetup.Comfort] = [:]) throws {
         guard !goals.isEmpty else { throw Invalid.goals }
         guard !weekdays.isEmpty, weekdays.isSubset(of: Set(1...7)) else { throw Invalid.weekdays }
         guard [10, 20, 30, 45].contains(minutesPerSession) else { throw Invalid.duration }
@@ -61,7 +62,7 @@ public struct ProgrammePreferences: Codable, Equatable, Sendable {
         guard excludedExerciseIDs.isSubset(of: Set(ExerciseCatalog.all.map(\.id))) else { throw Invalid.exercise }
         self.goals = goals; self.weekdays = weekdays; self.minutesPerSession = minutesPerSession
         self.preferredLocalHour = preferredLocalHour; self.availableSupport = availableSupport
-        self.allowsFloorWork = allowsFloorWork; self.excludedExerciseIDs = excludedExerciseIDs; self.startingPoint = startingPoint; self.ageContext = ageContext
+        self.allowsFloorWork = allowsFloorWork; self.excludedExerciseIDs = excludedExerciseIDs; self.startingPoint = startingPoint; self.ageContext = ageContext; self.comfortAnswers = comfortAnswers
     }
 
     public static let floorExerciseIDs: Set<String> = [
@@ -83,7 +84,7 @@ public struct ProgrammePreferences: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case goals, weekdays, minutesPerSession, preferredLocalHour, availableSupport, allowsFloorWork, excludedExerciseIDs, startingPoint, ageContext
+        case goals, weekdays, minutesPerSession, preferredLocalHour, availableSupport, allowsFloorWork, excludedExerciseIDs, startingPoint, ageContext, comfortAnswers
     }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -91,7 +92,8 @@ public struct ProgrammePreferences: Codable, Equatable, Sendable {
                       minutesPerSession: c.decode(Int.self, forKey: .minutesPerSession), preferredLocalHour: c.decode(Int.self, forKey: .preferredLocalHour),
                       availableSupport: c.decode(Set<String>.self, forKey: .availableSupport), allowsFloorWork: c.decode(Bool.self, forKey: .allowsFloorWork),
                       excludedExerciseIDs: c.decode(Set<String>.self, forKey: .excludedExerciseIDs), startingPoint: c.decodeIfPresent(TrainingStartingPoint.self, forKey: .startingPoint),
-                      ageContext: c.decodeIfPresent(TrainingAgeContext.self, forKey: .ageContext))
+                      ageContext: c.decodeIfPresent(TrainingAgeContext.self, forKey: .ageContext),
+                      comfortAnswers: c.decodeIfPresent([ExerciseFamily: TrainingSetup.Comfort].self, forKey: .comfortAnswers) ?? [:])
     }
 }
 

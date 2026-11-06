@@ -11,16 +11,16 @@ final class ProfileDraftPersistence {
 
     init(store: NativeProfileStore) { self.store = store }
 
-    func edit(name: String, weeklyTarget: Int, goals: Set<TrainingAttribute>) {
+    func edit(name: String, weeklyTarget: Int, goals: Set<TrainingGoal>) {
         reset()
         do {
-            let profile = try LocalProfile(name: name, weeklyTarget: weeklyTarget, goals: goals,
+            let profile = try LocalProfile(name: name, weeklyTarget: weeklyTarget, goals: legacyGoals(goals),
                                            baselineAbility: store.profile?.baselineAbility,
                                            bodyMeasurements: store.profile?.bodyMeasurements,
                                            comfortableExercises: store.profile?.comfortableExercises ?? [],
-                                           weightManagementGoal: store.profile?.weightManagementGoal ?? false,
+                                           weightManagementGoal: goals.contains(.weightManagement),
                                            onboardingRevision: store.profile?.onboardingRevision ?? 2,
-                                           programmePreferences: store.profile?.programmePreferences)
+                                           programmePreferences: try preferences(goals: goals, target: weeklyTarget))
             guard store.loadError == nil else {
                 validationError = "Automatic saving is paused. Use Save profile to explicitly replace the unreadable profile."
                 return
@@ -36,20 +36,33 @@ final class ProfileDraftPersistence {
         } catch { validationError = error.localizedDescription }
     }
 
-    func save(name: String, weeklyTarget: Int, goals: Set<TrainingAttribute>) -> Bool {
+    func save(name: String, weeklyTarget: Int, goals: Set<TrainingGoal>) -> Bool {
         reset()
         do {
-            pending = try LocalProfile(name: name, weeklyTarget: weeklyTarget, goals: goals,
+            pending = try LocalProfile(name: name, weeklyTarget: weeklyTarget, goals: legacyGoals(goals),
                                        baselineAbility: store.profile?.baselineAbility,
                                        bodyMeasurements: store.profile?.bodyMeasurements,
                                            comfortableExercises: store.profile?.comfortableExercises ?? [],
-                                           weightManagementGoal: store.profile?.weightManagementGoal ?? false,
+                                           weightManagementGoal: goals.contains(.weightManagement),
                                            onboardingRevision: store.profile?.onboardingRevision ?? 2,
-                                           programmePreferences: store.profile?.programmePreferences)
+                                           programmePreferences: try preferences(goals: goals, target: weeklyTarget))
             return persistPending()
         } catch { validationError = error.localizedDescription; return false }
     }
 
+    private func legacyGoals(_ goals: Set<TrainingGoal>) -> Set<TrainingAttribute> {
+        let attributes = Set(goals.compactMap { TrainingAttribute(rawValue: $0.rawValue) })
+        return attributes.isEmpty ? store.profile?.goals ?? [.stamina] : attributes
+    }
+    private func preferences(goals: Set<TrainingGoal>, target: Int) throws -> ProgrammePreferences? {
+        guard !goals.isEmpty else { throw LocalProfile.Invalid.goals }
+        guard let old = store.profile?.programmePreferences else { return nil }
+        return try ProgrammePreferences(goals: goals, weekdays: old.weekdays.count == target ? old.weekdays : Set([1, 3, 5, 2, 4, 6, 7].prefix(target)),
+            minutesPerSession: old.minutesPerSession, preferredLocalHour: old.preferredLocalHour,
+            availableSupport: old.availableSupport, allowsFloorWork: old.allowsFloorWork,
+            excludedExerciseIDs: old.excludedExerciseIDs, startingPoint: old.startingPoint,
+            ageContext: old.ageContext, comfortAnswers: old.comfortAnswers)
+    }
     func prepareToLeave() -> Bool {
         saveTask?.cancel(); saveTask = nil
         return persistPending()
@@ -81,10 +94,11 @@ struct ProfileSettingsView: View {
     let rewards: NativeRewardsStore?
     let historyAvailable: Bool
     let workspace: PreviewWorkspace?
+    let guardianAuthorization: (any NativeAccountAuthorization)?
     @Environment(\.dismiss) private var dismiss
     @State private var name: String
     @State private var weeklyTarget: Int
-    @State private var goals: Set<TrainingAttribute>
+    @State private var goals: Set<TrainingGoal>
     @State private var introduction: Introduction?
     @State private var rewardsPresented = false
     @State private var measurementsPresented = false
@@ -100,7 +114,8 @@ struct ProfileSettingsView: View {
     init(profileStore: NativeProfileStore, history: [SessionRecord],
          exportData: @escaping () throws -> URL, resetHistory: @escaping () throws -> Void,
          rewards: NativeRewardsStore? = nil, historyAvailable: Bool = true, workspace: PreviewWorkspace? = nil,
-         healthStore: HealthDataStore? = nil, membership: MembershipStore? = nil) {
+         healthStore: HealthDataStore? = nil, membership: MembershipStore? = nil, guardianAuthorization: (any NativeAccountAuthorization)? = nil) {
+        self.guardianAuthorization = guardianAuthorization
         self.membership = membership ?? MembershipStore()
         self.profileStore = profileStore
         self.history = history
@@ -113,7 +128,7 @@ struct ProfileSettingsView: View {
         _persistence = State(initialValue: ProfileDraftPersistence(store: profileStore))
         _name = State(initialValue: profileStore.profile?.name ?? "")
         _weeklyTarget = State(initialValue: profileStore.profile?.weeklyTarget ?? 3)
-        _goals = State(initialValue: profileStore.profile?.goals ?? [.strength])
+        _goals = State(initialValue: profileStore.profile?.trainingGoals ?? [.strength])
     }
 
     var body: some View {
@@ -152,7 +167,7 @@ struct ProfileSettingsView: View {
                     }
                 }
                 Section("Your goals") {
-                    ProfileGoalPicker(goals: Binding(get: { goals }, set: { goals = $0; editingName = false; queueSave() }))
+                    TrainingGoalPicker(goals: Binding(get: { goals }, set: { goals = $0; editingName = false; queueSave() }), adult: AccountPolicy.allowsHealth(profile: profileStore.profile))
                         .listRowInsets(EdgeInsets())
                 }
                 Section {
@@ -160,33 +175,42 @@ struct ProfileSettingsView: View {
                 }
                 Section("Your trainer") {
                     NavigationLink("Voice and coaching style") {
-                        VoiceCoachSettingsView(playback: RemoteVoicePlayback(offlineOnly: true), cancelCoaching: {})
+                        VoiceCoachSettingsView(playback: RemoteVoicePlayback(offlineOnly: true, defaults: profileStore.preferencesDefaults,
+                            gentleOnly: (profileStore.profile?.programmePreferences?.ageContext?.ageYears ?? 0) < 18), cancelCoaching: {})
                     }
                 }
-                Section("Apple Health & Watch") {
-                    NavigationLink { HealthSetupView(store: healthStore) } label: {
-                        Label("Health readings & heart rate zones", systemImage: "heart.text.square")
-                    }.accessibilityIdentifier("profile-health-setup")
-                    NavigationLink { WatchSetupView() } label: {
-                        Label("Connect Apple Watch", systemImage: "applewatch")
-                    }.accessibilityIdentifier("profile-watch-setup")
+                Section("Phone and Watch") {
+                    NavigationLink("Permissions and connection") {
+                        ScrollView { PhonePermissionsView(profileStore: profileStore, healthStore: healthStore).padding(24) }
+                            .navigationTitle("Phone and Watch")
+                    }.accessibilityIdentifier("profile-permissions")
                 }
                 Section("Exercise lessons") {
                     NavigationLink { DemonstrationGuideView() } label: {
                         Label("Movement guides", systemImage: "figure.flexibility")
                     }
                 }
-                Section("Optional measurements") {
+                Section("Body measurements") {
                     Button {
                         editingName = false
-                        if flushPendingSave() { measurementsPresented = true }
+                        guard flushPendingSave() else { return }
+                        if (profileStore.profile?.programmePreferences?.ageContext?.ageYears ?? 0) < 18 {
+                            Task {
+                                guard let guardianAuthorization else { error = "A guardian must unlock measurements."; return }
+                                do {
+                                    try await guardianAuthorization.guardian()
+                                    guard profileStore.permitsPolicyCallbacks else { return }
+                                    measurementsPresented = true
+                                } catch { self.error = "Measurements were not unlocked." }
+                            }
+                        } else { measurementsPresented = true }
                     } label: {
                         Label("Height, weight & BMI", systemImage: "scalemass")
                     }.accessibilityIdentifier("profile-measurements").disabled(profileStore.loadError != nil)
                     if profileStore.loadError != nil {
                         Text("Save or reset the unreadable profile before changing measurements.").font(.caption).foregroundStyle(Palette.red)
                     }
-                    Text("Optional measurements stay on this iPhone")
+                    Text(AccountPolicy.allowsHealth(profile: profileStore.profile) ? "Height and weight are required for adult training. Values stay on this iPhone." : "Junior measurements are optional and managed by the guardian.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Your training") {
@@ -242,13 +266,13 @@ struct ProfileSettingsView: View {
                     Button("Reset local profile", systemImage: "person.crop.circle.badge.xmark", role: .destructive) { deletion = .profile }
                 }
                 Section("Website & support") {
-                    Link("Privacy policy", destination: URL(string: "https://spottr.omarchoudhry.co.uk/privacy")!)
+                    WebsiteLink(title: "Privacy policy", url: URL(string: "https://spottr.omarchoudhry.co.uk/privacy")!)
                         .accessibilityIdentifier("profile-privacy")
-                    Link("Spottr support", destination: URL(string: "https://spottr.omarchoudhry.co.uk/support")!)
+                    WebsiteLink(title: "Spottr support", url: URL(string: "https://spottr.omarchoudhry.co.uk/support")!)
                         .accessibilityIdentifier("profile-support")
-                    Link("Account website", destination: URL(string: "https://spottr.omarchoudhry.co.uk/account")!)
+                    WebsiteLink(title: "Account website", url: URL(string: "https://spottr.omarchoudhry.co.uk/account")!)
                         .accessibilityIdentifier("profile-website-account")
-                    Text("Your secure account keeps training profiles separate. Membership requires a verified Apple purchase; creating an account does not upload your workouts.")
+                    Text("Your secure account keeps training profiles separate. Membership requires a verified Apple purchase. Creating an account does not upload your workouts.")
                         .font(.caption).foregroundStyle(.secondary)
                         .accessibilityIdentifier("profile-account-separation")
                 }
@@ -270,7 +294,7 @@ struct ProfileSettingsView: View {
                 if flushPendingSave() { dismiss() }
             } } }
             .sheet(item: $introduction, onDismiss: reloadDraft) { _ in
-                OnboardingView(profileStore: profileStore, healthStore: healthStore, onComplete: reloadDraft)
+                OnboardingView(profileStore: profileStore, healthStore: healthStore, guardianAuthorization: guardianAuthorization, history: history, onComplete: reloadDraft)
             }
             .sheet(isPresented: $rewardsPresented) {
                 if let rewards { TrainingRewardsSettingsView(store: rewards) }
@@ -317,7 +341,7 @@ struct ProfileSettingsView: View {
         persistence.reset()
         name = profileStore.profile?.name ?? ""
         weeklyTarget = profileStore.profile?.weeklyTarget ?? 3
-        goals = profileStore.profile?.goals ?? [.strength]
+        goals = profileStore.profile?.trainingGoals ?? [.strength]
     }
 
     private func perform(_ action: Deletion) {

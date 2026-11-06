@@ -342,7 +342,7 @@ final class TrainingStore {
         self.spokenReps = spokenReps ?? SpokenRepInput()
         repVoice = RepVoicePlayer(defaults: defaults)
         rewardDefaults = defaults
-        persistsVoicePreferences = historyURL == nil && voicePlayback == nil && !previewMode
+        persistsVoicePreferences = !previewMode && (accountScope != nil || (historyURL == nil && voicePlayback == nil))
         voiceFeedbackEnabled = persistsVoicePreferences && defaults.bool(forKey: "trainer.audioEnabled")
         self.previewMode = previewMode
         self.vision = vision ?? VisionWorker()
@@ -358,6 +358,7 @@ final class TrainingStore {
         rewards = rewardsStore ?? NativeRewardsStore(url: historyStore.url.deletingLastPathComponent().appendingPathComponent("rewards.json"))
         coachingVoice.repVoice = repVoice
         coachingVoice.onCancellation = { [weak self] in self?.cancelCoaching() }
+        if remoteVoice?.gentleOnly == true { repVoice.choose(nil) }
         if !previewMode, defaults.string(forKey: RepVoicePlayer.defaultsKey) == nil,
            remoteVoice?.preference == .maya || remoteVoice?.preference == .leo { repVoice.coach = nil }
         do { history = try historyStore.load().reversed() }

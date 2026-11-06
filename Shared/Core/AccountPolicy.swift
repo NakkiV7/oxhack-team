@@ -8,7 +8,10 @@ public enum AccountPolicy {
         return try TrainingAgeContext(ageYears: ageYears, guardianManaged: role == .guardian)
     }
     public static func setupComplete(profile: LocalProfile?) -> Bool {
-        guard let profile, let age = profile.programmePreferences?.ageContext else { return false }
+        guard let profile, profile.onboardingRevision >= TrainingSetup.revision,
+              let preferences = profile.programmePreferences, let age = preferences.ageContext,
+              TrainingSetup.comfortComplete(preferences),
+              age.ageYears >= 18 || !preferences.goals.contains(.weightManagement) else { return false }
         return age.ageYears < 18 ? age.guardianManaged : profile.bodyMeasurements != nil
     }
     public static func allowsHealth(profile: LocalProfile?) -> Bool {

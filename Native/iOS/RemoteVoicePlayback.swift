@@ -5,7 +5,7 @@ import Observation
 enum VoiceCoachPreference: String, CaseIterable, Identifiable, Sendable {
     case local, david, arnold, maya, leo
     var id: String { rawValue }
-    var title: String { switch self { case .local: "Local voice"; case .david: "David"; case .arnold: "Arnold"; case .maya: "Maya"; case .leo: "Leo" } }
+    var title: String { switch self { case .local: "Local voice"; case .david: "Goggins"; case .arnold: "Arnold"; case .maya: "Maya"; case .leo: "Leo" } }
 }
 
 enum RemoteVoiceError: Error, LocalizedError {
@@ -28,7 +28,7 @@ struct VoiceCoachAvailability: Decodable {
     init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         guard let id = VoiceCoachPreference(rawValue: try values.decode(String.self, forKey: .id)), id != .local,
-              try values.decode(String.self, forKey: .name) == id.title else { throw RemoteVoiceError.invalidResponse }
+              try values.decode(String.self, forKey: .name) == (id == .david ? "David" : id.title) else { throw RemoteVoiceError.invalidResponse }
         self.id = id
         tones = try values.decodeIfPresent([String].self, forKey: .tones) ?? ["calm"]
         guard tones == ["calm"] || id == .david && tones == ["calm", "intense"] else { throw RemoteVoiceError.invalidResponse }
@@ -141,9 +141,11 @@ final class RemoteVoicePlayback: VoicePlayback {
     private let local: VoicePlayback
     private let offlineOnly: Bool
     private let defaults: UserDefaults
+    var preferencesDefaults: UserDefaults { defaults }
+    let gentleOnly: Bool
     var exercise: Exercise?
     private var cueLibrary = TrainerCueLibrary()
-    var tone: TrainerTone { TrainerTone(rawValue: defaults.string(forKey: "trainer.tone") ?? "") ?? .encouraging }
+    var tone: TrainerTone { gentleOnly ? .gentle : TrainerTone(rawValue: defaults.string(forKey: "trainer.tone") ?? "") ?? .encouraging }
     private let previewPlayback: VoicePlayback?
     private let arnoldPlayback: VoicePlayback
     private let client: @MainActor () throws -> VoiceGatewayClient
@@ -157,18 +159,20 @@ final class RemoteVoicePlayback: VoicePlayback {
     @ObservationIgnored private var localCueID: UUID?
     @ObservationIgnored private var previewCueID: UUID?
 
-    init(local: VoicePlayback? = nil, offlineOnly: Bool = false, defaults: UserDefaults = .standard, previewPlayback: VoicePlayback? = nil, arnoldPlayback: VoicePlayback? = nil, client: @escaping @MainActor () throws -> VoiceGatewayClient = { try VoiceGatewayClient.configured() },
+    init(local: VoicePlayback? = nil, offlineOnly: Bool = false, defaults: UserDefaults = .standard, gentleOnly: Bool = false, previewPlayback: VoicePlayback? = nil, arnoldPlayback: VoicePlayback? = nil, client: @escaping @MainActor () throws -> VoiceGatewayClient = { try VoiceGatewayClient.configured() },
          makeAudio: (@MainActor (Data) throws -> VoiceAudioOutput)? = nil,
          wallNow: @escaping () -> Date = Date.init, uptime: @escaping () -> Double = { ProcessInfo.processInfo.systemUptime }) {
         self.offlineOnly = offlineOnly
         self.defaults = defaults
+        self.gentleOnly = gentleOnly
         self.local = local ?? LocalVoicePlayback(); self.previewPlayback = previewPlayback
         self.arnoldPlayback = previewPlayback ?? arnoldPlayback ?? DemoVoicePlayback()
         self.client = client; self.makeAudio = makeAudio ?? { try SystemVoiceAudioOutput(data: $0) }
         self.wallNow = wallNow; self.uptime = uptime
         if offlineOnly {
-            configuredVoices = [.maya, .leo, .local, .arnold, .david]
-            preference = VoiceCoachPreference(rawValue: defaults.string(forKey: "trainer.voice") ?? "") ?? .maya
+            configuredVoices = gentleOnly ? [.maya, .leo, .local] : [.maya, .leo, .local, .arnold, .david]
+            let saved = VoiceCoachPreference(rawValue: defaults.string(forKey: "trainer.voice") ?? "") ?? .maya
+            preference = configuredVoices.contains(saved) ? saved : .maya
         }
         if previewPlayback != nil { preference = .arnold; configuredVoices = [.arnold] }
         self.local.onFinish = { [weak self] id in self?.finishedPlayback(id) }
@@ -199,6 +203,27 @@ final class RemoteVoicePlayback: VoicePlayback {
         guard self.preference != preference else { return }
         stop(); onInterrupt?(); self.preference = preference; errorMessage = nil
         if offlineOnly { defaults.set(preference.rawValue, forKey: "trainer.voice") }
+    }
+    /// Explicit setup interaction only. Never sends a synthesis request or substitutes an imitation.
+    func previewSelection(_ preference: VoiceCoachPreference, tone: TrainerTone) throws {
+        guard offlineOnly else { throw RemoteVoiceError.unavailable }
+        try select(preference)
+        defaults.set((gentleOnly ? .gentle : tone).rawValue, forKey: "trainer.tone")
+        if preference == .david {
+            stop()
+            guard let url = Bundle.main.url(forResource: "start", withExtension: "mp3", subdirectory: "DemoVoice/goggins-reps") else { throw RemoteVoiceError.unavailable }
+            let player = try makeAudio(Data(contentsOf: url, options: .mappedIfSafe))
+            try player.prepare()
+            let token = UUID(); active = (UUID(), token)
+            player.onFinish = { [weak self] in self?.complete(token: token) }
+            output = player
+            guard player.play() else { stop(); throw RemoteVoiceError.unavailable }
+            return
+        }
+        let now = uptime()
+        speak(.init(id: UUID(), sessionID: UUID(), generation: UUID(),
+            text: TrainerCueLibrary.lines(reason: .steadyRhythm, tone: tone)[0],
+            kind: .coaching(.pacing), issuedAt: now, expiresAt: now + 6, reason: .steadyRhythm))
     }
     func speak(_ cue: VoiceCue) {
         stop(); errorMessage = nil

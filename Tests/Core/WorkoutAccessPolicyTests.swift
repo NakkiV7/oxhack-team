@@ -29,6 +29,6 @@ final class WorkoutAccessPolicyTests: XCTestCase {
         }
     }
     private func profile(age: Int) throws -> LocalProfile {
-        try LocalProfile(bodyMeasurements: .init(heightCM: 170, weightKG: 70), programmePreferences: .init(goals: [.balance], weekdays: [1], ageContext: .init(ageYears: age, guardianManaged: age < 18)))
+        try LocalProfile(bodyMeasurements: .init(heightCM: 170, weightKG: 70), onboardingRevision: TrainingSetup.revision, programmePreferences: .init(goals: [.balance], weekdays: [1], startingPoint: .startingOut, ageContext: .init(ageYears: age, guardianManaged: age < 18), comfortAnswers: Dictionary(uniqueKeysWithValues: ExerciseFamily.allCases.map { ($0, TrainingSetup.Comfort.unsure) })))
     }
 }
