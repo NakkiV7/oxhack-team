@@ -1,6 +1,6 @@
 # Movement, audio and build 23 evidence — 5 November 2026
 
-Build 0.1 (23) is the current release candidate. Final signing, installation, Apple distribution and feature-branch push are recorded separately below as they are verified. The accepted functional/review source is `3b794c22573f51c486a0262cf11cb2d90db2d97c`; release work changes version metadata and documentation only.
+Build 0.1 (23) is signed and installed on the physical iPhone. Apple distribution and source publication are recorded separately below as they are verified. The accepted functional/review source is `3b794c22573f51c486a0262cf11cb2d90db2d97c`; release work changes version metadata and documentation only.
 
 ## Implemented behavior
 
@@ -39,6 +39,6 @@ The original phone development profile lacked HealthKit and failed the first loc
 
 ## Delivery state and acceptance limits
 
-Pending final artifact checkpoint: no build-23 phone installation, upload, Apple processing/group assignment or push is claimed yet. Build 22 was previously verified in internal/external TestFlight with approved beta review. The [existing beta invitation](https://testflight.apple.com/join/f3MhePbf) does not itself establish that build 23 is available.
+The root artifact checkpoint approved the actual signed phone/Watch products, audits and frozen source before installation. At 00:02 UTC on 6 November, `devicectl` updated the physical iPhone successfully and a fresh app inventory verified **0.1 (23)**. No uninstall or reset was used. Apple validation exited successfully with no archive errors. The single upload also succeeded, delivery receipt `fae4ae11-548c-45d7-ab2b-6835cb72fbdd`; a fresh Apple build-list query still has no build-23 entry. Processing, beta/group assignment and availability are pending verification. Upload success is separate from those Apple states. Build 22 was previously verified in internal/external TestFlight with approved beta review. The [existing beta invitation](https://testflight.apple.com/join/f3MhePbf) does not itself establish that build 23 is available.
 
-Installation will update the existing app without uninstall/reset. Readback of phone version 0.1 (23) is separate from movement, listening, microphone, thermal, latency and route acceptance. An embedded Watch build is separate from physical Watch installation. Real phone/Watch movement/audio, airplane mode, denied permissions, long sessions, accessibility, recovery and clinical/commercial acceptance remain explicit gates. No App Store submission, purchase approval or clinical efficacy is claimed.
+Actual installation/readback of phone version 0.1 (23) is separate from movement, listening, microphone, thermal, latency and route acceptance. A bounded optional startup attempt could not establish Apple’s remote-process XPC connection, so physical startup remains unverified; that connection error is not evidence of an app crash. An embedded Watch build is separate from physical Watch installation. Real phone/Watch movement/audio, airplane mode, denied permissions, long sessions, accessibility, recovery and clinical/commercial acceptance remain explicit gates. No App Store submission, purchase approval or clinical efficacy is claimed.
