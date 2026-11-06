@@ -86,10 +86,12 @@ public struct LocalProfile: Codable, Equatable, Sendable {
     public let comfortableExercises: Set<String>
     public let weightManagementGoal: Bool
     public let onboardingRevision: Int
+    public let programmePreferences: ProgrammePreferences?
 
     public init(name: String = "", weeklyTarget: Int = 3, goals: Set<TrainingAttribute> = [.strength],
                 baselineAbility: BaselineAbility? = nil, bodyMeasurements: LocalBodyMeasurements? = nil,
-                comfortableExercises: Set<String> = [], weightManagementGoal: Bool = false, onboardingRevision: Int = 2) throws {
+                comfortableExercises: Set<String> = [], weightManagementGoal: Bool = false, onboardingRevision: Int = 2,
+                programmePreferences: ProgrammePreferences? = nil) throws {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count <= 40, !trimmed.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains) else { throw Invalid.name }
         guard (1...7).contains(weeklyTarget) else { throw Invalid.weeklyTarget }
@@ -102,9 +104,10 @@ public struct LocalProfile: Codable, Equatable, Sendable {
         self.comfortableExercises = comfortableExercises.filter { ExerciseCatalog.find($0) != nil }
         self.weightManagementGoal = weightManagementGoal
         self.onboardingRevision = onboardingRevision
+        self.programmePreferences = programmePreferences
     }
 
-    private enum CodingKeys: String, CodingKey { case name, weeklyTarget, goals, baselineAbility, bodyMeasurements, comfortableExercises, weightManagementGoal, onboardingRevision }
+    private enum CodingKeys: String, CodingKey { case name, weeklyTarget, goals, baselineAbility, bodyMeasurements, comfortableExercises, weightManagementGoal, onboardingRevision, programmePreferences }
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         try self.init(name: values.decode(String.self, forKey: .name),
@@ -114,6 +117,54 @@ public struct LocalProfile: Codable, Equatable, Sendable {
                       bodyMeasurements: values.decodeIfPresent(LocalBodyMeasurements.self, forKey: .bodyMeasurements),
                       comfortableExercises: values.decodeIfPresent(Set<String>.self, forKey: .comfortableExercises) ?? [],
                       weightManagementGoal: values.decodeIfPresent(Bool.self, forKey: .weightManagementGoal) ?? false,
-                      onboardingRevision: values.decodeIfPresent(Int.self, forKey: .onboardingRevision) ?? 0)
+                      onboardingRevision: values.decodeIfPresent(Int.self, forKey: .onboardingRevision) ?? 0,
+                      programmePreferences: values.decodeIfPresent(ProgrammePreferences.self, forKey: .programmePreferences))
+    }
+}
+
+
+public struct BMIReference: Equatable, Sendable {
+    public enum Band: String, CaseIterable, Sendable {
+        case underweight, healthyWeight, overweight, obesityClass1, obesityClass2, obesityClass3
+    }
+    public enum Edge: String, Sendable { case below, above }
+    public let value: Double
+    public let boundaries: [Double]
+    public let referenceWeightKG: Range<Double>
+    public var band: Band { Band.allCases[boundaries.filter { value >= $0 }.count] }
+    public var markerPosition: Double { (value - 15) / 30 }
+    public var visualMarkerPosition: Double { min(1, max(0, markerPosition)) }
+    public var edge: Edge? { markerPosition < 0 ? .below : markerPosition > 1 ? .above : nil }
+}
+
+public extension LocalBodyMeasurements {
+    var reference: BMIReference? {
+        guard let bmi, let thresholds else { return nil }
+        let boundaries: [Double] = thresholds == .standard ? [18.5, 25, 30, 35, 40] : [18.5, 23, 27.5, 32.5, 37.5]
+        let heightSquared = (heightCM / 100) * (heightCM / 100)
+        return .init(value: bmi, boundaries: boundaries, referenceWeightKG: (18.5 * heightSquared)..<(boundaries[1] * heightSquared))
+    }
+}
+
+
+public struct AgeAwareBMI: Equatable, Sendable {
+    public let value: Double?
+    public let adultReference: BMIReference?
+    public let adultCategory: LocalBodyMeasurements.Category?
+    public let needsChildGrowthReference: Bool
+}
+
+public extension LocalProfile {
+    var bmiAssessment: AgeAwareBMI {
+        guard let age = programmePreferences?.ageContext?.ageYears, age >= 2, let bodyMeasurements else {
+            return .init(value: nil, adultReference: nil, adultCategory: nil, needsChildGrowthReference: false)
+        }
+        guard age >= 18 else {
+            let metres = bodyMeasurements.heightCM / 100
+            return .init(value: bodyMeasurements.weightKG / (metres * metres), adultReference: nil,
+                         adultCategory: nil, needsChildGrowthReference: true)
+        }
+        return .init(value: bodyMeasurements.bmi, adultReference: bodyMeasurements.reference,
+                     adultCategory: bodyMeasurements.category, needsChildGrowthReference: false)
     }
 }

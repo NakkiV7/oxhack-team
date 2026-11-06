@@ -86,8 +86,8 @@ public enum CoachGrounding {
     }
 }
 
-public struct CoachSavedPlan: Codable, Sendable {
-    public struct Item: Codable, Sendable, Identifiable {
+public struct CoachSavedPlan: Codable, Equatable, Sendable {
+    public struct Item: Codable, Equatable, Sendable, Identifiable {
         public var id: String { exerciseID }
         public let exerciseID: String
         public let sets: Int
@@ -98,6 +98,11 @@ public struct CoachSavedPlan: Codable, Sendable {
     public let items: [Item]
     public let approvedAt: Date
     public let rationale: String
+
+    public init(items: [Item], availableSupport: Set<String>, createdAt: Date, rationale: String) throws {
+        self.items = items; self.approvedAt = createdAt; self.rationale = rationale
+        _ = try ConfigurableSession(plan: self, availableSupport: availableSupport)
+    }
 
     public static func catalogue(exerciseID: String, sets: Int, target: Int, restSeconds: Int,
                                  availableSupport: Set<String> = [], createdAt: Date = Date()) throws -> CoachSavedPlan {

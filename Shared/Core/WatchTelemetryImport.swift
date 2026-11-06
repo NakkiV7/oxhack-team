@@ -41,7 +41,7 @@ public enum WatchTelemetryImporter {
         }
         guard accepted > 0 else { throw WatchTelemetryImportError.empty }
         let telemetry=Array(values.values.sorted { $0.sentAt < $1.sentAt }.suffix(7200))
-        return SessionRecord(id:record.id,date:record.date,sets:record.sets,telemetry:telemetry,loggedSets:record.loggedSets,skippedSets:record.skippedSets,endedAt:record.endedAt,timeline:record.timeline)
+        return SessionRecord(id:record.id,date:record.date,sets:record.sets,telemetry:telemetry,loggedSets:record.loggedSets,skippedSets:record.skippedSets,endedAt:record.endedAt,timeline:record.timeline,plannedWorkoutID:record.plannedWorkoutID)
     }
 }
 

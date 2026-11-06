@@ -49,11 +49,12 @@ public struct SessionRecord: Codable, Identifiable, Equatable, Sendable {
     public let skippedSets: [SkippedSet]
     public let endedAt: Date?
     public let timeline: [WorkoutPhaseMark]
-    public init(id: UUID, date: Date, sets: [SetRecord], telemetry: [WatchTelemetry] = [], loggedSets: [LoggedSet] = [], skippedSets: [SkippedSet] = [], endedAt: Date? = nil, timeline: [WorkoutPhaseMark] = []) {
+    public let plannedWorkoutID: String?
+    public init(id: UUID, date: Date, sets: [SetRecord], telemetry: [WatchTelemetry] = [], loggedSets: [LoggedSet] = [], skippedSets: [SkippedSet] = [], endedAt: Date? = nil, timeline: [WorkoutPhaseMark] = [], plannedWorkoutID: String? = nil) {
         self.id = id; self.date = date; self.sets = sets; self.telemetry = telemetry; self.loggedSets = loggedSets; self.skippedSets = skippedSets
-        self.endedAt = endedAt; self.timeline = timeline
+        self.endedAt = endedAt; self.timeline = timeline; self.plannedWorkoutID = plannedWorkoutID
     }
-    private enum CodingKeys: String, CodingKey { case id, date, sets, telemetry, loggedSets, skippedSets, endedAt, timeline }
+    private enum CodingKeys: String, CodingKey { case id, date, sets, telemetry, loggedSets, skippedSets, endedAt, timeline, plannedWorkoutID }
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         id = try values.decode(UUID.self, forKey: .id)
@@ -64,6 +65,7 @@ public struct SessionRecord: Codable, Identifiable, Equatable, Sendable {
         skippedSets = try values.decodeIfPresent([SkippedSet].self, forKey: .skippedSets) ?? []
         endedAt = try values.decodeIfPresent(Date.self, forKey: .endedAt)
         timeline = try values.decodeIfPresent([WorkoutPhaseMark].self, forKey: .timeline) ?? []
+        plannedWorkoutID = try values.decodeIfPresent(String.self, forKey: .plannedWorkoutID)
     }
     public var setCount: Int { sets.count + loggedSets.count }
     public var reps: Int { sets.reduce(0) { $0 + $1.reps } + loggedSets.reduce(0) { $0 + $1.reps } }

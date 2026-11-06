@@ -19,6 +19,7 @@ public struct ConfigurableSession: Sendable {
     public enum Invalid: Error { case plan }
     public let id = UUID()
     public let date = Date()
+    public let plannedWorkoutID: String?
     public private(set) var steps: [WorkoutStep]
     public private(set) var generation = UUID()
     public private(set) var phase: SessionPhase = .idle
@@ -56,16 +57,17 @@ public struct ConfigurableSession: Sendable {
         return (current.unit == .seconds ? holdCounter?.cameraRecoveryState : counter?.cameraRecoveryState) ?? .ready
     }
     public var actualReps: Int? { source == .camera ? counter?.reps : manualReps }
-    public var record: SessionRecord { .init(id: id, date: date, sets: [], telemetry: telemetry, loggedSets: completed, skippedSets: skippedSets) }
+    public var record: SessionRecord { .init(id: id, date: date, sets: [], telemetry: telemetry, loggedSets: completed, skippedSets: skippedSets, plannedWorkoutID: plannedWorkoutID) }
 
-    public init(plan: CoachSavedPlan, availableSupport: Set<String>) throws {
+    public init(plan: CoachSavedPlan, availableSupport: Set<String>, plannedWorkoutID: String? = nil) throws {
+        self.plannedWorkoutID = plannedWorkoutID
         guard (1...12).contains(plan.items.count), plan.approvedAt.timeIntervalSince1970.isFinite,
               Set(plan.items.map(\.exerciseID)).count == plan.items.count else { throw Invalid.plan }
         for item in plan.items {
             guard let entry = ExerciseCatalog.find(item.exerciseID), entry.unit == item.unit,
                   (1...10).contains(item.sets), (1...(item.unit == .reps ? 200 : 600)).contains(item.target),
                   (0...600).contains(item.restSeconds),
-                  entry.support.map({ availableSupport.contains($0) }) ?? true else { throw Invalid.plan }
+                  PathSurvey.requiredEquipment(for: entry).map({ availableSupport.contains($0) }) ?? true else { throw Invalid.plan }
         }
         guard plan.items.reduce(0, { $0 + $1.sets }) <= 120 else { throw Invalid.plan }
         steps = plan.items.flatMap { item in
@@ -234,11 +236,15 @@ public struct ConfigurableSession: Sendable {
         source = .manual; counter = nil; holdCounter = nil; manualSeconds = 0; manualStarted = nil; includesCameraReps = false; cue = .ready; repDurations = []; restBefore = nil; includesManualReps = false
     }
     public mutating func feedback(reserve: Int?, reason: StopReason) {
+        feedback(reserve: reserve, reason: reason, effort: completed.last?.effort)
+    }
+    public mutating func feedback(reserve: Int?, reason: StopReason, effort: SetEffort?) {
         guard phase == .rest, !completed.isEmpty,
               completed.last?.exerciseID == current.exerciseID, completed.last?.number == current.number else { return }
         if reason == .discomfort { stoppedForDiscomfort = true }
         completed[completed.count - 1].reason = stoppedForDiscomfort ? .discomfort : reason
         completed[completed.count - 1].reserve = reserve.flatMap { (0...3).contains($0) ? $0 : nil }
+        completed[completed.count - 1].effort = effort
     }
     public mutating func stopForDiscomfort(at time: Double) {
         guard time.isFinite, phase == .active || phase == .paused else { return }

@@ -760,3 +760,56 @@ func configuredWatchRejectsUnsupportedCameraSourceClaims(exerciseID: String) thr
     multiple.beginSet(at: 2); multiple.setReps(1); multiple.endSet(at: 3); multiple.nextSet(at: 4)
     #expect(multiple.progressDescription == "Exercise 2 of 2 · Set 1 of 1")
 }
+
+@Test func plannedSessionRecordsOptionalEffortWithoutChangingQuantityOrDiscomfortAndReadsLegacyRecords() throws {
+    #expect(SetEffort.allCases.map(\.rawValue) == [2, 4, 6, 8, 10])
+    let plan = try CoachSavedPlan.catalogue(exerciseID: "singleLegBalance", sets: 1, target: 20, restSeconds: 30)
+    var run = try ConfigurableSession(plan: plan, availableSupport: [], plannedWorkoutID: "programme:2026-11-02")
+    run.start(at: 0)
+    run.beginSet(at: 1)
+    let saved = run.endSet(at: 5)
+    #expect(saved)
+    run.feedback(reserve: nil, reason: .discomfort, effort: .veryHard)
+    #expect(run.record.loggedSets.first?.effort == .veryHard)
+    #expect(run.record.loggedSets.first?.seconds == 4)
+    run.feedback(reserve: nil, reason: .target, effort: nil)
+    #expect(run.record.loggedSets.first?.effort == nil)
+    #expect(run.record.loggedSets.first?.reason == .discomfort)
+    #expect(run.record.plannedWorkoutID == "programme:2026-11-02")
+    #expect(try JSONDecoder().decode(SessionRecord.self, from: JSONEncoder().encode(run.record)) == run.record)
+    let old = try JSONDecoder().decode(SessionRecord.self, from: Data(#"{"id":"00000000-0000-0000-0000-000000000001","date":0,"sets":[],"loggedSets":[{"id":"00000000-0000-0000-0000-000000000002","exerciseID":"squat","reps":4,"seconds":0,"source":"manual","reason":"voluntary"}]}"#.utf8))
+    #expect(old.plannedWorkoutID == nil)
+    #expect(old.loggedSets[0].effort == nil)
+}
+
+@Test func plannedSessionSupportRulesStillRequireActualWallChairAndCounter() throws {
+    for id in ["wallPushup", "sitToStand", "inclinePushup"] {
+        let entry = try #require(ExerciseCatalog.find(id))
+        #expect(throws: Error.self) { try CoachSavedPlan.catalogue(exerciseID: id, sets: 1, target: 5, restSeconds: 30) }
+        _ = try CoachSavedPlan.catalogue(exerciseID: id, sets: 1, target: 5, restSeconds: 30, availableSupport: [entry.support!])
+    }
+}
+
+@Test func plannedSessionTelemetryImportPreservesProgrammeAndEffortEvidence() throws {
+    let start = Date(timeIntervalSince1970: 1793577600)
+    let end = start.addingTimeInterval(60)
+    let set = LoggedSet(id: UUID(), exerciseID: "squat", reps: 7, seconds: 0, source: .manual, reason: .target, effort: .moderate)
+    let record = SessionRecord(id: UUID(), date: start, sets: [], loggedSets: [set], endedAt: end, plannedWorkoutID: "programme:Europe/London:2026-11-02")
+    let sample = WatchTelemetry(sessionID: record.id, sentAt: end, heartRate: .init(value: 100, date: end), accelerationG: nil, rotationRadiansPerSecond: nil)
+    let merged = try WatchTelemetryImporter.merge([sample], into: record, through: end)
+    #expect(merged.plannedWorkoutID == record.plannedWorkoutID)
+    #expect(merged.loggedSets == record.loggedSets)
+    #expect(merged.endedAt == record.endedAt)
+}
+
+@Test func plannedSessionLegacyFeedbackKeepsAnExistingEffortChoice() throws {
+    var run = try ConfigurableSession(plan: customPlan(), availableSupport: ["Wall"])
+    run.start(at: 0)
+    run.beginSet(at: 0)
+    run.setReps(4)
+    let saved = run.endSet(at: 10)
+    #expect(saved)
+    run.feedback(reserve: nil, reason: .target, effort: .hard)
+    run.feedback(reserve: 1, reason: .voluntary)
+    #expect(run.record.loggedSets.last?.effort == .hard)
+}
