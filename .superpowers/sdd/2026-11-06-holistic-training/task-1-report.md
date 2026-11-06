@@ -243,3 +243,32 @@ This exact adult preferences fixture is decoded and round-tripped by `programmeP
 A guardian-managed child uses the same local preference shape with `"ageContext":{"ageYears":12,"guardianManaged":true}`. It must remain local/paired, not sent through cloud-plan sync or analytics. Omitting `ageContext` still decodes but blocks new programme generation with `.ageRequired`; null/missing `startingPoint` means unknown ability and gentle choices.
 
 A recorded set's new effort field is a JSON number such as `"effort":8`; omit it or use null for unrated. The session's `"plannedWorkoutID":"programme:Europe/London:2026-11-02"` matches the selected day. Foundation's existing default Date codec uses seconds since 2001, not Unix time; external JSON boundaries must explicitly agree a codec (for example `JSONEncoder.dateEncodingStrategy = .iso8601` with matching decoding). This task does not introduce a new network date format or upload local records.
+
+## Review round 1 — conservative automatic exercise selection
+
+Review finding: P2 in `task-1-review.md`. The old planner promoted the ability level to the easiest remaining exercise after support/exclusion filtering, which could assign level-4 push-ups to an adult with unknown ability. The same fallback affected recovery plans. Curriculum's first-usable-foundation rule is an unlock rule, not evidence that an exercise is suitable for automatic programming.
+
+Fix commit: **`1a86cea`** (`fix: keep unknown ability and recovery programmes gentle`). Changed only `Shared/Core/TrainingProgramme.swift` and `Tests/Core/TrainingProgrammeTests.swift` (35 insertions, 5 deletions). No public API, fixture, legacy evidence, curriculum-unlock or child-cap change.
+
+The planner now derives ability only from declared starting point or own-family comfort/earned evidence. Unknown/starting-out ability, child practice and recovery select from explicit gentle candidates: existing level-1 entries plus the gentle standingBicepsCurl alternative, still subject to age/support/floor/exclusion rules. A missing gentle option omits that family. Remaining suitable families still form a useful workout; when no suitable candidates exist the existing `.noUsableExercises` error applies. Experienced adult workout selection can still use established placement, while recovery never inherits advanced suitability merely from that placement or from excluded easier entries.
+
+Public-behaviour regressions cover:
+
+- Adult unknown ability, no comfortable/earned evidence or support, and exclusions of standingBicepsCurl/kneePushup. Every selected day remains useful and no push-family level-4 fallback appears.
+- Experienced adult with explicit push-up comfort, excluded gentle push options and excluded mobility/balance/conditioning. Normal workout days retain push-up placement; recovery retains suitable level-1 legs/core work and omits push.
+
+Red/green commands and results:
+
+```sh
+swift test --scratch-path '/Volumes/Spottr Development/CV23-Core' --jobs 2 --filter 'programmeUnknownAbilityOmits|programmeRecoveryOmits'
+swift test --skip-build --scratch-path '/Volumes/Spottr Development/CV23-Core' --jobs 2
+```
+
+Evidence remains under `/Volumes/Spottr Development/Audio/Holistic-Training-20261106/task1/`:
+
+- `review-round1-red.log`: both new regressions failed before the production change, 14 expected assertions, 0.237-second test execution. Swift's first startup took several minutes with buffered output; a read-only process/file check confirmed the single live run owned the existing scratch build database/cache. No overlapping build, restart or cleanup was used.
+- `review-round1-green.log`: both regressions passed after the fix, 0.347 seconds; this command compiled the exact changed sources and tests.
+- `review-round1-full-core.log`: **375 tests in 1 suite passed**, 8.065 seconds. Full-suite execution was justified because shared selection affects adult, child, recovery and adaptation behaviour. `--skip-build` reused the immediately preceding successful build with no intervening source/test changes.
+- `git diff --cached --check`: clean. Existing scratch retained; disk check confirmed the parent-provisioned 64 GiB volume with 54 GiB free. No volume, simulator, native, network or protected-file operations occurred.
+
+Self-review confirms that the new suitability filter does not change curriculum foundation/unlocking, recorded history/XP, BMI or age rules. Downstream integration concerns recorded above remain unchanged. The reviewer should recheck this small fix before Task 2 proceeds.
