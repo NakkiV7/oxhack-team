@@ -40,6 +40,16 @@ public struct SkippedSet: Codable, Identifiable, Equatable, Sendable {
     public let reason: Reason
 }
 
+public struct SessionTrainingContext: Codable, Equatable, Sendable {
+    public let owner: WorkoutOwner
+    public let age: TrainingAgeContext?
+    public let programmeID: String?
+    public let programmeRevision: Int?
+    public init(owner: WorkoutOwner, age: TrainingAgeContext?, programmeID: String? = nil, programmeRevision: Int? = nil) {
+        self.owner = owner; self.age = age; self.programmeID = programmeID; self.programmeRevision = programmeRevision
+    }
+}
+
 public struct SessionRecord: Codable, Identifiable, Equatable, Sendable {
     public let id: UUID
     public let date: Date
@@ -50,11 +60,12 @@ public struct SessionRecord: Codable, Identifiable, Equatable, Sendable {
     public let endedAt: Date?
     public let timeline: [WorkoutPhaseMark]
     public let plannedWorkoutID: String?
-    public init(id: UUID, date: Date, sets: [SetRecord], telemetry: [WatchTelemetry] = [], loggedSets: [LoggedSet] = [], skippedSets: [SkippedSet] = [], endedAt: Date? = nil, timeline: [WorkoutPhaseMark] = [], plannedWorkoutID: String? = nil) {
+    public let trainingContext: SessionTrainingContext?
+    public init(id: UUID, date: Date, sets: [SetRecord], telemetry: [WatchTelemetry] = [], loggedSets: [LoggedSet] = [], skippedSets: [SkippedSet] = [], endedAt: Date? = nil, timeline: [WorkoutPhaseMark] = [], plannedWorkoutID: String? = nil, trainingContext: SessionTrainingContext? = nil) {
         self.id = id; self.date = date; self.sets = sets; self.telemetry = telemetry; self.loggedSets = loggedSets; self.skippedSets = skippedSets
-        self.endedAt = endedAt; self.timeline = timeline; self.plannedWorkoutID = plannedWorkoutID
+        self.endedAt = endedAt; self.timeline = timeline; self.plannedWorkoutID = plannedWorkoutID; self.trainingContext = trainingContext
     }
-    private enum CodingKeys: String, CodingKey { case id, date, sets, telemetry, loggedSets, skippedSets, endedAt, timeline, plannedWorkoutID }
+    private enum CodingKeys: String, CodingKey { case id, date, sets, telemetry, loggedSets, skippedSets, endedAt, timeline, plannedWorkoutID, trainingContext }
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         id = try values.decode(UUID.self, forKey: .id)
@@ -66,6 +77,7 @@ public struct SessionRecord: Codable, Identifiable, Equatable, Sendable {
         endedAt = try values.decodeIfPresent(Date.self, forKey: .endedAt)
         timeline = try values.decodeIfPresent([WorkoutPhaseMark].self, forKey: .timeline) ?? []
         plannedWorkoutID = try values.decodeIfPresent(String.self, forKey: .plannedWorkoutID)
+        trainingContext = try values.decodeIfPresent(SessionTrainingContext.self, forKey: .trainingContext)
     }
     public var setCount: Int { sets.count + loggedSets.count }
     public var reps: Int { sets.reduce(0) { $0 + $1.reps } + loggedSets.reduce(0) { $0 + $1.reps } }

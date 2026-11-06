@@ -4,12 +4,13 @@ import Charts
 struct WorkoutAnalyticsSections: View {
     let record: SessionRecord
     var zones: HeartRateZoneConfiguration? = nil
+    var allowsHealth = true
 
     var body: some View {
         let analysis = WorkoutAnalytics(record: record, zones: zones)
         VStack(alignment: .leading, spacing: 24) {
-            WorkoutTimeCard(analysis: analysis)
-            WorkoutHeartCard(heart: analysis.heart, configuration: zones)
+            WorkoutTimeCard(analysis: analysis, allowsHealth: allowsHealth)
+            if allowsHealth { WorkoutHeartCard(heart: analysis.heart, configuration: zones) }
             WorkoutPaceCard(pace: analysis.pace)
             WorkoutMotionCard(motion: analysis.motion)
         }.accessibilityIdentifier("workout-measured-analytics")
@@ -60,6 +61,7 @@ struct AnalyticsValueGrid<Content: View>: View {
 
 private struct WorkoutTimeCard: View {
     let analysis: WorkoutAnalytics
+    let allowsHealth: Bool
     var body: some View {
         AnalyticsCard(title: "Recorded work & rest", symbol: "clock") {
             AnalyticsValueGrid {
@@ -76,6 +78,7 @@ private struct WorkoutTimeCard: View {
             } else {
                 Text("Session start and finish times weren’t recorded.").font(.caption).foregroundStyle(.secondary)
             }
+            if allowsHealth {
             Divider()
             Label("Watch active energy", systemImage: "flame").font(.subheadline.weight(.semibold))
             if let energy = analysis.activeKilocalories {
@@ -87,10 +90,11 @@ private struct WorkoutTimeCard: View {
                 Text("\(analysis.energyResetCount) decreasing energy observations were flagged. They do not count as new recordings.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+            }
             DisclosureGroup("About work & rest") {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Only saved timers and rest are shown. Manual rep entries may be untimed.")
-                    Text("Watch energy estimates are counted once per recording. A lower reading is flagged rather than treated as a new recording.")
+                    if allowsHealth { Text("Watch energy estimates are counted once per recording. A lower reading is flagged rather than treated as a new recording.") }
                 }.font(.caption).foregroundStyle(.secondary).padding(.top, 8)
             }.font(.subheadline).frame(minHeight: 44)
                 .accessibilityIdentifier("workout-time-details")
@@ -303,7 +307,7 @@ struct TrainingOverviewSection: View {
     private func recordedTrends(records: [SessionRecord]) -> some View {
         let observations = records.map { SessionTrendObservation(record: $0, analysis: WorkoutAnalytics(record: $0)) }
         return AnalyticsCard(title: "Recent session measurements", symbol: "chart.xyaxis.line") {
-            if observations.contains(where: { $0.analysis.heart.average != nil }) {
+            if profile?.programmePreferences?.ageContext?.allowsHealthIntegration == true, observations.contains(where: { $0.analysis.heart.average != nil }) {
                 Text("Time-weighted Watch heart rate").font(.subheadline.weight(.semibold))
                 Chart {
                     ForEach(observations) { observation in

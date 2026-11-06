@@ -20,6 +20,7 @@ public struct ConfigurableSession: Sendable {
     public let id = UUID()
     public let date = Date()
     public let plannedWorkoutID: String?
+    public let trainingContext: SessionTrainingContext?
     public private(set) var steps: [WorkoutStep]
     public private(set) var generation = UUID()
     public private(set) var phase: SessionPhase = .idle
@@ -57,10 +58,11 @@ public struct ConfigurableSession: Sendable {
         return (current.unit == .seconds ? holdCounter?.cameraRecoveryState : counter?.cameraRecoveryState) ?? .ready
     }
     public var actualReps: Int? { source == .camera ? counter?.reps : manualReps }
-    public var record: SessionRecord { .init(id: id, date: date, sets: [], telemetry: telemetry, loggedSets: completed, skippedSets: skippedSets, plannedWorkoutID: plannedWorkoutID) }
+    public var record: SessionRecord { .init(id: id, date: date, sets: [], telemetry: telemetry, loggedSets: completed, skippedSets: skippedSets, plannedWorkoutID: plannedWorkoutID, trainingContext: trainingContext) }
 
-    public init(plan: CoachSavedPlan, availableSupport: Set<String>, plannedWorkoutID: String? = nil) throws {
+    public init(plan: CoachSavedPlan, availableSupport: Set<String>, plannedWorkoutID: String? = nil, trainingContext: SessionTrainingContext? = nil) throws {
         self.plannedWorkoutID = plannedWorkoutID
+        self.trainingContext = trainingContext
         guard (1...12).contains(plan.items.count), plan.approvedAt.timeIntervalSince1970.isFinite,
               Set(plan.items.map(\.exerciseID)).count == plan.items.count else { throw Invalid.plan }
         for item in plan.items {

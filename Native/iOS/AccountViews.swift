@@ -106,6 +106,12 @@ import AuthenticationServices
                       self.account.accountID == scope.accountID else { return nil }
                 return .init(accountID: scope.accountID, profileID: scope.profileID)
             }, generation: { [weak account] in account?.authenticationGeneration ?? UUID() })
+        workspace.programmeSync = ProgrammeSyncStore(programme: workspace.programme, profile: workspace.profile, client: account,
+            isCurrent: { [weak self, weak workspace] in
+                guard let self, let workspace else { return false }
+                return self.visibleWorkspace === workspace && self.account.trusted && self.account.accountID == scope.accountID
+            }, hasOngoingWorkout: { [weak workspace] in workspace?.hasOngoingWorkout ?? true })
+        workspace.programme.sync = workspace.programmeSync
         launch.healthStore = workspace.health; launch.guardianAuthorization = account.authorization
         workspace.launch = launch; workspace.training.launchCoordinator = launch
     }
@@ -151,13 +157,13 @@ struct AccountRootView: View {
             if let workspace = coordinator.visibleWorkspace, coordinator.account.backupCodes.isEmpty {
                 Group {
                     if !workspace.hasOngoingWorkout && !AccountPolicy.setupComplete(profile: workspace.profile.profile) {
-                        OnboardingView(profileStore: workspace.profile, healthStore: workspace.health, guardianAuthorization: coordinator.account.authorization, history: workspace.training.history) {
+                        OnboardingView(profileStore: workspace.profile, healthStore: workspace.health, guardianAuthorization: coordinator.account.authorization, history: workspace.training.history, programme: workspace.programme) {
                             workspace.training.remoteVoice?.reloadPreferences()
                             workspace.training.repVoice.choose(workspace.training.remoteVoice?.gentleOnly == true ? nil : RepVoicePlan.Coach(rawValue: workspace.profile.preferencesDefaults.string(forKey: RepVoicePlayer.defaultsKey) ?? "off"))
                             workspace.training.setVoiceFeedback(workspace.profile.preferencesDefaults.bool(forKey: "trainer.audioEnabled"))
                         }
                     } else if workspace.profile.profile?.programmePreferences?.ageContext?.ageYears ?? 0 < 5 {
-                        FamilyMovementView(authorization: coordinator.account.authorization)
+                        FamilyMovementView(workspace: workspace, authorization: coordinator.account.authorization)
                     } else {
                         SpottrRoot(store: workspace.training, profileStore: workspace.profile, healthStore: workspace.health,
                                    guardianAuthorization: coordinator.account.authorization, membership: coordinator.membership)
@@ -438,25 +444,19 @@ struct LegacyAccountRecordsView: View {
     }
 }
 
-private struct FamilyMovementView: View {
+struct FamilyMovementView: View {
+    let workspace: AccountWorkspace
     let authorization: any NativeAccountAuthorization
-    @Environment(\.openURL) private var openURL
     var body: some View {
         NavigationStack {
-            List {
-                Section("Move and play together") {
-                    Text("For children under five, use supervised play rather than a formal workout or camera test.")
-                    Label("Dance together to a favourite song", systemImage: "music.note")
-                    Label("Explore gentle movement and play", systemImage: "figure.play")
-                    Label("Take breaks whenever your child wants", systemImage: "pause.circle")
-                    Button {
-                        Task {
-                            do { try await authorization.guardian() } catch { return }
-                            openURL(URL(string: "https://www.nhs.uk/live-well/exercise/physical-activity-guidelines-children-under-five-years/")!)
-                        }
-                    } label: { Label { Text("NHS activity guidance for under fives").underline() } icon: { Image(systemName: "arrow.up.right.square") } }.foregroundStyle(Palette.blue)
-                }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    ProgrammeTodayCard(store: workspace.training, profileStore: workspace.profile, openSetup: {}, openLibrary: {})
+                    WebsiteLink(title: "NHS activity guidance for under fives", url: URL(string: "https://www.nhs.uk/live-well/exercise/physical-activity-guidelines-children-under-five-years/")!)
+                }.padding()
+
             }.navigationTitle("Family movement")
+                .environment(\.profileWebsiteAccess, ProfileWebsiteAccess(profile: workspace.profile, guardian: authorization))
         }
     }
 }

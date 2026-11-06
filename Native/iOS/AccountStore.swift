@@ -195,3 +195,24 @@ import CryptoKit
         if state != .pendingMFA && !trusted { state = .error }
     }
 }
+
+@MainActor extension NativeAccountStore: ProgrammeCloudClient {
+    func writePlan(_ request: ProgrammeWriteRequest) async throws -> ProgrammeWriteReply {
+        let captured = epoch
+        let reply: ProgrammeWriteReply = try await client.post("/plans/write", body: request, credential: requireCredential())
+        guard epoch == captured, trusted else { throw AccountFailure.reauthenticate }
+        return reply
+    }
+    func readPlan(_ request: ProgrammeReadRequest) async throws -> ProgrammeReadReply {
+        let captured = epoch
+        let reply: ProgrammeReadReply = try await client.post("/plans/read", body: request, credential: requireCredential())
+        guard epoch == captured, trusted else { throw AccountFailure.reauthenticate }
+        return reply
+    }
+    func withdrawPlan(_ request: ProgrammeWithdrawRequest) async throws -> ProgrammeWithdrawReply {
+        let captured = epoch
+        let reply: ProgrammeWithdrawReply = try await client.post("/plans/withdraw", body: request, credential: requireCredential())
+        guard epoch == captured, trusted else { throw AccountFailure.reauthenticate }
+        return reply
+    }
+}

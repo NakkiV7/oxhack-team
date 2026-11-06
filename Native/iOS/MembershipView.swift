@@ -155,7 +155,7 @@ struct WorkoutLaunchAccessView: View {
                 }
             }
             .sheet(isPresented: $measurementsPresented) {
-                OnboardingView(profileStore: launch.profile, healthStore: launch.healthStore, guardianAuthorization: launch.guardianAuthorization, history: launch.history)
+                OnboardingView(profileStore: launch.profile, healthStore: launch.healthStore, guardianAuthorization: launch.guardianAuthorization, history: launch.history, programme: launch.programme)
             }
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { launch.cancel() } } }
         }

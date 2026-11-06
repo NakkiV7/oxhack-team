@@ -115,7 +115,7 @@ public struct WorkoutAnalytics: Sendable {
         let messages=record.telemetry.filter { sample in
             sample.sessionID==record.id && record.date.timeIntervalSince1970.isFinite && sample.sentAt.timeIntervalSince1970.isFinite && sample.sentAt >= record.date.addingTimeInterval(-2) && (end.map({ sample.sentAt <= $0.addingTimeInterval(2) }) ?? true)
         }
-        return SessionRecord(id:record.id,date:record.date,sets:record.sets,telemetry:messages,loggedSets:record.loggedSets,skippedSets:record.skippedSets,endedAt:end,timeline:record.timeline)
+        return SessionRecord(id:record.id,date:record.date,sets:record.sets,telemetry:messages,loggedSets:record.loggedSets,skippedSets:record.skippedSets,endedAt:end,timeline:record.timeline,plannedWorkoutID:record.plannedWorkoutID,trainingContext:record.trainingContext)
     }
     private static func pausedDuration(_ marks: [WorkoutPhaseMark], start: Date, end: Date) -> Double {
         var total=0.0

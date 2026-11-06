@@ -20,6 +20,7 @@ import Observation
     private var pending: Intent?
     private var expectedAuthenticationIntent: UUID?
     private(set) var decision: WorkoutAccessPolicy.Decision?
+    var programme: ProgrammeStore? { training.programme }
     var history: [SessionRecord] { training.history }
     var pendingOrigin: WorkoutLaunchOrigin? { pending?.origin }
     var pendingID: UUID? { pending?.id }
@@ -64,6 +65,9 @@ import Observation
         guard intent.generation == generation() else { cancel(); return }
         let trusted = owner()
         guard trusted == nil || trusted == intent.owner else { cancel(); return }
+        if let dayID = intent.plannedWorkoutID {
+            guard training.programme?.day()?.id == dayID, training.programme?.day()?.plan == intent.plan else { cancel(); return }
+        }
         let ongoing = training.sessionPhase != .idle && training.sessionPhase != .finished
         decision = WorkoutAccessPolicy.decide(trustedOwner: trusted, activeOwner: ongoing ? intent.owner : nil,
                                                profile: profile.profile, membership: membership.accountID == trusted?.accountID && membership.hasAccess,
@@ -71,7 +75,7 @@ import Observation
         switch decision {
         case .start:
             pending = nil
-            training.beginAuthorizedPlan(intent.plan, availableSupport: profile.profile?.effectiveProgrammePreferences.availableSupport ?? [], plannedWorkoutID: intent.plannedWorkoutID)
+            training.beginAuthorizedPlan(intent.plan, availableSupport: profile.profile?.effectiveProgrammePreferences.availableSupport ?? [], plannedWorkoutID: intent.plannedWorkoutID, trainingContext: training.programme?.capture(dayID: intent.plannedWorkoutID) ?? training.accountScope.map { .init(owner: .init(accountID: $0.accountID, profileID: $0.profileID), age: profile.profile?.programmePreferences?.ageContext) })
         case .resumeExisting:
             pending = nil
             training.presented = true

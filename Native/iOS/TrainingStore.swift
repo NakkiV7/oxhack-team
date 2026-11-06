@@ -43,6 +43,8 @@ final class TrainingStore {
     var source: InputSource = .camera
     var hasInput = false
     @ObservationIgnored weak var launchCoordinator: WorkoutLaunchCoordinator?
+    var programme: ProgrammeStore?
+    private(set) var sessionTrainingContext: SessionTrainingContext?
     var selectedExercise: Exercise = .squat { didSet { if oldValue != selectedExercise { launchCoordinator?.cancel() } } }
     let spokenReps: any SpokenRepListening
     let vision: VisionWorker
@@ -54,6 +56,7 @@ final class TrainingStore {
     func setAccountActive(_ active: Bool) {
         if !active, sessionPhase == .active { pause() }
         accountActive = active
+        programme?.setActive(active)
         setAppActive(active)
     }
     let accountScope: AccountDataScope?
@@ -455,6 +458,16 @@ final class TrainingStore {
     }
 
     var now: Double { monotonicClock() }
+    var protectedProgrammeDayIDs: Set<String> {
+        Set(history.compactMap(\.plannedWorkoutID)).union(sessionPhase != .idle && sessionPhase != .finished ? [configured?.plannedWorkoutID].compactMap { $0 } : [])
+    }
+    func launchPlanned(dayID: String, origin: WorkoutLaunchOrigin = .today, at date: Date = .now) {
+        guard let day = programme?.day(at: date), day.id == dayID, let plan = day.plan,
+              !history.contains(where: { $0.plannedWorkoutID == dayID }), let launchCoordinator else {
+            error = "Choose today's unstarted workout or practise a movement from the library."; return
+        }
+        launchCoordinator.request(plan: plan, origin: origin, plannedWorkoutID: dayID)
+    }
     func start() {
         guard let launchCoordinator else { error = "Sign in and complete your training profile before starting."; return }
         guard let plan = try? CoachSavedPlan.catalogue(exerciseID: selectedExercise.rawValue, sets: 3, target: selectedExercise.target, restSeconds: 60) else { return }
@@ -475,10 +488,11 @@ final class TrainingStore {
         reportedDiscomfort = false
         session.start(at: now); presented = true; error = nil; clearInput()
     }
-    func beginAuthorizedPlan(_ plan: CoachSavedPlan, availableSupport: Set<String>, plannedWorkoutID: String? = nil) {
+    func beginAuthorizedPlan(_ plan: CoachSavedPlan, availableSupport: Set<String>, plannedWorkoutID: String? = nil, trainingContext: SessionTrainingContext? = nil) {
         do {
-            var run = try ConfigurableSession(plan: plan, availableSupport: availableSupport, plannedWorkoutID: plannedWorkoutID)
+            var run = try ConfigurableSession(plan: plan, availableSupport: availableSupport, plannedWorkoutID: plannedWorkoutID, trainingContext: trainingContext)
             run.start(at: now)
+            sessionTrainingContext = trainingContext
             stopCapture(); clearInput(); configured = run
             configuredInput = .manual; source = .manual; remoteVoice?.reloadPreferences()
             coachingPolicy = CoachingPolicy(history: history)
@@ -635,6 +649,19 @@ final class TrainingStore {
         session.feedback(reserve: reserve, reason: reportedDiscomfort ? .discomfort : reason)
         coachingTick()
     }
+    func setEffort(_ effort: SetEffort?) {
+        guard let set = configured?.completed.last, configured?.phase == .rest else { return }
+        configured?.feedback(reserve: set.reserve, reason: set.reason, effort: effort)
+        publish()
+    }
+    func prepareAfterRest() {
+        guard accountActive, appActive, let run = configured, run.phase == .rest,
+              !run.stoppedForDiscomfort, !run.currentWasSkipped,
+              let elapsed = run.restElapsed(at: now), elapsed >= Double(run.current.restSeconds),
+              run.index + 1 < run.steps.count else { return }
+        next()
+        SpottrHaptics.success()
+    }
     func next() {
         if configured != nil {
             guard configured?.phase == .rest, configured?.stoppedForDiscomfort == false else { return }
@@ -678,6 +705,10 @@ final class TrainingStore {
         persist(session.record)
     }
     func persist(_ record: SessionRecord, completedAt: Date = Date()) {
+        if let scope = accountScope, let context = record.trainingContext,
+           context.owner != WorkoutOwner(accountID: scope.accountID, profileID: scope.profileID) {
+            error = "This workout belongs to another training profile. It has not been imported."; return
+        }
         var before = history
         let saved: SessionRecord
         do {
@@ -717,7 +748,8 @@ final class TrainingStore {
         var result = SessionRecord(id: record.id, date: record.date, sets: record.sets, telemetry: record.telemetry,
             loggedSets: record.loggedSets, skippedSets: record.skippedSets,
             endedAt: record.endedAt ?? (owned && sessionPhase == .finished ? finishedWallTime : nil),
-            timeline: record.timeline.isEmpty && owned ? phaseTimeline : record.timeline)
+            timeline: record.timeline.isEmpty && owned ? phaseTimeline : record.timeline,
+            plannedWorkoutID: record.plannedWorkoutID, trainingContext: record.trainingContext ?? (owned ? sessionTrainingContext : nil))
         let pending = try watchInbox.samples(for: record.id)
         for offset in stride(from: 0, to: pending.count, by: 60) {
             result = try WatchTelemetryImporter.merge(Array(pending[offset..<min(offset+60,pending.count)]), into: result, through: Date(), allowsOpenSession: owned && sessionPhase != .finished)
@@ -731,6 +763,10 @@ final class TrainingStore {
         let current = configured?.record ?? session.record
         let open = saved == nil && current.id == sessionID && [.active,.paused,.rest].contains(sessionPhase)
         guard let record = saved ?? (open ? current : nil) else { companion.acknowledgeTelemetryBatch(id, accepted: false); return }
+        if let scope = accountScope, let context = record.trainingContext,
+           context.owner != WorkoutOwner(accountID: scope.accountID, profileID: scope.profileID) {
+            companion.acknowledgeTelemetryBatch(id, accepted: false); return
+        }
         let merged: SessionRecord
         do { merged = try WatchTelemetryImporter.merge(samples, into: record, through: Date(), allowsOpenSession: open) }
         catch { companion.acknowledgeTelemetryBatch(id, accepted: false); return }

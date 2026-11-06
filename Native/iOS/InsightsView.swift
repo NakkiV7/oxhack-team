@@ -50,9 +50,11 @@ struct InsightsView: View {
 
     @ViewBuilder private var sectionContent: some View {
         switch Section(rawValue: section) ?? .overview {
-        case .overview: TrainingOverviewSection(store: store, profile: profile, healthStore: healthStore)
-        case .calendar: CalendarSection(store: store, profile: profile, previewMode: previewMode, zones: healthStore?.zones)
-        case .reports: ReportsSection(store: store, profile: profile, zones: healthStore?.zones)
+        case .overview:
+            ProgrammeInsightsSection(store: store, profile: profile)
+            TrainingOverviewSection(store: store, profile: profile, healthStore: profile?.programmePreferences?.ageContext?.allowsHealthIntegration == true ? healthStore : nil)
+        case .calendar: CalendarSection(store: store, profile: profile, previewMode: previewMode, zones: profile?.programmePreferences?.ageContext?.allowsHealthIntegration == true ? healthStore?.zones : nil)
+        case .reports: ReportsSection(store: store, profile: profile, zones: profile?.programmePreferences?.ageContext?.allowsHealthIntegration == true ? healthStore?.zones : nil)
         case .weekly: WeeklySection(store: store, profile: profile, previewMode: previewMode)
         case .research: ResearchSection()
         }
@@ -173,7 +175,7 @@ private struct DayDetail: View {
     var body: some View {
         let reports = records.map(WorkoutReport.init(record:)).filter { !$0.sets.isEmpty }.sorted { $0.date < $1.date }
         let sets = reports.flatMap(\.sets).filter { $0.source != .video }
-        let heart = WorkoutAnalytics.averageHeartRate(in: records)
+        let heart = profile?.programmePreferences?.ageContext?.allowsHealthIntegration == true ? WorkoutAnalytics.averageHeartRate(in: records) : nil
         let sample = records.contains { TrainingCalendar.isSample($0.id) }
         VStack(alignment: .leading, spacing: 14) {
             HStack {
@@ -326,7 +328,7 @@ private struct WeeklySection: View {
         if let current = steps.first(where: { $0.state == .current }), let entry = ExerciseCatalog.find(current.id) {
             list.append("Practise \(entry.name.lowercased()) at a comfortable pace. Your next skill is waiting in Skills.")
         }
-        if profile?.weightManagementGoal == true {
+        if profile?.programmePreferences?.ageContext?.ageYears ?? 0 >= 18, profile?.weightManagementGoal == true {
             list.append("Keep a repeatable movement routine. Track active time and training days rather than estimating weight change from reps.")
         }
         return list
@@ -372,7 +374,7 @@ private struct ResearchSection: View {
                         Text(source.summary).font(.subheadline)
                         Label(source.audience, systemImage: "person.2").font(.caption).foregroundStyle(.secondary)
                         if let url = URL(string: source.url) {
-                            Link(destination: url) { Label("Read the source", systemImage: "arrow.up.right.square").font(.subheadline.weight(.semibold)) }
+                            WebsiteLink(title: "Read the source", url: url).font(.subheadline.weight(.semibold))
                                 .foregroundStyle(Palette.blue)
                         }
                     }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(Palette.surface, in: RoundedRectangle(cornerRadius: 17))

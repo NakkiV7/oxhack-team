@@ -4,7 +4,7 @@ public enum WorkoutLaunchOrigin: String, CaseIterable, Sendable {
     case today, skills, coach, library, quest, watch, url
 }
 
-public struct WorkoutOwner: Equatable, Sendable {
+public struct WorkoutOwner: Codable, Equatable, Sendable {
     public let accountID: UUID
     public let profileID: UUID
     public init(accountID: UUID, profileID: UUID) { self.accountID = accountID; self.profileID = profileID }

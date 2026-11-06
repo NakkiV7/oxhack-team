@@ -169,6 +169,7 @@ struct SessionReportView: View {
                                 }
                                 Text(set.reason.title).font(.caption)
                                     .foregroundStyle(set.reason == .discomfort ? Palette.red : ([StopReason.form, .failure].contains(set.reason) ? Palette.amber : Palette.muted))
+                                Text("Effort: \(record.loggedSets.first(where: { $0.id == set.id })?.effort.map { "\($0.rawValue) · \($0.title)" } ?? "Unrated")").font(.caption).foregroundStyle(.secondary)
                                 if let reserve = set.reserve {
                                     Text("\(reserve == 3 ? "3+" : "\(reserve)") reps in reserve").font(.caption).foregroundStyle(.secondary)
                                 }
@@ -205,7 +206,8 @@ struct SessionReportView: View {
                         .accessibilityIdentifier("session-skipped-sets")
                 }
 
-                WorkoutAnalyticsSections(record: record, zones: zones)
+                let allowsHealth = record.trainingContext?.age?.allowsHealthIntegration == true && profile?.programmePreferences?.ageContext?.allowsHealthIntegration == true
+                WorkoutAnalyticsSections(record: record, zones: allowsHealth ? zones : nil, allowsHealth: allowsHealth)
                 CoachSummaryCard(record: record, profile: profile)
                 DisclosureGroup(previewEnabled ? "Data sources" : "How this is recorded", isExpanded: $sourcesExpanded) {
                     VStack(alignment: .leading, spacing: 10) {

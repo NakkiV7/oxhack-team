@@ -4,6 +4,7 @@ struct OnboardingView: View {
     let profileStore: NativeProfileStore
     let healthStore: HealthDataStore
     let history: [SessionRecord]
+    let programme: ProgrammeStore?
     var guardianAuthorization: (any NativeAccountAuthorization)? = nil
     var onComplete: () -> Void = {}
     @Environment(\.dismiss) private var dismiss
@@ -28,9 +29,9 @@ struct OnboardingView: View {
     @State private var playback: RemoteVoicePlayback
 
     init(profileStore: NativeProfileStore, healthStore: HealthDataStore? = nil,
-         guardianAuthorization: (any NativeAccountAuthorization)? = nil, history: [SessionRecord] = [], onComplete: @escaping () -> Void = {}) {
+         guardianAuthorization: (any NativeAccountAuthorization)? = nil, history: [SessionRecord] = [], programme: ProgrammeStore? = nil, onComplete: @escaping () -> Void = {}) {
         self.profileStore = profileStore; self.healthStore = healthStore ?? HealthDataStore()
-        self.guardianAuthorization = guardianAuthorization; self.history = history; self.onComplete = onComplete
+        self.guardianAuthorization = guardianAuthorization; self.history = history; self.onComplete = onComplete; self.programme = programme
         _audioEnabled = AppStorage(wrappedValue: false, "trainer.audioEnabled", store: profileStore.preferencesDefaults)
         _playback = State(initialValue: RemoteVoicePlayback(offlineOnly: true, defaults: profileStore.preferencesDefaults,
             gentleOnly: (profileStore.profile?.programmePreferences?.ageContext?.ageYears ?? 0) < 18))
@@ -187,7 +188,7 @@ struct OnboardingView: View {
                 gentleOnly: !adult, onToneSelect: { tone in preview(playback.preference, tone: tone) }, defaults: profileStore.preferencesDefaults)
             Toggle("Voice feedback during workouts", isOn: $audioEnabled)
             Text("Your prepared week").font(.title3.bold())
-            if let profile = try? candidate(), let week = try? ProgrammePlanner.makeWeek(profile: profile, history: history, start: previewAnchor) {
+            if let profile = try? candidate(), let week = try? preparedWeek(profile) {
                 if let next = week.days.first(where: { $0.plan != nil }), let plan = next.plan {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Next practice on \(next.date.formatted(.dateTime.weekday(.wide)))").font(.headline)
@@ -204,6 +205,10 @@ struct OnboardingView: View {
                 Text("Adjust your week whenever you need. Rest days are part of your plan.").font(.caption).foregroundStyle(.secondary)
             } else { Text("Review your days and available support to prepare a week.").foregroundStyle(.secondary) }
         }
+    }
+    private func preparedWeek(_ profile: LocalProfile) throws -> TrainingProgramme {
+        if let programme { return try programme.preview(profile: profile, history: history, at: previewAnchor) }
+        return try ProgrammePlanner.makeWeek(profile: profile, history: history, start: previewAnchor)
     }
     private func preview(_ voice: VoiceCoachPreference, tone: TrainerTone) {
         do { try playback.previewSelection(voice, tone: tone); error = nil }
@@ -235,6 +240,8 @@ struct OnboardingView: View {
         do {
             let profile = try candidate()
             guard AccountPolicy.setupComplete(profile: profile) else { error = "Complete the required profile and movement choices first."; return }
+            let week = try preparedWeek(profile)
+            try programme?.acceptPreview(week, profile: profile)
             try profileStore.save(profile); SpottrHaptics.success(); onComplete(); dismiss()
         } catch { self.error = error.localizedDescription }
     }

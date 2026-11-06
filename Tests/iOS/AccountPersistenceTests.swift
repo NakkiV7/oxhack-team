@@ -45,12 +45,21 @@ import CryptoKit
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
         let store = NativeProfileStore(url: root.appendingPathComponent("profile.json"))
-        let preferences = try ProgrammePreferences(goals: [.balance], weekdays: [2, 5], ageContext: TrainingAgeContext(ageYears: 12, guardianManaged: true))
+        let preferences = try ProgrammePreferences(goals: [.balance], weekdays: [2, 5], ageContext: TrainingAgeContext(ageYears: 12, guardianManaged: true), comfortAnswers: [.legs: .unsure])
         try store.save(LocalProfile(programmePreferences: preferences))
         try store.saveMeasurements(LocalBodyMeasurements(heightCM: 150, weightKG: 45))
         XCTAssertEqual(store.profile?.programmePreferences, preferences)
         XCTAssertTrue(ProfileDraftPersistence(store: store).save(name: "Local", weeklyTarget: 3, goals: [.mobility]))
-        XCTAssertEqual(store.profile?.programmePreferences, preferences)
+        let edited = try XCTUnwrap(store.profile?.programmePreferences)
+        XCTAssertEqual(edited.goals, [.mobility]); XCTAssertEqual(edited.weekdays.count, 3)
+        XCTAssertEqual(edited.ageContext, preferences.ageContext)
+        XCTAssertEqual(edited.comfortAnswers, preferences.comfortAnswers)
+        XCTAssertEqual(edited.availableSupport, preferences.availableSupport)
+        XCTAssertEqual(edited.allowsFloorWork, preferences.allowsFloorWork)
+        XCTAssertEqual(edited.excludedExerciseIDs, preferences.excludedExerciseIDs)
+        XCTAssertEqual(edited.minutesPerSession, preferences.minutesPerSession)
+        XCTAssertEqual(edited.preferredLocalHour, preferences.preferredLocalHour)
+        XCTAssertEqual(edited.startingPoint, preferences.startingPoint)
     }
 
     func testMeasurementPreviewNeverUsesAdultBandsForUnknownOrJuniorAge() throws {

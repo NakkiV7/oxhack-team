@@ -22,7 +22,11 @@ struct AccountDataScope: Hashable {
         for name in available where FileManager.default.fileExists(atPath: file(name).path) { throw CocoaError(.fileWriteFileExists) }
         var dataByName: [String: Data] = [:]
         for name in available { dataByName[name] = try Data(contentsOf: source.appendingPathComponent(name)) }
-        if let data = dataByName["history.json"] { _ = try JSONDecoder().decode([SessionRecord].self, from: data) }
+        if let data = dataByName["history.json"] {
+            let records = try JSONDecoder().decode([SessionRecord].self, from: data)
+            let owner = WorkoutOwner(accountID: accountID, profileID: profileID)
+            guard records.allSatisfy({ $0.trainingContext == nil || $0.trainingContext?.owner == owner }) else { throw AccountFailure.invalidResponse }
+        }
         if let data = dataByName["rewards.json"] { _ = try JSONDecoder().decode(GamificationLedger.self, from: data) }
         if let data = dataByName["training-path.json"] { _ = try JSONDecoder().decode(TrainingPathStore.Saved.self, from: data) }
         let archive = folder.appendingPathComponent("LegacyArchive")
@@ -106,6 +110,8 @@ struct TrainingProfileDescriptor: Codable, Identifiable, Equatable {
     let training: TrainingStore
     let health: HealthDataStore
     let path: TrainingPathStore
+    let programme: ProgrammeStore
+    var programmeSync: ProgrammeSyncStore?
     init(scope: AccountDataScope) throws {
         try scope.prepare(); self.scope = scope
         let directoryURL = scope.root.appendingPathComponent("Accounts").appendingPathComponent(scope.accountID.uuidString).appendingPathComponent("profiles.json")
@@ -118,10 +124,13 @@ struct TrainingProfileDescriptor: Codable, Identifiable, Equatable {
         }
         let defaults = UserDefaults(suiteName: "Spottr.Scope.\(scope.accountID.uuidString).\(scope.profileID.uuidString)")!
         profile = NativeProfileStore(url: scope.file("profile.json"), fixedAge: knownAge, preferencesDefaults: defaults)
+        programme = ProgrammeStore(scope: scope, profile: profile)
         path = TrainingPathStore(url: scope.file("training-path.json"))
         let rewards = NativeRewardsStore(url: scope.file("rewards.json"), allowsTimePressureRewards: profile.profile?.programmePreferences?.ageContext?.allowsTimePressureRewards == true)
         let voice = RemoteVoicePlayback(offlineOnly: true, defaults: defaults, gentleOnly: (profile.profile?.programmePreferences?.ageContext?.ageYears ?? 0) < 18)
         training = TrainingStore(historyURL: scope.file("history.json"), voicePlayback: voice, rewardsStore: rewards, defaults: defaults, accountScope: scope)
+        training.programme = programme
+        programme.protectedDayIDs = { [weak training] in training?.protectedProgrammeDayIDs ?? [] }
         health = HealthDataStore(client: ScopedHealthReadingClient(profile: profile), defaults: try FileHealthPreferences(url: scope.file("health-preferences.plist")))
     }
     func invalidatePolicy() { suspend(); profile.invalidatePolicy() }
@@ -202,6 +211,8 @@ struct AccountLocalExport: Codable {
     let rewards: GamificationLedger?
     let pendingWorkout: PendingPhoneWorkout?
     let unfinishedWorkouts: [PendingPhoneWorkout]
+    let programme: ProgrammeArchive?
+    let weights: [DatedWeight]?
 }
 
 enum AccountLocalArchives {
@@ -228,10 +239,11 @@ extension AccountDataScope {
             guard FileManager.default.fileExists(atPath: url.path) else { return nil }
             return try JSONDecoder().decode(type, from: Data(contentsOf: url))
         }
-        let export = AccountLocalExport(formatVersion: 2, accountID: accountID, profileID: profileID,
+        let export = AccountLocalExport(formatVersion: 3, accountID: accountID, profileID: profileID,
             profile: try read(LocalProfile.self, name: "profile.json"), history: try HistoryStore(url: file("history.json")).load(),
             rewards: try read(GamificationLedger.self, name: "rewards.json"), pendingWorkout: try read(PendingPhoneWorkout.self, name: "pending-phone-workout.json"),
-            unfinishedWorkouts: try unfinishedSnapshots().map(\.snapshot))
+            unfinishedWorkouts: try unfinishedSnapshots().map(\.snapshot),
+            programme: try read(ProgrammeArchive.self, name: "programme.json"), weights: try read([DatedWeight].self, name: "weights.json"))
         let target = URL.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("spottr-local-profile.json")
         let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try ProtectedLocalStorage.write(encoder.encode(export), to: target)

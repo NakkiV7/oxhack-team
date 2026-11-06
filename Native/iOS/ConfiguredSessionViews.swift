@@ -54,21 +54,27 @@ private struct ConfiguredLiveSetView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
                         HStack(alignment: .firstTextBaseline) {
-                            Text(run.current.unit == .seconds ? clockText(Double(store.configuredDisplayedSeconds)) : run.actualReps.map(String.init) ?? "—")
-                                .font(.system(size: 66, weight: .semibold, design: .rounded)).monospacedDigit()
+                            Text(run.current.unit == .seconds ? clockText(Double(store.configuredDisplayedSeconds)) : run.actualReps.map(String.init) ?? "Ready")
+                                .font(.system(size: run.current.unit == .reps && run.actualReps == nil ? 32 : 66, weight: .semibold, design: .rounded)).monospacedDigit()
                                 .accessibilityIdentifier("configured-quantity")
                             Text("/ \(run.current.target) \(run.current.unit == .seconds ? "sec" : (run.current.target == 1 ? "rep" : "reps"))").foregroundStyle(.secondary)
                             Spacer()
+                            if run.trainingContext?.age?.allowsHealthIntegration == true {
                             let heartRate = store.heartRate(at: context.date)
                             Label { Text(heartRate) } icon: {
                                 Image(systemName: "heart").foregroundStyle(heartRate == "—" ? Palette.muted : Palette.red)
                             }.font(.caption)
+                            }
                         }
                         inputControl(run)
                         preview(run)
-                        Text(run.current.entry.instruction).font(.headline)
-                        Label(run.quantitySourcePresentation(at: store.now).title, systemImage: run.quantitySourcePresentation(at: store.now).symbol)
-                            .font(.caption.weight(.medium)).foregroundStyle(.secondary)
+                        Text(ExerciseDemonstrationGuide.find(run.current.exerciseID)?.phases.joined(separator: ". ") ?? run.current.entry.instruction).font(.headline)
+                        if run.source == .camera, let guide = ExerciseDemonstrationGuide.find(run.current.exerciseID) {
+                            Text(guide.cameraAngle.instructions).font(.caption).foregroundStyle(.secondary)
+                        }
+                        if run.quantityOrigin(at: store.now) == .mixed {
+                            Label("Camera + manual quantities", systemImage: "camera").font(.caption).foregroundStyle(.secondary)
+                        }
                         Text(status(run)).font(.subheadline).accessibilityIdentifier("configured-status")
                         if run.source == .camera, run.hasStarted {
                             Text(store.visionState.message).font(.caption).foregroundStyle(.secondary)
@@ -118,7 +124,7 @@ private struct ConfiguredLiveSetView: View {
                         }
                         if run.canSkipSet(at: store.now) {
                             Button("Skip set / stop here") { enteringReps = false; store.skipConfiguredSet() }
-                                .font(.subheadline.weight(.medium)).foregroundStyle(Palette.blue)
+                                .buttonStyle(.bordered).foregroundStyle(Palette.blue)
                                 .accessibilityIdentifier("configured-skip")
                         }
                         }.padding(.horizontal, 24).padding(.vertical, 12).background(.white)
@@ -175,6 +181,7 @@ private struct ConfiguredCapturePreview: View {
             if run.source == .camera, run.hasStarted, run.phase == .active,
                case .camera = store.visionState {
                 CameraPreview(session: store.vision.capture)
+                VStack { HStack { Spacer(); ExerciseArtwork(entry: run.current.entry).frame(width: 84, height: 110).padding(6).background(.white.opacity(0.9), in: RoundedRectangle(cornerRadius: 14)) }; Spacer() }.padding(10).accessibilityHidden(true)
             } else if let image = store.image, run.source == .camera {
                 Image(uiImage: image).resizable().scaledToFit()
             } else {
@@ -190,6 +197,7 @@ private struct ConfiguredCapturePreview: View {
 
 struct ConfiguredRecoveryView: View {
     @Bindable var store: TrainingStore
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var reserve: Int?
     @State private var reason: StopReason = .voluntary
     var body: some View {
@@ -234,8 +242,24 @@ struct ConfiguredRecoveryView: View {
                                 .accessibilityIdentifier("configured-one-rep-targets")
                         }.padding(16).background(Palette.surface, in: RoundedRectangle(cornerRadius: 14))
                     }
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("How did this set feel?").font(.headline)
+                        Text("Your perceived effort, not a score. Easier work earns the same credit.").font(.caption).foregroundStyle(.secondary)
+                        LazyVGrid(columns: dynamicTypeSize.isAccessibilitySize ? [GridItem(.flexible())] : [GridItem(.adaptive(minimum: 104))], spacing: 8) {
+                            ForEach(SetEffort.allCases, id: \.self) { effort in
+                                Button { store.setEffort(effort); SpottrHaptics.selection() } label: {
+                                    VStack(spacing: 4) { Text("\(effort.rawValue)").font(.headline); Text(effort.title).font(.caption) }.frame(maxWidth: .infinity, minHeight: 48)
+                                }.buttonStyle(.borderedProminent).tint(store.configured?.completed.last?.effort == effort ? Palette.blue : Palette.surface)
+                                    .foregroundStyle(store.configured?.completed.last?.effort == effort ? .white : Palette.ink)
+                                    .accessibilityIdentifier("set-effort-\(effort.rawValue)")
+                            }
+                            Button { store.setEffort(nil) } label: { Text("Unrated").frame(maxWidth: .infinity, minHeight: 48) }.buttonStyle(.bordered)
+                                .accessibilityAddTraits(store.configured?.completed.last?.effort == nil ? .isSelected : [])
+                                .accessibilityIdentifier("set-effort-unrated")
+                        }
+                    }
                     if store.configured?.current.unit == .reps {
-                        Text("How many clean reps were left?").font(.headline)
+                        Text("Optional: clean reps left").font(.subheadline)
                         HStack {
                             ForEach(0..<4) { count in
                                 Button(count == 3 ? "3+" : "\(count)") { reserve = count; feedback() }
@@ -257,7 +281,14 @@ struct ConfiguredRecoveryView: View {
                     Button("Finish session", action: store.finish).font(.subheadline.weight(.medium)).frame(maxWidth: .infinity)
                 }
             }.padding(24)
-        }.onAppear { reason = store.configured?.completed.last?.reason ?? .voluntary }
+        }.onAppear { reason = store.configured?.completed.last?.reason ?? .voluntary; reserve = store.configured?.completed.last?.reserve }
+            .task {
+                while !Task.isCancelled, store.configured?.phase == .rest {
+                    try? await Task.sleep(for: .milliseconds(500))
+                    guard !Task.isCancelled else { return }
+                    store.prepareAfterRest()
+                }
+            }
     }
     var continuationGuidance: String {
         if store.configured?.currentWasSkipped == true {
@@ -267,7 +298,7 @@ struct ConfiguredRecoveryView: View {
             return "Your planned steps are finished. Review your completed work and skipped steps."
         }
         return isLast ? "All planned sets are ended. Review your session to save the work you completed."
-            : "The next set starts only when you choose Start. Rest timing never starts a set automatically."
+            : "Rest ends with a haptic and prepares the next set. Choose Start when you are ready; no camera time is counted before then."
     }
     private var isLast: Bool { store.configured.map { $0.index + 1 == $0.steps.count } ?? false }
     private func feedback() { store.feedback(reserve: reserve, reason: reason) }
@@ -295,7 +326,7 @@ private struct ConfiguredFinishedView: View {
                                 Text("\(ExerciseCatalog.find(skipped.exerciseID)?.name ?? skipped.exerciseID), planned set \(skipped.number), skipped by choice")
                                     .font(.caption).foregroundStyle(.secondary)
                             }
-                            Text("Skip details stay in local history and exports. Cloud upload includes completed sets only.")
+                            Text("Your set details, skipped steps and effort stay in local history and exports.")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                     }
@@ -304,7 +335,7 @@ private struct ConfiguredFinishedView: View {
                             Text("\(ExerciseCatalog.find(set.exerciseID)?.name ?? set.exerciseID), Set \(set.number ?? 1)").font(.headline)
                             Text("\(set.seconds > 0 ? "\(Int(set.seconds)) sec" : "\(set.reps) \(set.reps == 1 ? "rep" : "reps")"), \(set.quantityOrigin == .mixed ? "camera + manual" : (set.source == .camera ? "camera observation" : (set.quantityOrigin == .activeTimer ? "active hold timer" : "manual self-report")))")
                                 .font(.subheadline)
-                            Text(set.reason.title).font(.caption).foregroundStyle(.secondary)
+                            Text("\(set.reason.title) · Effort: \(set.effort.map { "\($0.rawValue) · \($0.title)" } ?? "Unrated")").font(.caption).foregroundStyle(.secondary)
                             if let rest = set.restSecondsBefore { Text("\(Int(rest)) sec recorded rest before this set").font(.caption).foregroundStyle(.secondary) }
                         }
                         Divider()

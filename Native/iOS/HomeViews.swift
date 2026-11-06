@@ -24,7 +24,7 @@ struct SpottrRoot: View {
     var body: some View {
         Group {
             if introductionPresented {
-                OnboardingView(profileStore: profileStore, healthStore: healthStore, guardianAuthorization: guardianAuthorization, history: store.history) {
+                OnboardingView(profileStore: profileStore, healthStore: healthStore, guardianAuthorization: guardianAuthorization, history: store.history, programme: store.programme) {
                     store.remoteVoice?.reloadPreferences()
                     store.repVoice.choose(store.remoteVoice?.gentleOnly == true ? nil : RepVoicePlan.Coach(rawValue: profileStore.preferencesDefaults.string(forKey: RepVoicePlayer.defaultsKey) ?? "off"))
                     store.setVoiceFeedback(profileStore.preferencesDefaults.bool(forKey: "trainer.audioEnabled"))
@@ -64,6 +64,7 @@ struct SpottrRoot: View {
         .sheet(isPresented: Binding(get: { store.launchCoordinator?.needsAttention == true && [WorkoutLaunchOrigin.today, .url, .watch].contains { $0 == store.launchCoordinator?.pendingOrigin } }, set: { if !$0 { store.launchCoordinator?.cancel() } })) {
             if let launch = store.launchCoordinator { WorkoutLaunchAccessView(launch: launch) }
         }
+        .environment(\.profileWebsiteAccess, ProfileWebsiteAccess(profile: profileStore, guardian: guardianAuthorization))
         .foregroundStyle(Palette.ink)
         .id(ObjectIdentifier(store))
     }
@@ -89,7 +90,7 @@ struct TodayView: View {
                             .font(.caption).foregroundStyle(.secondary)
                         ScreenHeading(title: greeting)
                     }
-                    nextSession
+                    ProgrammeTodayCard(store: store, profileStore: profileStore, openSetup: showSettings, openLibrary: { libraryPresented = true })
                     Button(action: openPath) {
                         Label("Explore your next skill", systemImage: "point.3.connected.trianglepath.dotted")
                             .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, alignment: .leading)
@@ -128,53 +129,6 @@ struct TodayView: View {
         }
         .sheet(isPresented: $libraryPresented) { ExerciseLibraryView(store: store) }
         .sheet(isPresented: $rewardsPresented) { TrainingRewardsSettingsView(store: store.rewards) }
-    }
-
-    private var nextSession: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("Ready when you are").font(.caption.weight(.semibold)).foregroundStyle(Palette.blue)
-            if typeSize.isAccessibilitySize {
-                nextSessionDetails
-                StickFigureArtwork(exercise: store.selectedExercise).frame(height: 140).accessibilityHidden(true)
-            } else {
-                HStack(alignment: .center, spacing: 18) {
-                    nextSessionDetails
-                    StickFigureArtwork(exercise: store.selectedExercise).frame(width: 112, height: 140).accessibilityHidden(true)
-                }
-            }
-            PrimaryButton(title: "Start session", action: store.start).accessibilityIdentifier("today-start-session")
-            exerciseChoiceLayout {
-                ForEach([Exercise.squat, .pushup], id: \.self) { exercise in
-                    Button { store.selectedExercise = exercise } label: {
-                        Label(exercise.title, systemImage: store.selectedExercise == exercise ? "checkmark.circle.fill" : "circle")
-                            .font(.subheadline.weight(.semibold)).frame(minHeight: 44)
-                    }.buttonStyle(SpottrPressStyle()).foregroundStyle(Palette.blue)
-                        .accessibilityLabel("Start with \(exercise.title)")
-                        .accessibilityAddTraits(store.selectedExercise == exercise ? .isSelected : [])
-                }
-            }
-            Button { libraryPresented = true } label: {
-                Label("Choose from the exercise library", systemImage: "square.grid.2x2")
-                    .font(.subheadline.weight(.semibold)).padding(.vertical, 5)
-            }.buttonStyle(.plain).foregroundStyle(Palette.blue).accessibilityIdentifier("today-library")
-        }.padding(22).background(Palette.surface, in: RoundedRectangle(cornerRadius: 24))
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: store.selectedExercise)
-            .sensoryFeedback(.selection, trigger: store.selectedExercise)
-    }
-
-    private var exerciseChoiceLayout: AnyLayout {
-        typeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
-            : AnyLayout(HStackLayout(spacing: 18))
-    }
-
-    private var nextSessionDetails: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            Text(store.selectedExercise.title).font(.title.bold()).tracking(-0.6)
-                .accessibilityIdentifier("today-selected-exercise")
-            Text("\(store.selectedExercise.target) reps per set")
-                .font(.subheadline).foregroundStyle(.secondary)
-        }.frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var weeklyRhythm: some View {

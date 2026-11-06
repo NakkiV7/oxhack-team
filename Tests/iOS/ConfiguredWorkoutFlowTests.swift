@@ -165,7 +165,7 @@ final class ConfiguredWorkoutFlowTests: XCTestCase {
         store.beginConfiguredSet(); store.setConfiguredReps(2); store.endSet()
 
         XCTAssertEqual(ConfiguredRecoveryView(store: store).continuationGuidance,
-                       "The next set starts only when you choose Start. Rest timing never starts a set automatically.")
+                       "Rest ends with a haptic and prepares the next set. Choose Start when you are ready; no camera time is counted before then.")
         store.next()
         store.beginConfiguredSet(); store.setConfiguredReps(1); store.endSet()
 
