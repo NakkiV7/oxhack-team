@@ -129,6 +129,8 @@ import CryptoKit
         XCTAssertEqual(account.step, .identity)
         XCTAssertNil(coordinator.workspace)
         capture(window, "account-age-confirmed-still-requires-sign-in")
+        try await Task.sleep(for: .seconds(15))
+        capture(window, "account-sign-in-controls-review")
     }
 
     func testExternalSignedOutRestoreHelpAndRetainedRecords() async throws {

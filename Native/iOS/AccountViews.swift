@@ -1,4 +1,5 @@
 import SwiftUI
+import AuthenticationServices
 
 @MainActor @Observable final class AccountWorkspaceCoordinator {
     let account: NativeAccountStore
@@ -240,7 +241,7 @@ struct AccountSetupView: View {
                     Text("Existing records stay on this phone. Importing them into an adult training profile is an explicit choice after sign-in.")
                 }
             }.navigationTitle("Account and privacy").navigationBarTitleDisplayMode(.inline)
-                .safeAreaInset(edge: .top) { SetupProgressHeader(stage: .account) }
+                .safeAreaInset(edge: .top) { SetupProgressHeader(stage: .account).background(Color(uiColor: .systemGroupedBackground)) }
         }
     }
     @ViewBuilder private var authentication: some View {
@@ -258,8 +259,13 @@ struct AccountSetupView: View {
             Section("Create or recover") {
                 Picker("Purpose", selection: $purpose) { Text("Create account").tag(IdentityPurpose.enroll); Text("Recover account").tag(IdentityPurpose.recover) }
                 TextField("Adult account owner’s email", text: $email).textContentType(.emailAddress).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
-                Button("Send verification code") { Task { await account.startEmail(email: email, purpose: purpose) } }.disabled(account.busy || (purpose == .enroll && account.checkpoint == nil))
-                Button("Continue with Apple", systemImage: "apple.logo") { Task { await account.startApple(purpose: purpose) } }.disabled(account.busy || (purpose == .enroll && account.checkpoint == nil))
+                Button { Task { await account.startEmail(email: email, purpose: purpose) } } label: {
+                    Text("Send verification code").frame(maxWidth: .infinity, minHeight: 32)
+                }.buttonStyle(.borderedProminent).tint(Palette.blue)
+                    .disabled(account.busy || (purpose == .enroll && account.checkpoint == nil))
+                AppleAccountButton(enabled: !account.busy && (purpose != .enroll || account.checkpoint != nil)) {
+                    Task { await account.startApple(purpose: purpose) }
+                }.frame(height: 50)
             }
             Section("Already have a passkey?") {
                 Button("Sign in with passkey") { Task { await account.login() } }.disabled(account.busy)
@@ -530,5 +536,27 @@ private struct ProtectedLegacyRecordsView: View {
                 }.navigationTitle("Existing phone records")
             }
         }
+    }
+}
+
+private struct AppleAccountButton: UIViewRepresentable {
+    let enabled: Bool
+    let action: () -> Void
+    func makeCoordinator() -> Coordinator { Coordinator(action: action) }
+    func makeUIView(context: Context) -> ASAuthorizationAppleIDButton {
+        let button = ASAuthorizationAppleIDButton(type: .continue, style: .black)
+        button.cornerRadius = 12
+        button.accessibilityIdentifier = "account-apple-sign-in"
+        button.addTarget(context.coordinator, action: #selector(Coordinator.performAction), for: .touchUpInside)
+        return button
+    }
+    func updateUIView(_ button: ASAuthorizationAppleIDButton, context: Context) {
+        context.coordinator.action = action
+        button.isEnabled = enabled
+    }
+    final class Coordinator: NSObject {
+        var action: () -> Void
+        init(action: @escaping () -> Void) { self.action = action }
+        @objc func performAction() { action() }
     }
 }
