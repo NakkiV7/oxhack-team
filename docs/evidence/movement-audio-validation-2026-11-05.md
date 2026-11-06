@@ -29,7 +29,7 @@ These checks establish software behavior at their recorded source. Watch SDK/lin
 
 ## Assets and release checks
 
-There are 243 bundled MP3 files. The 144 natural Maya/Leo recordings across three tones coexist with retained optional Arnold/Goggins-inspired banks. Task 3 replaced exactly 18 tracking/alignment clips with movement-neutral wording and preserved the other 225 bytes; transcript/hash/decode/level checks are retained. No new authoring request, provider inference or credit use occurred during final release work. Human listening remains separate.
+There are 243 bundled MP3 files. The 144 natural Maya/Leo recordings across three tones coexist with retained optional Arnold/Goggins-inspired banks. Task 3 replaced exactly 18 tracking/alignment clips with movement-neutral wording and preserved the other 225 MP3 files byte-for-byte; transcript/hash/decode/level checks are retained. No new authoring request, provider inference or credit use occurred during final release work. Human listening remains separate.
 
 The canonical Full pose asset SHA256 is `4eaa5eb7a98365221087693fcc286334cf0858e2eb6e15b506aa4a7ecdcec4ad`. Vendor SDK/model/dependencies remain unchanged. Frozen release inputs include actual phone/Watch source, shared resources, generated project, model/audio/Vendor and the existing signing configuration. Private credentials are excluded. All eight generated project version settings and the generator use 23 with marketing version 0.1.
 
