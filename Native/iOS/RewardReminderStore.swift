@@ -44,6 +44,7 @@ import UserNotifications
     private var active = true
     private let instanceID = UUID()
     private var generation = UUID()
+    private var refreshTask: Task<Void, Never>?
     private static var owners: [String: UUID] = [:]
     private var prefix: String { XPReminderSchedule.prefix(owner: .init(accountID: scope.accountID, profileID: scope.profileID)) }
     private var valid: Bool { active && profile.permitsPolicyCallbacks && age == profile.profile?.programmePreferences?.ageContext && age?.allowsTimePressureRewards == true }
@@ -68,7 +69,21 @@ import UserNotifications
     func refresh() async {
         guard Self.owners[prefix] == instanceID else { return }
         generation = UUID()
-        let request = generation
+        // An OS add already handed off cannot be cancelled or rolled back by cancelling a Task.
+        // Settle it (including stale cleanup) before installing the newest coalesced schedule.
+        if let refreshTask { await refreshTask.value; return }
+        let worker = Task { @MainActor in
+            repeat {
+                let request = generation
+                await replaceSchedule(request)
+                if generation == request { break }
+            } while Self.owners[prefix] == instanceID
+            refreshTask = nil
+        }
+        refreshTask = worker
+        await worker.value
+    }
+    private func replaceSchedule(_ request: UUID) async {
         let ids = await client.pendingIDs()
         guard current(request) else { return }
         client.remove(ids: ids.filter { $0.hasPrefix(prefix) })
@@ -91,6 +106,7 @@ import UserNotifications
     }
     func setActive(_ value: Bool) {
         active = value
+        generation = UUID()
         Task { await refresh() }
     }
     func suspend() { setActive(false) }

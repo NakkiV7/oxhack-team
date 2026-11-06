@@ -130,7 +130,7 @@ struct TrainingProfileDescriptor: Codable, Identifiable, Equatable {
         let voice = RemoteVoicePlayback(offlineOnly: true, defaults: defaults, gentleOnly: (profile.profile?.programmePreferences?.ageContext?.ageYears ?? 0) < 18)
         training = TrainingStore(historyURL: scope.file("history.json"), voicePlayback: voice, rewardsStore: rewards, defaults: defaults, accountScope: scope)
         training.programme = programme
-        training.quests = QuestStore(scope: scope, profile: profile, programme: programme)
+        training.quests = QuestStore(scope: scope, profile: profile, programme: programme, history: training.history)
         training.rewardReminders = RewardReminderStore(scope: scope, profile: profile, rewards: rewards, programme: programme, client: LocalRewardNotificationClient())
         Task { [weak training] in await training?.rewardReminders?.refresh() }
         programme.protectedDayIDs = { [weak training] in training?.protectedProgrammeDayIDs ?? [] }

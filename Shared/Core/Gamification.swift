@@ -68,10 +68,13 @@ public struct GamificationLedger: Codable, Sendable {
         retiredSessionIDs = try values.decodeIfPresent(Set<UUID>.self, forKey: .retiredSessionIDs) ?? []
     }
 
-    public mutating func scheduleWindow(_ window: DailyXPWindow, at now: Date) throws {
-        guard createdAt.timeIntervalSince1970.isFinite, now >= createdAt, let today = day(now),
-              let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) else { throw Invalid.date }
-        windowChanges.removeAll { $0.effectiveAt == tomorrow }
+    public mutating func scheduleWindow(_ window: DailyXPWindow, at now: Date, calendar prospectiveCalendar: Calendar? = nil) throws {
+        let local = prospectiveCalendar ?? calendar
+        guard createdAt.timeIntervalSince1970.isFinite, now.timeIntervalSince1970.isFinite, now >= createdAt,
+              let today = local.dateInterval(of: .day, for: now)?.start,
+              let tomorrow = local.date(byAdding: .day, value: 1, to: today) else { throw Invalid.date }
+        // Replace pending intentions, including an old-zone tomorrow that is still in the future.
+        windowChanges.removeAll { $0.effectiveAt > now }
         windowChanges.append(.init(window: window, effectiveAt: tomorrow))
         windowChanges.sort { $0.effectiveAt < $1.effectiveAt }
     }
@@ -80,8 +83,14 @@ public struct GamificationLedger: Codable, Sendable {
         return windowChanges.last { $0.effectiveAt <= date }?.window
     }
 
+    /// Prospective clock-hour windows follow the current local calendar; earned events and
+    /// the original streak-day calendar are never rewritten after travel.
+    public func windowInterval(at date: Date, calendar: Calendar) -> DateInterval? {
+        window(at: date)?.interval(on: date, calendar: calendar)
+    }
+
     @discardableResult
-    public mutating func awardCompletion(record: SessionRecord, completedAt: Date, eligibleBaseXP: Int, now: Date) throws -> CompletionReward? {
+    public mutating func awardCompletion(record: SessionRecord, completedAt: Date, eligibleBaseXP: Int, now: Date, calendar prospectiveCalendar: Calendar? = nil) throws -> CompletionReward? {
         if let existing = events.first(where: { $0.sessionID == record.id }) { return existing }
         guard !retiredSessionIDs.contains(record.id) else { return nil }
         guard createdAt.timeIntervalSince1970.isFinite, now.timeIntervalSince1970.isFinite,
@@ -93,7 +102,7 @@ public struct GamificationLedger: Codable, Sendable {
         let progress = SkillProgress.evaluate(history: [record], calendar: calendar)
         let maximumBase = TrainingAttribute.allCases.reduce(0) { $0 + progress.points(for: $1) }
         guard eligibleBaseXP >= 0, eligibleBaseXP % 10 == 0, eligibleBaseXP <= maximumBase else { throw Invalid.baseXP }
-        let interval = window(at: completedAt)?.interval(on: completedAt, calendar: calendar)
+        let interval = windowInterval(at: completedAt, calendar: prospectiveCalendar ?? calendar)
         let doubled = interval.map { completedAt >= $0.start && completedAt < $0.end } ?? false
         let reward = CompletionReward(sessionID: record.id, completedAt: completedAt, day: completedDay,
                                       completedSetCount: count, baseXP: eligibleBaseXP, bonusXP: doubled ? eligibleBaseXP : 0)

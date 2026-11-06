@@ -131,7 +131,7 @@ struct TrainingRewardWidget: View {
     }
     private var nextWindow: DateInterval? {
         (0...2).compactMap { calendar.date(byAdding: .day, value: $0, to: now) }
-            .compactMap { store.rewards.ledger.window(at: $0)?.interval(on: $0, calendar: calendar) }
+            .compactMap { store.rewards.ledger.windowInterval(at: $0, calendar: calendar) }
             .first { $0.end > now }
     }
 }

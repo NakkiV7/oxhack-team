@@ -20,15 +20,15 @@ final class NativeRewardsStore {
         catch { loadError = "Your saved rewards couldn’t be read. They haven’t been changed. Reset workout history to reset rewards." }
     }
 
-    func schedule(startHour: Int, at date: Date) throws {
+    func schedule(startHour: Int, at date: Date, calendar: Calendar? = nil) throws {
         guard allowsTimePressureRewards else { throw Failure.timePressureDisabled }
         try requireReadable()
         var candidate = ledger
-        try candidate.scheduleWindow(DailyXPWindow(startHour: startHour), at: date)
+        try candidate.scheduleWindow(DailyXPWindow(startHour: startHour), at: date, calendar: calendar ?? .current)
         try save(candidate)
     }
 
-    func award(record: SessionRecord, before: [SessionRecord], history: [SessionRecord], completedAt: Date) throws {
+    func award(record: SessionRecord, before: [SessionRecord], history: [SessionRecord], completedAt: Date, calendar: Calendar? = nil) throws {
         guard allowsTimePressureRewards else { return }
         if requiresCapturedAdult && record.trainingContext?.age?.allowsTimePressureRewards != true { return }
         if let captured = record.trainingContext, captured.age?.allowsTimePressureRewards != true { return }
@@ -38,7 +38,7 @@ final class NativeRewardsStore {
         guard history.contains(record) else { throw Failure.recordNotSaved }
         let delta = max(0, baseXP(history: history) - baseXP(history: before))
         var candidate = ledger
-        try candidate.awardCompletion(record: record, completedAt: completedAt, eligibleBaseXP: delta, now: completedAt)
+        try candidate.awardCompletion(record: record, completedAt: completedAt, eligibleBaseXP: delta, now: completedAt, calendar: calendar ?? .current)
         try save(candidate)
     }
 

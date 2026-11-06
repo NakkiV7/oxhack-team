@@ -12,7 +12,7 @@ import Observation
     private let year: QuestCalendar.Year?
     private var active = true
     private var readable = true
-    init(scope: AccountDataScope, profile: NativeProfileStore, programme: ProgrammeStore) {
+    init(scope: AccountDataScope, profile: NativeProfileStore, programme: ProgrammeStore, history: [SessionRecord]) {
         self.scope = scope; self.profile = profile; self.programme = programme
         capturedAge = profile.profile?.programmePreferences?.ageContext
         archive = QuestArchive(owner: .init(accountID: scope.accountID, profileID: scope.profileID))
@@ -23,12 +23,24 @@ import Observation
                 guard saved.owner == archive.owner else { throw Failure.unreadable }
                 archive = saved
             }
+            if archive.benchmarkPolicy == nil {
+                var migrated = archive
+                migrated.freezeLegacyBenchmarks(history: history, calendar: programme.localCalendar)
+                // Persist even the empty boundary before making it available in memory.
+                try ProtectedLocalStorage.write(JSONEncoder().encode(migrated), to: scope.file("quests.json"))
+                archive = migrated
+            }
+            guard archive.benchmarkPolicy?.owner == archive.owner else { throw Failure.unreadable }
         } catch { readable = false; self.error = "Your saved quests couldn’t be read. The original file has been preserved." }
     }
     private var valid: Bool { active && profile.permitsPolicyCallbacks && capturedAge != nil && capturedAge == profile.profile?.programmePreferences?.ageContext }
     func choices(history: [SessionRecord], weekly: Bool = false) -> [Quest] {
-        guard valid, let year, let person = profile.profile else { return [] }
-        return QuestCalendar.choices(year: year, profile: person, programme: programme.current, history: history, at: programme.referenceDate, calendar: programme.localCalendar, weekly: weekly)
+        guard valid, readable, let year, let person = profile.profile else { return [] }
+        return QuestCalendar.choices(year: year, profile: person, programme: programme.current, history: history, at: programme.referenceDate, calendar: programme.localCalendar, weekly: weekly, benchmarkPolicy: archive.benchmarkPolicy)
+    }
+    func benchmarkHistory(_ history: [SessionRecord]) -> [SessionRecord] {
+        guard valid, readable, let policy = archive.benchmarkPolicy, policy.owner == archive.owner else { return [] }
+        return policy.qualifiedHistory(history)
     }
     func progress(_ quest: Quest, history: [SessionRecord]) -> QuestEvidence {
         QuestProgress.evaluate(quest, owner: archive.owner, currentAge: valid ? capturedAge : nil, history: history, checkIns: archive.checkIns, now: programme.referenceDate, calendar: programme.localCalendar)

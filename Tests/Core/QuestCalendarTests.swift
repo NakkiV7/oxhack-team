@@ -172,3 +172,40 @@ extension QuestCalendarTests {
         XCTAssertTrue(quests.allSatisfy { $0.exerciseID == nil })
     }
 }
+
+extension QuestCalendarTests {
+    func testAuthoredWeeklyRecoveryUsesRecoveryCheckInEvidence() throws {
+        let year = try QuestCalendar.bundled()
+        let slot = try XCTUnwrap(year.weekly.first { $0.options.contains("weekRecovery") })
+        var iso = Calendar(identifier: .iso8601); iso.timeZone = qCalendar().timeZone
+        let date = try XCTUnwrap(iso.date(from: DateComponents(weekOfYear: slot.slot, yearForWeekOfYear: 2026)))
+        let choices = QuestCalendar.choices(year: year, profile: try qProfile(), programme: nil, history: [], at: date, calendar: iso, weekly: true)
+        XCTAssertEqual(choices[1].kind, .recovery)
+        let family = QuestCalendar.choices(year: year, profile: try qProfile(age: 4), programme: nil, history: [], at: date, calendar: iso, weekly: true)
+        XCTAssertEqual(family[1].kind, .recovery)
+        XCTAssertNil(family[1].exerciseID)
+    }
+    func testAdultBenchmarkPolicySeparatesCapturedPracticeAndPreservesOnlyOwnedLegacyEarnings() throws {
+        let adult = try qProfile(), teen = try qProfile(age: 15), calendar = qCalendar()
+        func history(_ age: TrainingAgeContext?, legacy: Bool = false, owner: WorkoutOwner = questOwner, exercise: String = "catCow") -> [SessionRecord] {
+            (0..<3).map { index in SessionRecord(id: UUID(), date: qDate("2026-11-01T12:00:00Z").addingTimeInterval(Double(index) * 86400), sets: [], loggedSets: [.init(id: UUID(), exerciseID: exercise, reps: 6, seconds: 0, source: .manual, reason: .voluntary)], trainingContext: legacy ? nil : .init(owner: owner, age: age)) }
+        }
+        let junior = history(teen.programmePreferences?.ageContext)
+        let unknown = history(nil), legacy = history(nil, legacy: true)
+        let grown = history(adult.programmePreferences?.ageContext)
+        let policy = SkillCurriculum.BenchmarkPolicy(owner: questOwner, legacyHistory: legacy + junior + unknown, calendar: calendar)
+        for profile in [teen, adult] {
+            XCTAssertNotEqual(SkillCurriculum.evaluate(profile: profile, history: policy.qualifiedHistory(junior), calendar: calendar).node("catCow")?.state, .earned)
+            XCTAssertNotEqual(SkillCurriculum.evaluate(profile: profile, history: policy.qualifiedHistory(unknown), calendar: calendar).node("catCow")?.state, .earned)
+            XCTAssertEqual(SkillCurriculum.evaluate(profile: profile, history: policy.qualifiedHistory(grown), calendar: calendar).node("catCow")?.state, .earned)
+            XCTAssertEqual(SkillCurriculum.evaluate(profile: profile, history: policy.qualifiedHistory(legacy), calendar: calendar).node("catCow")?.state, .earned)
+        }
+        let reopened = try JSONDecoder().decode(SkillCurriculum.BenchmarkPolicy.self, from: JSONEncoder().encode(policy))
+        XCTAssertTrue(reopened.qualifiedHistory(history(nil, legacy: true)).isEmpty)
+        XCTAssertTrue(reopened.qualifiedHistory(history(adult.programmePreferences?.ageContext, owner: .init(accountID: UUID(), profileID: UUID()))).isEmpty)
+        XCTAssertTrue(reopened.qualifiedHistory([]).isEmpty)
+        let replacementSets = legacy.map { SessionRecord(id: $0.id, date: $0.date, sets: [], loggedSets: [.init(id: UUID(), exerciseID: "catCow", reps: 6, seconds: 0, source: .manual, reason: .voluntary)]) }
+        XCTAssertTrue(reopened.qualifiedHistory(replacementSets).isEmpty)
+        XCTAssertNotEqual(SkillCurriculum.evaluate(profile: adult, history: reopened.qualifiedHistory(Array(legacy.prefix(2))), calendar: calendar).node("catCow")?.state, .earned)
+    }
+}

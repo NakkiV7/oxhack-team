@@ -126,6 +126,33 @@ import UIKit
         capture(window, "identity-junior-replaced")
         junior.suspend()
     }
+    func testCapturedTeenPracticeRendersZeroAdultEarnedBenchmarks() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let scope = AccountDataScope(accountID: UUID(), profileID: UUID(), root: root)
+        let age = try TrainingAgeContext(ageYears: 15, guardianManaged: true)
+        try NativeProfileStore(url: scope.file("profile.json")).save(LocalProfile(programmePreferences: .init(goals: [.balance], weekdays: [1, 3, 5], ageContext: age)))
+        for index in 0..<3 {
+            try HistoryStore(url: scope.file("history.json")).save(SessionRecord(id: UUID(), date: Date().addingTimeInterval(Double(index - 4) * 86400), sets: [], loggedSets: [.init(id: UUID(), exerciseID: "catCow", reps: 6, seconds: 0, source: .manual, reason: .voluntary)], trainingContext: .init(owner: .init(accountID: scope.accountID, profileID: scope.profileID), age: age)))
+        }
+        let workspace = try AccountWorkspace(scope: scope)
+        defer { workspace.suspend() }
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let window = try XCTUnwrap(scene.windows.first { $0.isKeyWindow })
+        self.window = window; controller = window.rootViewController; hidden = window.isHidden; level = window.windowLevel
+        window.rootViewController = UIHostingController(rootView: QuestIdentitySurface(workspace: workspace))
+        window.makeKeyAndVisible()
+        for _ in 0..<50 {
+            window.layoutIfNeeded()
+            if labels(window).contains("One journey, every movement") { break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        try await Task.sleep(for: .milliseconds(200))
+        XCTAssertTrue(visible(window, label: "0 earned"), labels(window).joined(separator: " | "))
+        XCTAssertFalse(labels(window).contains("1 earned"))
+        XCTAssertEqual(workspace.training.history.count, 3)
+        capture(window, "captured-teen-no-adult-benchmark")
+    }
     private func scrollViews(_ view: UIView) -> [UIScrollView] { ([view as? UIScrollView].compactMap { $0 }) + view.subviews.flatMap(scrollViews) }
     private func capture(_ window: UIWindow, _ name: String) {
         let image = UIGraphicsImageRenderer(bounds: window.bounds).image { _ in window.drawHierarchy(in: window.bounds, afterScreenUpdates: true) }

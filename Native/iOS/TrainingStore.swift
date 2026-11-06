@@ -723,7 +723,7 @@ final class TrainingStore {
             catch { archiveDataWarning = "Workout saved. Some Watch readings are waiting to finish syncing." }
         } catch { self.error = "Couldn’t save this session. Try again."; return }
         do {
-            try rewards.award(record: saved, before: before, history: history, completedAt: completedAt)
+            try rewards.award(record: saved, before: before, history: history, completedAt: completedAt, calendar: programme?.localCalendar ?? .current)
         } catch { self.error = "Workout saved. Training rewards couldn’t be updated." }
         refreshRewards(at: completedAt)
     }

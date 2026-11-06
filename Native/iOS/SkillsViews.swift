@@ -69,7 +69,8 @@ struct SkillsView: View {
         .onChange(of: profile) { _, _ in refresh() }
     }
     private func refresh() {
-        progress = profile.map { SkillCurriculum.evaluate(profile: $0, history: store.history, calendar: store.programme?.localCalendar ?? .current) }
+        let qualified = store.quests?.benchmarkHistory(store.history) ?? store.history.filter { $0.trainingContext?.age?.allowsTimePressureRewards == true }
+        progress = profile.map { SkillCurriculum.evaluate(profile: $0, history: qualified, calendar: store.programme?.localCalendar ?? .current) }
     }
     private func chapterSection(_ chapter: SkillCurriculum.Chapter) -> some View {
         let open = (selectedChapter ?? currentChapter.id) == chapter.id

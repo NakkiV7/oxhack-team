@@ -209,7 +209,7 @@ struct TrainingRewardsSettingsView: View {
                     .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
             }
         } else if let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: openedAt)) {
-            XPWindowSettingsView(todayWindow: store.ledger.window(at: openedAt)?.interval(on: openedAt, calendar: calendar),
+            XPWindowSettingsView(todayWindow: store.ledger.windowInterval(at: openedAt, calendar: calendar),
                                  tomorrowStartHour: store.ledger.window(at: tomorrow)?.startHour ?? 10,
                                  tomorrowEffectiveAt: tomorrow, timeZone: calendar.timeZone,
                                  intervalForHour: { hour in
@@ -217,7 +217,7 @@ struct TrainingRewardsSettingsView: View {
                                  }, saveTomorrow: { hour in
                                      let now = Date()
                                      guard calendar.isDate(now, inSameDayAs: openedAt) else { throw WindowError.dayChanged }
-                                     try store.schedule(startHour: hour, at: now)
+                                     try store.schedule(startHour: hour, at: now, calendar: calendar)
                                      Task { await reminders?.refresh() }
                                  }, reminders: reminders)
         }

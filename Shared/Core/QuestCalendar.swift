@@ -33,7 +33,7 @@ public enum QuestCalendar {
         guard let reference = leap.date(from: DateComponents(year: 2000, month: parts.month, day: parts.day)) else { return 0 }
         return leap.ordinality(of: .day, in: .year, for: reference) ?? 0
     }
-    public static func choices(year: Year, profile: LocalProfile, programme: TrainingProgramme?, history: [SessionRecord], at date: Date, calendar: Calendar, weekly: Bool = false) -> [Quest] {
+    public static func choices(year: Year, profile: LocalProfile, programme: TrainingProgramme?, history: [SessionRecord], at date: Date, calendar: Calendar, weekly: Bool = false, benchmarkPolicy: SkillCurriculum.BenchmarkPolicy? = nil) -> [Quest] {
         guard date.timeIntervalSince1970.isFinite, let age = profile.programmePreferences?.ageContext,
               year.version == 1, year.daily.count == 366, year.weekly.count == 53 else { return [] }
         var iso = Calendar(identifier: .iso8601); iso.timeZone = calendar.timeZone
@@ -43,7 +43,8 @@ public enum QuestCalendar {
         guard let template = slots.first(where: { $0.slot == slot }), template.options.count == (weekly ? 2 : 3) else { return [] }
         let period = weekly ? "week:\(iso.component(.yearForWeekOfYear, from: date)):\(slot)" : "day:\(calendar.component(.year, from: date)):\(slot)"
         let days = programme?.days.filter { weekly ? interval.contains($0.date) : calendar.isDate($0.date, inSameDayAs: date) } ?? []
-        let curriculum = SkillCurriculum.evaluate(profile: profile, history: history, calendar: calendar)
+        let qualified = benchmarkPolicy?.qualifiedHistory(history) ?? history.filter { $0.trainingContext?.age?.allowsTimePressureRewards == true }
+        let curriculum = SkillCurriculum.evaluate(profile: profile, history: qualified, calendar: calendar)
         let established = Set(curriculum.nodes.filter { $0.state == .earned || $0.state == .placed }.map(\.id))
         let items = days.filter { $0.kind == .workout }.flatMap { $0.plan?.items ?? [] }.filter {
             guard let entry = ExerciseCatalog.find($0.exerciseID) else { return false }
@@ -55,9 +56,10 @@ public enum QuestCalendar {
         let practiceDays = min(2, max(1, days.filter { day in day.kind == .workout && day.plan?.items.contains { $0.exerciseID == item?.exerciseID } == true }.count))
         return template.options.enumerated().map { index, key in
             let kind: QuestKind
-            if age.ageYears < 5 { kind = index == 0 ? .familyActivity : index == 1 ? .reflection : .recovery }
+            if age.ageYears < 5 { kind = index == 0 ? .familyActivity : index == 1 && key != "weekRecovery" ? .reflection : .recovery }
             else if item != nil && index == 0 { kind = .practice }
             else if item != nil && key == "camera" && ExerciseCatalog.find(item!.exerciseID)?.tracking != nil { kind = .camera }
+            else if key == "weekRecovery" { kind = .recovery }
             else { kind = index == 1 ? .reflection : .recovery }
             let exercise = kind == .practice || kind == .camera ? item : nil
             let entry = exercise.flatMap { ExerciseCatalog.find($0.exerciseID) }
@@ -136,6 +138,11 @@ public struct QuestArchive: Codable, Equatable, Sendable {
     public private(set) var checkIns: [QuestCheckIn] = []
     public private(set) var claims: [QuestClaim] = []
     public private(set) var retiredPeriods: Set<String> = []
+    public private(set) var benchmarkPolicy: SkillCurriculum.BenchmarkPolicy?
+    public mutating func freezeLegacyBenchmarks(history: [SessionRecord], calendar: Calendar) {
+        guard benchmarkPolicy == nil else { return }
+        benchmarkPolicy = .init(owner: owner, legacyHistory: history, calendar: calendar)
+    }
     public var totalXP: Int { claims.reduce(0) { $0 + $1.quest.xp } }
     public init(owner: WorkoutOwner) { self.owner = owner }
     public mutating func checkIn(kind: QuestKind, age: TrainingAgeContext, at date: Date, calendar: Calendar) {
@@ -177,7 +184,7 @@ public enum XPReminderSchedule {
         var reminders: [XPReminder] = []
         for offset in 0...14 {
             guard let day = calendar.date(byAdding: .day, value: offset, to: now),
-                  let interval = ledger.window(at: day)?.interval(on: day, calendar: calendar) else { continue }
+                  let interval = ledger.windowInterval(at: day, calendar: calendar) else { continue }
             for before in [true, false] {
                 let fire = before ? interval.start.addingTimeInterval(-3600) : interval.start
                 guard fire > now else { continue }
