@@ -29,6 +29,22 @@ struct ProgrammeWithdrawReply: Decodable { let withdrawn: Bool; let revision: In
     func withdrawPlan(_ request: ProgrammeWithdrawRequest) async throws -> ProgrammeWithdrawReply
 }
 
+/// Tracks known local requests across workspace replacement, without retaining profiles or plan data.
+/// A settled transport releases the fence; it does not establish that the server rolled back.
+@MainActor private final class ProgrammeWritesInFlight {
+    static let shared = ProgrammeWritesInFlight()
+    struct Key: Hashable { let accountID: UUID; let slot: UUID }
+    private var requests: [Key: Set<UUID>] = [:]
+    func contains(_ key: Key) -> Bool { requests[key]?.isEmpty == false }
+    func begin(_ key: Key) -> UUID {
+        let token = UUID(); requests[key, default: []].insert(token); return token
+    }
+    func end(_ token: UUID, for key: Key) {
+        requests[key]?.remove(token)
+        if requests[key]?.isEmpty == true { requests.removeValue(forKey: key) }
+    }
+}
+
 @MainActor @Observable final class ProgrammeSyncStore {
     private enum SlotState: String, Codable { case fresh, submittedOrLinked, absentWithUnknownRevision }
     private struct Saved: Codable {
@@ -49,6 +65,9 @@ struct ProgrammeWithdrawReply: Decodable { let withdrawn: Bool; let revision: In
     private let capturedAge: TrainingAgeContext?
     private var readable = true
     private var consentEpoch = UUID()
+    private let writesInFlight = ProgrammeWritesInFlight.shared
+    private var writeKey: ProgrammeWritesInFlight.Key { .init(accountID: programme.scope.accountID, slot: profileSlot) }
+    private var hasPendingWrite: Bool { writesInFlight.contains(writeKey) }
     private(set) var busy = false
     private(set) var message: String?
     private(set) var pendingRemote: ProgrammeReadReply?
@@ -77,13 +96,15 @@ struct ProgrammeWithdrawReply: Decodable { let withdrawn: Bool; let revision: In
         message = "Plan sync enabled for this adult profile. Choose Save to upload its configuration."
     }
     func upload() async {
-        guard valid, consented, !withdrawalPending, !busy, let local = profile.profile else { return }
+        guard valid, consented, !withdrawalPending, !busy, !hasPendingWrite, let local = profile.profile else { return }
         let epoch = consentEpoch
         busy = true; defer { busy = false }
         do {
             let expected = serverRevision
             // Persist uncertainty before sending: a lost reply can still mean a committed write.
             var submitted = saved; submitted.slotState = .submittedOrLinked; try persist(submitted)
+            let key = writeKey, token = writesInFlight.begin(writeKey)
+            defer { writesInFlight.end(token, for: key) }
             let reply = try await client.writePlan(.init(profileSlot: profileSlot, expectedRevision: expected,
                 preferences: CloudProgrammePreferences(local.effectiveProgrammePreferences), programme: programme.current.map(CloudProgramme.init)))
             guard valid, consentEpoch == epoch, consented, reply.profileSlot == profileSlot, reply.revision == expected + 1, reply.updatedAt.timeIntervalSince1970.isFinite else { throw AccountFailure.invalidResponse }
@@ -132,11 +153,11 @@ struct ProgrammeWithdrawReply: Decodable { let withdrawn: Bool; let revision: In
         do {
             consentEpoch = UUID()
             var next = saved; next.consented = false
-            next.withdrawalPending = !(saved.slotState == .fresh && serverRevision == 0 && !busy)
+            next.withdrawalPending = !(saved.slotState == .fresh && serverRevision == 0 && !busy && !hasPendingWrite)
             try persist(next)
             pendingRemote = nil
             guard next.withdrawalPending else { message = "Local syncing is off. No programme was uploaded from this profile."; return }
-            guard !busy, serverRevision > 0 else {
+            guard !busy, !hasPendingWrite, serverRevision > 0 else {
                 message = "Local syncing is off. Choose Remove saved programme to check and remove any saved copy after the current request finishes."
                 return
             }
@@ -149,10 +170,14 @@ struct ProgrammeWithdrawReply: Decodable { let withdrawn: Bool; let revision: In
         } catch { if valid { message = "Local syncing is off. Cloud removal is still pending. Choose Remove saved programme to retry." } }
     }
     private func removalIsCurrent(epoch: UUID, slot: UUID) -> Bool {
-        valid && consentEpoch == epoch && profileSlot == slot && !consented && withdrawalPending
+        valid && consentEpoch == epoch && profileSlot == slot && !consented && withdrawalPending && !hasPendingWrite
     }
     func removeSavedProgramme() async {
         guard valid, !consented, withdrawalPending, !busy else { return }
+        guard !hasPendingWrite else {
+            message = "Local syncing remains off. A previous save is still finishing. Choose Remove saved programme again once it finishes."
+            return
+        }
         busy = true; defer { busy = false }
         let epoch = consentEpoch, slot = profileSlot
         do {

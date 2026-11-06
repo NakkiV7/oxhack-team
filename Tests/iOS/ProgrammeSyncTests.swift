@@ -2,6 +2,97 @@ import XCTest
 @testable import Spottr
 
 @MainActor final class ProgrammeSyncTests: XCTestCase {
+    func testReopenedScopeWaitsForRetiredWriteThenExplicitlyRemovesCommittedPlan() async throws {
+        let f = ReplacementFixture(); defer { f.clean() }
+        let a = f.scope(account: UUID()), b = f.scope(account: a.accountID)
+        let client = ProgrammeCloudFake()
+        let original = try f.open(a, client: client)
+        let old = try XCTUnwrap(original.programmeSync)
+        try old.consent(); let slot = old.profileSlot
+        var release: CheckedContinuation<Void, Never>?
+        client.holdWrite = { await withCheckedContinuation { release = $0 } }
+        let write = Task { await old.upload() }
+        for _ in 0..<100 where release == nil { await Task.yield() }
+        XCTAssertNotNil(release)
+        await old.withdraw()
+        _ = try f.open(b, client: ProgrammeCloudFake())
+        let reopened = try f.open(a, client: client)
+        let sync = try XCTUnwrap(reopened.programmeSync)
+        XCTAssertEqual(sync.profileSlot, slot); XCTAssertFalse(sync.busy)
+        XCTAssertFalse(sync.consented); XCTAssertTrue(sync.withdrawalPending)
+        await sync.removeSavedProgramme()
+        XCTAssertEqual(client.reads, 0, "Do not accept a premature 404 while the retired store's save can still commit")
+        XCTAssertTrue(sync.withdrawalPending); XCTAssertFalse(sync.consented)
+        XCTAssertThrowsError(try sync.consent())
+        original.invalidatePolicy()
+        release?.resume(); await write.value
+        XCTAssertEqual(client.remote?.revision, 1)
+        XCTAssertEqual(old.serverRevision, 0); XCTAssertEqual(sync.serverRevision, 0)
+        XCTAssertEqual(client.reads, 0, "Settling a save must not trigger an automatic read")
+        await sync.removeSavedProgramme()
+        XCTAssertEqual(client.reads, 1); XCTAssertEqual(client.withdrawals.map(\.expectedRevision), [1])
+        XCTAssertNil(client.remote); XCTAssertFalse(sync.withdrawalPending); XCTAssertFalse(sync.consented)
+        XCTAssertEqual(client.writes.count, 1)
+    }
+    func testReplacementWriteFenceSeparatesAccountAndSlotAndDrainsOnCancelledTransport() async throws {
+        let f = ReplacementFixture(); defer { f.clean() }
+        let a = f.scope(account: UUID()), b = f.scope(account: a.accountID), c = f.scope(account: UUID())
+        let client = ProgrammeCloudFake()
+        let original = try f.open(a, client: client)
+        let old = try XCTUnwrap(original.programmeSync)
+        try old.consent(); let slot = old.profileSlot
+        var release: CheckedContinuation<Void, Never>?
+        client.holdWrite = { await withCheckedContinuation { release = $0 } }
+        let write = Task { await old.upload() }
+        for _ in 0..<100 where release == nil { await Task.yield() }
+        XCTAssertNotNil(release); await old.withdraw()
+        for (scope, linkedSlot) in [(b, UUID()), (c, slot)] {
+            let otherClient = ProgrammeCloudFake()
+            let other = try XCTUnwrap(f.open(scope, client: otherClient).programmeSync)
+            try other.consent(); try other.linkSlot(linkedSlot); await other.withdraw()
+            await other.removeSavedProgramme()
+            XCTAssertEqual(otherClient.reads, 1, "Another account or slot must not inherit this write fence")
+            XCTAssertFalse(other.withdrawalPending); XCTAssertFalse(other.consented)
+        }
+        let reopened = try f.open(a, client: client)
+        let waiting = try XCTUnwrap(reopened.programmeSync)
+        await waiting.removeSavedProgramme()
+        XCTAssertEqual(client.reads, 0); XCTAssertTrue(waiting.withdrawalPending)
+        reopened.invalidatePolicy()
+        client.failure = URLError(.cancelled)
+        release?.resume(); await write.value
+        await waiting.removeSavedProgramme()
+        XCTAssertEqual(client.reads, 0, "Retired replacement policy cannot resume cleanup")
+        XCTAssertTrue(waiting.withdrawalPending)
+        client.failure = nil
+        let final = try XCTUnwrap(f.open(a, client: client).programmeSync)
+        XCTAssertTrue(final.withdrawalPending, "Cancellation is not proof of remote removal")
+        await final.removeSavedProgramme()
+        XCTAssertEqual(client.reads, 1); XCTAssertTrue(client.withdrawals.isEmpty)
+        XCTAssertFalse(final.withdrawalPending); XCTAssertFalse(final.consented)
+        try final.consent(); XCTAssertNotEqual(final.profileSlot, slot)
+    }
+    /// Uses real workspaces, protected scope files and the same outer-instance validity rule as production.
+    @MainActor private final class ReplacementFixture {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        var current: AccountWorkspace?
+        func scope(account: UUID) -> AccountDataScope { .init(accountID: account, profileID: UUID(), root: root) }
+        func open(_ scope: AccountDataScope, client: ProgrammeCloudFake) throws -> AccountWorkspace {
+            current?.suspend()
+            let workspace = try AccountWorkspace(scope: scope)
+            if workspace.profile.profile == nil {
+                try workspace.profile.save(LocalProfile(programmePreferences: .init(goals: [.strength], weekdays: [1], ageContext: .init(ageYears: 30, guardianManaged: false))))
+            }
+            workspace.programmeSync = ProgrammeSyncStore(programme: workspace.programme, profile: workspace.profile, client: client,
+                isCurrent: { [weak self, weak workspace] in
+                    guard let self, let workspace else { return false }; return self.current === workspace
+                }, hasOngoingWorkout: { [weak workspace] in workspace?.hasOngoingWorkout ?? true })
+            workspace.programme.sync = workspace.programmeSync
+            current = workspace
+            return workspace
+        }
+        func clean() { current?.suspend(); try? FileManager.default.removeItem(at: root) }
+    }
     func testNeverSubmittedConsentCanTurnOffWithoutInvalidWithdrawal() async throws {
         let f = try RemovalFixture(); defer { f.clean() }
         try f.sync.consent(); await f.sync.withdraw()
