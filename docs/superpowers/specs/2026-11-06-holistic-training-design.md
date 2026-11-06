@@ -60,7 +60,7 @@ Restore purchases is visible on the paywall and in Profile. Keep transaction upd
 
 Keep six clear setup stages, with progress at top left and a styled Skip action/icon at top right when skipping an optional introduction/review is valid. Skip never bypasses required account/body setup or membership. Returning users can leave a review without losing their saved profile.
 
-1. Account and privacy, including MFA and a separate analytics choice.
+1. Account and privacy, with a local age/guardian-role checkpoint before any new-account provider/email request, followed by MFA and the separate adult analytics choices. Under-18 training uses an adult guardian’s account; do not ask a child to supply their own email. Keep this checkpoint inside stage 1 rather than adding a seventh stage. Reuse its local age answer in stage 2, and do not send raw age to the service.
 2. Age and training-profile setup, required adult height/weight and applicable BMI visual/unit conversion, or a guardian-managed junior profile with appropriate growth information.
 3. Goals and rhythm: same-size cards for strength, stamina, mobility, balance and weight management; chosen days, session duration, preferred training time and available support.
 4. Starting point and comfortable movements: a four-stop snapping selector with changing faceless/icon illustration and proper selected states. Assess all six exercise families with compact adaptive cards and optional further variations. A styled Not sure yet card is a real answer. Selection advances/scrolls to the next unanswered family, while respecting Reduce Motion and accessibility focus.
