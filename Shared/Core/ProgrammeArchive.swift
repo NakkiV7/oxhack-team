@@ -23,6 +23,7 @@ public struct ProgrammeArchive: Codable, Equatable, Sendable {
         if inputs?["\(existing.id)#\(existing.revision)"] == Inputs(profile) { return existing }
         return try revise(profile: profile, history: history, protecting: protecting, at: date, calendar: calendar)
     }
+    public func age(for week: TrainingProgramme) -> TrainingAgeContext? { ages["\(week.id)#\(week.revision)"] }
     public var currentAge: TrainingAgeContext? { current.flatMap { ages["\($0.id)#\($0.revision)"] } }
     public init(owner: WorkoutOwner) { self.owner = owner }
     public var current: TrainingProgramme? { snapshots.last }

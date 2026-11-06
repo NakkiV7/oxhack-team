@@ -12,9 +12,19 @@ import Observation
     func setActive(_ active: Bool) { self.active = active }
     var protectedDayIDs: () -> Set<String> = { [] }
     weak var sync: ProgrammeSyncStore?
-    var current: TrainingProgramme? { archive.currentAge == profile.profile?.programmePreferences?.ageContext ? archive.current : nil }
-    init(scope: AccountDataScope, profile: NativeProfileStore) {
-        self.scope = scope; self.profile = profile
+    @ObservationIgnored private let now: () -> Date
+    @ObservationIgnored private let calendarSource: () -> Calendar
+    var referenceDate: Date { now() }
+    var localCalendar: Calendar { calendarSource() }
+    var current: TrainingProgramme? { selectedWeek(at: referenceDate, calendar: localCalendar) }
+    private func selectedWeek(at date: Date, calendar: Calendar) -> TrainingProgramme? {
+        guard let week = archive.week(at: date, calendar: calendar),
+              let age = profile.profile?.programmePreferences?.ageContext,
+              archive.age(for: week) == age else { return nil }
+        return week
+    }
+    init(scope: AccountDataScope, profile: NativeProfileStore, now: @escaping () -> Date = { .now }, calendar: @escaping () -> Calendar = { .current }) {
+        self.scope = scope; self.profile = profile; self.now = now; self.calendarSource = calendar
         archive = ProgrammeArchive(owner: .init(accountID: scope.accountID, profileID: scope.profileID))
         do {
             if FileManager.default.fileExists(atPath: scope.file("programme.json").path) {
@@ -27,7 +37,8 @@ import Observation
             }
         } catch { readable = false; self.error = "Your saved programme or measurements could not be read. The files have been preserved." }
     }
-    func preview(profile: LocalProfile, history: [SessionRecord], at date: Date, calendar: Calendar = .current) throws -> TrainingProgramme {
+    func preview(profile: LocalProfile, history: [SessionRecord], at date: Date, calendar: Calendar? = nil) throws -> TrainingProgramme {
+        let calendar = calendar ?? localCalendar
         try requirePolicy()
         var preview = archive
         return try preview.reconcile(profile: profile, history: history, protecting: protectedDayIDs(), at: date, calendar: calendar)
@@ -37,31 +48,35 @@ import Observation
         try requirePolicy()
         if archive.snapshots.contains(week) { return }
         var next = archive
-        try next.install(week, profile: profile, history: HistoryStore(url: scope.file("history.json")).load(), protecting: protectedDayIDs(), at: .now)
+        try next.install(week, profile: profile, history: HistoryStore(url: scope.file("history.json")).load(), protecting: protectedDayIDs(), at: referenceDate)
         try save(next)
     }
-    @discardableResult func prepare(profile: LocalProfile, history: [SessionRecord], at date: Date = .now, calendar: Calendar = .current) throws -> TrainingProgramme {
+    @discardableResult func prepare(profile: LocalProfile, history: [SessionRecord], at date: Date? = nil, calendar: Calendar? = nil) throws -> TrainingProgramme {
+        let date = date ?? referenceDate, calendar = calendar ?? localCalendar
         try requirePolicy()
         var next = archive
         let week = try next.prepare(profile: profile, history: history, at: date, calendar: calendar)
         if next != archive { try save(next) }
         return week
     }
-    @discardableResult func reconcile(profile: LocalProfile, history: [SessionRecord], protecting: Set<String>, at date: Date = .now, calendar: Calendar = .current) throws -> TrainingProgramme {
+    @discardableResult func reconcile(profile: LocalProfile, history: [SessionRecord], protecting: Set<String>, at date: Date? = nil, calendar: Calendar? = nil) throws -> TrainingProgramme {
+        let date = date ?? referenceDate, calendar = calendar ?? localCalendar
         try requirePolicy()
         var next = archive
         let week = try next.reconcile(profile: profile, history: history, protecting: protecting, at: date, calendar: calendar)
         if next != archive { try save(next) }
         return week
     }
-    @discardableResult func revise(profile: LocalProfile, history: [SessionRecord], protecting: Set<String>, at date: Date = .now, calendar: Calendar = .current) throws -> TrainingProgramme {
+    @discardableResult func revise(profile: LocalProfile, history: [SessionRecord], protecting: Set<String>, at date: Date? = nil, calendar: Calendar? = nil) throws -> TrainingProgramme {
+        let date = date ?? referenceDate, calendar = calendar ?? localCalendar
         try requirePolicy()
         var next = archive
         let week = try next.revise(profile: profile, history: history, protecting: protecting, at: date, calendar: calendar)
         try save(next)
         return week
     }
-    @discardableResult func adjust(dayID: String, action: ProgrammeArchive.Adjustment, history: [SessionRecord], protecting: Set<String>, at date: Date = .now, calendar: Calendar = .current) throws -> TrainingProgramme {
+    @discardableResult func adjust(dayID: String, action: ProgrammeArchive.Adjustment, history: [SessionRecord], protecting: Set<String>, at date: Date? = nil, calendar: Calendar? = nil) throws -> TrainingProgramme {
+        let date = date ?? referenceDate, calendar = calendar ?? localCalendar
         try requirePolicy()
         guard let profile = profile.profile else { throw AccountFailure.checkpointRequired }
         var next = archive
@@ -69,12 +84,14 @@ import Observation
         try save(next)
         return result
     }
-    func day(at date: Date = .now, calendar: Calendar = .current) -> TrainingProgramme.Day? {
-        archive.week(at: date, calendar: calendar)?.days.first { calendar.isDate($0.date, inSameDayAs: date) }
+    func day(at date: Date? = nil, calendar: Calendar? = nil) -> TrainingProgramme.Day? {
+        let date = date ?? referenceDate, calendar = calendar ?? localCalendar
+        return selectedWeek(at: date, calendar: calendar)?.days.first { calendar.isDate($0.date, inSameDayAs: date) }
     }
-    func capture(dayID: String?, at date: Date = .now) -> SessionTrainingContext {
-        let week = archive.week(at: date)
-        let matches = dayID != nil && day(at: date)?.id == dayID
+    func capture(dayID: String?, at date: Date? = nil, calendar: Calendar? = nil) -> SessionTrainingContext {
+        let date = date ?? referenceDate, calendar = calendar ?? localCalendar
+        let week = selectedWeek(at: date, calendar: calendar)
+        let matches = dayID != nil && day(at: date, calendar: calendar)?.id == dayID
         return SessionTrainingContext(owner: archive.owner, age: profile.profile?.programmePreferences?.ageContext,
             programmeID: matches ? week?.id : nil, programmeRevision: matches ? week?.revision : nil)
     }
@@ -91,7 +108,7 @@ import Observation
         guard let week else { return }
         var next = archive
         let history = try HistoryStore(url: scope.file("history.json")).load()
-        try next.install(week, profile: profile, history: history, protecting: protectedDayIDs(), at: .now)
+        try next.install(week, profile: profile, history: history, protecting: protectedDayIDs(), at: referenceDate)
         try save(next)
     }
     private func save(_ next: ProgrammeArchive) throws {

@@ -6,13 +6,14 @@ struct ProgrammeTodayCard: View {
     let openSetup: () -> Void
     let openLibrary: () -> Void
     @State private var selectedID: String?
-    @State private var date = Date.now
+    private var date: Date { store.programme?.referenceDate ?? .now }
+    private var calendar: Calendar { store.programme?.localCalendar ?? .current }
     @State private var error: String?
     @State private var progress: [ProgrammeInsights.DayProgress] = []
     @Environment(\.scenePhase) private var scenePhase
     private var week: TrainingProgramme? { store.programme?.current }
     private var day: TrainingProgramme.Day? {
-        week?.days.first { $0.id == selectedID } ?? week?.days.first { Calendar.current.isDate($0.date, inSameDayAs: date) }
+        week?.days.first { $0.id == selectedID } ?? week?.days.first { calendar.isDate($0.date, inSameDayAs: date) }
     }
     private var ongoing: Bool { store.sessionPhase != .idle && store.sessionPhase != .finished }
     var body: some View {
@@ -69,13 +70,13 @@ struct ProgrammeTodayCard: View {
                     }
                     if ongoing {
                         PrimaryButton(title: "Continue your workout", symbol: "play") { store.presented = true }
-                    } else if day.plan != nil && Calendar.current.isDate(day.date, inSameDayAs: date) && !store.history.contains(where: { $0.plannedWorkoutID == day.id }) {
+                    } else if day.plan != nil && calendar.isDate(day.date, inSameDayAs: date) && !store.history.contains(where: { $0.plannedWorkoutID == day.id }) {
                         PrimaryButton(title: day.kind == .recovery ? "Start gentle session" : "Start whole workout", action: { store.launchPlanned(dayID: day.id) })
                             .accessibilityIdentifier("today-start-session")
-                    } else if day.plan != nil && !Calendar.current.isDate(day.date, inSameDayAs: date) {
+                    } else if day.plan != nil && !calendar.isDate(day.date, inSameDayAs: date) {
                         Text("Planned for \(day.date.formatted(.dateTime.weekday(.wide)))").font(.caption.weight(.semibold))
                     }
-                    if day.kind != .familyMovement, !store.protectedProgrammeDayIDs.contains(day.id), day.date >= Calendar.current.startOfDay(for: date) {
+                    if day.kind != .familyMovement, !store.protectedProgrammeDayIDs.contains(day.id), day.date >= calendar.startOfDay(for: date) {
                         Menu("Adjust this day") {
                             if day.plan != nil {
                                 Button("Make it easier") { adjust(.easier, day: day) }
@@ -107,7 +108,6 @@ struct ProgrammeTodayCard: View {
             .onChange(of: store.programme?.current) { _, _ in updateProgress() }
     }
     private func refresh() {
-        date = .now
         guard let profile = profileStore.profile, profile.programmePreferences?.ageContext != nil else { return }
         do { try store.programme?.reconcile(profile: profile, history: store.history, protecting: store.protectedProgrammeDayIDs, at: date); error = nil; updateProgress() }
         catch { self.error = error.localizedDescription }

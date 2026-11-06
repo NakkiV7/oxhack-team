@@ -166,7 +166,7 @@ private struct DayCell: View {
     }
 }
 
-private struct DayDetail: View {
+struct DayDetail: View {
     let date: Date
     let records: [SessionRecord]
     let profile: LocalProfile?
@@ -175,7 +175,7 @@ private struct DayDetail: View {
     var body: some View {
         let reports = records.map(WorkoutReport.init(record:)).filter { !$0.sets.isEmpty }.sorted { $0.date < $1.date }
         let sets = reports.flatMap(\.sets).filter { $0.source != .video }
-        let heart = profile?.programmePreferences?.ageContext?.allowsHealthIntegration == true ? WorkoutAnalytics.averageHeartRate(in: records) : nil
+        let heart = WorkoutAnalytics.averageHeartRate(in: WorkoutAnalytics.healthRecords(in: records, currentAge: profile?.programmePreferences?.ageContext))
         let sample = records.contains { TrainingCalendar.isSample($0.id) }
         VStack(alignment: .leading, spacing: 14) {
             HStack {

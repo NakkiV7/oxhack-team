@@ -9,6 +9,8 @@ import Observation
         let owner: WorkoutOwner
         var generation: UUID
         let plannedWorkoutID: String?
+        let programmeID: String?
+        let programmeRevision: Int?
     }
     private let training: TrainingStore
     let profile: NativeProfileStore
@@ -34,7 +36,8 @@ import Observation
     func request(plan: CoachSavedPlan, origin: WorkoutLaunchOrigin, plannedWorkoutID: String? = nil) {
         cancel()
         guard let scope = training.accountScope else { decision = .requiresAccount; return }
-        let intent = Intent(plan: plan, origin: origin, owner: .init(accountID: scope.accountID, profileID: scope.profileID), generation: generation(), plannedWorkoutID: plannedWorkoutID)
+        let captured = plannedWorkoutID.flatMap { training.programme?.capture(dayID: $0) }
+        let intent = Intent(plan: plan, origin: origin, owner: .init(accountID: scope.accountID, profileID: scope.profileID), generation: generation(), plannedWorkoutID: plannedWorkoutID, programmeID: captured?.programmeID, programmeRevision: captured?.programmeRevision)
         pending = intent
         evaluate(intent)
     }
@@ -66,7 +69,10 @@ import Observation
         let trusted = owner()
         guard trusted == nil || trusted == intent.owner else { cancel(); return }
         if let dayID = intent.plannedWorkoutID {
-            guard training.programme?.day()?.id == dayID, training.programme?.day()?.plan == intent.plan else { cancel(); return }
+            let captured = training.programme?.capture(dayID: dayID)
+            guard intent.programmeID != nil, intent.programmeRevision != nil,
+                  captured?.programmeID == intent.programmeID, captured?.programmeRevision == intent.programmeRevision,
+                  training.programme?.day()?.id == dayID, training.programme?.day()?.plan == intent.plan else { cancel(); return }
         }
         let ongoing = training.sessionPhase != .idle && training.sessionPhase != .finished
         decision = WorkoutAccessPolicy.decide(trustedOwner: trusted, activeOwner: ongoing ? intent.owner : nil,

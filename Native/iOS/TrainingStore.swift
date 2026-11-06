@@ -461,7 +461,7 @@ final class TrainingStore {
     var protectedProgrammeDayIDs: Set<String> {
         Set(history.compactMap(\.plannedWorkoutID)).union(sessionPhase != .idle && sessionPhase != .finished ? [configured?.plannedWorkoutID].compactMap { $0 } : [])
     }
-    func launchPlanned(dayID: String, origin: WorkoutLaunchOrigin = .today, at date: Date = .now) {
+    func launchPlanned(dayID: String, origin: WorkoutLaunchOrigin = .today, at date: Date? = nil) {
         guard let day = programme?.day(at: date), day.id == dayID, let plan = day.plan,
               !history.contains(where: { $0.plannedWorkoutID == dayID }), let launchCoordinator else {
             error = "Choose today's unstarted workout or practise a movement from the library."; return

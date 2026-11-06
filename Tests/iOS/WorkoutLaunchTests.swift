@@ -5,6 +5,31 @@ import CryptoKit
 @testable import Spottr
 
 @MainActor final class WorkoutLaunchTests: XCTestCase {
+    func testPendingScheduledLaunchRejectsUnrelatedDayRevisionChange() async throws {
+        let fixture = try Fixture(); defer { fixture.clean() }
+        let old = try XCTUnwrap(fixture.workspace.profile.profile)
+        let p = old.effectiveProgrammePreferences
+        try fixture.workspace.profile.save(LocalProfile(bodyMeasurements: old.bodyMeasurements, onboardingRevision: old.onboardingRevision,
+            programmePreferences: .init(goals: p.goals, weekdays: Set(1...7), startingPoint: p.startingPoint, ageContext: p.ageContext, comfortAnswers: p.comfortAnswers)))
+        let profile = try XCTUnwrap(fixture.workspace.profile.profile)
+        let week = try fixture.workspace.programme.prepare(profile: profile, history: [])
+        let day = try XCTUnwrap(fixture.workspace.programme.day())
+        let plan = try XCTUnwrap(day.plan)
+        fixture.launch.request(plan: plan, origin: .today, plannedWorkoutID: day.id)
+        XCTAssertEqual(fixture.launch.decision, .requiresMembership)
+        let pending = try XCTUnwrap(fixture.launch.pendingID)
+        let future = try XCTUnwrap(week.days.last)
+        _ = try fixture.workspace.programme.adjust(dayID: future.id, action: .rest, history: [], protecting: [])
+        XCTAssertEqual(fixture.workspace.programme.day()?.plan, plan)
+        XCTAssertNotEqual(fixture.workspace.programme.current?.revision, week.revision)
+        fixture.client.entitlements = [.verified(.init(appAccountToken: fixture.owner.accountID, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable))]
+        await fixture.membership.refreshEntitlements()
+        fixture.launch.continuePending(id: pending)
+        XCTAssertNil(fixture.launch.pendingID)
+        XCTAssertEqual(fixture.workspace.training.sessionPhase, .idle)
+        fixture.launch.request(plan: plan, origin: .today, plannedWorkoutID: day.id)
+        XCTAssertEqual(fixture.workspace.training.configured?.trainingContext?.programmeRevision, fixture.workspace.programme.current?.revision)
+    }
     func testAllOriginsWaitForMembershipAndCancelledOrStaleIntentCannotStart() async throws {
         let fixture = try Fixture()
         defer { fixture.clean() }

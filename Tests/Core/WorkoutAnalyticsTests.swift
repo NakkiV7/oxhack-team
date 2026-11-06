@@ -121,3 +121,21 @@ private func timedSet(_ exercise:Exercise = .squat, source:InputSource = .camera
     #expect(analysis.pace.averageSeconds == 1.5)
     #expect(analysis.pace.variabilityPercent == nil)
 }
+
+@Test func summaryHealthSelectionKeepsOnlyCapturedAndCurrentAdultsWithoutChangingWork() throws {
+    let adult = try TrainingAgeContext(ageYears: 30, guardianManaged: false)
+    let junior = try TrainingAgeContext(ageYears: 12, guardianManaged: true)
+    let owner = WorkoutOwner(accountID: UUID(), profileID: UUID())
+    let records = [Optional(adult), Optional(junior), nil].enumerated().map { index, age in
+        let base = analyticRecord([(0, Double(120 + index * 30)), (5, Double(120 + index * 30))])
+        return SessionRecord(id: base.id, date: base.date, sets: [], telemetry: base.telemetry,
+            loggedSets: [.init(id: UUID(), exerciseID: "frontArmRaise", reps: 3, seconds: 0, source: .manual, reason: .voluntary, effort: .hard)],
+            endedAt: base.endedAt, trainingContext: .init(owner: owner, age: age))
+    }
+    let eligible = WorkoutAnalytics.healthRecords(in: records, currentAge: adult)
+    #expect(eligible.map(\.id) == [records[0].id])
+    #expect(WorkoutAnalytics.averageHeartRate(in: eligible) == 120)
+    #expect(WorkoutAnalytics.healthRecords(in: records, currentAge: junior).isEmpty)
+    #expect(WorkoutAnalytics.healthRecords(in: records, currentAge: nil).isEmpty)
+    #expect(records.flatMap(\.loggedSets).reduce(0) { $0 + $1.reps } == 9)
+}

@@ -306,11 +306,13 @@ struct TrainingOverviewSection: View {
 
     private func recordedTrends(records: [SessionRecord]) -> some View {
         let observations = records.map { SessionTrendObservation(record: $0, analysis: WorkoutAnalytics(record: $0)) }
+        let healthRecords = WorkoutAnalytics.healthRecords(in: records, currentAge: profile?.programmePreferences?.ageContext)
+        let healthObservations = observations.filter { healthRecords.contains($0.record) }
         return AnalyticsCard(title: "Recent session measurements", symbol: "chart.xyaxis.line") {
-            if profile?.programmePreferences?.ageContext?.allowsHealthIntegration == true, observations.contains(where: { $0.analysis.heart.average != nil }) {
+            if healthObservations.contains(where: { $0.analysis.heart.average != nil }) {
                 Text("Time-weighted Watch heart rate").font(.subheadline.weight(.semibold))
                 Chart {
-                    ForEach(observations) { observation in
+                    ForEach(healthObservations) { observation in
                         if let average = observation.analysis.heart.average {
                             PointMark(x: .value("Session date", observation.record.date), y: .value("bpm", average))
                                 .foregroundStyle(Palette.red).symbolSize(35)
@@ -329,7 +331,7 @@ struct TrainingOverviewSection: View {
                     }
                 }.chartYAxisLabel("reps/min").frame(height: 140)
             }
-            if !observations.contains(where: { $0.analysis.heart.average != nil || $0.analysis.pace.repRatePerMinute != nil }) {
+            if !healthObservations.contains(where: { $0.analysis.heart.average != nil }) && !observations.contains(where: { $0.analysis.pace.repRatePerMinute != nil }) {
                 Text("No heart-rate trend or camera rep timings yet. Complete a session with those readings to see them here.")
                     .font(.subheadline).foregroundStyle(.secondary)
             }

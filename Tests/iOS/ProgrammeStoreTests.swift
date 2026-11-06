@@ -2,6 +2,43 @@ import XCTest
 @testable import Spottr
 
 @MainActor final class ProgrammeStoreTests: XCTestCase {
+    func testCurrentWeekSurvivesExpiredRestoreTimezoneRoundTripAndAgeCorrection() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let workspace = try AccountWorkspace(scope: .init(accountID: UUID(), profileID: UUID(), root: root))
+        let profile = try LocalProfile(programmePreferences: .init(goals: [.strength], weekdays: Set(1...7), ageContext: .init(ageYears: 30, guardianManaged: false)))
+        try workspace.profile.save(profile)
+        var london = Calendar(identifier: .gregorian); london.timeZone = TimeZone(identifier: "Europe/London")!
+        let today = london.date(from: DateComponents(year: 2026, month: 11, day: 6, hour: 12))!
+        var selectedCalendar = london
+        let store = ProgrammeStore(scope: workspace.scope, profile: workspace.profile, now: { today }, calendar: { selectedCalendar })
+        let a = try store.prepare(profile: profile, history: [], at: today, calendar: london)
+        let old = try ProgrammePlanner.makeWeek(profile: profile, history: [], start: today.addingTimeInterval(-14 * 86400), calendar: london)
+        try store.restore(old, profile: profile)
+        for _ in 0..<2 {
+            _ = try store.reconcile(profile: profile, history: [], protecting: [], at: today, calendar: london)
+            XCTAssertEqual(store.current, a)
+            XCTAssertEqual(store.current?.days.first?.id, store.day(at: today, calendar: london)?.id)
+        }
+        let reopened = ProgrammeStore(scope: workspace.scope, profile: workspace.profile, now: { today }, calendar: { selectedCalendar })
+        _ = try reopened.reconcile(profile: profile, history: [], protecting: [], at: today, calendar: london)
+        XCTAssertEqual(reopened.current, a)
+        var tokyo = london; tokyo.timeZone = TimeZone(identifier: "Asia/Tokyo")!
+        selectedCalendar = tokyo
+        let eastern = try reopened.reconcile(profile: profile, history: [], protecting: [], at: today, calendar: tokyo)
+        XCTAssertEqual(reopened.current, eastern)
+        XCTAssertEqual(reopened.capture(dayID: reopened.day()?.id).programmeID, eastern.id)
+        selectedCalendar = london
+        _ = try reopened.reconcile(profile: profile, history: [], protecting: [], at: today, calendar: london)
+        XCTAssertEqual(reopened.current, a)
+        XCTAssertEqual(reopened.capture(dayID: a.days.first?.id, at: today).programmeID, a.id)
+        let junior = try LocalProfile(programmePreferences: .init(goals: [.strength], weekdays: Set(1...7), ageContext: .init(ageYears: 10, guardianManaged: true)))
+        try workspace.profile.save(junior)
+        XCTAssertNil(reopened.current)
+        let corrected = try reopened.reconcile(profile: junior, history: [], protecting: [], at: today, calendar: london)
+        XCTAssertEqual(reopened.current, corrected)
+        XCTAssertTrue(reopened.archive.snapshots.contains(a))
+    }
     func testPreparedProgrammePersistsBeforeTodayAndRejectsRetiredPolicyWrites() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

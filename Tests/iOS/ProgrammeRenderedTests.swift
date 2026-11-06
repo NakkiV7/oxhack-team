@@ -18,6 +18,8 @@ import UIKit
         let workspace = try AccountWorkspace(scope: .init(accountID: UUID(), profileID: UUID(), root: root))
         try workspace.profile.save(profile(age: 30))
         let week = try workspace.programme.prepare(profile: XCTUnwrap(workspace.profile.profile), history: [])
+        let expired = try ProgrammePlanner.makeWeek(profile: XCTUnwrap(workspace.profile.profile), history: [], start: Date().addingTimeInterval(-14 * 86400))
+        try workspace.programme.restore(expired, profile: XCTUnwrap(workspace.profile.profile))
         let window = try host(TodayView(store: workspace.training, profileStore: workspace.profile, showSettings: {}))
         try await waitForContent(window, containing: "Your whole workout")
         capture(window, "today-populated")
@@ -27,6 +29,8 @@ import UIKit
         for item in try XCTUnwrap(week.days.first?.plan?.items) {
             XCTAssertTrue(labels.contains { $0.contains(ExerciseCatalog.find(item.exerciseID)!.name) })
         }
+        XCTAssertEqual(workspace.programme.current, week)
+        XCTAssertEqual(workspace.programme.day()?.id, week.days.first?.id)
         XCTAssertTrue(workspace.training.history.isEmpty)
     }
     func testEmptyFamilyRestAndLargeTextRenderWithoutFormalFamilySets() async throws {
@@ -90,6 +94,47 @@ import UIKit
         let labels = elements(window).compactMap(\.accessibilityLabel)
         XCTAssertFalse(labels.contains { $0.contains("Watch heart rate") || $0.contains("Watch active energy") || $0.contains("HealthKit") })
         XCTAssertFalse(labels.isEmpty)
+    }
+    func testHealthSummariesRequireCapturedAndCurrentAdultWhileKeepingOrdinaryWork() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let workspace = try AccountWorkspace(scope: .init(accountID: UUID(), profileID: UUID(), root: root))
+        let adult = try profile(age: 30), junior = try profile(age: 12)
+        try workspace.profile.save(adult)
+        let date = Calendar.current.startOfDay(for: .now).addingTimeInterval(60)
+        let owner = WorkoutOwner(accountID: workspace.scope.accountID, profileID: workspace.scope.profileID)
+        func record(age: TrainingAgeContext?, bpm: Double) -> SessionRecord {
+            let id = UUID()
+            return .init(id: id, date: date, sets: [], telemetry: [0.0, 5.0, 10.0].map { offset in
+                WatchTelemetry(sessionID: id, sentAt: date.addingTimeInterval(offset), heartRate: .init(value: bpm, date: date.addingTimeInterval(offset)), accelerationG: nil, rotationRadiansPerSecond: nil)
+            }, loggedSets: [.init(id: UUID(), exerciseID: "frontArmRaise", reps: 3, seconds: 0, source: .manual, reason: .voluntary, effort: .hard)],
+                endedAt: date.addingTimeInterval(10), trainingContext: .init(owner: owner, age: age))
+        }
+        let juniorRecord = record(age: junior.effectiveProgrammePreferences.ageContext, bpm: 180)
+        let unknownRecord = record(age: nil, bpm: 210)
+        let adultRecord = record(age: adult.effectiveProgrammePreferences.ageContext, bpm: 120)
+        [juniorRecord, unknownRecord].forEach { workspace.training.persist($0) }
+        let window = try host(ScrollView { TrainingOverviewSection(store: workspace.training, profile: adult) })
+        try await waitForContent(window, containing: "Recent session measurements")
+        capture(window, "summary-ineligible-health")
+        XCTAssertFalse(elements(window).compactMap(\.accessibilityLabel).contains("Time-weighted Watch heart rate"))
+        workspace.training.persist(adultRecord)
+        window.rootViewController = UIHostingController(rootView: ScrollView { TrainingOverviewSection(store: workspace.training, profile: adult) })
+        try await waitForContent(window, containing: "Time-weighted Watch heart rate")
+        capture(window, "summary-adult-health")
+        XCTAssertEqual(workspace.training.history.count, 3)
+        window.rootViewController = UIHostingController(rootView: DayDetail(date: date, records: workspace.training.history, profile: adult, history: workspace.training.history))
+        try await waitForContent(window, containing: "Time-weighted HR")
+        capture(window, "calendar-captured-adult-health")
+        let labels = elements(window).compactMap(\.accessibilityLabel)
+        XCTAssertTrue(labels.contains { $0.contains("120") }, labels.joined(separator: "; "))
+        XCTAssertFalse(labels.contains { $0.contains("170") }, "Ineligible captured telemetry must not enter the average")
+        XCTAssertEqual(TrainingDashboard(history: workspace.training.history).totalSets, 3)
+        XCTAssertEqual(TrainingDashboard(history: workspace.training.history).totalReps, 9)
+        window.rootViewController = UIHostingController(rootView: DayDetail(date: date, records: workspace.training.history, profile: junior, history: workspace.training.history))
+        try await waitForContent(window, containing: "No Watch intervals")
+        XCTAssertFalse(elements(window).compactMap(\.accessibilityLabel).contains("Time-weighted HR"))
+        XCTAssertEqual(workspace.training.history.flatMap(\.loggedSets).filter { $0.effort == .hard }.count, 3)
     }
     private func profile(age: Int) throws -> LocalProfile {
         try LocalProfile(bodyMeasurements: age >= 18 ? .init(heightCM: 170, weightKG: 70) : nil, onboardingRevision: TrainingSetup.revision,

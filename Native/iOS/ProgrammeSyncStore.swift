@@ -30,12 +30,15 @@ struct ProgrammeWithdrawReply: Decodable { let withdrawn: Bool; let revision: In
 }
 
 @MainActor @Observable final class ProgrammeSyncStore {
+    private enum SlotState: String, Codable { case fresh, submittedOrLinked, absentWithUnknownRevision }
     private struct Saved: Codable {
         var profileSlot: UUID
         var consented: Bool
         var serverRevision: Int
         var withdrawalPending: Bool
         let policyAge: TrainingAgeContext?
+        // Missing in legacy files is conservatively treated as possibly submitted.
+        var slotState: SlotState? = nil
     }
     private var saved: Saved
     private let programme: ProgrammeStore
@@ -58,7 +61,7 @@ struct ProgrammeWithdrawReply: Decodable { let withdrawn: Bool; let revision: In
         self.programme = programme; self.profile = profile; self.client = client
         self.isCurrent = isCurrent; self.hasOngoingWorkout = hasOngoingWorkout
         capturedAge = profile.profile?.programmePreferences?.ageContext
-        saved = Saved(profileSlot: UUID(), consented: false, serverRevision: 0, withdrawalPending: false, policyAge: capturedAge)
+        saved = Saved(profileSlot: UUID(), consented: false, serverRevision: 0, withdrawalPending: false, policyAge: capturedAge, slotState: .fresh)
         if FileManager.default.fileExists(atPath: url.path) {
             do { saved = try JSONDecoder().decode(Saved.self, from: Data(contentsOf: url)) }
             catch { readable = false; message = "Saved sync settings could not be read. They have not been replaced." }
@@ -68,7 +71,9 @@ struct ProgrammeWithdrawReply: Decodable { let withdrawn: Bool; let revision: In
     func consent() throws {
         guard valid, !busy, !withdrawalPending else { throw AccountFailure.checkpointRequired }
         consentEpoch = UUID()
-        try persist(Saved(profileSlot: profileSlot, consented: true, serverRevision: serverRevision, withdrawalPending: false, policyAge: capturedAge))
+        let fresh = saved.slotState == .absentWithUnknownRevision
+        try persist(Saved(profileSlot: fresh ? UUID() : profileSlot, consented: true, serverRevision: fresh ? 0 : serverRevision,
+            withdrawalPending: false, policyAge: capturedAge, slotState: fresh ? .fresh : saved.slotState))
         message = "Plan sync enabled for this adult profile. Choose Save to upload its configuration."
     }
     func upload() async {
@@ -77,18 +82,21 @@ struct ProgrammeWithdrawReply: Decodable { let withdrawn: Bool; let revision: In
         busy = true; defer { busy = false }
         do {
             let expected = serverRevision
+            // Persist uncertainty before sending: a lost reply can still mean a committed write.
+            var submitted = saved; submitted.slotState = .submittedOrLinked; try persist(submitted)
             let reply = try await client.writePlan(.init(profileSlot: profileSlot, expectedRevision: expected,
                 preferences: CloudProgrammePreferences(local.effectiveProgrammePreferences), programme: programme.current.map(CloudProgramme.init)))
             guard valid, consentEpoch == epoch, consented, reply.profileSlot == profileSlot, reply.revision == expected + 1, reply.updatedAt.timeIntervalSince1970.isFinite else { throw AccountFailure.invalidResponse }
             var next = saved; next.serverRevision = reply.revision; try persist(next)
             pendingRemote = nil; message = "Saved configuration synced. Workouts and measurements stay on this device."
-        } catch { if valid { message = failure(error) } }
+        } catch { if valid, consentEpoch == epoch { message = failure(error) } }
     }
     func read() async {
         guard valid, consented, !withdrawalPending, !busy else { return }
         let epoch = consentEpoch
         busy = true; defer { busy = false }
         do {
+            var requested = saved; requested.slotState = .submittedOrLinked; try persist(requested)
             let reply = try await client.readPlan(.init(profileSlot: profileSlot))
             guard valid, consentEpoch == epoch, consented, reply.profileSlot == profileSlot, reply.revision > 0, reply.updatedAt.timeIntervalSince1970.isFinite else { throw AccountFailure.invalidResponse }
             _ = try restoredProfile(reply)
@@ -116,38 +124,61 @@ struct ProgrammeWithdrawReply: Decodable { let withdrawn: Bool; let revision: In
     func linkSlot(_ slot: UUID) throws {
         guard valid, consented, !busy, !hasOngoingWorkout(), !withdrawalPending,
               slot != programme.scope.accountID, slot != programme.scope.profileID else { throw AccountFailure.busy }
-        var next = saved; next.profileSlot = slot; next.serverRevision = 0; try persist(next)
+        var next = saved; next.profileSlot = slot; next.serverRevision = 0; next.slotState = .submittedOrLinked; try persist(next)
         pendingRemote = nil; message = "Linked by your choice. Read and review the saved plan before restoring it."
     }
     func withdraw() async {
-        guard valid else { return }
+        guard valid, consented || withdrawalPending else { return }
         do {
             consentEpoch = UUID()
-            var next = saved; next.consented = false; next.withdrawalPending = true; try persist(next)
+            var next = saved; next.consented = false
+            next.withdrawalPending = !(saved.slotState == .fresh && serverRevision == 0 && !busy)
+            try persist(next)
             pendingRemote = nil
-            guard !busy else { message = "Local syncing is off. Remove the saved programme once the current request finishes."; return }
+            guard next.withdrawalPending else { message = "Local syncing is off. No programme was uploaded from this profile."; return }
+            guard !busy, serverRevision > 0 else {
+                message = "Local syncing is off. Choose Remove saved programme to check and remove any saved copy after the current request finishes."
+                return
+            }
             busy = true; defer { busy = false }
-            let epoch = consentEpoch, expected = serverRevision
-            let reply = try await client.withdrawPlan(.init(profileSlot: profileSlot, expectedRevision: expected))
-            guard valid, consentEpoch == epoch, !consented, reply.withdrawn, reply.revision == expected + 1 else { throw AccountFailure.invalidResponse }
+            let epoch = consentEpoch, expected = serverRevision, slot = profileSlot
+            let reply = try await client.withdrawPlan(.init(profileSlot: slot, expectedRevision: expected))
+            guard removalIsCurrent(epoch: epoch, slot: slot), reply.withdrawn, reply.revision == expected + 1 else { throw AccountFailure.invalidResponse }
             next.serverRevision = reply.revision; next.withdrawalPending = false; try persist(next)
             message = "Cloud configuration removed. Local programme and history are retained."
         } catch { if valid { message = "Local syncing is off. Cloud removal is still pending. Choose Remove saved programme to retry." } }
     }
+    private func removalIsCurrent(epoch: UUID, slot: UUID) -> Bool {
+        valid && consentEpoch == epoch && profileSlot == slot && !consented && withdrawalPending
+    }
     func removeSavedProgramme() async {
         guard valid, !consented, withdrawalPending, !busy else { return }
         busy = true; defer { busy = false }
-        let epoch = consentEpoch
+        let epoch = consentEpoch, slot = profileSlot
         do {
-            let reply = try await client.readPlan(.init(profileSlot: profileSlot))
-            guard valid, consentEpoch == epoch, !consented, withdrawalPending,
-                  reply.profileSlot == profileSlot, reply.revision > 0 else { throw AccountFailure.invalidResponse }
+            let reply: ProgrammeReadReply
+            do {
+                // This one read is authorized only by the explicit removal action, not persisted consent.
+                reply = try await client.readPlan(.init(profileSlot: slot))
+            } catch AccountFailure.service(404, _) {
+                guard removalIsCurrent(epoch: epoch, slot: slot) else { return }
+                var absent = saved; absent.withdrawalPending = false; absent.slotState = .absentWithUnknownRevision
+                try persist(absent)
+                message = "No saved programme was found for this profile in this account. Local syncing remains off."
+                return
+            }
+            guard removalIsCurrent(epoch: epoch, slot: slot), reply.profileSlot == slot,
+                  reply.revision > 0, reply.updatedAt.timeIntervalSince1970.isFinite else { throw AccountFailure.invalidResponse }
             var revisionOnly = saved; revisionOnly.serverRevision = reply.revision; try persist(revisionOnly)
-            let removed = try await client.withdrawPlan(.init(profileSlot: profileSlot, expectedRevision: reply.revision))
-            guard valid, consentEpoch == epoch, !consented, removed.withdrawn, removed.revision == reply.revision + 1 else { throw AccountFailure.invalidResponse }
+            let removed = try await client.withdrawPlan(.init(profileSlot: slot, expectedRevision: reply.revision))
+            guard removalIsCurrent(epoch: epoch, slot: slot), removed.withdrawn, removed.revision == reply.revision + 1 else { throw AccountFailure.invalidResponse }
             revisionOnly.serverRevision = removed.revision; revisionOnly.withdrawalPending = false; try persist(revisionOnly)
             message = "Saved cloud programme removed. Local syncing remains off."
-        } catch { if valid { message = "Local syncing remains off. The saved cloud programme could not be removed yet. Retry when connected." } }
+        } catch {
+            if removalIsCurrent(epoch: epoch, slot: slot) {
+                message = "Local syncing remains off. The saved cloud programme could not be removed yet. Retry when connected."
+            }
+        }
     }
     private func restoredProfile(_ reply: ProgrammeReadReply) throws -> LocalProfile {
         guard let local = profile.profile else { throw AccountFailure.checkpointRequired }
