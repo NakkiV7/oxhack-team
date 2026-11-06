@@ -727,6 +727,7 @@ final class TrainingStore {
                   return entry.unit == .reps ? (1...200).contains(set.reps) && set.seconds == 0 && set.quantityOrigin == .selfReport
                     : set.reps == 0 && (1...21600).contains(set.seconds) && set.quantityOrigin == .activeTimer
               }) else { throw AccountFailure.invalidResponse }
+        try recoverWatchHistoryDeletion()
         let receiptStore = WatchImportReceipts(url: scope.file("watch-workout-imports.json"))
         var receipts = try receiptStore.load()
         let digest = try WatchImportReceipts.digest(journal)
@@ -772,6 +773,7 @@ final class TrainingStore {
         var before = history
         let saved: SessionRecord
         do {
+            if try recoverWatchHistoryDeletion() { before = history }
             if !historyAvailable {
                 before = try historyStore.load()
                 try quests?.recoverBenchmarkHistory()
@@ -881,7 +883,12 @@ final class TrainingStore {
     }
     func clearHistory() throws {
         guard sessionPhase == .idle || sessionPhase == .finished else { throw DataControlError.workoutInProgress }
-        if let scope = accountScope { try WatchImportReceipts(url: scope.file("watch-workout-imports.json")).markDeleted() }
+        if let scope = accountScope {
+            let receipts = WatchImportReceipts(url: scope.file("watch-workout-imports.json"))
+            try receipts.beginDeletion(owner: .init(accountID: scope.accountID, profileID: scope.profileID), history: historyStore)
+            try recoverWatchHistoryDeletion()
+            return
+        }
         try watchInbox.clear()
         try historyStore.clear()
         archiveDataWarning = nil
@@ -895,6 +902,25 @@ final class TrainingStore {
         try rewards.reset(at: Date())
         try quests?.reconcile(history: history)
         Task { await rewardReminders?.refresh() }
+    }
+    /// The intent survives every fallible boundary. Terminal receipts are written
+    /// only after history removal and applicable reward/quest reconciliation.
+    @discardableResult
+    private func recoverWatchHistoryDeletion() throws -> Bool {
+        guard let scope = accountScope else { return false }
+        let receipts = WatchImportReceipts(url: scope.file("watch-workout-imports.json"))
+        guard let intent = try receipts.deletion(owner: .init(accountID: scope.accountID, profileID: scope.profileID)) else { return false }
+        try watchInbox.clear()
+        let retained = try receipts.removeHistory(intent, from: historyStore)
+        let exports = historyStore.url.appendingPathExtension("exports")
+        if FileManager.default.fileExists(atPath: exports.path) { try FileManager.default.removeItem(at: exports) }
+        if retained.isEmpty { try rewards.reset(at: intent.requestedAt) }
+        else { try rewards.advance(history: retained, at: Date()) }
+        try quests?.reconcile(history: retained)
+        try receipts.finishDeletion(intent)
+        history = retained.reversed(); historyAvailable = true; archiveDataWarning = nil; error = nil
+        Task { await rewardReminders?.refresh() }
+        return true
     }
     enum DataControlError: LocalizedError {
         case workoutInProgress

@@ -39,7 +39,7 @@ final class WatchStore {
         if telemetryDeliveryStatus.droppedSamples > 0 { return "\(telemetryDeliveryStatus.droppedSamples) older sensor samples removed at the queue limit." }
         return telemetryDeliveryStatus.pendingSamples > 0 ? "\(telemetryDeliveryStatus.pendingSamples) Watch samples waiting for iPhone." : "Watch data queue is up to date."
     }
-    var canStartCached: Bool { journal == nil && programme?.sharing == true && programme?.grant?.permitsStart(at: now()) == true }
+    var canStartCached: Bool { archive?.authorityNeedsPersistence == false && journal == nil && programme?.sharing == true && programme?.grant?.permitsStart(at: now()) == true }
     var healthAllowed: Bool {
         guard let programme, programme.sharing, programme.age?.allowsHealthIntegration == true,
               programme.owner == recordingOwner, programme.policyID == recordingPolicyID else { return false }
@@ -93,13 +93,14 @@ final class WatchStore {
         }
         recorder.onState = { [weak self] state in
             self?.recordingState = state
+            if !state.isBusy { self?.clearRecordingIdentity() }
             if state == .saved { self?.record() }
         }
     }
     private func reload() { journal = archive?.active; programme = archive?.transport; pendingWorkouts = archive?.pendingCount ?? 0 }
     private func receiveProgramme(_ value: WatchProgrammeTransport) {
         do { try archive?.receive(value); reload() }
-        catch { status = "Watch setup could not be saved. Your existing workout is retained."; return }
+        catch { reload(); status = "Watch setup could not be saved. The received policy applies now; your actual workout is retained." }
         guard programme?.sequence == value.sequence else { return }
         if recordingSessionID != nil && !healthAllowed { stopRecording(discard: true) }
         if scopedSnapshot?.owner != programme?.owner || scopedSnapshot?.policyID != programme?.policyID || programme?.sharing != true {
@@ -176,7 +177,11 @@ final class WatchStore {
     private func stopRecording(discard: Bool = false) {
         if discard { recorder.cancelForPolicy() }
         else { recorder.end(); publishTelemetry(); link.flushTelemetry() }
-        recordingSessionID = nil; recordingOwner = nil; recordingPolicyID = nil; clearMetrics()
+        if !recordingBusy { clearRecordingIdentity() }
+        clearMetrics()
+    }
+    private func clearRecordingIdentity() {
+        recordingSessionID = nil; recordingOwner = nil; recordingPolicyID = nil
     }
     func stopLocalRecording() { stopRecording(); status = "Health collection stopped. Manual workout controls remain available." }
     private func publishTelemetry(window: WatchMotionWindow? = nil, includeEmpty: Bool = false) {
@@ -199,6 +204,8 @@ final class WatchStore {
         catch { status = "Completed workouts could not be read. They remain on Watch; check storage and retry." }
     }
     func tick() {
+        do { try archive?.retryAuthorityPersistence() }
+        catch { status = "Known Watch policy is active but could not be saved. New workouts remain disabled until storage is available." }
         let time = clock(), delta = max(0, time - lastTick); lastTick = time
         if journal != nil {
             change { $0.advance(seconds: delta) }

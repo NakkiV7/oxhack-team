@@ -339,8 +339,55 @@ import WatchKit
         expect(store.lastCompleted?.grant.owner == own.owner && store.link.workouts.isEmpty, "Other profile cannot adopt or receive original owner's workout")
     }
 
+    @MainActor static func pendingHealthSaveRetainsPolicyIdentityUntilTerminal() async throws {
+        let store = try fixture(), original = try fixture().programme!
+        let own = store.programme!, date = Date()
+        store.link.onProgramme?(.init(sequence: 2, owner: own.owner, policyID: own.policyID, age: own.age, sharing: true, grant: own.grant, choices: [.init(id: "today", date: date, plan: try .catalogue(exerciseID: "squat", sets: 1, target: 8, restSeconds: 3))], support: [], timeZoneID: TimeZone.current.identifier)); await settle()
+        store.startCached(choiceID: "today"); store.beginLocalSet(); store.setLocalReps(4); await settle()
+        let builder = HKWorkoutSession.created.last!.liveBuilder
+        builder.collectionCompletion?(true, nil); await settle()
+        HKLiveWorkoutBuilder.deferEndCollection = true
+        defer { HKLiveWorkoutBuilder.deferEndCollection = false }
+        store.stopLocalRecording(); await settle()
+        expect(store.recordingState == .saving, "Held Health save is pending")
+        store.link.onProgramme?(.init(sequence: 3, owner: own.owner, policyID: own.policyID, age: own.age, sharing: false, grant: nil, choices: [], support: [], timeZoneID: TimeZone.current.identifier)); await settle()
+        builder.endCompletion?(true, nil); await settle()
+        expect(builder.finishCount == 0 && !store.recordingBusy, "Known sharing OFF after Stop Health prevents the held callback initiating a save")
+        expect(store.journal?.reps == 4 && store.journal?.grant.owner == own.owner && own.owner != original.owner, "Pending-save cancellation preserves actual original-owner work")
+    }
+
+    @MainActor static func knownRestrictionSurvivesArchiveWriteFailureAndBlocksLaterStart() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: directory.path); try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("watch.json"), date = Date(), owner = WorkoutOwner(accountID: UUID(), profileID: UUID())
+        let age = try TrainingAgeContext(ageYears: 30, guardianManaged: false)
+        let grant = WatchAccessGrant(owner: owner, policyID: UUID(), age: age, verifiedAt: date, membershipDeadline: nil)
+        let archive = try WatchWorkoutArchive(url: url)
+        let transport = WatchProgrammeTransport(sequence: 1, owner: owner, policyID: grant.policyID, age: age, sharing: true, grant: grant, choices: [.init(id: "today", date: date, plan: try .catalogue(exerciseID: "squat", sets: 1, target: 8, restSeconds: 3))], support: [], timeZoneID: TimeZone.current.identifier)
+        try archive.receive(transport)
+        let store = WatchStore(now: { date }, archiveURL: url)
+        store.startCached(choiceID: "today"); store.beginLocalSet(); store.setLocalReps(4); await settle()
+        let builder = HKWorkoutSession.created.last!.liveBuilder
+        builder.collectionCompletion?(true, nil); await settle()
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: directory.path)
+        store.link.onProgramme?(.init(sequence: 2, owner: owner, policyID: UUID(), age: nil, sharing: false, grant: nil, choices: [], support: [], timeZoneID: TimeZone.current.identifier)); await settle()
+        expect(store.journal?.policyRestricted == true && !store.healthAllowed && !store.recordingBusy, "Known restriction is effective despite a real failed archive write")
+        expect(store.journal?.reps == 4 && store.journal?.grant.owner == owner, "Failed authority persistence does not erase actual quantities")
+        store.recorder.onHeart?(.init(value: 90, date: date)); expect(store.heart == nil, "Late readings are rejected after failed restriction persistence")
+        store.link.onProgramme?(transport); await settle()
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: directory.path)
+        store.tick(); store.endLocalSet(); store.requestLocalFinish(); store.confirmFinish(); await settle()
+        store.startCached(choiceID: "today"); await settle()
+        expect(store.journal == nil && !store.canStartCached, "Stale authority and a later start cannot reopen the revoked lease")
+        let reopened = try WatchWorkoutArchive(url: url)
+        expect(reopened.transport?.sharing == false, "Recovered storage durably retains the known restriction")
+        store.stopLocalRecording(); await settle()
+    }
+
     @MainActor static func main() async {
         do {
+            try await pendingHealthSaveRetainsPolicyIdentityUntilTerminal()
+            try await knownRestrictionSurvivesArchiveWriteFailureAndBlocksLaterStart()
             try await cachedWholeWorkoutAutomaticallyStartsOneRecorderWithoutPhoneSnapshot()
             try await cachedManualControlsSurviveRestartExpiryAndPrepareNextSetWithoutStartingIt()
             try await restrictivePolicyCancelsRecorderAndLateMetricsButPreservesManualOrigin()
@@ -357,6 +404,6 @@ import WatchKit
         await energyOnlyTelemetryPreservesTheCumulativeObservationAndResetsForANewSession()
         await olderEnergyCannotReplaceTheLatestEstimateButCorrectionsCanLowerIt()
         if failures > 0 { print("Watch store: \(failures) failures"); exit(1) }
-        print("Watch store: 13 behavioral cases passed (SDK/link doubles; no device acceptance)")
+        print("Watch store: 15 behavioral cases passed (SDK/link doubles; no device acceptance)")
     }
 }

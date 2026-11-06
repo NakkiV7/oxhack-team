@@ -22,6 +22,15 @@ public struct HistoryStore {
         try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
         try data.write(to: destination, options: .atomic)
     }
+    /// Remove only a previously captured deletion set; newer saved work survives recovery.
+    @discardableResult
+    public func remove(ids: Set<UUID>) throws -> [SessionRecord] {
+        let records = try load(), retained = records.filter { !ids.contains($0.id) }
+        guard retained.count != records.count else { return records }
+        if retained.isEmpty { try clear() }
+        else { try ProtectedLocalStorage.write(JSONEncoder().encode(retained), to: url) }
+        return retained
+    }
     public func clear() throws {
         if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
     }

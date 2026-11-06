@@ -12,6 +12,11 @@ import CryptoKit
     let age: TrainingAgeContext?
     private let url: URL
     private(set) var enabled = false
+    private(set) var persistencePending = false
+    // Retain known OFF across same-owner workspace reconstruction when disk is
+    // temporarily unavailable. This is not a claim of durable persistence.
+    private static var pendingOff: [WorkoutOwner] = []
+    static let pendingPersistenceMessage = "Sharing is off now. Saving is pending and will retry while this profile is open."
     private(set) var policyID = UUID()
     private var active = true
     var onChange: (() -> Void)?
@@ -21,18 +26,35 @@ import CryptoKit
         if FileManager.default.fileExists(atPath: url.path) {
             let saved = try JSONDecoder().decode(Saved.self, from: Data(contentsOf: url))
             guard saved.owner == owner else { throw AccountFailure.invalidResponse }
-            if saved.age == age { enabled = saved.enabled; policyID = saved.policyID; return }
+            if saved.age == age {
+                persistencePending = Self.pendingOff.contains(owner)
+                enabled = saved.enabled && !persistencePending; policyID = saved.policyID; return
+            }
         }
         try save(enabled: false)
     }
     func setActive(_ value: Bool) { active = value }
     func setEnabled(_ enabled: Bool) throws {
         guard active else { throw AccountFailure.reauthenticate }
-        try save(enabled: enabled); onChange?()
+        if !enabled {
+            self.enabled = false; persistencePending = true
+            if !Self.pendingOff.contains(owner) { Self.pendingOff.append(owner) }
+            onChange?() // Withdraw effective authority before any fallible storage.
+            try retryPendingPersistence()
+        } else {
+            try retryPendingPersistence()
+            try save(enabled: true)
+        }
+        onChange?()
+    }
+    func retryPendingPersistence() throws {
+        guard active else { throw AccountFailure.reauthenticate }
+        if persistencePending { try save(enabled: false) }
     }
     private func save(enabled: Bool) throws {
         try ProtectedLocalStorage.write(JSONEncoder().encode(Saved(owner: owner, age: age, policyID: policyID, enabled: enabled)), to: url)
-        self.enabled = enabled
+        self.enabled = enabled; persistencePending = false
+        Self.pendingOff.removeAll { $0 == owner }
     }
 }
 
@@ -41,6 +63,13 @@ struct WatchImportReceipt: Codable {
     let digest: Data
     var before: [SessionRecord]
     var stage: Stage
+}
+struct WatchHistoryDeletion: Codable {
+    let owner: WorkoutOwner
+    let sessionIDs: Set<UUID>
+    let receiptIDs: Set<UUID>
+    let historyDigest: Data?
+    let requestedAt: Date
 }
 struct WatchImportReceipts {
     let url: URL
@@ -51,10 +80,36 @@ struct WatchImportReceipts {
     func save(_ receipts: [UUID: WatchImportReceipt]) throws {
         try ProtectedLocalStorage.write(JSONEncoder().encode(receipts), to: url)
     }
-    func markDeleted() throws {
+    private var deletionURL: URL { url.deletingLastPathComponent().appendingPathComponent("watch-history-deletion.json") }
+    func deletion(owner: WorkoutOwner) throws -> WatchHistoryDeletion? {
+        guard FileManager.default.fileExists(atPath: deletionURL.path) else { return nil }
+        let value = try JSONDecoder().decode(WatchHistoryDeletion.self, from: Data(contentsOf: deletionURL))
+        guard value.owner == owner, value.requestedAt.timeIntervalSince1970.isFinite else { throw AccountFailure.invalidResponse }
+        return value
+    }
+    func beginDeletion(owner: WorkoutOwner, history: HistoryStore) throws {
+        let previous = try deletion(owner: owner), receipts = try load()
+        let data = FileManager.default.fileExists(atPath: history.url.path) ? try Data(contentsOf: history.url) : nil
+        // Explicit clear remains able to remove an unchanged corrupt history file.
+        // Its byte identity prevents a later different file being deleted wholesale.
+        let records = data.flatMap { try? JSONDecoder().decode([SessionRecord].self, from: $0) } ?? []
+        let receiptIDs = Set(receipts.keys).union(previous?.receiptIDs ?? [])
+        let intent = WatchHistoryDeletion(owner: owner, sessionIDs: Set(records.map(\.id)).union(receiptIDs).union(previous?.sessionIDs ?? []),
+            receiptIDs: receiptIDs, historyDigest: data.map { Data(SHA256.hash(data: $0)) }, requestedAt: Date())
+        try ProtectedLocalStorage.write(JSONEncoder().encode(intent), to: deletionURL)
+    }
+    func removeHistory(_ intent: WatchHistoryDeletion, from history: HistoryStore) throws -> [SessionRecord] {
+        let data = FileManager.default.fileExists(atPath: history.url.path) ? try Data(contentsOf: history.url) : nil
+        if data.map({ Data(SHA256.hash(data: $0)) }) == intent.historyDigest {
+            try history.clear(); return []
+        }
+        return try history.remove(ids: intent.sessionIDs)
+    }
+    func finishDeletion(_ intent: WatchHistoryDeletion) throws {
         var values = try load()
-        for id in values.keys { values[id]?.stage = .deleted; values[id]?.before = [] }
+        for id in intent.receiptIDs { values[id]?.stage = .deleted; values[id]?.before = [] }
         try save(values)
+        try FileManager.default.removeItem(at: deletionURL)
     }
     static func digest(_ journal: WatchWorkoutJournal) throws -> Data {
         let encoder = JSONEncoder(); encoder.outputFormatting = .sortedKeys
@@ -78,7 +133,7 @@ extension EnvironmentValues {
     private let membership: MembershipCoordinator
     private let isCurrent: () -> Bool
     private let sequenceURL: URL
-    private var lastTransport: WatchProgrammeTransport?
+    private(set) var lastTransport: WatchProgrammeTransport?
     private var refreshingAuthority = false
     private var lastAuthorityAttempt = Date.distantPast
     init(workspace: AccountWorkspace, account: NativeAccountStore, membership: MembershipCoordinator, isCurrent: @escaping () -> Bool) {
@@ -129,6 +184,12 @@ extension EnvironmentValues {
         let link = workspace.training.companion
         let owner = workspace.watchSharing.owner
         let current = active && isCurrent() && workspace.profile.permitsPolicyCallbacks
+        if current {
+            do {
+                try workspace.watchSharing.retryPendingPersistence()
+                if workspace.training.error == WatchSharingStore.pendingPersistenceMessage { workspace.training.error = nil }
+            } catch { workspace.training.error = WatchSharingStore.pendingPersistenceMessage }
+        }
         let sharing = current && workspace.watchSharing.enabled
         let trusted = current && account?.trusted == true && account?.accountID == owner.accountID ? owner : nil
         let access = membership.accountID == owner.accountID ? membership.access : MembershipAccess.resolve([], now: Date())

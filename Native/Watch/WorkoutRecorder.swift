@@ -151,11 +151,13 @@ final class WorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBu
             Task { @MainActor in
                 guard let self, self.capture.isCurrent(token), self.generation == token, self.state == .saving else { builder.discardWorkout(); return }
                 guard success else { builder.discardWorkout(); self.state = .failed("Couldn’t save workout."); return }
-                builder.finishWorkout { workout, error in
-                    Task { @MainActor in
-                        guard self.capture.isCurrent(token), self.generation == token else { return }
-                        self.state = workout != nil && error == nil ? .saved : .failed("Couldn’t save workout.")
-                    }
+                do {
+                    let saved: HKWorkout? = try await builder.finishWorkout()
+                    guard self.capture.isCurrent(token), self.generation == token else { return }
+                    self.state = saved != nil ? .saved : .failed("Couldn’t save workout.")
+                } catch {
+                    guard self.capture.isCurrent(token), self.generation == token else { return }
+                    self.state = .failed("Couldn’t save workout.")
                 }
             }
         }

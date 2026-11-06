@@ -175,6 +175,7 @@ public final class WatchWorkoutArchive {
     private let url: URL
     private let capacity: Int
     private var sensorCount = 0
+    public private(set) var authorityNeedsPersistence = false
     public var transport: WatchProgrammeTransport? { contents.transport }
     public var active: WatchWorkoutJournal? { contents.active }
     public var pendingCount: Int { contents.pending.count }
@@ -222,9 +223,16 @@ public final class WatchWorkoutArchive {
               transport.grant == nil || (transport.grant?.owner == transport.owner && transport.grant?.policyID == transport.policyID && transport.grant?.age == transport.age) else { throw WatchWorkoutJournal.Failure.unavailable }
         var next = contents; next.transport = transport
         next.active?.applyPolicy(owner: transport.owner, age: transport.age, sharing: transport.sharing)
+        // Known policy cannot roll back when disk persistence fails. Quantities stay
+        // in the existing journal; only authority and its sequence become effective now.
+        contents = next; authorityNeedsPersistence = true
         try persist(next)
     }
+    public func retryAuthorityPersistence() throws {
+        if authorityNeedsPersistence { try persist(contents) }
+    }
     public func start(choiceID: String, at date: Date, calendar: Calendar = .current) throws {
+        try retryAuthorityPersistence()
         try recoverCompleted()
         guard contents.active == nil, contents.pending.count < capacity else { throw WatchWorkoutJournal.Failure.capacity }
         guard date.timeIntervalSince1970.isFinite, date >= (contents.latestStartCheck ?? .distantPast) else { throw WatchWorkoutJournal.Failure.unavailable }
@@ -319,7 +327,7 @@ public final class WatchWorkoutArchive {
     private func persist(_ value: Contents) throws {
         let data = try JSONEncoder().encode(value)
         guard data.count <= 1024 * 1024 else { throw WatchWorkoutJournal.Failure.capacity }
-        try ProtectedLocalStorage.write(data, to: url); contents = value
+        try ProtectedLocalStorage.write(data, to: url); contents = value; authorityNeedsPersistence = false
     }
 }
 

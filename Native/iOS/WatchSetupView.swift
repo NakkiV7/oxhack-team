@@ -153,7 +153,9 @@ struct WatchSetupView: View {
                     Text(sharing.enabled ? "This profile can use cached workouts on Watch after account and membership verification." : "Workout sharing is off for this profile. Your Watch model choice is kept separately.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                if let sharingError { Text(sharingError).font(.caption).foregroundStyle(.red) }
+                if sharing?.persistencePending == true {
+                    Text(WatchSharingStore.pendingPersistenceMessage).font(.caption).foregroundStyle(.red)
+                } else if let sharingError { Text(sharingError).font(.caption).foregroundStyle(.red) }
                 if store.selectedModel == .noWatch {
                     SpottrCard {
                         Text(store.selectedModel.sensorExplanation).accessibilityIdentifier("watch-phone-only")
@@ -168,6 +170,7 @@ struct WatchSetupView: View {
             }.padding(24)
         }
         .navigationTitle("Watch setup").navigationBarTitleDisplayMode(.inline).tint(Palette.blue)
+        .onChange(of: sharing?.persistencePending) { _, pending in if pending == false { sharingError = nil } }
         .task(id: checksActive) {
             guard checksActive else { return }
             store.checkConnection()
@@ -178,14 +181,18 @@ struct WatchSetupView: View {
         }
     }
 
+    static func selectModel(_ model: WatchModelPreference, store: WatchSetupStore, sharing: WatchSharingStore?) throws {
+        store.select(model)
+        if model == .noWatch { try sharing?.setEnabled(false) }
+    }
+
     private var modelChoice: some View {
         SpottrCard {
             Text("Which Watch do you have?").font(.title3.bold())
             Text("Choose a model, or leave it as Not sure").font(.subheadline).foregroundStyle(.secondary)
             ForEach(WatchModelPreference.allCases, id: \.self) { model in
                 Button {
-                    store.select(model)
-                    do { try sharing?.setEnabled(model != .noWatch); sharingError = nil }
+                    do { try Self.selectModel(model, store: store, sharing: sharing); sharingError = nil }
                     catch { sharingError = "Sharing could not be saved. Reopen this profile and try again." }
                 } label: {
                     HStack(spacing: 12) {

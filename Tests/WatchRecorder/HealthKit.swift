@@ -73,6 +73,7 @@ public final class HKLiveWorkoutBuilder {
         endCollectionCount += 1; endCompletion = completion
         if !Self.deferEndCollection { completion(true, nil) }
     }
+    public func finishWorkout() async throws -> HKWorkout? { finishCount += 1; return HKWorkout() }
     public func finishWorkout(completion: @escaping (HKWorkout?, Error?) -> Void) {
         finishCount += 1; completion(HKWorkout(), nil)
     }
