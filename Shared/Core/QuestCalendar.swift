@@ -43,7 +43,7 @@ public enum QuestCalendar {
         guard let template = slots.first(where: { $0.slot == slot }), template.options.count == (weekly ? 2 : 3) else { return [] }
         let period = weekly ? "week:\(iso.component(.yearForWeekOfYear, from: date)):\(slot)" : "day:\(calendar.component(.year, from: date)):\(slot)"
         let days = programme?.days.filter { weekly ? interval.contains($0.date) : calendar.isDate($0.date, inSameDayAs: date) } ?? []
-        let qualified = benchmarkPolicy?.qualifiedHistory(history) ?? history.filter { $0.trainingContext?.age?.allowsTimePressureRewards == true }
+        let qualified = benchmarkPolicy?.qualifiedHistory(history) ?? history.filter { $0.trainingContext?.allowsAdultCompletion == true }
         let curriculum = SkillCurriculum.evaluate(profile: profile, history: qualified, calendar: calendar)
         let established = Set(curriculum.nodes.filter { $0.state == .earned || $0.state == .placed }.map(\.id))
         let items = days.filter { $0.kind == .workout }.flatMap { $0.plan?.items ?? [] }.filter {
@@ -107,6 +107,7 @@ public enum QuestProgress {
         if let exerciseID = quest.exerciseID, let entry = ExerciseCatalog.find(exerciseID), currentAge.ageYears >= 5 {
             for record in history.sorted(by: { $0.date < $1.date }) where !sessions.contains(record.id) {
                 guard record.trainingContext?.owner == owner, record.trainingContext?.age == currentAge,
+                      !currentAge.allowsTimePressureRewards || record.trainingContext?.allowsAdultCompletion == true,
                       record.date >= quest.startsAt, record.date < quest.endsAt, record.date <= now else { continue }
                 let logs = record.loggedSets + record.sets.map { LoggedSet(id: $0.id, exerciseID: $0.exercise.rawValue, reps: $0.reps, seconds: 0, source: $0.source, reason: $0.reason, quantityOrigin: $0.source == .camera ? .cameraObserved : .selfReport) }
                 let eligible = logs.filter { set in

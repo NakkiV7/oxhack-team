@@ -17,6 +17,13 @@ public final class WCSession {
     public private(set) var applicationContext: [String: Any] = [:]
     public private(set) var messages: [[String: Any]] = []
     public private(set) var outstandingUserInfoTransfers: [WCSessionUserInfoTransfer] = []
+    public private(set) var outstandingFileTransfers: [WCSessionFileTransfer] = []
+    public private(set) var fileTransfers: [WCSessionFileTransfer] = []
+    public func transferFile(_ url: URL, metadata: [String: Any]?) -> WCSessionFileTransfer {
+        let transfer = WCSessionFileTransfer(file: .init(fileURL: url, metadata: metadata))
+        outstandingFileTransfers.append(transfer); fileTransfers.append(transfer); return transfer
+    }
+    public func complete(_ transfer: WCSessionFileTransfer) { outstandingFileTransfers.removeAll { $0 === transfer } }
     public private(set) var transfers: [WCSessionUserInfoTransfer] = []
     public func transferUserInfo(_ payload: [String: Any]) -> WCSessionUserInfoTransfer {
         let transfer = WCSessionUserInfoTransfer(userInfo: payload)
@@ -32,4 +39,13 @@ public final class WCSession {
     public func sendMessage(_ payload: [String: Any], replyHandler: (([String: Any]) -> Void)?, errorHandler: ((Error) -> Void)?) {
         messages.append(payload); replyHandler?(messageReply?(payload) ?? ["received": true])
     }
+}
+public final class WCSessionFile {
+    public let fileURL: URL
+    public let metadata: [String: Any]?
+    public init(fileURL: URL, metadata: [String: Any]?) { self.fileURL = fileURL; self.metadata = metadata }
+}
+public final class WCSessionFileTransfer {
+    public let file: WCSessionFile
+    public init(file: WCSessionFile) { self.file = file }
 }

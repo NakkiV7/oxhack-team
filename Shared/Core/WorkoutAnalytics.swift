@@ -103,7 +103,7 @@ public struct WorkoutAnalytics: Sendable {
     /// Ordinary work remains in history regardless of this Health-only selection.
     public static func healthRecords(in records: [SessionRecord], currentAge: TrainingAgeContext?) -> [SessionRecord] {
         guard currentAge?.allowsHealthIntegration == true else { return [] }
-        return records.filter { $0.trainingContext?.age?.allowsHealthIntegration == true }
+        return records.filter { $0.trainingContext?.age?.allowsHealthIntegration == true && $0.trainingContext?.completionAllowsAdult != false }
     }
     public static func averageHeartRate(in records: [SessionRecord]) -> Double? {
         let distinct=Dictionary(records.map { ($0.id,$0) },uniquingKeysWith: { _,last in last })

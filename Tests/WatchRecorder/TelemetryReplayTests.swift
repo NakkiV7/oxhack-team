@@ -120,7 +120,86 @@ import WatchConnectivity
         precondition(link.lastDataReceivedAt != nil, "Only actual telemetry receipt records a data timestamp")
     }
 
+    static func scopedProgrammeRequiresCapabilityAndRoundTripsWithoutTransportAcknowledgingWork() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let wire = WCSession.default, link = CompanionLink(telemetryOutboxURL: directory.appendingPathComponent("outbox.json"))
+        wire.isReachable = true
+        let owner = WorkoutOwner(accountID: UUID(), profileID: UUID())
+        let age = try TrainingAgeContext(ageYears: 12, guardianManaged: true)
+        let transport = WatchProgrammeTransport(sequence: 1, owner: owner, policyID: UUID(), age: age, sharing: true, grant: nil, choices: [], support: [], timeZoneID: "Europe/London")
+        link.publishProgramme(transport)
+        var failures = 0
+        func expect(_ condition: Bool, _ message: String) { if !condition { failures += 1; print("FAIL: " + message) } }
+        expect(wire.applicationContext["watchProgramme"] == nil, "Legacy Watch receives no junior programme/profile data")
+        link.session(wire, didReceiveMessage: ["request": true, "workoutProtocol": 1])
+        link.publishProgramme(transport)
+        expect(wire.applicationContext["watchProgramme"] != nil, "Negotiated Watch receives scoped programme")
+        var received: WatchProgrammeTransport?
+        link.onProgramme = { received = $0 }
+        if let data = wire.applicationContext["watchProgramme"] { link.session(wire, didReceiveUserInfo: ["watchProgramme": data]) }
+        expect(received == transport, "Actual paired decoder retains immutable owner and policy")
+        var raw = TrainingSession(); raw.start(at: 0)
+        link.publishScoped(.init(snapshot: .init(session: raw), owner: owner, policyID: transport.policyID, allowsHealth: false))
+        if let data = wire.applicationContext["snapshot"] as? Data {
+            expect(try JSONDecoder().decode(CompanionSnapshot.self, from: data).phase == .idle, "Legacy snapshot is sanitized even when modern junior snapshot exists")
+        } else { expect(false, "Legacy stop signal accompanies scoped snapshot") }
+        if failures > 0 { print("Scoped transport: \(failures) behavioral failures"); exit(1) }
+        print("Scoped transport: capability, local scope decoder and legacy suppression passed")
+    }
+
+    static func largeJournalUsesFileDeliveryAndSecuresTemporaryInputBeforeReturning() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let wire = WCSession.default, link = CompanionLink(telemetryOutboxURL: directory.appendingPathComponent("outbox.json"))
+        let date = Date().addingTimeInterval(-100), owner = WorkoutOwner(accountID: UUID(), profileID: UUID())
+        let age = try TrainingAgeContext(ageYears: 30, guardianManaged: false)
+        let grant = WatchAccessGrant(owner: owner, policyID: UUID(), age: age, verifiedAt: date, membershipDeadline: nil)
+        let original = try CoachSavedPlan.catalogue(exerciseID: "squat", sets: 1, target: 8, restSeconds: 60)
+        let plan = try CoachSavedPlan(items: original.items, availableSupport: [], createdAt: date, rationale: String(repeating: "Large local transfer fixture. ", count: 2500))
+        var journal = try WatchWorkoutJournal(grant: grant, plan: plan, support: [], plannedWorkoutID: nil, at: date)
+        try journal.beginSet(); try journal.setReps(3); journal.advance(seconds: 2); try journal.endSet(); journal.finish(at: date.addingTimeInterval(10))
+        let before = wire.fileTransfers.count
+        link.sendWorkout(journal)
+        guard wire.fileTransfers.count == before + 1, let transfer = wire.fileTransfers.last else {
+            print("FAIL: Large completed journal must use paired file transfer, retaining the original outbox"); exit(1)
+        }
+        precondition(FileManager.default.fileExists(atPath: transfer.file.fileURL.path), "Sender copy remains until delivery settles")
+        let temporary = directory.appendingPathComponent("received.json")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: transfer.file.fileURL, to: temporary)
+        var received: WatchWorkoutJournal?
+        link.onWorkout = { received = $0 }
+        let ackCount = wire.transfers.filter { $0.userInfo["watchWorkoutAck"] != nil }.count
+        link.session(wire, didReceive: WCSessionFile(fileURL: temporary, metadata: transfer.file.metadata))
+        try FileManager.default.removeItem(at: temporary)
+        precondition(received == journal, "Temporary input must be secured synchronously before returning to WCSession")
+        precondition(wire.transfers.filter { $0.userInfo["watchWorkoutAck"] != nil }.count == ackCount, "File delivery must not acknowledge phone history/rewards")
+        for _ in 0..<3 {
+            var another = try WatchWorkoutJournal(grant: grant, plan: plan, support: [], plannedWorkoutID: nil, at: date)
+            another.finish(at: date.addingTimeInterval(10)); link.sendWorkout(another)
+        }
+        let reopened = CompanionLink(telemetryOutboxURL: directory.appendingPathComponent("outbox.json"))
+        var fifth = try WatchWorkoutJournal(grant: grant, plan: plan, support: [], plannedWorkoutID: nil, at: date)
+        fifth.finish(at: date.addingTimeInterval(10)); reopened.sendWorkout(fifth)
+        precondition(wire.fileTransfers.count == before + 4, "Four-transfer bound uses surviving WC outstanding transfers after link restart")
+        for other in wire.outstandingFileTransfers where other !== transfer {
+            wire.complete(other); link.session(wire, didFinish: other, error: nil)
+        }
+        wire.complete(transfer)
+        link.sendWorkout(journal)
+        guard let retry = wire.fileTransfers.last else { fatalError("Retry stages a file") }
+        link.session(wire, didFinish: transfer, error: nil)
+        guard FileManager.default.fileExists(atPath: retry.file.fileURL.path) else {
+            print("FAIL: Delayed completion of an earlier transfer must not delete the current retry file"); exit(1)
+        }
+        wire.complete(retry); link.session(wire, didFinish: retry, error: nil)
+        print("Large journal file transport: stable sender copy, synchronous receipt, no premature ACK passed")
+    }
+
     static func main() throws {
+        try scopedProgrammeRequiresCapabilityAndRoundTripsWithoutTransportAcknowledgingWork()
+        try largeJournalUsesFileDeliveryAndSecuresTemporaryInputBeforeReturning()
         try setupProbeNeedsRealMatchingReplyAndPreservesLegacyMessages()
         try durableBatchWaitsForPhonePersistenceAcknowledgement()
         var session = TrainingSession(); session.start(at: 0)

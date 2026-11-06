@@ -2,6 +2,64 @@ import Foundation
 import WatchConnectivity
 
 final class CompanionLink: NSObject, WCSessionDelegate {
+    var onProgramme: ((WatchProgrammeTransport) -> Void)?
+    var onScopedSnapshot: ((WatchScopedSnapshot) -> Void)?
+    var onWorkout: ((WatchWorkoutJournal) -> Void)?
+    var onWorkoutAcknowledgement: ((WatchWorkoutAcknowledgement) -> Void)?
+    private var supportsScopedWorkouts = false
+    func publishProgramme(_ transport: WatchProgrammeTransport) {
+        telemetryLock.lock(); defer { telemetryLock.unlock() }
+        guard supportsScopedWorkouts, let data = try? JSONEncoder().encode(transport) else { return }
+        updateContext(key: "watchProgramme", data: data)
+    }
+    func publishScoped(_ snapshot: WatchScopedSnapshot?) {
+        telemetryLock.lock(); defer { telemetryLock.unlock() }
+        guard let session, session.activationState == .activated,
+              let idle = try? JSONEncoder().encode(CompanionSnapshot(session: TrainingSession())) else { return }
+        var payload = session.applicationContext
+        payload["snapshot"] = idle
+        if !supportsScopedWorkouts { payload["watchProgramme"] = nil }
+        payload["scopedSnapshot"] = supportsScopedWorkouts ? snapshot.flatMap { try? JSONEncoder().encode($0) } : nil
+        try? session.updateApplicationContext(payload)
+        if session.isReachable { session.sendMessage(payload, replyHandler: nil, errorHandler: nil) }
+    }
+    func sendWorkout(_ journal: WatchWorkoutJournal) {
+        guard let session, session.activationState == .activated, journal.finishedAt != nil,
+              !session.outstandingUserInfoTransfers.contains(where: { $0.userInfo["watchWorkoutID"] as? String == journal.id.uuidString }),
+              !session.outstandingFileTransfers.contains(where: { $0.file.metadata?["watchWorkoutID"] as? String == journal.id.uuidString }) else { return }
+        let pending = session.outstandingUserInfoTransfers.filter { $0.userInfo["watchWorkoutID"] != nil }.count + session.outstandingFileTransfers.count
+        guard pending < 4 else { return }
+        do {
+            let data = try JSONEncoder().encode(journal)
+            guard data.count <= 8 * 1024 * 1024 else { throw WatchWorkoutJournal.Failure.capacity }
+            if data.count <= 48 * 1024 {
+                _ = session.transferUserInfo(["watchWorkout": data, "watchWorkoutID": journal.id.uuidString])
+            } else {
+                let attempt = UUID()
+                let url = workoutFile(id: journal.id, owner: journal.grant.owner, folder: "outgoing", attempt: attempt)
+                try ProtectedLocalStorage.write(data, to: url)
+                _ = session.transferFile(url, metadata: ["watchWorkoutID": journal.id.uuidString, "watchTransferID": attempt.uuidString,
+                    "accountID": journal.grant.owner.accountID.uuidString, "profileID": journal.grant.owner.profileID.uuidString])
+            }
+        } catch {
+            telemetryLock.lock(); deliveryMessage = "A completed workout could not be transferred. It remains saved on Watch."; notifyDeliveryStatus(); telemetryLock.unlock()
+        }
+    }
+    private func workoutFile(id: UUID, owner: WorkoutOwner, folder: String, attempt: UUID? = nil) -> URL {
+        workoutTransferRoot.appendingPathComponent(folder).appendingPathComponent(owner.accountID.uuidString)
+            .appendingPathComponent(owner.profileID.uuidString).appendingPathComponent(id.uuidString + (attempt.map { "-" + $0.uuidString } ?? "") + ".json")
+    }
+    func acknowledgeWorkout(_ value: WatchWorkoutAcknowledgement) {
+        guard let session, session.activationState == .activated, let data = try? JSONEncoder().encode(value) else { return }
+        _ = session.transferUserInfo(["watchWorkoutAck": data])
+        try? FileManager.default.removeItem(at: workoutFile(id: value.id, owner: value.owner, folder: "incoming"))
+    }
+    private func updateContext(key: String, data: Data) {
+        guard let session, session.activationState == .activated else { return }
+        var payload = session.applicationContext; payload[key] = data
+        try? session.updateApplicationContext(payload)
+        if session.isReachable { session.sendMessage(payload, replyHandler: nil, errorHandler: nil) }
+    }
     var onSnapshot: ((CompanionSnapshot) -> Void)?
     var onCommand: ((CompanionCommand) -> Void)?
     var onTelemetry: ((WatchTelemetry) -> Void)?
@@ -13,6 +71,7 @@ final class CompanionLink: NSObject, WCSessionDelegate {
     private let session: WCSession? = WCSession.isSupported() ? .default : nil
     private let telemetryLock = NSRecursiveLock()
     private let outbox: WatchTelemetryOutbox?
+    private let workoutTransferRoot: URL
     private var queuedBatchIDs = Set<UUID>()
     private var retryAfter: [UUID: Date] = [:]
     private var deliveryMessage: String?
@@ -76,9 +135,18 @@ final class CompanionLink: NSObject, WCSessionDelegate {
         let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support")
         let url = telemetryOutboxURL ?? directory.appendingPathComponent("Spottr/watch-telemetry-outbox.json")
+        workoutTransferRoot = url.deletingLastPathComponent().appendingPathComponent("workout-transfers")
         do { outbox = try WatchTelemetryOutbox(url: url) }
         catch { outbox = nil; deliveryMessage = "Watch data queue unavailable. Local storage needs attention." }
-        super.init(); session?.delegate = self; session?.activate()
+        super.init(); session?.delegate = self; session?.activate(); requestProtocol()
+    }
+    private func requestProtocol() {
+        guard let session, session.activationState == .activated, session.isReachable else { return }
+        telemetryLock.lock(); supportsScopedWorkouts = false; telemetryLock.unlock()
+        publishScoped(nil)
+        session.sendMessage(["workoutProbe": true], replyHandler: { [weak self] payload in
+            self?.receive(payload); self?.onRequest?()
+        }, errorHandler: nil)
     }
     func publish(_ snapshot: CompanionSnapshot) {
         guard let session, session.activationState == .activated,
@@ -145,10 +213,10 @@ final class CompanionLink: NSObject, WCSessionDelegate {
     }
     func request() {
         guard let session, session.activationState == .activated, session.isReachable else { return }
-        session.sendMessage(["request": true], replyHandler: nil, errorHandler: nil)
+        session.sendMessage(["request": true, "workoutProtocol": 1], replyHandler: { [weak self] payload in self?.receive(payload) }, errorHandler: nil)
     }
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
-        invalidateSetupStatus()
+        invalidateSetupStatus(); requestProtocol()
         receive(session.receivedApplicationContext, marksArrival: false)
         telemetryLock.lock()
         retryAfter.removeAll(); queueTelemetry(includeUnsealed: true); notifyDeliveryStatus()
@@ -158,6 +226,7 @@ final class CompanionLink: NSObject, WCSessionDelegate {
     }
     func sessionReachabilityDidChange(_ session: WCSession) {
         if !session.isReachable { invalidateSetupStatus() }
+        else { requestProtocol() }
         telemetryLock.lock()
         retryAfter.removeAll(); queueTelemetry(includeUnsealed: true); notifyDeliveryStatus()
         telemetryLock.unlock()
@@ -177,7 +246,38 @@ final class CompanionLink: NSObject, WCSessionDelegate {
             telemetryLock.unlock()
             if let encoded = try? JSONEncoder().encode(response) { replyHandler(["setupReply": encoded]); return }
         }
-        replyHandler(["received": true])
+        replyHandler(["received": true, "workoutProtocol": 1])
+    }
+    func session(_ session: WCSession, didReceive file: WCSessionFile) {
+        do {
+            let attributes = try FileManager.default.attributesOfItem(atPath: file.fileURL.path)
+            guard attributes[.type] as? FileAttributeType == .typeRegular,
+                  ((attributes[.size] as? NSNumber)?.intValue ?? Int.max) <= 8 * 1024 * 1024 else { throw CocoaError(.fileReadTooLarge) }
+            let data = try Data(contentsOf: file.fileURL)
+            let value = try JSONDecoder().decode(WatchWorkoutJournal.self, from: data)
+            guard value.isValid else { return }
+            guard file.metadata?["watchWorkoutID"] as? String == value.id.uuidString,
+                  file.metadata?["accountID"] as? String == value.grant.owner.accountID.uuidString,
+                  file.metadata?["profileID"] as? String == value.grant.owner.profileID.uuidString else { throw CocoaError(.fileReadCorruptFile) }
+            let saved = workoutFile(id: value.id, owner: value.grant.owner, folder: "incoming")
+            if FileManager.default.fileExists(atPath: saved.path) {
+                let existing = try JSONDecoder().decode(WatchWorkoutJournal.self, from: Data(contentsOf: saved))
+                guard existing == value else { throw CocoaError(.fileReadCorruptFile) }
+            } else { try ProtectedLocalStorage.write(data, to: saved) }
+            onWorkout?(value)
+        } catch {
+            telemetryLock.lock(); deliveryMessage = "A workout file could not be imported. The original remains on Watch."; notifyDeliveryStatus(); telemetryLock.unlock()
+        }
+    }
+    func session(_ session: WCSession, didFinish fileTransfer: WCSessionFileTransfer, error: Error?) {
+        guard let metadata = fileTransfer.file.metadata,
+              let rawAttempt = metadata["watchTransferID"] as? String, let attempt = UUID(uuidString: rawAttempt),
+              let rawID = metadata["watchWorkoutID"] as? String, let id = UUID(uuidString: rawID),
+              let rawAccount = metadata["accountID"] as? String, let account = UUID(uuidString: rawAccount),
+              let rawProfile = metadata["profileID"] as? String, let profile = UUID(uuidString: rawProfile) else { return }
+        let url = workoutFile(id: id, owner: .init(accountID: account, profileID: profile), folder: "outgoing", attempt: attempt)
+        guard url.standardizedFileURL == fileTransfer.file.fileURL.standardizedFileURL else { return }
+        try? FileManager.default.removeItem(at: url)
     }
     func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) { receive(userInfo) }
     func session(_ session: WCSession, didFinish userInfoTransfer: WCSessionUserInfoTransfer, error: Error?) {
@@ -189,6 +289,17 @@ final class CompanionLink: NSObject, WCSessionDelegate {
     }
     private func notifyDeliveryStatus() { onTelemetryDeliveryStatus?(telemetryDeliveryStatus) }
     private func receive(_ payload: [String: Any], marksArrival: Bool = true) {
+        if payload["workoutProtocol"] as? Int == 1 {
+            telemetryLock.lock(); supportsScopedWorkouts = true; telemetryLock.unlock()
+        }
+        if let data = payload["watchProgramme"] as? Data, data.count <= 256 * 1024,
+           let value = try? JSONDecoder().decode(WatchProgrammeTransport.self, from: data) { onProgramme?(value) }
+        if let data = payload["scopedSnapshot"] as? Data, data.count <= 64 * 1024,
+           let value = try? JSONDecoder().decode(WatchScopedSnapshot.self, from: data) { onScopedSnapshot?(value) }
+        if let data = payload["watchWorkout"] as? Data, data.count <= 1024 * 1024,
+           let value = try? JSONDecoder().decode(WatchWorkoutJournal.self, from: data), value.isValid { onWorkout?(value) }
+        if let data = payload["watchWorkoutAck"] as? Data, data.count <= 4096,
+           let value = try? JSONDecoder().decode(WatchWorkoutAcknowledgement.self, from: data) { onWorkoutAcknowledgement?(value) }
         if let data = payload["snapshot"] as? Data, let snapshot = try? JSONDecoder().decode(CompanionSnapshot.self, from: data) { onSnapshot?(snapshot) }
         if let data = payload["command"] as? Data, let command = try? JSONDecoder().decode(CompanionCommand.self, from: data) { onCommand?(command) }
         if let data = payload["telemetry"] as? Data, let telemetry = try? JSONDecoder().decode(WatchTelemetry.self, from: data) {

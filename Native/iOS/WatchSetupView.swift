@@ -132,6 +132,8 @@ struct HealthSetupView: View {
 }
 
 struct WatchSetupView: View {
+    @Environment(\.watchSharing) private var sharing
+    @State private var sharingError: String?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -144,6 +146,14 @@ struct WatchSetupView: View {
             VStack(alignment: .leading, spacing: 24) {
                 ScreenHeading(title: "Connect your Watch", subtitle: "Optional. Your iPhone works on its own.")
                 modelChoice
+                if let sharing {
+                    Toggle("Share this profile’s workouts with Watch", isOn: Binding(get: { sharing.enabled }, set: { enabled in
+                        do { try sharing.setEnabled(enabled); sharingError = nil } catch { sharingError = "Sharing could not be saved. Reopen this profile and try again." }
+                    })).disabled(store.selectedModel == .noWatch).accessibilityIdentifier("watch-profile-sharing")
+                    Text(sharing.enabled ? "This profile can use cached workouts on Watch after account and membership verification." : "Workout sharing is off for this profile. Your Watch model choice is kept separately.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                if let sharingError { Text(sharingError).font(.caption).foregroundStyle(.red) }
                 if store.selectedModel == .noWatch {
                     SpottrCard {
                         Text(store.selectedModel.sensorExplanation).accessibilityIdentifier("watch-phone-only")
@@ -175,6 +185,8 @@ struct WatchSetupView: View {
             ForEach(WatchModelPreference.allCases, id: \.self) { model in
                 Button {
                     store.select(model)
+                    do { try sharing?.setEnabled(model != .noWatch); sharingError = nil }
+                    catch { sharingError = "Sharing could not be saved. Reopen this profile and try again." }
                 } label: {
                     HStack(spacing: 12) {
                         Text(model.title).frame(maxWidth: .infinity, alignment: .leading)

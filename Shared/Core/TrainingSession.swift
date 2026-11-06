@@ -41,11 +41,18 @@ public struct SkippedSet: Codable, Identifiable, Equatable, Sendable {
 }
 
 public struct SessionTrainingContext: Codable, Equatable, Sendable {
+    public enum RecordingDevice: String, Codable, Sendable { case watch }
     public let owner: WorkoutOwner
     public let age: TrainingAgeContext?
     public let programmeID: String?
     public let programmeRevision: Int?
-    public init(owner: WorkoutOwner, age: TrainingAgeContext?, programmeID: String? = nil, programmeRevision: Int? = nil) {
+    public let completionAllowsAdult: Bool?
+    public let recordingDevice: RecordingDevice?
+    public let omittedWatchSensorSamples: Int?
+    public var allowsAdultCompletion: Bool { age?.allowsTimePressureRewards == true && completionAllowsAdult != false }
+    public init(owner: WorkoutOwner, age: TrainingAgeContext?, programmeID: String? = nil, programmeRevision: Int? = nil, completionAllowsAdult: Bool? = nil, recordingDevice: RecordingDevice? = nil, omittedWatchSensorSamples: Int? = nil) {
+        self.recordingDevice = recordingDevice; self.omittedWatchSensorSamples = omittedWatchSensorSamples
+        self.completionAllowsAdult = completionAllowsAdult
         self.owner = owner; self.age = age; self.programmeID = programmeID; self.programmeRevision = programmeRevision
     }
 }

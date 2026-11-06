@@ -30,12 +30,15 @@ final class NativeRewardsStore {
 
     func award(record: SessionRecord, before: [SessionRecord], history: [SessionRecord], completedAt: Date, calendar: Calendar? = nil) throws {
         guard allowsTimePressureRewards else { return }
-        if requiresCapturedAdult && record.trainingContext?.age?.allowsTimePressureRewards != true { return }
-        if let captured = record.trainingContext, captured.age?.allowsTimePressureRewards != true { return }
+        if requiresCapturedAdult && record.trainingContext?.allowsAdultCompletion != true { return }
+        if let captured = record.trainingContext, !captured.allowsAdultCompletion { return }
         try requireReadable()
         guard !before.contains(where: { $0.id == record.id }),
               !ledger.events.contains(where: { $0.sessionID == record.id }) else { return }
         guard history.contains(record) else { throw Failure.recordNotSaved }
+        // A late offline workout can predate the first local reward ledger. Its saved
+        // history retains base practice credit; no past window choice is invented.
+        guard completedAt >= ledger.createdAt else { return }
         let delta = max(0, baseXP(history: history) - baseXP(history: before))
         var candidate = ledger
         try candidate.awardCompletion(record: record, completedAt: completedAt, eligibleBaseXP: delta, now: completedAt, calendar: calendar ?? .current)

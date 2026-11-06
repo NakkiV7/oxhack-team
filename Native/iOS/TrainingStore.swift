@@ -51,6 +51,8 @@ final class TrainingStore {
     let spokenReps: any SpokenRepListening
     let vision: VisionWorker
     let companion = CompanionLink()
+    weak var watchBridge: WatchWorkoutBridge?
+    var watchSharing: WatchSharingStore?
     var watchReachable = false
     private(set) var reportedDiscomfort = false
     private let monotonicClock: () -> Double
@@ -398,7 +400,11 @@ final class TrainingStore {
         }
         companion.onTelemetry = { [weak self] telemetry in
             Task { @MainActor in
-                guard let self else { return }
+                guard let self, self.accountActive else { return }
+                if self.accountScope != nil {
+                    guard self.watchSharing?.enabled == true, self.watchSharing?.age?.allowsHealthIntegration == true,
+                          (self.configured?.trainingContext ?? self.sessionTrainingContext)?.allowsAdultCompletion == true else { return }
+                }
                 if self.configured != nil { self.configured?.receiveTelemetry(telemetry) }
                 else { self.session.receiveTelemetry(telemetry) }
             }
@@ -437,8 +443,9 @@ final class TrainingStore {
     func publish() {
         guard accountActive else { return }
         markWorkoutPhase()
-        if let configured { companion.publish(CompanionSnapshot(session: configured, at: now)) }
-        else { companion.publish(CompanionSnapshot(session: session)) }
+        let snapshot = configured.map { CompanionSnapshot(session: $0, at: now) } ?? CompanionSnapshot(session: session)
+        if let watchBridge { watchBridge.publish(snapshot: snapshot, context: configured?.trainingContext ?? sessionTrainingContext) }
+        else { companion.publishScoped(nil) }
     }
     private func command(_ command: CompanionCommand) {
         guard accountActive else { return }
@@ -708,6 +715,55 @@ final class TrainingStore {
         }
         persist(session.record)
     }
+    func importWatchWorkout(_ journal: WatchWorkoutJournal) throws -> Bool {
+        guard journal.isValid, accountActive, let scope = accountScope,
+              journal.grant.owner == WorkoutOwner(accountID: scope.accountID, profileID: scope.profileID),
+              let completedAt = journal.finishedAt, journal.phase == .finished,
+              completedAt >= journal.startedAt, completedAt <= Date().addingTimeInterval(2),
+              journal.completed.count <= 120, Set(journal.completed.map(\.id)).count == journal.completed.count,
+              journal.completed.allSatisfy({ set in
+                  guard let entry = ExerciseCatalog.find(set.exerciseID), set.source == .manual,
+                        set.seconds.isFinite, (set.activeSeconds ?? 0).isFinite else { return false }
+                  return entry.unit == .reps ? (1...200).contains(set.reps) && set.seconds == 0 && set.quantityOrigin == .selfReport
+                    : set.reps == 0 && (1...21600).contains(set.seconds) && set.quantityOrigin == .activeTimer
+              }) else { throw AccountFailure.invalidResponse }
+        let receiptStore = WatchImportReceipts(url: scope.file("watch-workout-imports.json"))
+        var receipts = try receiptStore.load()
+        let digest = try WatchImportReceipts.digest(journal)
+        if let receipt = receipts[journal.id] {
+            guard receipt.digest == digest else { throw AccountFailure.invalidResponse }
+            if receipt.stage == .acknowledged || receipt.stage == .deleted { return true }
+        }
+        let previous = try historyStore.load()
+        try quests?.recoverBenchmarkHistory()
+        if receipts[journal.id] == nil {
+            guard !previous.contains(where: { $0.id == journal.id }) else { throw AccountFailure.invalidResponse }
+            receipts[journal.id] = .init(digest: digest, before: previous, stage: .prepared)
+            try receiptStore.save(receipts)
+        }
+        let original = journal.record
+        let completionEligible = journal.completionAllowsAdult && (watchSharing.map { $0.policyID == journal.grant.policyID && $0.age?.allowsTimePressureRewards == true } ?? true)
+        let record = SessionRecord(id: original.id, date: original.date, sets: [], telemetry: completionEligible ? original.telemetry : [],
+            loggedSets: original.loggedSets, endedAt: original.endedAt, plannedWorkoutID: original.plannedWorkoutID,
+            trainingContext: .init(owner: journal.grant.owner, age: journal.grant.age, programmeID: journal.programmeID, programmeRevision: journal.programmeRevision, completionAllowsAdult: completionEligible, recordingDevice: .watch, omittedWatchSensorSamples: journal.omittedSensorSamples))
+        // Independent Watch journals carry their own bounded sensor archive. Never
+        // attach the legacy phone-session inbox to an independently owned import.
+        let saved = record
+        history = try historyStore.save(saved).reversed(); historyAvailable = true
+        receipts[journal.id]?.stage = .historySaved
+        try receiptStore.save(receipts)
+        var local = Calendar(identifier: .gregorian)
+        guard let zone = TimeZone(identifier: journal.completionTimeZoneID ?? journal.timeZoneID) else { throw AccountFailure.invalidResponse }
+        local.timeZone = zone
+        let before = receipts[journal.id]?.before ?? []
+        try rewards.award(record: saved, before: before, history: before + [saved], completedAt: completedAt, calendar: local)
+        try rewards.advance(history: history, at: Date())
+        try quests?.reconcile(history: history)
+        receipts[journal.id]?.stage = .acknowledged; receipts[journal.id]?.before = []
+        try receiptStore.save(receipts)
+        error = nil
+        return true
+    }
     func persist(_ record: SessionRecord, completedAt: Date = Date()) {
         if let scope = accountScope, let context = record.trainingContext,
            context.owner != WorkoutOwner(accountID: scope.accountID, profileID: scope.profileID) {
@@ -775,6 +831,10 @@ final class TrainingStore {
            context.owner != WorkoutOwner(accountID: scope.accountID, profileID: scope.profileID) {
             companion.acknowledgeTelemetryBatch(id, accepted: false); return
         }
+        if accountScope != nil {
+            guard accountActive, watchSharing?.enabled == true, watchSharing?.age?.allowsHealthIntegration == true,
+                  record.trainingContext?.allowsAdultCompletion == true else { companion.acknowledgeTelemetryBatch(id, accepted: false); return }
+        }
         let merged: SessionRecord
         do { merged = try WatchTelemetryImporter.merge(samples, into: record, through: Date(), allowsOpenSession: open) }
         catch { companion.acknowledgeTelemetryBatch(id, accepted: false); return }
@@ -821,6 +881,7 @@ final class TrainingStore {
     }
     func clearHistory() throws {
         guard sessionPhase == .idle || sessionPhase == .finished else { throw DataControlError.workoutInProgress }
+        if let scope = accountScope { try WatchImportReceipts(url: scope.file("watch-workout-imports.json")).markDeleted() }
         try watchInbox.clear()
         try historyStore.clear()
         archiveDataWarning = nil

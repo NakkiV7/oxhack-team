@@ -56,6 +56,8 @@ public final class HKWorkoutSession {
     public func end() { endCount += 1; state = .ended }
 }
 public final class HKLiveWorkoutBuilder {
+    public static var deferEndCollection = false
+    public var endCompletion: ((Bool, Error?) -> Void)?
     public var statisticsByType: [HKQuantityTypeIdentifier: HKStatistics] = [:]
     public var dataSource: HKLiveWorkoutDataSource?
     public weak var delegate: HKLiveWorkoutBuilderDelegate?
@@ -68,7 +70,8 @@ public final class HKLiveWorkoutBuilder {
     }
     public func discardWorkout() { discardCount += 1 }
     public func endCollection(withEnd date: Date, completion: @escaping (Bool, Error?) -> Void) {
-        endCollectionCount += 1; completion(true, nil)
+        endCollectionCount += 1; endCompletion = completion
+        if !Self.deferEndCollection { completion(true, nil) }
     }
     public func finishWorkout(completion: @escaping (HKWorkout?, Error?) -> Void) {
         finishCount += 1; completion(HKWorkout(), nil)

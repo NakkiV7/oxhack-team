@@ -29,6 +29,7 @@ import CryptoKit
         self.client = client; self.credentials = credentials; self.authorization = authorization
     }
     convenience init() { self.init(client: AccountClient(), credentials: SecureAccountCredentials(), authorization: AuthenticationServicesAccountAuthorization()) }
+    var lastTrustedVerification: Date? { trusted ? credential?.lastTrustedVerification : nil }
     var trusted: Bool { accountID != nil && (state == .trustedOnline || state == .trustedOffline) }
     func setCheckpoint(ageYears: Int, role: AccountPolicy.Role) throws { checkpoint = try AccountPolicy.checkpoint(ageYears: ageYears, role: role) }
     func consumeInitialProfileCheckpoint() { checkpoint = nil }
@@ -98,7 +99,7 @@ import CryptoKit
             try reply.validate()
             self.backupCodes = reply.backupCodes ?? []
             var persisted = reply; persisted.backupCodes = nil
-            let stored = StoredAccountCredential(session: persisted, privateKey: key.rawRepresentation)
+            let stored = StoredAccountCredential(session: persisted, privateKey: key.rawRepresentation, lastTrustedVerification: Date())
             try self.credentials.save(stored)
             self.epoch = UUID(); self.credential = stored; self.trust(stored, online: true); self.clearFlow(); self.step = .complete
         }
@@ -114,7 +115,9 @@ import CryptoKit
             let reply: CurrentSessionReply = try await client.post("/session/current", body: EmptyRequest(), credential: stored)
             guard epoch == capturedEpoch else { return }
             guard reply.authenticated, reply.accountID == stored.session.accountID, reply.appAccountToken == reply.accountID, reply.deviceID == stored.session.deviceID else { throw AccountFailure.invalidResponse }
-            trust(stored, online: true)
+            var verified = stored; verified.lastTrustedVerification = Date()
+            try credentials.save(verified); credential = verified
+            trust(verified, online: true)
         } catch { if epoch == capturedEpoch { handle(error, restoring: true) } }
     }
     func refresh() async {
@@ -129,7 +132,7 @@ import CryptoKit
                 guard self.epoch == capturedEpoch else { return }
                 try reply.validate()
                 guard reply.accountID == stored.session.accountID, reply.deviceID == stored.session.deviceID else { throw AccountFailure.invalidResponse }
-                stored.session = reply; stored.refreshRequestID = nil; stored.refreshStartedAt = nil
+                stored.session = reply; stored.refreshRequestID = nil; stored.refreshStartedAt = nil; stored.lastTrustedVerification = Date()
                 try self.credentials.save(stored); self.credential = stored; self.trust(stored, online: true)
             } catch { if self.epoch == capturedEpoch { self.handle(error, restoring: true) } }
         }
@@ -186,10 +189,17 @@ import CryptoKit
     }
     private func clearFlow() { flowToken = nil; flowExpiry = nil; authenticatorSecret = nil; authenticatorURI = nil }
     private func trust(_ stored: StoredAccountCredential, online: Bool) { accountID = stored.session.accountID; appAccountToken = stored.session.appAccountToken; state = online ? .trustedOnline : .trustedOffline; message = nil }
+    private func invalidateWatchVerification() {
+        guard var stored = credential else { return }
+        stored.lastTrustedVerification = nil
+        credential = stored
+        do { try credentials.save(stored) }
+        catch { message = "Secure account storage could not be updated. Reconnect and verify this account before using Watch workouts." }
+    }
     private func handle(_ error: Error, restoring: Bool = false) {
         message = (error as? AccountFailure)?.errorDescription ?? "The request could not be completed. Your saved data is unchanged. Retry when connected."
-        if case AccountFailure.service(401, _) = error, restoring { state = .credentialsUnknown; accountID = nil; appAccountToken = nil; return }
-        if case AccountFailure.reauthenticate = error, restoring { state = .credentialsUnknown; accountID = nil; appAccountToken = nil; return }
+        if case AccountFailure.service(401, _) = error { invalidateWatchVerification(); state = .credentialsUnknown; accountID = nil; appAccountToken = nil; return }
+        if case AccountFailure.reauthenticate = error, restoring { invalidateWatchVerification(); state = .credentialsUnknown; accountID = nil; appAccountToken = nil; return }
         if restoring, let credential, !credential.locallySignedOut, credential.session.refreshExpiresAt > Date(), error is URLError { trust(credential, online: false); return }
         if restoring, case AccountFailure.service(503, _) = error, let credential { trust(credential, online: false); return }
         if state != .pendingMFA && !trusted { state = .error }

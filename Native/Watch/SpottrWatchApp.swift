@@ -20,67 +20,139 @@ struct WatchTrainingView: View {
     private enum Page: Hashable { case metrics, controls, vitals }
     let store: WatchStore
     @State private var page = Page.metrics
+    @State private var crownReps = 0.0
     @ScaledMetric(relativeTo: .largeTitle) private var countFontSize: CGFloat = 42
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             Group {
-                if let snapshot = store.state.snapshot, snapshot.isFresh(at: context.date), snapshot.phase != .idle {
+                if let journal = store.journal {
+                    TabView(selection: $page) {
+                        localMetrics(journal, now: context.date).tag(Page.metrics)
+                        localControls(journal).tag(Page.controls)
+                        localVitals(now: context.date).tag(Page.vitals)
+                    }.tabViewStyle(.verticalPage).containerBackground(.black, for: .tabView)
+                } else if let snapshot = store.state.snapshot, snapshot.phase != .idle && snapshot.phase != .finished {
                     TabView(selection: $page) {
                         metrics(snapshot, now: context.date).tag(Page.metrics)
                         controls(snapshot, now: context.date).tag(Page.controls)
                         vitals(snapshot, now: context.date).tag(Page.vitals)
-                    }.tabViewStyle(.verticalPage)
-                        .containerBackground(.black, for: .tabView)
-                } else if store.recordingBusy {
-                    disconnectedRecording(now: context.date)
-                } else {
-                    ScrollView {
-                        VStack(spacing: 12) {
-                            Image(systemName: "iphone.and.arrow.forward").font(.largeTitle)
-                            Text("Open Spottr on iPhone").font(.headline)
-                            Text("Connect to see your current session.").font(.caption2).foregroundStyle(.secondary)
-                            Button("Reconnect") { store.link.request() }.buttonStyle(.bordered)
-                        }.padding(.horizontal, 12)
-                    }
-                }
+                    }.tabViewStyle(.verticalPage).containerBackground(.black, for: .tabView)
+                } else { cachedWorkouts(now: context.date) }
             }.background { Color.black.ignoresSafeArea() }
         }.foregroundStyle(.white).tint(.blue)
-            .onChange(of: store.state.snapshot?.sessionID) { _, _ in page = .metrics }
-            .onChange(of: store.state.snapshot?.phase) { _, phase in
-                if phase == .finished { page = .metrics }
-            }
-            .alert("End this session?", isPresented: Binding(get: { store.pendingFinish != nil }, set: { if !$0 { store.cancelFinish() } })) {
+            .onChange(of: store.journal?.id) { _, id in if id != nil { page = .metrics; crownReps = Double(store.journal?.reps ?? 0) } }
+            .alert("End this session?", isPresented: Binding(get: { store.pendingFinish != nil || store.pendingLocalFinish }, set: { if !$0 { store.cancelFinish() } })) {
                 Button("End session", role: .destructive) { store.confirmFinish() }
                 Button("Cancel", role: .cancel) { store.cancelFinish() }
             } message: {
-                Text(store.state.snapshot?.configured != nil
+                Text(store.journal != nil ? "Completed sets are saved on Watch. The current unfinished set will be discarded."
+                     : store.state.snapshot?.configured != nil
                      ? "Ended sets and skipped steps are saved separately. The current unfinished set will be discarded."
                      : "Finish this session and save your completed work on iPhone.")
             }
     }
-    private func disconnectedRecording(now: Date) -> some View {
+    private func cachedWorkouts(now: Date) -> some View {
         ScrollView {
-            VStack(spacing: 12) {
-                Image(systemName: "applewatch.radiowaves.left.and.right").font(.largeTitle)
-                Text(store.recordingState.message).font(.headline)
-                Text(store.recordingState == .recording
-                     ? "iPhone session state is unavailable. Established Watch collection continues; phone controls wait for a fresh connection."
-                     : store.recordingState == .paused
-                     ? "Watch collection is paused. Open iPhone to confirm the current session state."
-                     : "Open iPhone for current session controls. Watch workout status is shown above.")
-                    .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                if let heart = store.heart?.heartRate(at: now) {
-                    Label("\(Int(heart.rounded())) BPM", systemImage: "heart.fill").foregroundStyle(.red)
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Your workouts").font(.headline)
+                if let completed = store.lastCompleted {
+                    Text("Saved on Watch · \(completed.completed.count) sets").font(.caption).foregroundStyle(.green)
                 }
-                Text(store.telemetryStatusText).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                ForEach(store.programme?.choices ?? []) { choice in
+                    Button {
+                        store.startCached(choiceID: choice.id)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(choice.date, format: .dateTime.weekday().day().month()).font(.headline)
+                            Text(choice.plan.items.compactMap { ExerciseCatalog.find($0.exerciseID)?.name }.joined(separator: ", "))
+                                .font(.caption2).multilineTextAlignment(.leading)
+                            Text(Calendar.current.isDate(choice.date, inSameDayAs: now) ? "Start whole workout" : "Repeat as practice today")
+                                .font(.caption2)
+                        }
+                    }.buttonStyle(.bordered).disabled(!store.canStartCached)
+                }
+                if !store.canStartCached {
+                    Text("Open your training profile on iPhone to refresh Watch sharing, setup and membership.").font(.caption2).foregroundStyle(.secondary)
+                }
+                if let status = store.status { Text(status).font(.caption2).foregroundStyle(.orange) }
+                Text(store.telemetryStatusText).font(.caption2).foregroundStyle(.secondary)
                 Button("Reconnect") { store.link.request() }.buttonStyle(.bordered)
-                if store.recordingState != .saving {
-                    Button("Stop Watch recording", systemImage: "stop.circle") { store.stopLocalRecording() }
-                        .buttonStyle(.bordered).tint(.orange).accessibilityIdentifier("watch-stop-local-recording")
-                    Text("Your iPhone session stays open.").font(.caption2).foregroundStyle(.secondary)
-                }
             }.padding(.horizontal, 12)
-        }.accessibilityIdentifier("watch-disconnected-recording")
+        }.accessibilityIdentifier("watch-cached-workouts")
+    }
+    private func localMetrics(_ journal: WatchWorkoutJournal, now: Date) -> some View {
+        VStack(spacing: 6) {
+            Text(ExerciseCatalog.find(journal.current.exerciseID)?.name ?? "Workout").font(.headline).lineLimit(2)
+            Text("Set \(journal.setNumber) · \(journal.index + 1) of \(journal.items.count)").font(.caption2).foregroundStyle(.secondary)
+            Text(journal.current.unit == .seconds ? "\(Int(journal.activeSeconds)) s" : journal.reps.map(String.init) ?? "—")
+                .font(.system(size: min(countFontSize, 48), weight: .semibold, design: .rounded)).monospacedDigit()
+                .accessibilityIdentifier("watch-local-quantity")
+            if !journal.policyRestricted { Text("Target \(journal.current.target) \(journal.current.unit == .seconds ? "seconds" : "reps")").font(.caption2).foregroundStyle(.secondary) }
+            Text(journal.current.unit == .seconds ? "Manual active timer" : "Manual reps").font(.caption2)
+            if journal.phase == .rest { Text("Rest · \(max(0, journal.current.restSeconds - Int(journal.restSeconds))) s").font(.caption) }
+            else if journal.phase == .paused { Text("Paused").font(.caption) }
+            else if !journal.hasStarted { Text("Start when ready").font(.caption) }
+            if journal.current.unit == .reps, [.active, .paused].contains(journal.phase) {
+                HStack {
+                    Button("−") { store.setLocalReps(max(0, (journal.reps ?? 0) - 1)) }.accessibilityLabel("Decrease actual reps")
+                    Button("+") { store.setLocalReps(min(200, (journal.reps ?? 0) + 1)) }.accessibilityLabel("Increase actual reps")
+                }.buttonStyle(.bordered)
+            }
+            if let heart = store.heart?.heartRate(at: now) { Text("\(Int(heart.rounded())) BPM").font(.caption).foregroundStyle(.red) }
+            else { Text(journal.grant.age?.allowsHealthIntegration == true && !journal.policyRestricted ? "No recent pulse" : "Health collection off").font(.caption2).foregroundStyle(.secondary) }
+        }.padding(.horizontal, 12).focusable()
+            .digitalCrownRotation($crownReps, from: 0, through: 200, by: 1, sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)
+            .onChange(of: crownReps) { _, value in
+                guard journal.current.unit == .reps, [.active, .paused].contains(journal.phase) else { return }
+                store.setLocalReps(Int(value))
+            }
+            .onChange(of: journal.reps) { _, value in crownReps = Double(value ?? 0) }
+            .accessibilityIdentifier("watch-local-metrics")
+    }
+    private func localControls(_ journal: WatchWorkoutJournal) -> some View {
+        ScrollView {
+            VStack(spacing: 10) {
+                Text("Workout controls").font(.headline)
+                if journal.policyRestricted {
+                    Text("Profile or sharing changed. Save your actual work here; review the next workout on iPhone.").font(.caption2)
+                }
+                if !journal.hasStarted && journal.phase == .active && !journal.policyRestricted {
+                    Button("Start set") { store.beginLocalSet() }.buttonStyle(.borderedProminent)
+                } else if [.active, .paused].contains(journal.phase) && journal.hasStarted {
+                    if journal.phase == .active { Button("Pause") { store.pauseLocal() }.buttonStyle(.bordered) }
+                    else if !journal.policyRestricted { Button("Resume") { store.resumeLocal() }.buttonStyle(.borderedProminent) }
+                    Button("End set") { store.endLocalSet() }.buttonStyle(.bordered).disabled(!journal.canEndSet)
+                } else if journal.phase == .rest {
+                    Text("How did that set feel?").font(.caption)
+                    ForEach(SetEffort.allCases, id: \.rawValue) { effort in
+                        Button(effort.title) { store.setEffort(journal.completed.last?.effort == effort ? nil : effort) }
+                            .buttonStyle(.bordered).tint(journal.completed.last?.effort == effort ? .green : .blue)
+                    }
+                    if journal.index + 1 < journal.items.count && !journal.policyRestricted {
+                        Button("Next set ready") { store.nextLocalSet() }.buttonStyle(.bordered)
+                        Text("Your next set becomes ready after rest. Start it when you are ready.").font(.caption2).foregroundStyle(.secondary)
+                    }
+                }
+                Button("Finish workout", role: .destructive) { store.requestLocalFinish() }.buttonStyle(.bordered)
+                Text(store.status ?? store.recordingState.message).font(.caption2).foregroundStyle(.secondary)
+                if store.recordingBusy { Button("Stop Health collection") { store.stopLocalRecording() }.buttonStyle(.bordered) }
+                Text(store.telemetryStatusText).font(.caption2).foregroundStyle(.secondary)
+            }.padding(.horizontal, 12)
+        }.accessibilityIdentifier("watch-local-controls")
+    }
+    private func localVitals(now: Date) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Watch readings").font(.headline)
+                let heart = store.heart?.heartRate(at: now)
+                Text(heart.map { "\(Int($0.rounded())) BPM" } ?? "No recent pulse").font(.title2)
+                metric("Wrist acceleration", reading: store.acceleration, unit: "g", now: now)
+                metric("Angular speed", reading: store.rotation, unit: "rad/s", now: now)
+                Text(store.recordingState.message).font(.caption2)
+                Text("Readings come from Watch sensors. Manual reps and timer values remain separate.").font(.caption2).foregroundStyle(.secondary)
+                if heart == nil { Text("Check Watch fit and Health access in Settings if you want readings.").font(.caption2).foregroundStyle(.secondary) }
+            }.padding(.horizontal, 12)
+        }
     }
 
     private func metrics(_ snapshot: CompanionSnapshot, now: Date) -> some View {
@@ -156,7 +228,7 @@ struct WatchTrainingView: View {
                         }
                         Button("End session", systemImage: "xmark") { store.command(.finish) }
                             .buttonStyle(.bordered).tint(.red).accessibilityIdentifier("watch-end-session")
-                    }.disabled(!store.reachable)
+                    }.disabled(!store.reachable || !snapshot.isFresh(at: now))
                     if !store.reachable { Text("Open iPhone to reconnect.").font(.caption2).foregroundStyle(.secondary) }
                 }
                 recordingControl(snapshot)
@@ -210,24 +282,10 @@ struct WatchTrainingView: View {
             Text(value.map { String(format: "%.2f %@", $0, unit) } ?? "—").font(.body).monospacedDigit()
         }
     }
-    @ViewBuilder private func recordingControl(_ snapshot: CompanionSnapshot, compact: Bool = false) -> some View {
-        if snapshot.configured?.stoppedForDiscomfort != true, snapshot.configured?.currentWasSkipped != true {
-            if store.recordingBusy {
-                if compact {
-                    Text(store.recording ? (store.recordingState == .paused ? "Paused" : "Recording") : (store.recordingState == .saving ? "Saving…" : "Starting…"))
-                        .font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(1)
-                        .accessibilityLabel(store.recordingState.message)
-                }
-            } else if [.active, .rest].contains(snapshot.phase) {
-                Button(compact ? "Record" : "Start Watch workout", systemImage: "heart") {
-                    store.record()
-                    if compact { page = .controls }
-                }
-                    .buttonStyle(.bordered).controlSize(.small).font(compact ? .system(size: 11) : .caption2)
-                    .accessibilityLabel("Start Watch workout")
-                    .accessibilityIdentifier(compact ? "watch-start-workout" : "watch-start-workout-controls")
-            }
-        }
+    private func recordingControl(_ snapshot: CompanionSnapshot, compact: Bool = false) -> some View {
+        Text(store.recordingState.message).font(compact ? .system(size: 9) : .caption2)
+            .foregroundStyle(.secondary).lineLimit(compact ? 2 : nil)
+            .accessibilityIdentifier("watch-automatic-recording-status")
     }
     private func exerciseName(_ snapshot: CompanionSnapshot) -> String {
         snapshot.configured.flatMap { ExerciseCatalog.find($0.exerciseID)?.name } ?? snapshot.exercise?.title ?? "Workout"

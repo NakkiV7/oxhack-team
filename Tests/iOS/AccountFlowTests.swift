@@ -232,6 +232,76 @@ import CryptoKit
         XCTAssertNil(account.accountID)
     }
 
+    func testOnlyGenuineOnlineAccountVerificationDurablyRenewsWatchFreshness() async throws {
+        let vault = MemoryAccountCredentials(), wire = AccountTestTransport()
+        let original = try fixtureCredential()
+        try vault.save(original)
+        wire.failure = URLError(.notConnectedToInternet)
+        func makeStore() -> NativeAccountStore { NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: AccountTestAuthorization()) }
+        let offline = makeStore(); await offline.restore()
+        XCTAssertTrue(offline.trusted); XCTAssertNil(offline.lastTrustedVerification)
+        wire.failure = nil
+        let before = Date()
+        wire.replies = [Data("{\"challenge\":\"challenge\",\"expiresAt\":\"2030-01-01T00:00:00Z\"}".utf8), try AccountJSON.encoder().encode(original.session)]
+        await offline.refresh()
+        let verified = try XCTUnwrap(offline.lastTrustedVerification)
+        XCTAssertGreaterThanOrEqual(verified, before)
+        XCTAssertEqual(try vault.load()?.lastTrustedVerification, verified)
+        wire.failure = URLError(.notConnectedToInternet)
+        let reopened = makeStore(); await reopened.restore(); await reopened.restore()
+        XCTAssertEqual(reopened.lastTrustedVerification, verified)
+        XCTAssertEqual(try vault.load()?.lastTrustedVerification, verified)
+        let legacy = try AccountJSON.decoder().decode(StoredAccountCredential.self, from: AccountJSON.encoder().encode(original))
+        XCTAssertNil(legacy.lastTrustedVerification)
+    }
+
+    func testKnownInvalidSessionCannotResurrectWatchVerificationOnLaterOfflineRestore() async throws {
+        let vault = MemoryAccountCredentials(), wire = AccountTestTransport()
+        var original = try fixtureCredential(); original.lastTrustedVerification = Date()
+        try vault.save(original)
+        wire.failure = AccountFailure.service(401, "Session invalid")
+        let store = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: AccountTestAuthorization())
+        await store.restore()
+        XCTAssertNil(store.lastTrustedVerification)
+        wire.failure = URLError(.notConnectedToInternet)
+        let reopened = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: AccountTestAuthorization())
+        await reopened.restore()
+        XCTAssertNil(reopened.lastTrustedVerification)
+        XCTAssertNil(try vault.load()?.lastTrustedVerification)
+    }
+
+    func testWatchReconnectVerifiesOnlineOnceWithoutReplacingWorkspaceOrMintingCachedFreshness() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let wire = AccountTestTransport(), vault = MemoryAccountCredentials(), stored = try fixtureCredential()
+        try vault.save(stored); wire.failure = URLError(.notConnectedToInternet)
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: AccountTestAuthorization())
+        await account.restore()
+        let coordinator = AccountWorkspaceCoordinator(account: account, root: root)
+        coordinator.accountChanged()
+        await coordinator.createProfile(name: "Watch reconnect", age: try TrainingAgeContext(ageYears: 30, guardianManaged: false))
+        let workspace = try XCTUnwrap(coordinator.visibleWorkspace)
+        try workspace.watchSharing.setEnabled(true)
+        let before = wire.requests.count
+        wire.failure = nil; wire.replies = [Data("{\"challenge\":\"challenge\",\"expiresAt\":\"2030-01-01T00:00:00Z\"}".utf8), try AccountJSON.encoder().encode(stored.session)]
+        workspace.training.companion.onRequest?(); workspace.training.companion.onRequest?(); workspace.training.companion.onRequest?()
+        for _ in 0..<30 { try await Task.sleep(for: .milliseconds(20)); if account.lastTrustedVerification != nil { break } }
+        XCTAssertEqual(wire.requests.count, before + 2)
+        let verified = try XCTUnwrap(account.lastTrustedVerification)
+        XCTAssertEqual(try vault.load()?.lastTrustedVerification, verified)
+        coordinator.accountChanged()
+        XCTAssertTrue(coordinator.visibleWorkspace === workspace)
+        wire.failure = URLError(.notConnectedToInternet)
+        workspace.training.companion.onRequest?()
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertEqual(wire.requests.count, before + 2)
+        XCTAssertEqual(account.lastTrustedVerification, verified)
+        try workspace.watchSharing.setEnabled(false)
+        workspace.training.companion.onRequest?()
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertEqual(wire.requests.count, before + 2)
+    }
+
     private func fixtureCredential() throws -> StoredAccountCredential {
         let account = UUID()
         return StoredAccountCredential(session: NativeAccountSession(authenticated: true, accountID: account, appAccountToken: account, deviceID: UUID(), accessToken: "access", refreshToken: "refresh", accessExpiresAt: Date().addingTimeInterval(900), refreshExpiresAt: Date().addingTimeInterval(86400)), privateKey: P256.Signing.PrivateKey().rawRepresentation)

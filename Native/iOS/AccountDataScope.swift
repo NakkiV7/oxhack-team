@@ -111,6 +111,8 @@ struct TrainingProfileDescriptor: Codable, Identifiable, Equatable {
     let health: HealthDataStore
     let path: TrainingPathStore
     let programme: ProgrammeStore
+    let watchSharing: WatchSharingStore
+    var watchBridge: WatchWorkoutBridge?
     var programmeSync: ProgrammeSyncStore?
     init(scope: AccountDataScope) throws {
         try scope.prepare(); self.scope = scope
@@ -124,11 +126,13 @@ struct TrainingProfileDescriptor: Codable, Identifiable, Equatable {
         }
         let defaults = UserDefaults(suiteName: "Spottr.Scope.\(scope.accountID.uuidString).\(scope.profileID.uuidString)")!
         profile = NativeProfileStore(url: scope.file("profile.json"), fixedAge: knownAge, preferencesDefaults: defaults)
+        watchSharing = try WatchSharingStore(scope: scope, age: profile.profile?.programmePreferences?.ageContext)
         programme = ProgrammeStore(scope: scope, profile: profile)
         path = TrainingPathStore(url: scope.file("training-path.json"))
         let rewards = NativeRewardsStore(url: scope.file("rewards.json"), allowsTimePressureRewards: profile.profile?.programmePreferences?.ageContext?.allowsTimePressureRewards == true, requiresCapturedAdult: true)
         let voice = RemoteVoicePlayback(offlineOnly: true, defaults: defaults, gentleOnly: (profile.profile?.programmePreferences?.ageContext?.ageYears ?? 0) < 18)
         training = TrainingStore(historyURL: scope.file("history.json"), voicePlayback: voice, rewardsStore: rewards, defaults: defaults, accountScope: scope)
+        training.watchSharing = watchSharing
         training.programme = programme
         training.quests = QuestStore(scope: scope, profile: profile, programme: programme, history: training.historyAvailable ? training.history : nil)
         training.rewardReminders = RewardReminderStore(scope: scope, profile: profile, rewards: rewards, programme: programme, client: LocalRewardNotificationClient())
@@ -140,6 +144,8 @@ struct TrainingProfileDescriptor: Codable, Identifiable, Equatable {
     var hasOngoingWorkout: Bool { training.sessionPhase != .idle && training.sessionPhase != .finished }
     func suspend(preservingLaunchIntent: Bool = false) {
         if !preservingLaunchIntent { launch?.cancel() }
+        watchBridge?.publish(snapshot: nil, context: nil, active: false)
+        watchSharing.setActive(false)
         training.setAccountActive(false)
         do { try training.preservePendingWorkout() } catch { training.error = "The paused workout could not be archived. Keep this app open and retry before switching accounts." }
         health.disconnect()

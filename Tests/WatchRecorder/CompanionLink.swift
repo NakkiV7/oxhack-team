@@ -1,6 +1,11 @@
 import Foundation
 
 final class CompanionLink {
+    var onProgramme: ((WatchProgrammeTransport) -> Void)?
+    var onScopedSnapshot: ((WatchScopedSnapshot) -> Void)?
+    var onWorkoutAcknowledgement: ((WatchWorkoutAcknowledgement) -> Void)?
+    private(set) var workouts: [WatchWorkoutJournal] = []
+    func sendWorkout(_ value: WatchWorkoutJournal) { workouts.append(value) }
     var onSnapshot: ((CompanionSnapshot) -> Void)?
     var onReachability: ((Bool) -> Void)?
     var onTelemetryDeliveryStatus: ((WatchTelemetryDeliveryStatus) -> Void)?

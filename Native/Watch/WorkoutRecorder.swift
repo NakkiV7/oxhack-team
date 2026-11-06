@@ -11,7 +11,7 @@ final class WorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBu
         var isBusy: Bool { self == .requestingAccess || self == .starting || isRecording || self == .saving }
         var message: String {
             switch self {
-            case .idle: return "Record on Watch to see heart rate."
+            case .idle: return "Health readings start with an eligible workout."
             case .requestingAccess: return "Requesting workout access…"
             case .starting: return "Starting workout…"
             case .recording: return "Workout recording"
@@ -131,6 +131,12 @@ final class WorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBu
         capture.resume(); workout.resume()
         if state == .paused { state = .recording; startMotion() }
     }
+    func cancelForPolicy() {
+        capture = WatchCaptureLifecycle(); generation = UUID(); motion.stopDeviceMotionUpdates()
+        let oldWorkout = workout, oldBuilder = builder
+        workout = nil; builder = nil; motionAccumulator = nil
+        oldWorkout?.end(); oldBuilder?.discardWorkout(); state = .idle
+    }
     func end() {
         guard state.isBusy, state != .saving else { return }
         let collected = state.isRecording
@@ -142,22 +148,19 @@ final class WorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBu
         guard collected else { builder.discardWorkout(); state = .idle; return }
         state = .saving
         builder.endCollection(withEnd: Date()) { [weak self] success, _ in
-            guard let self else { return }
-            guard success else {
-                builder.discardWorkout()
-                Task { @MainActor in
-                    guard self.capture.isCurrent(token) else { return }
-                    self.state = .failed("Couldn’t save workout.")
-                }; return
-            }
-            builder.finishWorkout { workout, error in
-                Task { @MainActor in
-                    guard self.capture.isCurrent(token) else { return }
-                    self.state = workout != nil && error == nil ? .saved : .failed("Couldn’t save workout.")
+            Task { @MainActor in
+                guard let self, self.capture.isCurrent(token), self.generation == token, self.state == .saving else { builder.discardWorkout(); return }
+                guard success else { builder.discardWorkout(); self.state = .failed("Couldn’t save workout."); return }
+                builder.finishWorkout { workout, error in
+                    Task { @MainActor in
+                        guard self.capture.isCurrent(token), self.generation == token else { return }
+                        self.state = workout != nil && error == nil ? .saved : .failed("Couldn’t save workout.")
+                    }
                 }
             }
         }
     }
+
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState, from fromState: HKWorkoutSessionState, date: Date) {}
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {
         Task { @MainActor in

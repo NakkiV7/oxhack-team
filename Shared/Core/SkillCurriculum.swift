@@ -14,7 +14,7 @@ public enum SkillCurriculum {
         public init(owner: WorkoutOwner, legacyHistory: [SessionRecord], calendar: Calendar) {
             self.owner = owner
             let eligible = legacyHistory.filter {
-                $0.trainingContext == nil || ($0.trainingContext?.owner == owner && $0.trainingContext?.age?.allowsTimePressureRewards == true)
+                $0.trainingContext == nil || ($0.trainingContext?.owner == owner && $0.trainingContext?.allowsAdultCompletion == true)
             }
             let earned = Set(SkillProgress.evaluate(history: eligible, calendar: calendar).nodes
                 .filter { $0.qualifyingSets >= 3 && $0.trainingDays >= 2 }.map(\.exerciseID))
@@ -33,7 +33,7 @@ public enum SkillCurriculum {
         public func qualifiedHistory(_ history: [SessionRecord]) -> [SessionRecord] {
             history.compactMap { record in
                 if let context = record.trainingContext {
-                    return context.owner == owner && context.age?.allowsTimePressureRewards == true ? record : nil
+                    return context.owner == owner && context.allowsAdultCompletion ? record : nil
                 }
                 let sets = record.sets.filter { legacySupport.contains(.init(recordID: record.id, setID: $0.id, exerciseID: $0.exercise.rawValue)) }
                 let logged = record.loggedSets.filter { legacySupport.contains(.init(recordID: record.id, setID: $0.id, exerciseID: $0.exerciseID)) }

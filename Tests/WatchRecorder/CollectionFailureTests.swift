@@ -298,7 +298,24 @@ import CoreMotion
         await until { recorder.state == .saved }
     }
 
+    @MainActor static func knownPolicyCorrectionCancelsDelayedHealthSave() async {
+        let recorder = WorkoutRecorder()
+        recorder.start(); await until { recorder.state == .starting }
+        guard let builder = HKWorkoutSession.created.last?.liveBuilder else { expect(false, "Builder exists"); return }
+        builder.collectionCompletion?(true, nil); await until { recorder.state == .recording }
+        HKLiveWorkoutBuilder.deferEndCollection = true
+        defer { HKLiveWorkoutBuilder.deferEndCollection = false }
+        recorder.end()
+        expect(recorder.state == .saving, "Final Health collection is pending")
+        recorder.cancelForPolicy()
+        builder.endCompletion?(true, nil)
+        for _ in 0..<100 { await Task.yield() }
+        expect(builder.finishCount == 0, "Known restrictive policy must prevent a delayed callback from starting a Health save")
+        expect(recorder.state == .idle, "Old completion cannot relabel the retired recorder")
+    }
+
     @MainActor static func main() async {
+        await knownPolicyCorrectionCancelsDelayedHealthSave()
         await motionWindowsIncludeTenHertzSamplesAndFlushBeforePauseOrEnd()
         await motionUsesAppleUnitsAndBootRelativeSampleTime()
         await recordingWaitsForSuccessfulCollectionAndTracksPause()
@@ -312,6 +329,6 @@ import CoreMotion
         await invalidAndMissingEnergyNeverBecomeAnEstimate()
         await energyIdentitySurvivesResumeButRejectsStoppedOrReplacedBuilders()
         if failures > 0 { print("Watch recorder: \(failures) failures"); exit(1) }
-        print("Watch recorder: 12 behavioral cases passed (SDK doubles; no HealthKit/device acceptance)")
+        print("Watch recorder: 13 behavioral cases passed (SDK doubles; no HealthKit/device acceptance)")
     }
 }

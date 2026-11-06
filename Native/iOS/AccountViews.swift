@@ -90,7 +90,7 @@ import AuthenticationServices
     private func select(_ id: UUID) throws {
         guard let directory, directory.profiles.contains(where: { $0.id == id }), account.trusted, directory.accountID == account.accountID else { throw AccountFailure.reauthenticate }
         let scope = directory.scope(id)
-        if workspace?.scope == scope { workspace?.training.setAccountActive(true); return }
+        if workspace?.scope == scope { workspace?.watchSharing.setActive(true); workspace?.training.setAccountActive(true); return }
         try requireNoOtherWorkout()
         workspace?.suspend()
         let next = try AccountWorkspace(scope: scope)
@@ -114,6 +114,12 @@ import AuthenticationServices
         workspace.programme.sync = workspace.programmeSync
         launch.healthStore = workspace.health; launch.guardianAuthorization = account.authorization
         workspace.launch = launch; workspace.training.launchCoordinator = launch
+        let bridge = WatchWorkoutBridge(workspace: workspace, account: account, membership: membership,
+            isCurrent: { [weak self, weak workspace] in
+                guard let self, let workspace else { return false }
+                return self.visibleWorkspace === workspace && self.account.trusted
+            })
+        workspace.watchBridge = bridge; workspace.training.watchBridge = bridge
     }
     private func requireNoOtherWorkout() throws {
         guard workspace?.hasOngoingWorkout != true else { throw WorkspaceFailure.unfinished }
@@ -180,6 +186,7 @@ struct AccountRootView: View {
                         }
                     } label: { Label("Account and training profiles", systemImage: "person.crop.circle.badge.checkmark").font(.footnote).padding(8) }
                 }
+                .environment(\.watchSharing, workspace.watchSharing)
                 .id(ObjectIdentifier(workspace))
                 .task(id: ObjectIdentifier(workspace)) {
                     workspace.training.setAccountActive(true)
