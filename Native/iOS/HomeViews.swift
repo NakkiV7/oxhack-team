@@ -7,7 +7,7 @@ struct SpottrRoot: View {
     @State private var introductionPresented: Bool
     @State private var settingsPresented = false
     @State private var selectedTab = "today"
-    @State private var healthStore: HealthDataStore
+    private let healthStore: HealthDataStore
     let guardianAuthorization: (any NativeAccountAuthorization)?
 
     init(store: TrainingStore, profileStore: NativeProfileStore, workspace: PreviewWorkspace? = nil, healthStore: HealthDataStore? = nil, guardianAuthorization: (any NativeAccountAuthorization)? = nil) {
@@ -15,7 +15,7 @@ struct SpottrRoot: View {
         self.profileStore = profileStore
         self.workspace = workspace
         self.guardianAuthorization = guardianAuthorization
-        _healthStore = State(initialValue: healthStore ?? HealthDataStore())
+        self.healthStore = healthStore ?? HealthDataStore()
         _introductionPresented = State(initialValue: profileStore.shouldShowIntroduction())
     }
 
@@ -59,6 +59,7 @@ struct SpottrRoot: View {
                                 historyAvailable: store.historyAvailable, workspace: workspace, healthStore: healthStore)
         }
         .foregroundStyle(Palette.ink)
+        .id(ObjectIdentifier(store))
     }
 }
 

@@ -101,8 +101,8 @@ struct TrainingProfileDescriptor: Codable, Identifiable, Equatable {
     }
     var hasOngoingWorkout: Bool { training.sessionPhase != .idle && training.sessionPhase != .finished }
     func suspend() {
-        do { try training.preservePendingWorkout() } catch { training.error = "The paused workout could not be archived. Keep this app open and retry before switching accounts." }
         training.setAccountActive(false)
+        do { try training.preservePendingWorkout() } catch { training.error = "The paused workout could not be archived. Keep this app open and retry before switching accounts." }
         health.disconnect()
     }
 }
@@ -167,6 +167,7 @@ struct AccountLocalExport: Codable {
     let history: [SessionRecord]
     let rewards: GamificationLedger?
     let pendingWorkout: PendingPhoneWorkout?
+    let unfinishedWorkouts: [PendingPhoneWorkout]
 }
 
 enum AccountLocalArchives {
@@ -193,12 +194,39 @@ extension AccountDataScope {
             guard FileManager.default.fileExists(atPath: url.path) else { return nil }
             return try JSONDecoder().decode(type, from: Data(contentsOf: url))
         }
-        let export = AccountLocalExport(formatVersion: 1, accountID: accountID, profileID: profileID,
+        let export = AccountLocalExport(formatVersion: 2, accountID: accountID, profileID: profileID,
             profile: try read(LocalProfile.self, name: "profile.json"), history: try HistoryStore(url: file("history.json")).load(),
-            rewards: try read(GamificationLedger.self, name: "rewards.json"), pendingWorkout: try read(PendingPhoneWorkout.self, name: "pending-phone-workout.json"))
+            rewards: try read(GamificationLedger.self, name: "rewards.json"), pendingWorkout: try read(PendingPhoneWorkout.self, name: "pending-phone-workout.json"),
+            unfinishedWorkouts: try unfinishedSnapshots().map(\.snapshot))
         let target = URL.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("spottr-local-profile.json")
         let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try ProtectedLocalStorage.write(encoder.encode(export), to: target)
         return target
+    }
+}
+
+struct UnfinishedWorkoutSnapshot {
+    let url: URL
+    let snapshot: PendingPhoneWorkout
+}
+extension PendingPhoneWorkout {
+    static func files(in folder: URL) throws -> [URL] {
+        guard FileManager.default.fileExists(atPath: folder.path) else { return [] }
+        return try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.isRegularFileKey]).filter { url in
+            let name = url.lastPathComponent
+            let isSnapshot = name == "pending-phone-workout.json" ||
+                (name.hasPrefix("pending-") && name.hasSuffix(".json") && UUID(uuidString: String(name.dropFirst(8).dropLast(5))) != nil)
+            guard isSnapshot else { return false }
+            return try url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile == true
+        }.sorted { $0.lastPathComponent < $1.lastPathComponent }
+    }
+}
+extension AccountDataScope {
+    func unfinishedSnapshots() throws -> [UnfinishedWorkoutSnapshot] {
+        try PendingPhoneWorkout.files(in: folder).map { url in
+            let saved = try JSONDecoder().decode(PendingPhoneWorkout.self, from: Data(contentsOf: url))
+            guard saved.accountID == accountID, saved.profileID == profileID else { throw CocoaError(.fileReadCorruptFile) }
+            return UnfinishedWorkoutSnapshot(url: url, snapshot: saved)
+        }
     }
 }

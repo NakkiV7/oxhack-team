@@ -152,7 +152,10 @@ struct RegistrationOptionsReply: Decodable { let flowToken: String; let options:
 struct LoginOptionsReply: Decodable { let flowToken: String; let expiresAt: Date; let options: PasskeyRequestOptions }
 struct RefreshRequest: Encodable { let requestID: UUID }
 struct DeleteRequest: Encodable { let confirm = "DELETE" }
-struct RevocationRequest: Encodable { let deviceID: UUID }
+struct RevocationRequest: Encodable {
+    let deviceID: String
+    init(deviceID: UUID) { self.deviceID = deviceID.uuidString.lowercased() }
+}
 struct SignedOutReply: Decodable { let signedOut: Bool }
 struct DeletedReply: Decodable { let deleted: Bool; let phoneHistoryUnchanged: Bool }
 struct LinkedReply: Decodable { let linked: Bool }

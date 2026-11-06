@@ -30,15 +30,18 @@ import SwiftUI
             if let selected = directory?.selectedID { try select(selected) }
         } catch { message = "This profile could not be opened. Saved data has not been changed." }
     }
-    func createProfile(name: String, age: TrainingAgeContext) async {
+    @discardableResult func createProfile(name: String, age: TrainingAgeContext) async -> Bool {
         do {
             guard account.trusted, let directory else { throw AccountFailure.reauthenticate }
             if age.guardianManaged || !directory.profiles.isEmpty { try await account.authorization.guardian() }
             guard account.accountID == directory.accountID else { throw AccountFailure.reauthenticate }
             try requireNoOtherWorkout()
+            let isFirstProfile = directory.profiles.isEmpty
             let profile = try directory.add(age: age, name: name)
+            if isFirstProfile { account.consumeInitialProfileCheckpoint() }
             try select(profile.id)
-        } catch { message = error.localizedDescription }
+            return true
+        } catch { message = error.localizedDescription; return false }
     }
     func choose(_ id: UUID) async {
         do {
@@ -116,7 +119,8 @@ struct AccountRootView: View {
                         }
                     } label: { Label("Account and training profiles", systemImage: "person.crop.circle.badge.checkmark").font(.footnote).padding(8) }
                 }
-                .task(id: workspace.scope) {
+                .id(ObjectIdentifier(workspace))
+                .task(id: ObjectIdentifier(workspace)) {
                     workspace.training.setAccountActive(true)
                     while !Task.isCancelled {
                         workspace.training.coachingTick(); workspace.training.publish()
@@ -142,6 +146,7 @@ struct AccountSetupView: View {
     let coordinator: AccountWorkspaceCoordinator
     @State private var age = ""
     @State private var role = AccountPolicy.Role.adultSelf
+    @State private var profileRole: AccountPolicy.Role?
     @State private var email = ""
     @State private var code = ""
     @State private var name = ""
@@ -224,6 +229,14 @@ struct AccountSetupView: View {
         }
         if account.step != .identity { Section { Button("Cancel setup") { account.cancelSetup(); code = "" }.disabled(account.busy) } }
     }
+    private var initialProfileCheckpoint: TrainingAgeContext? {
+        coordinator.directory?.profiles.isEmpty == true ? account.checkpoint : nil
+    }
+    private func trainingAgeForNewProfile() throws -> TrainingAgeContext {
+        if let initialProfileCheckpoint { return initialProfileCheckpoint }
+        guard let profileRole else { throw AccountFailure.checkpointRequired }
+        return try AccountPolicy.checkpoint(ageYears: Int(age) ?? -1, role: profileRole)
+    }
     @ViewBuilder private var profileSetup: some View {
         if !account.backupCodes.isEmpty {
             Section("Save your backup codes") {
@@ -234,15 +247,21 @@ struct AccountSetupView: View {
         }
         Section("Local training profile") {
             TextField("Profile name", text: $name)
-            if account.checkpoint == nil {
+            if initialProfileCheckpoint == nil {
                 TextField("Training person’s age", text: $age).keyboardType(.numberPad)
-                Picker("Role", selection: $role) { Text("Adult self").tag(AccountPolicy.Role.adultSelf); Text("Adult guardian").tag(AccountPolicy.Role.guardian) }
+                Picker("Role", selection: $profileRole) {
+                    Text("Choose role").tag(nil as AccountPolicy.Role?)
+                    Text("Adult self").tag(Optional(AccountPolicy.Role.adultSelf))
+                    Text("Adult guardian").tag(Optional(AccountPolicy.Role.guardian))
+                }.pickerStyle(.segmented)
             }
             Button("Create training profile") {
                 Task {
                     do {
-                        let context = try account.checkpoint ?? AccountPolicy.checkpoint(ageYears: Int(age) ?? -1, role: role)
-                        await coordinator.createProfile(name: name, age: context)
+                        let context = try trainingAgeForNewProfile()
+                        if await coordinator.createProfile(name: name, age: context) {
+                            name = ""; age = ""; profileRole = nil
+                        }
                     } catch { localMessage = error.localizedDescription }
                 }
             }
@@ -273,7 +292,7 @@ struct AccountControlsView: View {
                     Button("Link Apple identity") { Task { await coordinator.account.startApple(purpose: .link); creatingProfile = true } }
                     Button("Verify passkey and Authenticator again") { Task { await coordinator.account.login(); creatingProfile = true } }
                     Button("Sign out") {
-                        do { try coordinator.workspace?.training.preservePendingWorkout(); coordinator.workspace?.suspend(); Task { await coordinator.account.signOut() } }
+                        do { coordinator.workspace?.training.setAccountActive(false); try coordinator.workspace?.training.preservePendingWorkout(); coordinator.workspace?.suspend(); Task { await coordinator.account.signOut() } }
                         catch { message = "The paused workout could not be saved. Retry before signing out." }
                     }
                     Button("Delete online account", role: .destructive) { confirmDelete = true }
@@ -290,7 +309,7 @@ struct AccountControlsView: View {
         .sheet(isPresented: $creatingProfile) { AccountSetupView(account: coordinator.account, coordinator: coordinator) }
         .confirmationDialog("Delete the online account and its cloud data?", isPresented: $confirmDelete) {
             Button("Delete online account", role: .destructive) {
-                do { try coordinator.workspace?.training.preservePendingWorkout(); Task { await coordinator.account.deleteAccount() } }
+                do { coordinator.workspace?.training.setAccountActive(false); try coordinator.workspace?.training.preservePendingWorkout(); Task { await coordinator.account.deleteAccount() } }
                 catch { message = "The paused workout could not be saved. Retry before deleting the account." }
             }
         }
@@ -300,14 +319,17 @@ struct AccountControlsView: View {
 struct LegacyAccountRecordsView: View {
     let root: URL
     @State private var records: [SessionRecord] = []
+    @State private var unfinishedFiles: [URL] = []
     @State private var export: URL?
     @State private var message: String?
     var body: some View {
         List {
             Text("These are existing records on this phone. Viewing or exporting them does not assign them to a new account or child.")
             ForEach(records) { record in Text(record.date.formatted(date: .abbreviated, time: .shortened)) }
-            if FileManager.default.fileExists(atPath: root.appendingPathComponent("pending-phone-workout.json").path) {
-                NavigationLink("Preserved unfinished workout") { PendingWorkoutDataView(url: root.appendingPathComponent("pending-phone-workout.json")) }
+            ForEach(unfinishedFiles, id: \.self) { file in
+                NavigationLink(file.lastPathComponent == "pending-phone-workout.json" ? "Current unfinished workout" : "Archived unfinished workout") {
+                    PendingWorkoutDataView(url: file)
+                }
             }
             Button("Prepare history export") {
                 do {
@@ -318,7 +340,10 @@ struct LegacyAccountRecordsView: View {
             if let export { ShareLink("Share history export", item: export) }
             if let message { Text(message) }
         }.navigationTitle("Saved phone records")
-            .task { do { records = try HistoryStore(url: root.appendingPathComponent("history.json")).load() } catch { message = "The saved file could not be read. It has not been replaced." } }
+            .task {
+                do { unfinishedFiles = try PendingPhoneWorkout.files(in: root) } catch { message = "Unfinished snapshots could not be listed. Their files are unchanged." }
+                do { records = try HistoryStore(url: root.appendingPathComponent("history.json")).load() } catch { message = "The saved file could not be read. It has not been replaced." }
+            }
     }
 }
 
@@ -357,8 +382,8 @@ private struct PendingWorkoutDataView: View {
                 if let count = saved.actualReps { LabeledContent("Current set recorded reps", value: String(count)) }
                 if let seconds = saved.measuredSeconds { LabeledContent("Current set measured seconds", value: seconds.formatted()) }
                 LabeledContent("Completed sets retained", value: String(saved.record.sets.count + saved.record.loggedSets.count))
-                ShareLink("Export unfinished workout", item: url)
             } else { Text("The saved draft is unavailable. The original file has not been changed.") }
+            ShareLink("Export preserved unfinished file", item: url)
         }.navigationTitle("Unfinished workout")
             .task { saved = try? JSONDecoder().decode(PendingPhoneWorkout.self, from: Data(contentsOf: url)) }
     }

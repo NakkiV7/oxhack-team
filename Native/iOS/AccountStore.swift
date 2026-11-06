@@ -30,6 +30,7 @@ import CryptoKit
     convenience init() { self.init(client: AccountClient(), credentials: SecureAccountCredentials(), authorization: AuthenticationServicesAccountAuthorization()) }
     var trusted: Bool { accountID != nil && (state == .trustedOnline || state == .trustedOffline) }
     func setCheckpoint(ageYears: Int, role: AccountPolicy.Role) throws { checkpoint = try AccountPolicy.checkpoint(ageYears: ageYears, role: role) }
+    func consumeInitialProfileCheckpoint() { checkpoint = nil }
     func startEmail(email: String, purpose: IdentityPurpose) async {
         await operation {
             if purpose == .enroll, self.checkpoint == nil { throw AccountFailure.checkpointRequired }

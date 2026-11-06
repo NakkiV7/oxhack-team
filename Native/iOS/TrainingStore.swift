@@ -48,8 +48,13 @@ final class TrainingStore {
     let companion = CompanionLink()
     var watchReachable = false
     private(set) var reportedDiscomfort = false
+    private let monotonicClock: () -> Double
     private var accountActive = true
-    func setAccountActive(_ active: Bool) { accountActive = active; setAppActive(active) }
+    func setAccountActive(_ active: Bool) {
+        if !active, sessionPhase == .active { pause() }
+        accountActive = active
+        setAppActive(active)
+    }
     let accountScope: AccountDataScope?
     var dataFolder: URL { historyStore.url.deletingLastPathComponent() }
     private let historyStore: HistoryStore
@@ -330,7 +335,8 @@ final class TrainingStore {
     init(historyURL: URL? = nil,
          voicePlayback: VoicePlayback? = nil, vision: VisionWorker? = nil, rewardsStore: NativeRewardsStore? = nil,
          defaults: UserDefaults = .standard, previewMode: Bool = false, previewPlayback: VoicePlayback? = nil,
-         spokenReps: (any SpokenRepListening)? = nil, accountScope: AccountDataScope? = nil) {
+         spokenReps: (any SpokenRepListening)? = nil, accountScope: AccountDataScope? = nil, clock: @escaping () -> Double = { ProcessInfo.processInfo.systemUptime }) {
+        monotonicClock = clock
         self.accountScope = accountScope
         self.spokenReps = spokenReps ?? SpokenRepInput()
         repVoice = RepVoicePlayer(defaults: defaults)
@@ -445,7 +451,7 @@ final class TrainingStore {
             .map { "\(Int($0.value.rounded())) bpm" } ?? "—"
     }
 
-    var now: Double { ProcessInfo.processInfo.systemUptime }
+    var now: Double { monotonicClock() }
     func start() {
         guard !selectedExercise.isTimed else { error = "Start timed exercises from the exercise library."; return }
         defer { publish() }

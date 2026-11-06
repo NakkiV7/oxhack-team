@@ -3,6 +3,24 @@ import CryptoKit
 @testable import Spottr
 
 @MainActor final class AccountFlowTests: XCTestCase {
+    func testRevocationSerializesCanonicalServerDeviceIDAndSignsExactRequestBody() async throws {
+        let serverID = "abcdef12-3456-4789-abcd-ef1234567890"
+        let deviceID = try XCTUnwrap(UUID(uuidString: serverID))
+        let wire = AccountTestTransport()
+        wire.replies = [Data("{\"challenge\":\"challenge\",\"expiresAt\":\"2030-01-01T00:00:00Z\"}".utf8), Data("{\"signedOut\":true}".utf8)]
+        let credential = try fixtureCredential()
+        let reply: SignedOutReply = try await AccountClient(transport: wire).post("/session/revoke", body: RevocationRequest(deviceID: deviceID), credential: credential)
+        XCTAssertTrue(reply.signedOut)
+        let request = try XCTUnwrap(wire.requests.last)
+        let body = try XCTUnwrap(request.httpBody)
+        XCTAssertEqual(body, try AccountJSON.encoder().encode(["deviceID": serverID]))
+        let proofData = Data(try XCTUnwrap(request.value(forHTTPHeaderField: "X-Spottr-Proof")).utf8)
+        let proof = try JSONDecoder().decode(NativeDeviceProof.self, from: proofData)
+        let message = NativeDeviceProof.message(path: "/api/native/v1/session/revoke", body: body, token: credential.session.accessToken, challenge: proof.challenge, nonce: proof.nonce, issuedAt: proof.issuedAt)
+        let key = try P256.Signing.PrivateKey(rawRepresentation: credential.privateKey)
+        XCTAssertTrue(key.publicKey.isValidSignature(try P256.Signing.ECDSASignature(rawRepresentation: XCTUnwrap(Data(base64URL: proof.signature))), for: message))
+    }
+
     func testDeviceProofSignsExactBodyAndTokenWithRawSignature() throws {
         let key = P256.Signing.PrivateKey()
         let body = Data("{\"requestID\":\"123\"}".utf8)
