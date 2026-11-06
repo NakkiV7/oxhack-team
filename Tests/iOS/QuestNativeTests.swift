@@ -239,7 +239,9 @@ extension QuestNativeTests {
         let imported = try AccountWorkspace(scope: existing)
         XCTAssertFalse(try earned(imported)); imported.suspend()
         let empty = try scope()
-        let first = try AccountWorkspace(scope: empty); first.suspend()
+        let first = try AccountWorkspace(scope: empty)
+        XCTAssertNotNil(first.training.quests?.archive.benchmarkPolicy)
+        first.suspend()
         for record in legacy() { try HistoryStore(url: empty.file("history.json")).save(record) }
         let afterEmpty = try AccountWorkspace(scope: empty)
         XCTAssertFalse(try earned(afterEmpty)); afterEmpty.suspend()
@@ -261,5 +263,54 @@ extension QuestNativeTests {
         XCTAssertNotNil(failedMigration.error)
         XCTAssertTrue(failedMigration.benchmarkHistory(legacy()).isEmpty)
         XCTAssertEqual(try Data(contentsOf: unwritable.file("quests.json")), originalArchive)
+    }
+}
+
+extension QuestNativeTests {
+    func testUnavailableHistoryDefersMigrationUntilOriginalBytesRestoreThroughReopenOrSave() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        for recoverBySaving in [false, true] {
+            let scope = AccountDataScope(accountID: UUID(), profileID: UUID(), root: root)
+            let owner = WorkoutOwner(accountID: scope.accountID, profileID: scope.profileID)
+            try NativeProfileStore(url: scope.file("profile.json")).save(LocalProfile(programmePreferences: .init(goals: [.balance], weekdays: [1], ageContext: .init(ageYears: 15, guardianManaged: true))))
+            let original: [SessionRecord] = (0..<3).map { index in
+                .init(id: UUID(), date: Date().addingTimeInterval(Double(index - 4) * 86400), sets: [], loggedSets: [.init(id: UUID(), exerciseID: "catCow", reps: 6, seconds: 0, source: .manual, reason: .voluntary)])
+            }
+            try JSONEncoder().encode(original).write(to: scope.file("history.json"))
+            let originalBytes = try Data(contentsOf: scope.file("history.json"))
+            XCTAssertEqual(try HistoryStore(url: scope.file("history.json")).load(), original)
+            let questBytes = try JSONEncoder().encode(QuestArchive(owner: owner))
+            try questBytes.write(to: scope.file("quests.json"))
+            let corrupt = Data("temporarily unreadable history".utf8)
+            try corrupt.write(to: scope.file("history.json"))
+            let unavailable = try AccountWorkspace(scope: scope)
+            XCTAssertFalse(unavailable.training.historyAvailable)
+            XCTAssertNil(unavailable.training.quests?.archive.benchmarkPolicy)
+            XCTAssertTrue(unavailable.training.quests?.benchmarkHistory(original).isEmpty == true)
+            XCTAssertEqual(try Data(contentsOf: scope.file("history.json")), corrupt)
+            XCTAssertEqual(try Data(contentsOf: scope.file("quests.json")), questBytes)
+            try originalBytes.write(to: scope.file("history.json"))
+            let late = SessionRecord(id: UUID(), date: Date(), sets: [], loggedSets: [.init(id: UUID(), exerciseID: "catCow", reps: 6, seconds: 0, source: .manual, reason: .voluntary)])
+            let restored: AccountWorkspace
+            if recoverBySaving {
+                unavailable.training.persist(late)
+                restored = unavailable
+            } else {
+                unavailable.suspend()
+                restored = try AccountWorkspace(scope: scope)
+                restored.training.persist(late)
+            }
+            XCTAssertTrue(restored.training.historyAvailable)
+            let quests = try XCTUnwrap(restored.training.quests)
+            let qualified = quests.benchmarkHistory(restored.training.history)
+            XCTAssertEqual(Set(qualified.map(\.id)), Set(original.map(\.id)))
+            XCTAssertEqual(SkillCurriculum.evaluate(profile: try XCTUnwrap(restored.profile.profile), history: qualified).node("catCow")?.state, .earned)
+            XCTAssertFalse(qualified.contains { $0.id == late.id })
+            restored.suspend()
+            let reopened = try AccountWorkspace(scope: scope)
+            XCTAssertEqual(Set(try XCTUnwrap(reopened.training.quests).benchmarkHistory(reopened.training.history).map(\.id)), Set(original.map(\.id)))
+            reopened.suspend()
+        }
     }
 }

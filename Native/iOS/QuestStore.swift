@@ -12,8 +12,11 @@ import Observation
     private let year: QuestCalendar.Year?
     private var active = true
     private var readable = true
-    init(scope: AccountDataScope, profile: NativeProfileStore, programme: ProgrammeStore, history: [SessionRecord]) {
+    private var historySourceAvailable: Bool
+    /// nil means the owned history read failed; [] means a successfully read empty scope.
+    init(scope: AccountDataScope, profile: NativeProfileStore, programme: ProgrammeStore, history: [SessionRecord]?) {
         self.scope = scope; self.profile = profile; self.programme = programme
+        historySourceAvailable = history != nil
         capturedAge = profile.profile?.programmePreferences?.ageContext
         archive = QuestArchive(owner: .init(accountID: scope.accountID, profileID: scope.profileID))
         year = try? QuestCalendar.bundled()
@@ -22,6 +25,11 @@ import Observation
                 let saved = try JSONDecoder().decode(QuestArchive.self, from: Data(contentsOf: scope.file("quests.json")))
                 guard saved.owner == archive.owner else { throw Failure.unreadable }
                 archive = saved
+            }
+            if let policy = archive.benchmarkPolicy, policy.owner != archive.owner { throw Failure.unreadable }
+            guard let history else {
+                self.error = "Your saved workouts couldn’t be read. Your saved progress hasn’t been changed."
+                return
             }
             if archive.benchmarkPolicy == nil {
                 var migrated = archive
@@ -35,12 +43,25 @@ import Observation
     }
     private var valid: Bool { active && profile.permitsPolicyCallbacks && capturedAge != nil && capturedAge == profile.profile?.programmePreferences?.ageContext }
     func choices(history: [SessionRecord], weekly: Bool = false) -> [Quest] {
-        guard valid, readable, let year, let person = profile.profile else { return [] }
+        guard valid, readable, historySourceAvailable, let year, let person = profile.profile else { return [] }
         return QuestCalendar.choices(year: year, profile: person, programme: programme.current, history: history, at: programme.referenceDate, calendar: programme.localCalendar, weekly: weekly, benchmarkPolicy: archive.benchmarkPolicy)
     }
     func benchmarkHistory(_ history: [SessionRecord]) -> [SessionRecord] {
-        guard valid, readable, let policy = archive.benchmarkPolicy, policy.owner == archive.owner else { return [] }
+        guard valid, readable, historySourceAvailable, let policy = archive.benchmarkPolicy, policy.owner == archive.owner else { return [] }
         return policy.qualifiedHistory(history)
+    }
+    /// Only retry from the owned on-disk source, before accepting any new imported record.
+    func recoverBenchmarkHistory() throws {
+        guard !historySourceAvailable else { return }
+        guard valid, readable else { throw Failure.unavailable }
+        let original = try HistoryStore(url: scope.file("history.json")).load()
+        if archive.benchmarkPolicy == nil {
+            var migrated = archive
+            migrated.freezeLegacyBenchmarks(history: original, calendar: programme.localCalendar)
+            try save(migrated)
+        }
+        historySourceAvailable = true
+        error = nil
     }
     func progress(_ quest: Quest, history: [SessionRecord]) -> QuestEvidence {
         QuestProgress.evaluate(quest, owner: archive.owner, currentAge: valid ? capturedAge : nil, history: history, checkIns: archive.checkIns, now: programme.referenceDate, calendar: programme.localCalendar)
@@ -61,6 +82,7 @@ import Observation
     }
     func reconcile(history: [SessionRecord]) throws {
         guard valid else { throw Failure.unavailable }
+        try recoverBenchmarkHistory()
         var next = archive
         next.reconcile(currentAge: capturedAge, history: history, now: programme.referenceDate, calendar: programme.localCalendar)
         if next != archive { try save(next) }

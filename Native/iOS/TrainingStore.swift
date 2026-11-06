@@ -716,7 +716,10 @@ final class TrainingStore {
         var before = history
         let saved: SessionRecord
         do {
-            if !historyAvailable { before = try historyStore.load() }
+            if !historyAvailable {
+                before = try historyStore.load()
+                try quests?.recoverBenchmarkHistory()
+            }
             saved = try recordWithWatchArchive(record)
             history = try historyStore.save(saved).reversed(); historyAvailable = true; error = nil
             do { try watchInbox.remove(sessionID: saved.id); archiveDataWarning = nil }
