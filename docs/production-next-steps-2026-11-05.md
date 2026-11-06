@@ -25,7 +25,7 @@
 - Fresh nonce checks, bounded active polling, queue snapshots, separate data-arrival time and actual motion availability. Cached launch context cannot pretend to be new data.
 - Shorter consumer copy and optional measurement/installation details, while retaining provenance, gaps and errors.
 
-## Current build 23 candidate
+## Current build 23
 
 - 53 catalogue entries and 52 available camera profiles, including deterministic rep, static-hold and dynamic-activity measurement. Cat-cow remains manual. Availability is an implementation fact, not an all-profile accuracy claim.
 - Camera quantities survive input changes; observed seconds remain separate from elapsed/manual timing and source labels preserve mixed work. Ordinary speech finishes naturally, while explicit stop/pain and action cancellation retain immediate control.
