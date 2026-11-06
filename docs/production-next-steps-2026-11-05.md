@@ -1,6 +1,6 @@
 # Spottr feature and release priorities
 
-## Added in this foundation
+## Earlier foundation
 
 - 32 distinct exercise entries, including 13 camera-supported styles. New camera choices check three-second lowering or a two-second pause. Six further movements use explicit manual/timed logging. Labels do not claim the camera verifies support stability, hand width or stance width.
 - Faceless vector guides with highlighted joints, preserving existing skill-path identities and earned progress.
@@ -25,6 +25,13 @@
 - Fresh nonce checks, bounded active polling, queue snapshots, separate data-arrival time and actual motion availability. Cached launch context cannot pretend to be new data.
 - Shorter consumer copy and optional measurement/installation details, while retaining provenance, gaps and errors.
 
+## Current build 23 candidate
+
+- 53 catalogue entries and 52 available camera profiles, including deterministic rep, static-hold and dynamic-activity measurement. Cat-cow remains manual. Availability is an implementation fact, not an all-profile accuracy claim.
+- Camera quantities survive input changes; observed seconds remain separate from elapsed/manual timing and source labels preserve mixed work. Ordinary speech finishes naturally, while explicit stop/pain and action cancellation retain immediate control.
+- Faceless movement-specific guides, coherent phone/Watch quantity labels, and explicit Resume-camera recovery after detected multiple people.
+- Native public-video engineering checks cover 41 primary windows, 28 sources and 4,507 frames, with misses, post-output errata and consumed held-out sources retained. [Results and limits](validation/2026-11-05-public-videos/README.md), [current release evidence](evidence/movement-audio-validation-2026-11-05.md). Physical benchmarking remains required.
+
 ## Next quick wins
 
 1. Favourites, repeat the last actual workout and a recent-exercises list to shorten setup.
@@ -34,7 +41,7 @@
 5. Chosen training days, quiet-hours reminders and Watch rest-completion haptics.
 6. A compact PDF report and richer CSV export chosen by the user, with observed coverage, zones and manual/camera provenance.
 7. Optional dated weight entries with a rolling trend, keeping weight change separate from exercise-energy estimates.
-8. Add offline audio previews and perform physical listening/route checks. Build 22 now bundles 144 natural Maya/Leo recordings across three styles, with normalised levels and rotation; authoring access is verified.
+8. Add offline audio previews and perform physical listening/route checks. The current app bundles 243 MP3 files, including 144 natural Maya/Leo recordings across three styles and 18 updated movement-neutral tracking/alignment clips; software asset checks do not replace human listening.
 9. Accessibility presets for larger controls, reduced motion, stronger contrast and fewer simultaneous instructions.
 10. An optional feedback bundle containing build/device, exercise and expected/recorded counts. Attachments must be explicitly chosen; no automatic health/video uploads.
 
@@ -50,7 +57,7 @@
 
 Use a consented, varied video set covering exercise, angle, clothing, lighting, mobility aids and temporary occlusion. Measure overcounts, undercounts, recovery time, observation coverage, latency, energy and thermal behavior. Keep a separate held-out acceptance set. A script passing synthetic landmarks does not establish physical accuracy.
 
-Potential later on-device models include lunge, calf raise, bridge and hold-specific tracking. No HPC job or new training was started. Before training on AIRE, propose the exact model, data/permissions, evaluation protocol, expected benefit, deployment size and compute budget to Omar.
+Lunge, calf-raise, bridge and hold profiles are now implemented with deterministic geometry and state rules using the existing bundled pose model. They still need varied physical benchmarking; these are not newly trained exercise models. No HPC job or new training was started. Before training on AIRE, propose the exact model, data/permissions, evaluation protocol, expected benefit, deployment size and compute budget to Omar.
 
 ## Commercial and clinical gates
 

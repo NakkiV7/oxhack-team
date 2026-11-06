@@ -1,0 +1,44 @@
+# Movement, audio and build 23 evidence — 5 November 2026
+
+Build 0.1 (23) is the current release candidate. Final signing, installation, Apple distribution and feature-branch push are recorded separately below as they are verified. The accepted functional/review source is `3b794c22573f51c486a0262cf11cb2d90db2d97c`; release work changes version metadata and documentation only.
+
+## Implemented behavior
+
+The catalogue has 53 entries and camera tracking is available for 52 movement identities. Cat-cow remains manual. Deterministic geometry and movement-family state rules use the existing MediaPipe Full pose model; no new exercise model was trained. Faceless movement guides show profile-specific views, phases and support. Camera tracking availability does not establish accuracy across every supported movement, view, body type or physical setup.
+
+Rep and hold counters preserve earned quantities across camera/manual changes while breaking unfinished movement and observation continuity at invalid frames, source changes, pause and recovery. Static holds and dynamic high knees credit qualified adjacent observed intervals. Active elapsed, camera-observed seconds, manual timing and self-report remain distinct. Saved/report/phone/Watch labels preserve the earned origin, including mixed work; old snapshots without that metadata use conservative labels. Multiple-person model output latches explicit Resume-camera recovery without deleting work; a completely undetected second person cannot be rejected.
+
+Ordinary speech finishes across changing tracking warnings and natural set/workout completion. Explicit stop/pain interrupts; mute, pause, input/coach change, backgrounding and cancelled/new actions invalidate old output and deferred intent. Repeated/cleared/expired warnings do not form an unbounded queue. Camera recovery on the same input preserves the current ordinary sentence through its next tick. These are software lifecycle checks, not a physical listening/route/interruption acceptance result.
+
+## Public-video evidence
+
+The actual bundled native detector/geometry/counter pipeline processed **41 primary windows from 28 sources and 4,507 frames**. Production cadence is capped at 10 Hz with actual source timestamps; sampled source cadence can be lower. The [public validation ledger](../validation/2026-11-05-public-videos/README.md) links the matrix, source provenance, original annotations, explicit post-output reference errata, source/config/model/SDK hashes and frozen candidate lineage.
+
+Original misses remain: full edited NASM ordinary/knee push-ups produce 0/4 and 0/3 with conservative ambiguity pauses; bridge 3/4 remains a projection/view failure; frontal/cropped/paired-chain occlusion and brief activity lose counts or observed seconds. Separate same-source cut-free controls produce 2/2 ordinary and 1/1 knee push-ups and do not replace those full-window results. Calf 3/original 4 and the South Tees partial-rise window 0/original 1 retain original scores alongside explicitly unblinded post-output source interpretations. Four originally held-out sources were consumed/promoted during development. There is no final independent held-out, independent-human, clinical or all-52 success claim.
+
+## Software checks and review
+
+- Task 1 audio lifecycle: meaningful red/green playback, store/bridge, real AVAudioSession ownership and interruption tests; subsequent integration and recovery fixes retain that contract.
+- Task 2 movement profiles: deterministic family geometry, rep/hold quantities, catalogue and synthetic boundaries; downstream integration regressions were resolved with explicit tests.
+- Task 3 integration: full Core 138 XCTest + 305 Swift Testing at that source; full native 252, six selected UI journeys across bounded runs; gateway 104, Pi 28; Watch 12 recorder + 9 store cases, motion contract and transport replay. Later focused artwork checks are separate.
+- Task 4: actual 41-window native runs have zero skips. Later full native integration ran 260 cases with one explicit opt-in-video skip and zero failures. Exactly four old simulator StoreKit `notEntitled` cases remain excluded, not passing. Full Core then ran 139 XCTest and reported 337 Swift Testing cases, with the cached-pose helper explicitly disabled. Subsequent focused fixes/render tests and their source lineage are retained in the public receipts.
+- Broad final review raised two important issues: Watch earned-origin presentation and valid build-22 path-request compatibility. Both were fixed and the final re-review approved functional source `3b794c2`. Affected native 20 and current gateway 106 checks passed; Watch recorder/store 12/9 and transport coverage remained current. Existing menu-idle/layout automation diagnostics remain a bounded follow-up, without a measured user-facing freeze claim.
+- Final build-23 Core command: `swift test --scratch-path '<external-build-root>/CV23-Core' --jobs 2` exited 0: 139 XCTest passed and Swift Testing reported 350 cases, with one explicitly disabled cached-pose helper. No simulator or full video replay was repeated merely for version metadata.
+
+These checks establish software behavior at their recorded source. Watch SDK/link doubles and embedded target compilation do not establish physical Watch rendering, sensing, radio delivery, haptic perception or installation. Existing synthetic callbacks and rendered UI images do not establish physical camera performance. No gateway deployment is claimed here.
+
+## Assets and release checks
+
+There are 243 bundled MP3 files. The 144 natural Maya/Leo recordings across three tones coexist with retained optional Arnold/Goggins-inspired banks. Task 3 replaced exactly 18 tracking/alignment clips with movement-neutral wording and preserved the other 225 bytes; transcript/hash/decode/level checks are retained. No new authoring request, provider inference or credit use occurred during final release work. Human listening remains separate.
+
+The canonical Full pose asset SHA256 is `4eaa5eb7a98365221087693fcc286334cf0858e2eb6e15b506aa4a7ecdcec4ad`. Vendor SDK/model/dependencies remain unchanged. Frozen release inputs include actual phone/Watch source, shared resources, generated project, model/audio/Vendor and the existing signing configuration. Private credentials are excluded. All eight generated project version settings and the generator use 23 with marketing version 0.1.
+
+Final distribution archive/export and a separate development-signed Release phone plus embedded Watch passed audits for strict signatures/profiles, team/identifiers, HealthKit, version compatibility, binary/dSYM UUIDs, complete model/audio bytes, absence of authoring credentials and absence of development StoreKit configuration. Protected build 17 (231 entries/209 files) and Vendor (189 entries/157 files) exactly match content and metadata against their original baselines after all builds. The 711 frozen build-input entries and supplemental development-signing hashes are unchanged. Private full receipts and bulk artifacts stay on external storage. The exported IPA SHA256 is `4383e8d666be3c0015a151f7c3ebb37c0f86bb0905c8eb7b516fad64cbc03f04`.
+
+The original phone development profile lacked HealthKit and failed the first local build before signing. A new development profile reuses exactly the existing certificate and two registered devices with the already-enabled HealthKit App ID; no certificate/device/capability was changed or revoked. The original profile/config and old releases remain intact. A new private configuration and signing supplement were frozen before the successful build.
+
+## Delivery state and acceptance limits
+
+Pending final artifact checkpoint: no build-23 phone installation, upload, Apple processing/group assignment or push is claimed yet. Build 22 was previously verified in internal/external TestFlight with approved beta review. The [existing beta invitation](https://testflight.apple.com/join/f3MhePbf) does not itself establish that build 23 is available.
+
+Installation will update the existing app without uninstall/reset. Readback of phone version 0.1 (23) is separate from movement, listening, microphone, thermal, latency and route acceptance. An embedded Watch build is separate from physical Watch installation. Real phone/Watch movement/audio, airplane mode, denied permissions, long sessions, accessibility, recovery and clinical/commercial acceptance remain explicit gates. No App Store submission, purchase approval or clinical efficacy is claimed.
