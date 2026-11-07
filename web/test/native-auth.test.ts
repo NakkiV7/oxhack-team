@@ -6,7 +6,7 @@ import { SoftwarePasskey } from './passkey.ts';
 import { totp } from '../src/crypto.ts';
 
 test('verified email then actual UV passkey and TOTP are all required before issuing a device session',async()=>{
- let mail='';const f=await fixture(async(_url,init)=>{mail=String(init?.body);return Response.json({id:'test-mail'});});try{
+ let mail='';const f=await fixture(async(input,init)=>{mail=await new Request(input,init).text();return Response.json({MessageId:'test-mail'});});try{
  const d=await f.seed();
  const started=await f.request('/identity/email/start',{email:'New@Example.com',purpose:'enroll'});
  assert.equal(started.response.status,200);assert.ok(!JSON.stringify(started.json).includes('code'));

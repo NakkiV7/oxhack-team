@@ -10,7 +10,10 @@
   "workers_dev": false,
   "preview_urls": false,
   "vars": {
-    "ORIGIN": "https://spottr.omarchoudhry.co.uk"
+    "ORIGIN": "https://spottr.omarchoudhry.co.uk",
+    "AWS_SES_REGION": "eu-west-2",
+    "AWS_SES_FROM": "auth@mail.spottr.omarchoudhry.co.uk",
+    "AWS_SES_CONFIGURATION_SET": "spottr-auth"
   },
   "assets": {
     "directory": "../landing/public",

@@ -1,6 +1,6 @@
 # Native account API v1
 
-Candidate implementation; not deployed. Apply reviewed additive migration `0002_native_accounts.sql` after `0001_accounts.sql` before serving this code. Existing website accounts, credentials, sessions, encryption key and pepper remain authoritative. No separate native user database. The native handler never trusts a request-supplied account ID.
+Source contract; deployment and actual provider delivery require separate operational receipts. Apply reviewed additive migration `0002_native_accounts.sql` after `0001_accounts.sql` before serving this code. Existing website accounts, credentials, sessions, encryption key and pepper remain authoritative. No separate native user database. The native handler never trusts a request-supplied account ID.
 
 ## Transport, errors and dates
 
@@ -22,7 +22,7 @@ Errors contain exactly `{ "error": "<code>" }`:
 | 429 | `rate_limited` | Wait for the next ten-minute window. |
 | 503 | `temporarily_unavailable` | Retry later; preserve credentials and drafts. Provider/configuration/delivery/storage failure is not sign-out. |
 
-Limit: 60 native requests per trusted Cloudflare connecting IP per ten-minute UTC bucket (includes challenge requests). Email adds three sends per normalized recipient per rolling hour, at most 100 reservations per UTC day and 3,000 per UTC month. Delivery failures conservatively consume quota. No overflow provider, paid fallback, automatic paid upgrade, email debug endpoint or production cryptography bypass exists.
+Limit: 60 native requests per trusted Cloudflare connecting IP per ten-minute UTC bucket (includes challenge requests). Email adds three sends per normalized recipient per rolling hour, at most 100 reservations per UTC day and 3,000 per UTC month. Delivery failures conservatively consume quota. Each reservation permits one AWS SES request, with a ten-second timeout, rejected redirects and no retry or fallback. Only HTTP200 with a bounded JSON MessageId is accepted; this means provider acceptance, not inbox delivery. No overflow provider, automatic paid upgrade, email debug endpoint or production cryptography bypass exists.
 
 Opaque tokens, challenges and nonces are 32 random bytes encoded base64url without padding (43 characters). Partial flow tokens expire **five minutes from initial issuance**, never extended by later stages. A stage permits five verification attempts; success is a conditional one-time transition. Partial flow tokens never authorize account/session/plan access. Keep them in transient memory, not persisted as a trusted account.
 
@@ -188,9 +188,11 @@ All plan calls need signed access proof. Account ownership comes exclusively fro
 
 Existing secrets: `AUTH_ENCRYPTION_KEY`, `AUTH_TOKEN_PEPPER` (preserve values). New server-only configuration:
 
-- `RESEND_API_KEY`: owner-controlled Resend Free key. `RESEND_FROM`: verified sending address, e.g. `auth@<verified-domain>`. Missing key/sender fails closed. Owner must verify domain, account/free-tier status, DNS and delivery independently; do not put secrets in native bundles or source.
+- Nonsecret `AWS_SES_REGION=eu-west-2`, `AWS_SES_FROM=auth@mail.spottr.omarchoudhry.co.uk`, `AWS_SES_CONFIGURATION_SET=spottr-auth`. The adapter rejects different values and always signs the fixed SESv2 London outbound-emails endpoint. Secrets `AWS_SES_ACCESS_KEY_ID` and `AWS_SES_SECRET_ACCESS_KEY` belong to the dedicated sender-only principal; optional `AWS_SES_SESSION_TOKEN` supports temporary credentials. No global administrator credential or default credential chain. Missing configuration fails closed. Reuse the owner-provisioned dedicated identity/configuration set and validate DKIM, MAIL FROM, TLS and current usage charges before deployment; no promise of permanent free email. Never put credentials in native bundles or source.
 - `APPLE_CLIENT_ID`: the exact native Sign in with Apple audience (bundle identifier), `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`: PKCS#8 P-256 **Sign in with Apple** key PEM. Correct App ID/capability/key association must be verified by owner. No ASC-key substitution, key guessing or environment fallback.
 - Existing `ORIGIN` remains the HTTPS origin/RP source. No live provider flags or fake-verification environment bindings. Test-only dependency injection replaces the HTTP transport, never signature verification.
+
+The mail adapter uses pinned aws4fetch 1.0.20 `AwsClient.sign`, then the existing injected fetch exactly once; it does not use the library's retrying fetch method. SES receives the explicit email-start recipient and plain-text ownership code/expiry guidance only, with one To address and no HTML, tracking or workout/Health content. Apple bootstrap consumes Apple's subject and grant, not its returned email, and never automatically sends an email code. An owner who explicitly enters an Apple relay address needs the sender registered for Apple's email relay; this is separate from native Apple identity verification.
 
 Before deployment: export/backup D1; review and apply 0002 additively; run staging authentication/legacy compatibility and provider/AASA checks; only then deploy reviewed Worker and native integration. Production provider readiness, real email delivery, associated-domain passkeys, runtime free CPU limits and physical-device acceptance remain unverified here. Local Miniflare success is not production performance or deployment evidence.
 

@@ -162,5 +162,6 @@ test('brand icons use compact exports sized for their public surfaces', async ()
 test('all notices remove optional accounts and explain independent adult statistics controls',async()=>{
  for(const route of [...routes,'account/']) assert.doesNotMatch(await page(route), /optional (?:Spottr )?website account|not required for the app|without a website account|not needed for core offline/i);
  const privacy=textContent(await page('privacy/'));
- for(const fragment of [/two independent/i,/off by default/i,/under.18.*unknown/i,/ten contributing installations.*bucket/i,/pseudonymous/i,/28 days/i,/Resend/i,/backup.excluded/i]) assert.match(privacy,fragment);
+ for(const fragment of [/two independent/i,/off by default/i,/under.18.*unknown/i,/ten contributing installations.*bucket/i,/pseudonymous/i,/28 days/i,/Amazon (?:Simple Email Service|SES)/i,/recipient.*verification code/i,/backup.excluded/i]) assert.match(privacy,fragment);
+ assert.doesNotMatch(privacy,/Resend|free (?:mail|email|service)/i);
 });

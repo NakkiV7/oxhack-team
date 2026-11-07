@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { AuthEnv, Statement } from './auth.ts';
 import { base64URLToBytes, bytesToBase64URL, decryptSecret, encryptSecret, hashToken, randomToken } from './crypto.ts';
-export type NativeEnv = AuthEnv & { RESEND_API_KEY?: string; RESEND_FROM?: string; APPLE_CLIENT_ID?: string; APPLE_TEAM_ID?: string; APPLE_KEY_ID?: string; APPLE_PRIVATE_KEY?: string };
+export type NativeEnv = AuthEnv & { AWS_SES_REGION?: string; AWS_SES_FROM?: string; AWS_SES_CONFIGURATION_SET?: string; AWS_SES_ACCESS_KEY_ID?: string; AWS_SES_SECRET_ACCESS_KEY?: string; AWS_SES_SESSION_TOKEN?: string; APPLE_CLIENT_ID?: string; APPLE_TEAM_ID?: string; APPLE_KEY_ID?: string; APPLE_PRIVATE_KEY?: string };
 export type Dependencies = { clock?: () => number; fetch?: typeof fetch };
 export class NativeError extends Error { constructor(readonly status: number, readonly code: string) {super(code);} }
 export function denied(): never { throw new NativeError(401,'verification_failed'); }

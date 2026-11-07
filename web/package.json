@@ -12,6 +12,7 @@
   "dependencies": {
     "@simplewebauthn/server": "^13.2.2",
     "@simplewebauthn/browser": "^13.2.2",
+    "aws4fetch": "1.0.20",
     "qrcode-generator": "^2.0.4",
     "zod": "^4.1.12"
   },

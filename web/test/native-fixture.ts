@@ -11,7 +11,7 @@ export async function fixture(fetcher: typeof fetch = async () => new Response('
   const db = await mf.getD1Database('DB');
   for (const name of ['0001_accounts.sql','0002_native_accounts.sql','0003_analytics.sql']) await db.exec((await readFile(new URL('../migrations/'+name, import.meta.url),'utf8')).replace(/\n/g,' '));
   let now = 1_800_000_000_000;
-  const env: NativeEnv = {DB:db,ORIGIN:origin,AUTH_ENCRYPTION_KEY:randomToken(),AUTH_TOKEN_PEPPER:randomToken(),RESEND_API_KEY:'test-only',RESEND_FROM:'auth@spottr.example'};
+  const env: NativeEnv = {DB:db,ORIGIN:origin,AUTH_ENCRYPTION_KEY:randomToken(),AUTH_TOKEN_PEPPER:randomToken(),AWS_SES_REGION:'eu-west-2',AWS_SES_FROM:'auth@mail.spottr.omarchoudhry.co.uk',AWS_SES_CONFIGURATION_SET:'spottr-auth',AWS_SES_ACCESS_KEY_ID:'AKIDEXAMPLE',AWS_SES_SECRET_ACCESS_KEY:'test-only-not-real-secret'};
   const handler = () => createNativeAuthHandler(env, {clock:()=>now,fetch:fetcher});
   async function request(path: string, body: unknown = {}, headers: Record<string,string> = {}) {
     const response = await handler()(new Request(origin+'/api/native/v1'+path,{method:'POST',headers:{'Content-Type':'application/json',...headers},body:JSON.stringify(body)}));
@@ -38,7 +38,7 @@ export async function fixture(fetcher: typeof fetch = async () => new Response('
 }
 export async function accountFixture() {
  const mails:string[]=[];
- const f=await fixture(async(_url,init)=>{mails.push(String(init?.body));return Response.json({id:'test-mail'});});
+ const f=await fixture(async(input,init)=>{mails.push(await new Request(input,init).text());return Response.json({MessageId:'test-mail'});});
  async function identity(email:string,purpose='enroll') {
   const start=await f.request('/identity/email/start',{email,purpose});
   const code=/\b\d{6}\b/.exec(mails.at(-1)??'')?.[0];

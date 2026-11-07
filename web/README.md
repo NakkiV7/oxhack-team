@@ -12,6 +12,8 @@ The `spottr-site` Worker serves public assets, the same-account website and nati
 
 The exact native contract and operational requirements are in `docs/native-auth-contract.md`. Native identity bootstrap uses Apple or verified email, then UV passkey and TOTP. Persistent signed device sessions use 15-minute access and rotating 180-day refresh with durable single-flight retry. Existing website passkey/TOTP sessions and 12-hour cookies retain compatibility. Recovery is explicit and requires linked identity plus an unused backup. Local protected training storage remains separate.
 
+Explicitly requested email ownership codes use AWS SES in London through the dedicated Spottr sender/configuration set. The signed request uses sender-only credentials and sends once under the existing 100/day, 3000/month and three-per-recipient/hour reservations, with a ten-second timeout and no redirect/retry/fallback. Provider acceptance is separate from inbox delivery; SES usage is not promised free. See the activation checklist for exact AWS_SES_* vars/secrets. Native provider readiness stays disabled until reviewed deployment and provider-path receipts.
+
 Two independent adult consents default off. Analytics accepts strict coarse weekly snapshots with transient installation tags, bounded counters, request bytes and quotas. Each surfaced bucket requires ten distinct contributing installation tags. There is no public raw endpoint. See `docs/service-activation.md` for the source-reviewed activation checklist and exact retention/limits. No credential values belong in this repository.
 
 ## Development and checks
