@@ -195,7 +195,7 @@ extension EnvironmentValues {
         let access = membership.accountID == owner.accountID ? membership.access : MembershipAccess.resolve([], now: Date())
         let value = WatchProgrammeTransport.authorized(sequence: 0, owner: owner, policyID: workspace.watchSharing.policyID,
             trustedOwner: trusted, verifiedAt: account?.lastTrustedVerification, profile: workspace.profile.profile,
-            sharing: sharing, membership: access, programme: workspace.programme.current, at: Date())
+            sharing: sharing, membership: access, programme: workspace.programme.current, at: Date(), analyticsCapture: current ? workspace.training.analytics?.ledger.capture(.workout) : nil)
         do {
             let equivalent = lastTransport.map { previous in
                 WatchProgrammeTransport(sequence: 0, owner: previous.owner, policyID: previous.policyID, age: previous.age,

@@ -6,6 +6,10 @@ struct MembershipView: View {
     @State private var redeemPresented = false
     @State private var selection: MembershipPlan = .monthly
     @State private var showOtherPlans = false
+    @State private var approvalPending = false
+    @State private var approvalMessage: String?
+    @State private var approvalRequest = UUID()
+    @Environment(\.profileWebsiteAccess) private var actionAccess
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -26,9 +30,10 @@ struct MembershipView: View {
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     if store.accountID == nil { Text("Sign in to purchase. Restore is always available.").font(.footnote).multilineTextAlignment(.center) }
-                    Button("Restore purchases") { Task { await store.restore() } }
+                    Button("Restore purchases") { authorize { await store.restore() } }
                         .buttonStyle(.bordered).tint(Palette.blue).foregroundStyle(Palette.blue)
-                        .frame(minHeight: 44).disabled(store.busy).accessibilityIdentifier("membershipRestore")
+                        .frame(minHeight: 44).disabled(store.busy || approvalPending).accessibilityIdentifier("membershipRestore")
+                    if let approvalMessage { Text(approvalMessage).font(.footnote).foregroundStyle(.secondary) }
                 }.frame(maxWidth: .infinity).padding(18).background(Palette.surface, in: RoundedRectangle(cornerRadius: 22))
 
                 if store.busy {
@@ -71,9 +76,9 @@ struct MembershipView: View {
                     }.buttonStyle(.plain).accessibilityAddTraits(selectedOffer?.plan == offer.plan ? .isSelected : [])
                 }
                 if let offer = selectedOffer {
-                    Button(purchaseTitle(offer)) { Task { await store.buy(offer.plan) } }
+                    Button(purchaseTitle(offer)) { authorize { await store.buy(offer.plan) } }
                         .buttonStyle(.borderedProminent).foregroundStyle(.white).controlSize(.large).frame(maxWidth: .infinity, minHeight: 48)
-                        .disabled(store.accountID == nil || store.busy || !store.access.mayPurchase(offer.plan))
+                        .disabled(store.accountID == nil || store.busy || approvalPending || !store.access.mayPurchase(offer.plan))
                         .accessibilityIdentifier("membershipPurchase-\(offer.plan.rawValue)")
                 }
                 if store.access.hasOverlappingSubscription {
@@ -89,19 +94,11 @@ struct MembershipView: View {
                     if !store.hasAccess { Text("Apple confirms prices and trial eligibility. Redeem offer codes through Apple.")
                         .font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("membershipAppleConfirmation")
                     }
-                    Button("Redeem Apple offer code") { redeemPresented = true }.buttonStyle(.bordered).foregroundStyle(Palette.blue).frame(minHeight: 44).disabled(store.busy).accessibilityIdentifier("membershipRedeem")
-                    Link(destination: URL(string: "https://apps.apple.com/account/subscriptions")!) {
-                        Label { Text("Manage Apple subscriptions").underline() } icon: { Image(systemName: "arrow.up.right.square") }
-                    }.buttonStyle(.bordered).foregroundStyle(Palette.blue).frame(minHeight: 44)
-                    Link(destination: URL(string: "https://spottr.omarchoudhry.co.uk/privacy")!) {
-                        Label { Text("Privacy policy").underline() } icon: { Image(systemName: "arrow.up.right.square") }
-                    }.buttonStyle(.bordered).foregroundStyle(Palette.blue).frame(minHeight: 44)
-                    Link(destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!) {
-                        Label { Text("Terms of use").underline() } icon: { Image(systemName: "arrow.up.right.square") }
-                    }.buttonStyle(.bordered).foregroundStyle(Palette.blue).frame(minHeight: 44)
-                    Link(destination: URL(string: "https://spottr.omarchoudhry.co.uk/support")!) {
-                        Label { Text("Spottr support").underline() } icon: { Image(systemName: "arrow.up.right.square") }
-                    }.buttonStyle(.bordered).foregroundStyle(Palette.blue).frame(minHeight: 44).accessibilityIdentifier("membershipSupport")
+                    Button("Redeem Apple offer code") { authorize { redeemPresented = true } }.buttonStyle(.bordered).foregroundStyle(Palette.blue).frame(minHeight: 44).disabled(store.busy || approvalPending).accessibilityIdentifier("membershipRedeem")
+                    WebsiteLink(title: "Manage Apple subscriptions", url: URL(string: "https://apps.apple.com/account/subscriptions")!).buttonStyle(.bordered)
+                    WebsiteLink(title: "Privacy policy", url: URL(string: "https://spottr.omarchoudhry.co.uk/privacy")!).buttonStyle(.bordered)
+                    WebsiteLink(title: "Terms of use", url: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!).buttonStyle(.bordered)
+                    WebsiteLink(title: "Spottr support", url: URL(string: "https://spottr.omarchoudhry.co.uk/support")!).buttonStyle(.bordered).accessibilityIdentifier("membershipSupport")
                 }.multilineTextAlignment(.center)
             }.frame(maxWidth: 560).padding(24).frame(maxWidth: .infinity)
         }.background(.white).foregroundStyle(Palette.ink).tint(Palette.blue)
@@ -109,6 +106,23 @@ struct MembershipView: View {
         .task { await store.load() }
         .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await store.load() } } }
         .offerCodeRedemption(isPresented: $redeemPresented) { result in Task { await store.completeRedemption(result) } }
+        .onDisappear { approvalRequest = UUID(); approvalPending = false }
+    }
+    private func authorize(_ action: @escaping @MainActor () async -> Void) {
+        guard !approvalPending else { return }
+        let request = UUID(), accountID = store.accountID
+        approvalRequest = request; approvalPending = true; approvalMessage = nil
+        Task { @MainActor in
+            defer { if approvalRequest == request { approvalPending = false } }
+            do {
+                guard let actionAccess else { throw AccountFailure.reauthenticate }
+                try await actionAccess.authorize()
+                guard approvalRequest == request, store.accountID == accountID else { return }
+                await action()
+            } catch {
+                if approvalRequest == request { approvalMessage = "Approval is needed to continue. You can try again when ready." }
+            }
+        }
     }
     private var selectedOffer: MembershipOffer? { visibleOffers.first { $0.plan == selection } ?? visibleOffers.first }
     private var canChoosePlan: Bool { MembershipPlan.allCases.contains { store.access.mayPurchase($0) } }

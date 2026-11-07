@@ -237,20 +237,23 @@ extension TrainingGoal {
     }
 }
 @MainActor struct ProfileWebsiteAccess {
-    private let profile: NativeProfileStore
+    private let isCurrent: @MainActor () -> Bool
     private let guardian: (any NativeAccountAuthorization)?
     private let requiresGuardian: Bool
-    init(profile: NativeProfileStore, guardian: (any NativeAccountAuthorization)?) {
-        self.profile = profile; self.guardian = guardian
+    init(profile: NativeProfileStore, guardian: (any NativeAccountAuthorization)?, isCurrent: @escaping @MainActor () -> Bool = { true }) {
+        self.isCurrent = { profile.permitsPolicyCallbacks && isCurrent() }; self.guardian = guardian
         requiresGuardian = (profile.profile?.programmePreferences?.ageContext?.ageYears ?? 0) < 18
     }
+    init(guardian: any NativeAccountAuthorization, isCurrent: @escaping @MainActor () -> Bool) {
+        self.isCurrent = isCurrent; self.guardian = guardian; requiresGuardian = true
+    }
     func authorize() async throws {
-        guard profile.permitsPolicyCallbacks else { throw AccountFailure.reauthenticate }
+        guard isCurrent() else { throw AccountFailure.reauthenticate }
         if requiresGuardian {
             guard let guardian else { throw AccountFailure.reauthenticate }
             try await guardian.guardian()
         }
-        guard profile.permitsPolicyCallbacks, !Task.isCancelled else { throw AccountFailure.reauthenticate }
+        guard isCurrent(), !Task.isCancelled else { throw AccountFailure.reauthenticate }
     }
 }
 private struct ProfileWebsiteAccessKey: EnvironmentKey {

@@ -80,3 +80,23 @@ for(const surface of ['native','legacy']) test(`${surface} deletion rechecks MFA
  assert.equal(response.status,401);assert.ok(await f.db.prepare('SELECT id FROM users WHERE id=?').bind(a.accountID).first());
  }finally{await f.mf.dispose();}
 });
+
+test('a native-created account signs into the existing website with its real passkey and second factor',async()=>{
+ const {z}=await import('zod'); const f=await accountFixture();try{
+ const account=await f.enroll();const handler=createAuthHandler(f.env,()=>f.now);
+ const cookies=new Map<string,string>();
+ async function request(path:string,body?:unknown){
+ const response=await handler(new Request(origin+path,{method:body===undefined?'GET':'POST',headers:{Origin:origin,'Content-Type':'application/json',Cookie:Array.from(cookies,([key,value])=>key+'='+value).join('; ')},body:body===undefined?undefined:JSON.stringify(body)}));
+ for(const item of response.headers.getSetCookie()){const pair=item.split(';')[0]??'';const split=pair.indexOf('=');cookies.set(pair.slice(0,split),pair.slice(split+1));}
+ return {status:response.status,data:z.record(z.string(),z.unknown()).parse(await response.json())};
+ }
+ const options=await request('/api/auth/login/options',{});assert.equal(options.status,200);
+ const challenge=z.object({challenge:z.string()}).parse(options.data['options']).challenge;
+ assert.equal((await request('/api/auth/login/verify',{credential:await account.passkey.authentication(challenge,origin)})).status,200);
+ assert.equal((await request('/api/auth/session')).status,401);
+ assert.equal((await request('/api/auth/mfa',{backupCode:account.backups[0]})).status,200);
+ const session=await request('/api/auth/session');assert.equal(session.status,200);
+ assert.equal(session.data['username'],'native-'+account.accountID);
+ assert.equal((await f.db.prepare('SELECT COUNT(*) AS n FROM users').first<{n:number}>())?.n,1);
+ }finally{await f.mf.dispose();}
+});

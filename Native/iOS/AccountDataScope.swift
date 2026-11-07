@@ -132,6 +132,8 @@ struct TrainingProfileDescriptor: Codable, Identifiable, Equatable {
         let rewards = NativeRewardsStore(url: scope.file("rewards.json"), allowsTimePressureRewards: profile.profile?.programmePreferences?.ageContext?.allowsTimePressureRewards == true, requiresCapturedAdult: true)
         let voice = RemoteVoicePlayback(offlineOnly: true, defaults: defaults, gentleOnly: (profile.profile?.programmePreferences?.ageContext?.ageYears ?? 0) < 18)
         training = TrainingStore(historyURL: scope.file("history.json"), voicePlayback: voice, rewardsStore: rewards, defaults: defaults, accountScope: scope)
+        training.analytics = ConsentedAnalyticsStore(scope: scope, profile: profile)
+        training.analytics?.onConsentChange = { [weak training] in training?.publish() }
         training.watchSharing = watchSharing
         training.programme = programme
         training.quests = QuestStore(scope: scope, profile: profile, programme: programme, history: training.historyAvailable ? training.history : nil)

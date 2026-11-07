@@ -18,6 +18,29 @@ app = project.new_target(:application, 'Spottr', :ios, '26.0')
 watch = project.new_target(:application, 'SpottrWatch', :watchos, '26.0')
 unit = project.new_target(:unit_test_bundle, 'SpottrTests', :ios, '26.0')
 ui = project.new_target(:ui_test_bundle, 'SpottrUITests', :ios, '26.0')
+project.root_object.attributes['TargetAttributes'] = {
+  app.uuid => { 'SystemCapabilities' => {
+    'com.apple.HealthKit' => { 'enabled' => 1 },
+    'com.apple.SignInWithApple' => { 'enabled' => 1 },
+    'com.apple.AssociatedDomains' => { 'enabled' => 1 }
+  } }
+}
+operator_tests = {
+  'SetupRenderedAcceptanceTests' => %w[
+    testExternalCatalogueMembershipContinueUsesExactSelection
+    testExternalOnboardingRetainsMeasurementsAndExactPendingIntent
+    testExternalAccountCheckpointDoesNotEstablishTrust
+    testExternalSignedOutRestoreHelpAndRetainedRecords
+    testExternalJuniorSetupLargeType
+    testExternalAdditionalPersonRequiresFreshAgeAndGuardian
+    testExternalMonthlyMemberCanChooseLifetimeWithoutStartingPendingWorkout
+    testExternalJuniorOnboardingWatchLinksRequireCurrentGuardianApproval
+  ],
+  'QuestExternalAcceptanceTests' => %w[testExternalChapterJumpRecoveryClaimAndRewardSettings testExternalChapterRevealHasNoBlankViewport],
+  'ProgrammeExternalAcceptanceTests' => %w[testExternalWholeWorkoutCameraManualEffortAndFinished],
+  'CoachPolishExternalTests' => %w[testPublicCoachAdjustmentAndActualInsightsTab],
+  'ServiceIntegrationRenderedTests' => %w[testExternalJuniorMembershipRestoreRequiresGuardian testExternalInitialPrivacyContinuesOffAndRequiresAdultMeasurements]
+}.flat_map { |test_class, names| names.map { |name| "#{test_class}/#{name}" } }
 
 def sources(project, target, paths)
   paths.each { |path| target.source_build_phase.add_file_reference(project.main_group.new_file(path)) }
@@ -116,6 +139,13 @@ project.save
   scheme = Xcodeproj::XCScheme.new
   scheme.add_build_target(target)
   tests.each { |test| scheme.add_test_target(test) }
+  if name == 'Spottr'
+    operator_tests.each do |identifier|
+      selection = Xcodeproj::XCScheme::TestAction::TestableReference::Test.new
+      selection.identifier = identifier
+      scheme.test_action.testables.first.add_skipped_test(selection)
+    end
+  end
   scheme.set_launch_target(target)
   if name == 'Spottr'
     [scheme.launch_action, scheme.test_action].each do |action|
@@ -139,4 +169,16 @@ end
   action.xml_element.add_element('StoreKitConfigurationFileReference', { 'identifier' => '../../StoreKit/Spottr.storekit' })
 end
 membership_scheme.save_as(project.path, 'SpottrMembership', true)
+operator_scheme = Xcodeproj::XCScheme.new
+operator_scheme.add_build_target(app)
+operator_scheme.set_launch_target(app)
+operator_scheme.add_test_target(unit)
+operator_scheme.test_action.testables.first.use_test_selection_whitelist = true
+operator_tests.each do |identifier|
+  selection = Xcodeproj::XCScheme::TestAction::TestableReference::Test.new
+  selection.identifier = identifier
+  operator_scheme.test_action.testables.first.add_selected_test(selection)
+end
+operator_scheme.test_action.xml_element.add_element('StoreKitConfigurationFileReference', { 'identifier' => '../../StoreKit/Spottr.storekit' })
+operator_scheme.save_as(project.path, 'SpottrExternalAcceptance', true)
 puts 'Generated Spottr.xcodeproj'

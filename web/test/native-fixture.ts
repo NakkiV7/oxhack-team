@@ -9,7 +9,7 @@ export async function digest(value: string) { return bytesToBase64URL(new Uint8A
 export async function fixture(fetcher: typeof fetch = async () => new Response('{}', {status:503})) {
   const mf = new Miniflare({ modules:true, script:'export default {fetch(){return new Response("test")}}', d1Databases:['DB'] });
   const db = await mf.getD1Database('DB');
-  for (const name of ['0001_accounts.sql','0002_native_accounts.sql']) await db.exec((await readFile(new URL('../migrations/'+name, import.meta.url),'utf8')).replace(/\n/g,' '));
+  for (const name of ['0001_accounts.sql','0002_native_accounts.sql','0003_analytics.sql']) await db.exec((await readFile(new URL('../migrations/'+name, import.meta.url),'utf8')).replace(/\n/g,' '));
   let now = 1_800_000_000_000;
   const env: NativeEnv = {DB:db,ORIGIN:origin,AUTH_ENCRYPTION_KEY:randomToken(),AUTH_TOKEN_PEPPER:randomToken(),RESEND_API_KEY:'test-only',RESEND_FROM:'auth@spottr.example'};
   const handler = () => createNativeAuthHandler(env, {clock:()=>now,fetch:fetcher});

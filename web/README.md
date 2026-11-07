@@ -1,18 +1,18 @@
-# Spottr website and optional accounts
+# Spottr website, native accounts and optional statistics
 
-Live origin: https://spottr.omarchoudhry.co.uk
+Service origin: https://spottr.omarchoudhry.co.uk
+
+The native-account, analytics and associated-domain changes in this source candidate require the activation and public readback receipts in `docs/service-activation.md`. Source tests alone do not establish that the deployed service includes these changes.
 
 `landing/public` contains the marketing, support, privacy, terms and deletion pages. The public site has no application JavaScript; only `/account/` loads the bundled account client. Artwork and fonts are served locally. Exercise guides remain faceless stick figures.
 
-The `spottr-site` Worker serves static assets and routes `/api/*` to D1. A website account is optional and separate from iPhone history, HealthKit, Apple purchases and TestFlight. There is no workout, video or health upload or online coach endpoint. No password, email-login or token-based AI service is used.
+The `spottr-site` Worker serves public assets, the same-account website and native MFA API, optional adult programme configuration sync and a separate unauthenticated coarse analytics endpoint. Native training requires account setup and verified Apple membership. Completed workout logs, video, raw Health and measurements are never analytics DTOs. No online AI service is part of the consumer workflow.
 
-## Authentication
+## Authentication and privacy
 
-Registration verifies a resident passkey with user verification and the exact origin/RP ID, then confirms an Authenticator code before creating an account/session. Every new sign-in requires the passkey and a TOTP code. A single-use backup code can replace the TOTP factor; it cannot replace a lost passkey. Users should retain a synced passkey or a suitable passkey provider. No support bypass or email recovery exists.
+The exact native contract and operational requirements are in `docs/native-auth-contract.md`. Native identity bootstrap uses Apple or verified email, then UV passkey and TOTP. Persistent signed device sessions use 15-minute access and rotating 180-day refresh with durable single-flight retry. Existing website passkey/TOTP sessions and 12-hour cookies retain compatibility. Recovery is explicit and requires linked identity plus an unused backup. Local protected training storage remains separate.
 
-Sessions last 12 hours. Enrollment, login and replacement challenges last five minutes and allow five second-factor attempts. TOTP steps cannot be replayed. Ten 80-bit backup codes are shown once, with only keyed hashes stored. Sensitive changes require a session with MFA within five minutes and a session-bound CSRF header. Authenticator replacement rotates recovery codes and revokes other sessions. Account deletion cascades public keys, encrypted seeds, sessions, linked challenges and code hashes. Export contains account metadata only.
-
-Session and challenge cookies are Secure, HttpOnly, SameSite Strict and host-only. Raw tokens are not stored. AES-GCM encrypts the TOTP seed with account-bound additional data. D1 conditional batches protect against reused codes, stale sessions and concurrent rotations. Request bodies are limited to 32 KiB. POST attempts are limited to 60 per ten-minute keyed IP bucket. Hourly cleanup removes expired security records; validation rejects expiry before cleanup.
+Two independent adult consents default off. Analytics accepts strict coarse weekly snapshots with transient installation tags, bounded counters, request bytes and quotas. Each surfaced bucket requires ten distinct contributing installation tags. There is no public raw endpoint. See `docs/service-activation.md` for the source-reviewed activation checklist and exact retention/limits. No credential values belong in this repository.
 
 ## Development and checks
 
@@ -29,7 +29,7 @@ Tests exercise actual SimpleWebAuthn signatures and Miniflare D1, including conc
 
 ## Deployment
 
-The existing Keychain-backed `codex-cloudflare personal` helper supplies Cloudflare authorization. `wrangler.jsonc` identifies only the Spottr Worker, D1 database, exact custom hostname and hourly cleanup trigger. It disables workers.dev, preview URLs and Worker request logs. No plan upgrade was purchased. Current CPU limits are compatible with Workers Free; account requests and this configuration's static requests still consume Worker quota. Check current provider allowances before increasing traffic.
+The existing Keychain-backed `codex-cloudflare personal` helper supplies Cloudflare authorization. `wrangler.jsonc` identifies only the Spottr Worker, D1 database, exact custom hostname and hourly cleanup trigger. It disables workers.dev, preview URLs and Worker request logs. No plan upgrade was purchased. The configured 10 ms CPU limit targets Workers Free but real edge crypto/runtime acceptance remains to be measured; account requests and this configuration's static requests still consume Worker quota. Check current provider allowances before increasing traffic.
 
 ```sh
 codex-cloudflare personal ./node_modules/.bin/wrangler d1 migrations apply spottr-accounts --remote

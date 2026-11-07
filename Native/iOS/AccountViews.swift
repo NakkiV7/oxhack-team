@@ -27,6 +27,19 @@ import AuthenticationServices
         guard account.trusted, workspace?.scope.accountID == account.accountID else { return nil }
         return workspace
     }
+    var websiteAccess: ProfileWebsiteAccess {
+        let generation = account.authenticationGeneration, checkpoint = account.checkpoint
+        if let captured = visibleWorkspace {
+            return ProfileWebsiteAccess(profile: captured.profile, guardian: account.authorization, isCurrent: { [weak self, weak captured] in
+                guard let self, let captured else { return false }
+                return self.visibleWorkspace === captured && self.account.authenticationGeneration == generation
+            })
+        }
+        return ProfileWebsiteAccess(guardian: account.authorization, isCurrent: { [weak self] in
+            guard let self else { return false }
+            return self.visibleWorkspace == nil && self.account.authenticationGeneration == generation && self.account.checkpoint == checkpoint
+        })
+    }
     func accountChanged() {
         membership.setAccount(account.trusted ? account.appAccountToken : nil)
         if account.state == .pendingMFA { workspace?.launch?.authenticationWillBegin() }
@@ -158,16 +171,19 @@ struct AccountRootView: View {
     @State private var coordinator = AccountWorkspaceCoordinator()
     @State private var controls = false
     @Environment(\.scenePhase) private var scenePhase
+    @MainActor static func initialSetup(workspace: AccountWorkspace, authorization: any NativeAccountAuthorization) -> OnboardingView {
+        OnboardingView(profileStore: workspace.profile, healthStore: workspace.health, guardianAuthorization: authorization, history: workspace.training.history, programme: workspace.programme, analytics: workspace.training.analytics, voicePreviews: workspace.training.voicePreviews) {
+            workspace.training.remoteVoice?.reloadPreferences()
+            workspace.training.repVoice.choose(workspace.training.remoteVoice?.gentleOnly == true ? nil : RepVoicePlan.Coach(rawValue: workspace.profile.preferencesDefaults.string(forKey: RepVoicePlayer.defaultsKey) ?? "off"))
+            workspace.training.setVoiceFeedback(workspace.profile.preferencesDefaults.bool(forKey: "trainer.audioEnabled"))
+        }
+    }
     var body: some View {
         Group {
             if let workspace = coordinator.visibleWorkspace, coordinator.account.backupCodes.isEmpty {
                 Group {
                     if !workspace.hasOngoingWorkout && !AccountPolicy.setupComplete(profile: workspace.profile.profile) {
-                        OnboardingView(profileStore: workspace.profile, healthStore: workspace.health, guardianAuthorization: coordinator.account.authorization, history: workspace.training.history, programme: workspace.programme, voicePreviews: workspace.training.voicePreviews) {
-                            workspace.training.remoteVoice?.reloadPreferences()
-                            workspace.training.repVoice.choose(workspace.training.remoteVoice?.gentleOnly == true ? nil : RepVoicePlan.Coach(rawValue: workspace.profile.preferencesDefaults.string(forKey: RepVoicePlayer.defaultsKey) ?? "off"))
-                            workspace.training.setVoiceFeedback(workspace.profile.preferencesDefaults.bool(forKey: "trainer.audioEnabled"))
-                        }
+                        Self.initialSetup(workspace: workspace, authorization: coordinator.account.authorization)
                     } else if workspace.profile.profile?.programmePreferences?.ageContext?.ageYears ?? 0 < 5 {
                         FamilyMovementView(workspace: workspace, authorization: coordinator.account.authorization)
                     } else {
@@ -256,6 +272,7 @@ struct AccountSetupView: View {
             }.navigationTitle("Account and privacy").navigationBarTitleDisplayMode(.inline)
                 .safeAreaInset(edge: .top) { SetupProgressHeader(stage: .account).background(Color(uiColor: .systemGroupedBackground)) }
         }
+        .environment(\.profileWebsiteAccess, coordinator.websiteAccess)
     }
     @ViewBuilder private var authentication: some View {
         if account.step == .identity || account.step == .complete {
@@ -417,6 +434,7 @@ struct AccountControlsView: View {
                 catch { message = "The paused workout could not be saved. Retry before deleting the account." }
             }
         }
+        .environment(\.profileWebsiteAccess, coordinator.websiteAccess)
     }
 }
 

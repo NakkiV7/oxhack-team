@@ -4,9 +4,11 @@ public struct WatchAccessGrant: Codable, Equatable, Sendable {
     public let owner: WorkoutOwner
     public let policyID: UUID
     public let age: TrainingAgeContext?
+    public let analyticsCapture: AnalyticsCapture?
     public let verifiedAt: Date
     public let expiresAt: Date
-    public init(owner: WorkoutOwner, policyID: UUID, age: TrainingAgeContext?, verifiedAt: Date, membershipDeadline: Date?) {
+    public init(owner: WorkoutOwner, policyID: UUID, age: TrainingAgeContext?, verifiedAt: Date, membershipDeadline: Date?, analyticsCapture: AnalyticsCapture? = nil) {
+        self.analyticsCapture = analyticsCapture
         self.owner = owner; self.policyID = policyID; self.age = age; self.verifiedAt = verifiedAt
         expiresAt = min(membershipDeadline ?? .distantFuture, verifiedAt.addingTimeInterval(30 * 86400))
     }
@@ -332,10 +334,10 @@ public final class WatchWorkoutArchive {
 }
 
 extension WatchProgrammeTransport {
-    public static func authorized(sequence: UInt64, owner: WorkoutOwner, policyID: UUID, trustedOwner: WorkoutOwner?, verifiedAt: Date?, profile: LocalProfile?, sharing: Bool, membership: MembershipAccess, programme: TrainingProgramme?, at date: Date) -> WatchProgrammeTransport {
+    public static func authorized(sequence: UInt64, owner: WorkoutOwner, policyID: UUID, trustedOwner: WorkoutOwner?, verifiedAt: Date?, profile: LocalProfile?, sharing: Bool, membership: MembershipAccess, programme: TrainingProgramme?, at date: Date, analyticsCapture: AnalyticsCapture? = nil) -> WatchProgrammeTransport {
         let age = profile?.programmePreferences?.ageContext
         let support = profile?.effectiveProgrammePreferences.availableSupport ?? []
-        let candidate = verifiedAt.map { WatchAccessGrant(owner: owner, policyID: policyID, age: age, verifiedAt: $0, membershipDeadline: membership.lifetime ? nil : membership.expiresAt) }
+        let candidate = verifiedAt.map { WatchAccessGrant(owner: owner, policyID: policyID, age: age, verifiedAt: $0, membershipDeadline: membership.lifetime ? nil : membership.expiresAt, analyticsCapture: analyticsCapture) }
         let eligible = sharing && trustedOwner == owner && membership.hasAccess && AccountPolicy.setupComplete(profile: profile) && candidate?.permitsStart(at: date) == true
         let choices: [Choice] = eligible ? (programme?.days.compactMap { day in
             guard let plan = day.plan,

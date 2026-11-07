@@ -109,13 +109,15 @@ struct ProfileSettingsView: View {
     @State private var persistence: ProfileDraftPersistence
     private let membership: MembershipStore
     private let voicePreviews: VoicePreviewCoordinator?
+    private let analytics: ConsentedAnalyticsStore?
     @State private var healthStore: HealthDataStore
     @FocusState private var editingName: Bool
 
     init(profileStore: NativeProfileStore, history: [SessionRecord],
          exportData: @escaping () throws -> URL, resetHistory: @escaping () throws -> Void,
          rewards: NativeRewardsStore? = nil, historyAvailable: Bool = true, workspace: PreviewWorkspace? = nil,
-         healthStore: HealthDataStore? = nil, membership: MembershipStore? = nil, guardianAuthorization: (any NativeAccountAuthorization)? = nil, voicePreviews: VoicePreviewCoordinator? = nil) {
+         healthStore: HealthDataStore? = nil, membership: MembershipStore? = nil, guardianAuthorization: (any NativeAccountAuthorization)? = nil, voicePreviews: VoicePreviewCoordinator? = nil, analytics: ConsentedAnalyticsStore? = nil) {
+        self.analytics = analytics
         self.voicePreviews = voicePreviews
         self.guardianAuthorization = guardianAuthorization
         self.membership = membership ?? MembershipStore()
@@ -272,6 +274,7 @@ struct ProfileSettingsView: View {
                     Button("Reset local profile", systemImage: "person.crop.circle.badge.xmark", role: .destructive) { deletion = .profile }
                 }
                 Section("Website & support") {
+                    if let analytics { NavigationLink("Privacy and statistics") { AnalyticsSettingsView(store: analytics) } }
                     WebsiteLink(title: "Privacy policy", url: URL(string: "https://spottr.omarchoudhry.co.uk/privacy")!)
                         .accessibilityIdentifier("profile-privacy")
                     WebsiteLink(title: "Spottr support", url: URL(string: "https://spottr.omarchoudhry.co.uk/support")!)

@@ -35,7 +35,7 @@ struct SpottrRoot: View {
                             exportData: store.exportHistory, resetHistory: store.clearHistory,
                             rewards: store.rewards.allowsTimePressureRewards ? store.rewards : nil,
                             historyAvailable: store.historyAvailable, workspace: workspace, healthStore: healthStore,
-                            membership: membership, guardianAuthorization: guardianAuthorization, voicePreviews: store.voicePreviews)
+                            membership: membership, guardianAuthorization: guardianAuthorization, voicePreviews: store.voicePreviews, analytics: store.analytics)
     }
 
     var body: some View {
@@ -76,6 +76,12 @@ struct SpottrRoot: View {
             if let launch = store.launchCoordinator { WorkoutLaunchAccessView(launch: launch) }
         }
         .environment(\.profileWebsiteAccess, ProfileWebsiteAccess(profile: profileStore, guardian: guardianAuthorization))
+        .task { store.analytics?.feature("today"); await store.analytics?.flush() }
+        .onChange(of: selectedTab) { _, tab in
+            store.analytics?.feature(["today": "today", "skills": "practice", "insights": "insights", "coach": "coach"][tab] ?? "today")
+            Task { await store.analytics?.flush() }
+        }
+        .onChange(of: store.history.count) { _, _ in Task { await store.analytics?.flush() } }
         .foregroundStyle(Palette.ink)
         .id(ObjectIdentifier(store))
     }

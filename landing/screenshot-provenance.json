@@ -1,0 +1,22 @@
+[
+  {
+    "file": "public/assets/today-programme.png",
+    "sha256": "0e61c1a577a8f290f476d3c0595bd823a87d318d42f5832c8a7718d5ba4e66cf",
+    "width": 1206,
+    "height": 2622,
+    "capturedOn": "2026-11-07",
+    "description": "TodayView with an illustrative local profile and a three-rep manual test entry",
+    "medium": "iPhone Simulator",
+    "data": "illustrative local test input, not human exercise or physical sensor evidence"
+  },
+  {
+    "file": "public/assets/coach-programme.png",
+    "sha256": "da31db1a87319fda7c6953b301cbcbc59e35e5d75372d9ed774aae30fef62c14",
+    "width": 1206,
+    "height": 2622,
+    "capturedOn": "2026-11-06",
+    "description": "Coach after an actual simulator UI adjustment using an illustrative local profile",
+    "medium": "iPhone Simulator",
+    "data": "illustrative local test input, not human exercise or physical sensor evidence"
+  }
+]

@@ -34,16 +34,16 @@ test('membership is an honest launch plan without a live website checkout', asyn
   assert.match(text, /£200/);
   assert.match(text, /14-day/);
   assert.match(text, /eligible/i);
-  assert.match(text, /launch plan/i);
+  assert.match(text, /Apple membership/i);
   assert.match(text, /Apple.*prices/i);
   assert.doesNotMatch(text, /Buy now|Subscribe now|Redeem SPOTTRTESTERS/i);
 });
 
-test('optional website accounts do not imply synced health data or paid access', async () => {
+test('native account requirement keeps personal history local and purchases separate', async () => {
   const text = textContent(await page(''));
-  assert.match(text, /optional website account/i);
-  assert.match(text, /does not sync.*workout.*video.*health/i);
-  assert.match(text, /does not unlock.*membership/i);
+  assert.match(text, /account.*required.*start/i);
+  assert.match(text, /history.*video.*health.*stay.*device/i);
+  assert.match(text, /account.*does not unlock.*membership/i);
   const deletion = textContent(await page('delete-account/'));
   assert.match(deletion, /Apple.*subscription/i);
   assert.match(deletion, /local.*data/i);
@@ -66,11 +66,16 @@ test('public assets remain local and every local reference resolves', async () =
   }
 });
 
-test('current screenshots are unchanged copies with descriptive alternatives', async () => {
-  const sources = ['vertical-skill-path.png', 'offline-coach-options.png'];
-  for (const filename of sources) {
-    const original = await readFile(new URL(`../../docs/media/offline-mvp-2026-11-05/${filename}`, import.meta.url));
-    assert.deepEqual(await readFile(path.join(publicRoot, 'assets', filename)), original);
+test('current screenshots retain provenance and descriptive alternatives', async () => {
+  const { createHash } = await import('node:crypto');
+  const provenance = JSON.parse(await readFile(new URL('../screenshot-provenance.json', import.meta.url), 'utf8'));
+  assert.equal(provenance.length, 2);
+  for (const item of provenance) {
+    const bytes = await readFile(new URL('../' + item.file, import.meta.url));
+    assert.equal(createHash('sha256').update(bytes).digest('hex'), item.sha256);
+    assert.equal(bytes.readUInt32BE(16), item.width);
+    assert.equal(bytes.readUInt32BE(20), item.height);
+    assert.match(item.data, /illustrative local test input/);
   }
   const html = await page('');
   for (const match of html.matchAll(/<img\b[^>]*>/g)) {
@@ -113,11 +118,11 @@ test('account privacy explains expiry, recovery and account deletion boundaries'
 
 test('the expanded catalogue is explicitly a local beta capability', async () => {
   const text = textContent(await page(''));
-  assert.match(text, /32 exercises/);
-  assert.match(text, /13 camera-tracked/);
+  assert.match(text, /53 exercises/);
+  assert.match(text, /52 camera/);
   assert.match(text, /local beta candidate/i);
   assert.match(text, /public TestFlight build/i);
-  assert.match(text, /19.*manual or timed/i);
+  assert.match(text, /manual.*timed/i);
 });
 
 test('small abstract icons support privacy and planned membership without external assets', async () => {
@@ -152,4 +157,10 @@ test('brand icons use compact exports sized for their public surfaces', async ()
     assert.equal(png.readUInt32BE(20), size);
     assert.ok(png.byteLength < 70_000);
   }
+});
+
+test('all notices remove optional accounts and explain independent adult statistics controls',async()=>{
+ for(const route of [...routes,'account/']) assert.doesNotMatch(await page(route), /optional (?:Spottr )?website account|not required for the app|without a website account|not needed for core offline/i);
+ const privacy=textContent(await page('privacy/'));
+ for(const fragment of [/two independent/i,/off by default/i,/under.18.*unknown/i,/ten contributing installations.*bucket/i,/pseudonymous/i,/28 days/i,/Resend/i,/backup.excluded/i]) assert.match(privacy,fragment);
 });

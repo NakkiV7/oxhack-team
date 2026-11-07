@@ -1,3 +1,4 @@
+import { analyticsRequest, cleanupAnalytics } from './analytics.ts';
 import { createAuthHandler, cleanup } from './auth.ts';
 import { createNativeAuthHandler, type NativeEnv } from './native-auth.ts';
 import { context, cleanupNative } from './native-sessions.ts';
@@ -17,10 +18,12 @@ export default {
   async fetch(request: Request, env: SiteEnv): Promise<Response> {
     const url=new URL(request.url);
     if (url.protocol==='http:') {url.protocol='https:';return Response.redirect(url.href,308);}
+    if (url.pathname==='/.well-known/apple-app-site-association') return secured(Response.json({webcredentials:{apps:['952HTWFJX7.com.omarchoudhry.spottr']}}),url.pathname);
     if (url.pathname==='/api/health') return secured(Response.json({service:'Spottr',status:'available'}),url.pathname);
+    if (url.pathname.startsWith('/api/analytics/')) return secured(await analyticsRequest(request,env.DB),url.pathname);
     if (url.pathname.startsWith('/api/native/v1/')) return secured(await createNativeAuthHandler(env)(request),url.pathname);
     if (url.pathname.startsWith('/api/')) return secured(await createAuthHandler(env)(request),url.pathname);
     return secured(await env.ASSETS.fetch(request),url.pathname);
   },
-  async scheduled(_event: unknown, env: SiteEnv): Promise<void> { await cleanup(env); await cleanupNative(context(env)); }
+  async scheduled(_event: unknown, env: SiteEnv): Promise<void> { await cleanup(env); await cleanupNative(context(env)); await cleanupAnalytics(env.DB); }
 };

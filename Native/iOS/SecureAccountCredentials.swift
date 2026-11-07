@@ -11,6 +11,7 @@ struct StoredAccountCredential: Codable {
     var refreshStartedAt: Date?
     var locallySignedOut = false
     var lastTrustedVerification: Date?
+    var requiresReauthentication: Bool? = nil
 }
 @MainActor protocol AccountCredentialStorage {
     func load() throws -> StoredAccountCredential?

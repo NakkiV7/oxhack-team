@@ -45,3 +45,9 @@ test('scheduled retention removes expired native challenges and flows without de
  assert.equal((await f.db.prepare('SELECT COUNT(*) AS n FROM users').first<{n:number}>())?.n,1);
  }finally{await f.mf.dispose();}
 });
+test('native passkeys have exact production webcredentials association without redirects or account access', async()=>{
+ const response=await site.fetch(new Request('https://spottr.omarchoudhry.co.uk/.well-known/apple-app-site-association'),env);
+ assert.equal(response.status,200);assert.match(response.headers.get('Content-Type')??'',/application\/json/);
+ assert.deepEqual(await response.json(),{webcredentials:{apps:['952HTWFJX7.com.omarchoudhry.spottr']}});
+ assert.equal(response.headers.has('Location'),false);
+});

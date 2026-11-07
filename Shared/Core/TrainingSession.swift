@@ -49,8 +49,10 @@ public struct SessionTrainingContext: Codable, Equatable, Sendable {
     public let completionAllowsAdult: Bool?
     public let recordingDevice: RecordingDevice?
     public let omittedWatchSensorSamples: Int?
+    public let analyticsCapture: AnalyticsCapture?
     public var allowsAdultCompletion: Bool { age?.allowsTimePressureRewards == true && completionAllowsAdult != false }
-    public init(owner: WorkoutOwner, age: TrainingAgeContext?, programmeID: String? = nil, programmeRevision: Int? = nil, completionAllowsAdult: Bool? = nil, recordingDevice: RecordingDevice? = nil, omittedWatchSensorSamples: Int? = nil) {
+    public init(owner: WorkoutOwner, age: TrainingAgeContext?, programmeID: String? = nil, programmeRevision: Int? = nil, completionAllowsAdult: Bool? = nil, recordingDevice: RecordingDevice? = nil, omittedWatchSensorSamples: Int? = nil, analyticsCapture: AnalyticsCapture? = nil) {
+        self.analyticsCapture = analyticsCapture
         self.recordingDevice = recordingDevice; self.omittedWatchSensorSamples = omittedWatchSensorSamples
         self.completionAllowsAdult = completionAllowsAdult
         self.owner = owner; self.age = age; self.programmeID = programmeID; self.programmeRevision = programmeRevision

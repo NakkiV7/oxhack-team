@@ -43,6 +43,7 @@ final class TrainingStore {
     var source: InputSource = .camera
     var hasInput = false
     @ObservationIgnored weak var launchCoordinator: WorkoutLaunchCoordinator?
+    var analytics: ConsentedAnalyticsStore?
     var programme: ProgrammeStore?
     var quests: QuestStore?
     var rewardReminders: RewardReminderStore?
@@ -60,6 +61,7 @@ final class TrainingStore {
     func setAccountActive(_ active: Bool) {
         if !active, sessionPhase == .active { pause() }
         accountActive = active
+        analytics?.setActive(active)
         programme?.setActive(active)
         quests?.setActive(active)
         rewardReminders?.setActive(active)
@@ -518,9 +520,14 @@ final class TrainingStore {
     func beginAuthorizedPlan(_ plan: CoachSavedPlan, availableSupport: Set<String>, plannedWorkoutID: String? = nil, trainingContext: SessionTrainingContext? = nil) {
         voicePreviews?.stop()
         do {
-            var run = try ConfigurableSession(plan: plan, availableSupport: availableSupport, plannedWorkoutID: plannedWorkoutID, trainingContext: trainingContext)
+            let capturedContext = trainingContext.map {
+                SessionTrainingContext(owner: $0.owner, age: $0.age, programmeID: $0.programmeID, programmeRevision: $0.programmeRevision,
+                    completionAllowsAdult: $0.completionAllowsAdult, recordingDevice: $0.recordingDevice, omittedWatchSensorSamples: $0.omittedWatchSensorSamples,
+                    analyticsCapture: analytics?.ledger.capture(.workout))
+            }
+            var run = try ConfigurableSession(plan: plan, availableSupport: availableSupport, plannedWorkoutID: plannedWorkoutID, trainingContext: capturedContext)
             run.start(at: now)
-            sessionTrainingContext = trainingContext
+            sessionTrainingContext = capturedContext
             stopCapture(); clearInput(); configured = run
             configuredInput = .manual; source = .manual; remoteVoice?.reloadPreferences()
             coachingPolicy = CoachingPolicy(history: history)
@@ -763,7 +770,7 @@ final class TrainingStore {
         let completionEligible = journal.completionAllowsAdult && (watchSharing.map { $0.policyID == journal.grant.policyID && $0.age?.allowsTimePressureRewards == true } ?? true)
         let record = SessionRecord(id: original.id, date: original.date, sets: [], telemetry: completionEligible ? original.telemetry : [],
             loggedSets: original.loggedSets, endedAt: original.endedAt, plannedWorkoutID: original.plannedWorkoutID,
-            trainingContext: .init(owner: journal.grant.owner, age: journal.grant.age, programmeID: journal.programmeID, programmeRevision: journal.programmeRevision, completionAllowsAdult: completionEligible, recordingDevice: .watch, omittedWatchSensorSamples: journal.omittedSensorSamples))
+            trainingContext: .init(owner: journal.grant.owner, age: journal.grant.age, programmeID: journal.programmeID, programmeRevision: journal.programmeRevision, completionAllowsAdult: completionEligible, recordingDevice: .watch, omittedWatchSensorSamples: journal.omittedSensorSamples, analyticsCapture: journal.grant.analyticsCapture))
         // Independent Watch journals carry their own bounded sensor archive. Never
         // attach the legacy phone-session inbox to an independently owned import.
         let saved = record
@@ -779,6 +786,7 @@ final class TrainingStore {
         try quests?.reconcile(history: history)
         receipts[journal.id]?.stage = .acknowledged; receipts[journal.id]?.before = []
         try receiptStore.save(receipts)
+        analytics?.record(saved, captured: saved.trainingContext?.analyticsCapture)
         error = nil
         return true
     }
@@ -803,6 +811,7 @@ final class TrainingStore {
         do {
             try rewards.award(record: saved, before: before, history: history, completedAt: completedAt, calendar: programme?.localCalendar ?? .current)
         } catch { self.error = "Workout saved. Training rewards couldn’t be updated." }
+        analytics?.record(saved, captured: saved.trainingContext?.analyticsCapture, at: completedAt)
         refreshRewards(at: completedAt)
     }
     func refreshRewards(at date: Date = Date()) {

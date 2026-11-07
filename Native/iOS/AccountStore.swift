@@ -36,7 +36,9 @@ import CryptoKit
     func startEmail(email: String, purpose: IdentityPurpose) async {
         await operation {
             if purpose == .enroll, self.checkpoint == nil { throw AccountFailure.checkpointRequired }
-            let reply: IdentityStart = try await self.client.post("/identity/email/start", body: EmailStart(email: email, purpose: purpose), credential: purpose == .link ? try self.requireCredential() : nil)
+            let reply: IdentityStart
+            if purpose == .link { reply = try await self.signedPost("/identity/email/start", body: EmailStart(email: email, purpose: purpose)) }
+            else { reply = try await self.client.post("/identity/email/start", body: EmailStart(email: email, purpose: purpose)) }
             guard reply.accepted == true else { throw AccountFailure.invalidResponse }
             self.purpose = purpose; self.beginFlow(reply.flowToken, expires: reply.expiresAt); self.step = .emailCode
         }
@@ -52,7 +54,9 @@ import CryptoKit
     func startApple(purpose: IdentityPurpose) async {
         await operation {
             if purpose == .enroll, self.checkpoint == nil { throw AccountFailure.checkpointRequired }
-            let reply: IdentityStart = try await self.client.post("/identity/apple/start", body: AppleStart(purpose: purpose), credential: purpose == .link ? try self.requireCredential() : nil)
+            let reply: IdentityStart
+            if purpose == .link { reply = try await self.signedPost("/identity/apple/start", body: AppleStart(purpose: purpose)) }
+            else { reply = try await self.client.post("/identity/apple/start", body: AppleStart(purpose: purpose)) }
             guard let nonce = reply.nonce else { throw AccountFailure.invalidResponse }
             self.purpose = purpose; self.beginFlow(reply.flowToken, expires: reply.expiresAt)
             let apple = try await self.authorization.apple(nonce: nonce)
@@ -109,9 +113,17 @@ import CryptoKit
         let capturedEpoch = epoch
         do {
             guard let stored = try credentials.load(), !stored.locallySignedOut else { return }
+            if stored.requiresReauthentication == true || (credential?.requiresReauthentication == true && credential?.session.deviceID == stored.session.deviceID) {
+                if stored.requiresReauthentication == true { credential = stored }
+                accountID = nil; appAccountToken = nil; state = .credentialsUnknown; return
+            }
             try stored.session.validate(); credential = stored
+            guard (try? P256.Signing.PrivateKey(rawRepresentation: stored.privateKey)) != nil else { throw AccountFailure.reauthenticate }
             guard stored.session.refreshExpiresAt > Date() else { state = .credentialsUnknown; return }
-            if stored.refreshRequestID != nil || stored.session.accessExpiresAt <= Date() { await refresh(); return }
+            let needsRefresh = stored.refreshRequestID != nil || stored.session.accessExpiresAt <= Date()
+            if needsRefresh, let started = stored.refreshStartedAt, Date().timeIntervalSince(started) >= 55 { await refresh(); return }
+            trust(stored, online: false)
+            if needsRefresh { await refresh(); return }
             let reply: CurrentSessionReply = try await client.post("/session/current", body: EmptyRequest(), credential: stored)
             guard epoch == capturedEpoch else { return }
             guard reply.authenticated, reply.accountID == stored.session.accountID, reply.appAccountToken == reply.accountID, reply.deviceID == stored.session.deviceID else { throw AccountFailure.invalidResponse }
@@ -158,50 +170,83 @@ import CryptoKit
     }
     func deleteAccount() async {
         await operation {
-            let reply: DeletedReply = try await self.client.post("/account/delete", body: DeleteRequest(), credential: try self.requireCredential())
+            let reply: DeletedReply = try await self.signedPost("/account/delete", body: DeleteRequest())
             guard reply.deleted, reply.phoneHistoryUnchanged else { throw AccountFailure.invalidResponse }
             self.epoch = UUID(); try self.credentials.clear(); self.credential = nil; self.accountID = nil; self.appAccountToken = nil; self.state = .revoked; self.backupCodes = []; self.clearFlow()
         }
     }
     func revoke(deviceID: UUID) async {
         await operation {
-            let stored = try self.requireCredential()
-            let reply: SignedOutReply = try await self.client.post("/session/revoke", body: RevocationRequest(deviceID: deviceID), credential: stored)
+            let stored = try await self.credentialForSignedAction()
+            let reply: SignedOutReply = try await self.signedPost("/session/revoke", body: RevocationRequest(deviceID: deviceID))
             guard reply.signedOut else { throw AccountFailure.invalidResponse }
             if deviceID == stored.session.deviceID { self.epoch = UUID(); try self.credentials.clear(); self.credential = nil; self.accountID = nil; self.appAccountToken = nil; self.state = .revoked }
         }
     }
     func dismissBackupCodes() { backupCodes = [] }
-    func cancelSetup() { guard !busy else { return }; clearFlow(); step = .identity; state = credential != nil && accountID != nil ? .trustedOffline : .signedOut }
+    func cancelSetup() {
+        guard !busy else { return }
+        clearFlow(); step = .identity
+        if let credential, !credential.locallySignedOut, credential.requiresReauthentication != true,
+           credential.session.refreshExpiresAt > Date() { trust(credential, online: false) }
+        else { accountID = nil; appAccountToken = nil; state = credential?.requiresReauthentication == true ? .credentialsUnknown : .signedOut }
+    }
     private func completeLink() async throws {
-        let reply: LinkedReply = try await client.post("/identity/link/complete", body: FlowRequest(flowToken: try requireFlow()), credential: try requireCredential())
-        guard reply.linked else { throw AccountFailure.invalidResponse }; clearFlow(); step = .complete; state = .trustedOnline
+        let reply: LinkedReply = try await signedPost("/identity/link/complete", body: FlowRequest(flowToken: try requireFlow()))
+        guard reply.linked else { throw AccountFailure.invalidResponse }
+        let stored = try requireCredential(allowExpiredAccess: true)
+        clearFlow(); step = .complete; trust(stored, online: true)
     }
     private func operation(_ action: () async throws -> Void) async {
         guard !busy else { return }; busy = true; message = nil; defer { busy = false }
         do { try await action() } catch { handle(error) }
     }
-    private func beginFlow(_ token: String, expires: Date) { epoch = UUID(); flowToken = token; flowExpiry = expires; state = .pendingMFA }
+    private func beginFlow(_ token: String, expires: Date) {
+        epoch = UUID(); flowToken = token; flowExpiry = expires
+        accountID = nil; appAccountToken = nil; state = .pendingMFA
+    }
     private func requireFlow() throws -> String { guard let flowToken, let flowExpiry, flowExpiry > Date() else { throw AccountFailure.reauthenticate }; return flowToken }
     private func requireCredential(allowExpiredAccess: Bool = false) throws -> StoredAccountCredential {
-        guard let credential, !credential.locallySignedOut, credential.session.refreshExpiresAt > Date(), allowExpiredAccess || credential.session.accessExpiresAt > Date() else { throw AccountFailure.reauthenticate }
+        guard let credential, !credential.locallySignedOut, credential.requiresReauthentication != true, credential.session.refreshExpiresAt > Date(), allowExpiredAccess || credential.session.accessExpiresAt > Date() else { throw AccountFailure.reauthenticate }
         return credential
+    }
+    private func credentialForSignedAction() async throws -> StoredAccountCredential {
+        let captured = epoch
+        let prior = try requireCredential(allowExpiredAccess: true)
+        if prior.refreshRequestID != nil || prior.session.accessExpiresAt <= Date() { await refresh() }
+        guard epoch == captured, credential?.session.accountID == prior.session.accountID,
+              credential?.session.deviceID == prior.session.deviceID else { throw AccountFailure.reauthenticate }
+        return try requireCredential()
+    }
+    private func signedPost<Body: Encodable, Reply: Decodable>(_ path: String, body: Body) async throws -> Reply {
+        let captured = epoch
+        let stored = try await credentialForSignedAction()
+        do { return try await client.post(path, body: body, credential: stored) }
+        catch {
+            if epoch == captured, case AccountFailure.service(401, _) = error { handle(error, restoring: true) }
+            throw error
+        }
     }
     private func clearFlow() { flowToken = nil; flowExpiry = nil; authenticatorSecret = nil; authenticatorURI = nil }
     private func trust(_ stored: StoredAccountCredential, online: Bool) { accountID = stored.session.accountID; appAccountToken = stored.session.appAccountToken; state = online ? .trustedOnline : .trustedOffline; message = nil }
-    private func invalidateWatchVerification() {
+    private func requireRetainedAccountAuthentication() {
+        epoch = UUID(); accountID = nil; appAccountToken = nil; state = .credentialsUnknown
+        backupCodes = []; clearFlow(); step = .identity
         guard var stored = credential else { return }
-        stored.lastTrustedVerification = nil
+        stored.lastTrustedVerification = nil; stored.requiresReauthentication = true
         credential = stored
         do { try credentials.save(stored) }
-        catch { message = "Secure account storage could not be updated. Reconnect and verify this account before using Watch workouts." }
+        catch {
+            do { try credentials.clear(); credential = nil }
+            catch { message = "This device session could not be removed from secure storage. Reconnect and verify this account before continuing." }
+        }
     }
     private func handle(_ error: Error, restoring: Bool = false) {
         message = (error as? AccountFailure)?.errorDescription ?? "The request could not be completed. Your saved data is unchanged. Retry when connected."
-        if case AccountFailure.service(401, _) = error { invalidateWatchVerification(); state = .credentialsUnknown; accountID = nil; appAccountToken = nil; return }
-        if case AccountFailure.reauthenticate = error, restoring { invalidateWatchVerification(); state = .credentialsUnknown; accountID = nil; appAccountToken = nil; return }
-        if restoring, let credential, !credential.locallySignedOut, credential.session.refreshExpiresAt > Date(), error is URLError { trust(credential, online: false); return }
-        if restoring, case AccountFailure.service(503, _) = error, let credential { trust(credential, online: false); return }
+        if case AccountFailure.service(401, _) = error, restoring { requireRetainedAccountAuthentication(); return }
+        if case AccountFailure.reauthenticate = error, restoring { requireRetainedAccountAuthentication(); return }
+        if restoring, let credential, !credential.locallySignedOut, credential.requiresReauthentication != true, credential.session.refreshExpiresAt > Date(), error is URLError { trust(credential, online: false); return }
+        if restoring, case AccountFailure.service(503, _) = error, let credential, credential.requiresReauthentication != true { trust(credential, online: false); return }
         if state != .pendingMFA && !trusted { state = .error }
     }
 }
@@ -209,19 +254,19 @@ import CryptoKit
 @MainActor extension NativeAccountStore: ProgrammeCloudClient {
     func writePlan(_ request: ProgrammeWriteRequest) async throws -> ProgrammeWriteReply {
         let captured = epoch
-        let reply: ProgrammeWriteReply = try await client.post("/plans/write", body: request, credential: requireCredential())
+        let reply: ProgrammeWriteReply = try await signedPost("/plans/write", body: request)
         guard epoch == captured, trusted else { throw AccountFailure.reauthenticate }
         return reply
     }
     func readPlan(_ request: ProgrammeReadRequest) async throws -> ProgrammeReadReply {
         let captured = epoch
-        let reply: ProgrammeReadReply = try await client.post("/plans/read", body: request, credential: requireCredential())
+        let reply: ProgrammeReadReply = try await signedPost("/plans/read", body: request)
         guard epoch == captured, trusted else { throw AccountFailure.reauthenticate }
         return reply
     }
     func withdrawPlan(_ request: ProgrammeWithdrawRequest) async throws -> ProgrammeWithdrawReply {
         let captured = epoch
-        let reply: ProgrammeWithdrawReply = try await client.post("/plans/withdraw", body: request, credential: requireCredential())
+        let reply: ProgrammeWithdrawReply = try await signedPost("/plans/withdraw", body: request)
         guard epoch == captured, trusted else { throw AccountFailure.reauthenticate }
         return reply
     }

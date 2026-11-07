@@ -1,6 +1,7 @@
 import XCTest
 import SwiftUI
 import CryptoKit
+import WatchConnectivity
 @testable import Spottr
 
 @MainActor final class WatchWorkoutIntegrationTests: XCTestCase {
@@ -262,4 +263,91 @@ import CryptoKit
     func purchase(_ plan: MembershipPlan, appAccountToken: UUID) async throws -> MembershipPurchaseResult { .cancelled }
     func restore() async throws {}
     func finish(transactionID: UInt64) async {}
+}
+
+@MainActor final class CompanionPublicationTests: XCTestCase {
+    func testUnpairedWaitsForPairingAndPairedUnreachableStillPublishesAfterNegotiation() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let channel = PublicationChannelFixture(); channel.paired = false
+        let link = CompanionLink(telemetryOutboxURL: root.appendingPathComponent("outbox.json"), publicationChannel: channel)
+        let transport = WatchProgrammeTransport(sequence: 1, owner: .init(accountID: UUID(), profileID: UUID()), policyID: UUID(), age: nil, sharing: false, grant: nil, choices: [], support: [], timeZoneID: "Europe/London")
+        let publish = { link.publishProgramme(transport); link.publishScoped(nil) }
+        var requests = 0
+        link.onRequest = { requests += 1; publish() }
+        link.session(WCSession.default, didReceiveMessage: ["workoutProtocol": 1])
+        publish()
+        XCTAssertEqual(channel.updates, 0, "An unpaired phone must not attempt SDK context replacement")
+        XCTAssertEqual(channel.messages, 0)
+        channel.paired = true; channel.reachable = false
+        link.sessionWatchStateDidChange(WCSession.default)
+        XCTAssertEqual(requests, 1, "Pairing changes must invoke the canonical request and freshness path")
+        XCTAssertNil(channel.applicationContext["watchProgramme"], "Changed pairing must renegotiate before publishing private scoped programmes")
+        let before = channel.updates, messages = channel.messages
+        link.session(WCSession.default, didReceiveMessage: ["workoutProtocol": 1, "request": true])
+        XCTAssertEqual(channel.updates - before, 2, "Paired but unreachable delivery must still update queued context")
+        XCTAssertEqual(channel.messages, messages)
+        XCTAssertNotNil(channel.applicationContext["watchProgramme"])
+        channel.reachable = true
+        link.session(WCSession.default, didReceiveMessage: ["request": true])
+        XCTAssertEqual(channel.messages - messages, 2)
+    }
+    func testUnchangedProgrammeAndIdleHeartbeatsPublishOnceAndExplicitRequestsRepublish() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let channel = PublicationChannelFixture()
+        let link = CompanionLink(telemetryOutboxURL: root.appendingPathComponent("outbox.json"), publicationChannel: channel)
+        link.session(WCSession.default, didReceiveMessage: ["workoutProtocol": 1])
+        let transport = WatchProgrammeTransport(sequence: 1, owner: .init(accountID: UUID(), profileID: UUID()), policyID: UUID(), age: try .init(ageYears: 30, guardianManaged: false), sharing: false, grant: nil, choices: [], support: [], timeZoneID: "Europe/London")
+        let publish = { link.publishProgramme(transport); link.publishScoped(nil) }
+        let start = ProcessInfo.processInfo.systemUptime
+        for _ in 0..<12 { publish() }
+        print("TASK10_PUBLICATION_IDLE_12_UPDATES_\(channel.updates)_MESSAGES_\(channel.messages)_ELAPSED_\(ProcessInfo.processInfo.systemUptime - start)")
+        XCTAssertEqual(channel.updates, 2, "Repeated unchanged idle heartbeats should not repeat SDK context replacement")
+        XCTAssertEqual(channel.messages, 2, "Unchanged programme and idle should not repeat reachable messages")
+        let beforeRequest = channel.updates
+        link.onRequest = publish
+        link.session(WCSession.default, didReceiveMessage: ["request": true])
+        XCTAssertEqual(channel.updates - beforeRequest, 2, "A real Watch request must force fresh publication")
+    }
+
+    func testChangedLiveSnapshotsAndFailedPublicationRemainDeliverable() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let channel = PublicationChannelFixture()
+        let link = CompanionLink(telemetryOutboxURL: root.appendingPathComponent("outbox.json"), publicationChannel: channel)
+        link.session(WCSession.default, didReceiveMessage: ["workoutProtocol": 1])
+        let owner = WorkoutOwner(accountID: UUID(), profileID: UUID()), policy = UUID()
+        let first = CompanionSnapshot(session: TrainingSession(), sentAt: Date(timeIntervalSince1970: 1800000000))
+        let second = CompanionSnapshot(session: TrainingSession(), sentAt: Date(timeIntervalSince1970: 1800000001))
+        link.publishScoped(.init(snapshot: first, owner: owner, policyID: policy, allowsHealth: true))
+        link.publishScoped(.init(snapshot: second, owner: owner, policyID: policy, allowsHealth: true))
+        XCTAssertEqual(channel.updates, 2)
+        let delivered = try JSONDecoder().decode(WatchScopedSnapshot.self, from: XCTUnwrap(channel.applicationContext["scopedSnapshot"] as? Data))
+        XCTAssertEqual(delivered.snapshot.sentAt, Date(timeIntervalSince1970: 1800000001))
+        link.publishScoped(nil)
+        XCTAssertNil(channel.applicationContext["scopedSnapshot"], "Known OFF must clear previously live scoped data")
+        let beforeFailure = channel.updates
+        channel.failNext = true
+        let next = WatchProgrammeTransport(sequence: 2, owner: owner, policyID: policy, age: nil, sharing: false, grant: nil, choices: [], support: [], timeZoneID: "Europe/London")
+        link.publishProgramme(next); link.publishProgramme(next)
+        XCTAssertEqual(channel.updates - beforeFailure, 2, "Failed replacement must be retried rather than cached as delivered")
+        XCTAssertNotNil(channel.applicationContext["watchProgramme"])
+    }
+}
+
+private final class PublicationChannelFixture: CompanionContextChannel {
+    var activated = true
+    var paired = true
+    var reachable = true
+    var applicationContext: [String: Any] = [:]
+    var updates = 0
+    var messages = 0
+    var failNext = false
+    func replaceContext(_ value: [String: Any]) throws {
+        updates += 1
+        if failNext { failNext = false; throw URLError(.notConnectedToInternet) }
+        applicationContext = value
+    }
+    func sendContext(_ value: [String: Any]) { messages += 1 }
 }

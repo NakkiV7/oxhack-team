@@ -14,7 +14,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "009A6B80F1BA03B00557B57C"
+               BlueprintIdentifier = "098097D05EACBCCFA487A817"
                BuildableName = "Spottr.app"
                BlueprintName = "Spottr"
                ReferencedContainer = "container:Spottr.xcodeproj">
@@ -30,7 +30,7 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "009A6B80F1BA03B00557B57C"
+            BlueprintIdentifier = "098097D05EACBCCFA487A817"
             BuildableName = "Spottr.app"
             BlueprintName = "Spottr"
             ReferencedContainer = "container:Spottr.xcodeproj">
@@ -41,17 +41,61 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "589213B946B042B9C9A0E436"
+               BlueprintIdentifier = "F9551EA56168728D2A7687C1"
                BuildableName = "SpottrTests.xctest"
                BlueprintName = "SpottrTests"
                ReferencedContainer = "container:Spottr.xcodeproj">
             </BuildableReference>
+            <SkippedTests>
+               <Test
+                  Identifier = "SetupRenderedAcceptanceTests/testExternalCatalogueMembershipContinueUsesExactSelection">
+               </Test>
+               <Test
+                  Identifier = "SetupRenderedAcceptanceTests/testExternalOnboardingRetainsMeasurementsAndExactPendingIntent">
+               </Test>
+               <Test
+                  Identifier = "SetupRenderedAcceptanceTests/testExternalAccountCheckpointDoesNotEstablishTrust">
+               </Test>
+               <Test
+                  Identifier = "SetupRenderedAcceptanceTests/testExternalSignedOutRestoreHelpAndRetainedRecords">
+               </Test>
+               <Test
+                  Identifier = "SetupRenderedAcceptanceTests/testExternalJuniorSetupLargeType">
+               </Test>
+               <Test
+                  Identifier = "SetupRenderedAcceptanceTests/testExternalAdditionalPersonRequiresFreshAgeAndGuardian">
+               </Test>
+               <Test
+                  Identifier = "SetupRenderedAcceptanceTests/testExternalMonthlyMemberCanChooseLifetimeWithoutStartingPendingWorkout">
+               </Test>
+               <Test
+                  Identifier = "SetupRenderedAcceptanceTests/testExternalJuniorOnboardingWatchLinksRequireCurrentGuardianApproval">
+               </Test>
+               <Test
+                  Identifier = "QuestExternalAcceptanceTests/testExternalChapterJumpRecoveryClaimAndRewardSettings">
+               </Test>
+               <Test
+                  Identifier = "QuestExternalAcceptanceTests/testExternalChapterRevealHasNoBlankViewport">
+               </Test>
+               <Test
+                  Identifier = "ProgrammeExternalAcceptanceTests/testExternalWholeWorkoutCameraManualEffortAndFinished">
+               </Test>
+               <Test
+                  Identifier = "CoachPolishExternalTests/testPublicCoachAdjustmentAndActualInsightsTab">
+               </Test>
+               <Test
+                  Identifier = "ServiceIntegrationRenderedTests/testExternalJuniorMembershipRestoreRequiresGuardian">
+               </Test>
+               <Test
+                  Identifier = "ServiceIntegrationRenderedTests/testExternalInitialPrivacyContinuesOffAndRequiresAdultMeasurements">
+               </Test>
+            </SkippedTests>
          </TestableReference>
          <TestableReference
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "82437FEFD18B112F736272AD"
+               BlueprintIdentifier = "A97FF295B9D681D0A55AB4F4"
                BuildableName = "SpottrUITests.xctest"
                BlueprintName = "SpottrUITests"
                ReferencedContainer = "container:Spottr.xcodeproj">
@@ -76,7 +120,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "009A6B80F1BA03B00557B57C"
+            BlueprintIdentifier = "098097D05EACBCCFA487A817"
             BuildableName = "Spottr.app"
             BlueprintName = "Spottr"
             ReferencedContainer = "container:Spottr.xcodeproj">
@@ -96,7 +140,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "009A6B80F1BA03B00557B57C"
+            BlueprintIdentifier = "098097D05EACBCCFA487A817"
             BuildableName = "Spottr.app"
             BlueprintName = "Spottr"
             ReferencedContainer = "container:Spottr.xcodeproj">

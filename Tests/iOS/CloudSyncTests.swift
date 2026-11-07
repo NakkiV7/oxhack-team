@@ -3,6 +3,14 @@ import XCTest
 
 @MainActor
 final class CloudSyncTests: XCTestCase {
+    func testRetiredConsumerModelDoesNotReadGatewayConfiguration() async {
+        var reads = 0
+        let model = CloudSyncModel(configuration: { reads += 1; throw WorkoutSyncError.configuration })
+        await model.sync(record: .init(id: UUID(), date: Date(), sets: []), installationID: UUID())
+        XCTAssertEqual(reads, 0)
+        XCTAssertTrue(model.error?.contains("retired") == true)
+        XCTAssertNil(model.receipt)
+    }
     func testInstallationIdentityPersistsAndNamespacesStaySeparate() throws {
         let suite = "CloudSyncTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
@@ -20,7 +28,7 @@ final class CloudSyncTests: XCTestCase {
         await model.sync(record: record, installationID: UUID())
         XCTAssertFalse(model.isLoading)
         XCTAssertNil(model.receipt)
-        XCTAssertTrue(model.error?.contains("settings") == true)
+        XCTAssertTrue(model.error?.contains("retired") == true)
         XCTAssertTrue(record.sets.isEmpty)
     }
 }

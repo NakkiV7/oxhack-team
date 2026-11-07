@@ -3,6 +3,110 @@ import CryptoKit
 @testable import Spottr
 
 @MainActor final class AccountFlowTests: XCTestCase {
+    func testRetainedTrustedAccountOpensWorkspaceWhileActualVerificationIsHeld() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        var stored = try fixtureCredential()
+        let cachedVerification = Date().addingTimeInterval(-3600); stored.lastTrustedVerification = cachedVerification
+        let directory = try AccountProfileDirectory(accountID: stored.session.accountID, root: root)
+        let person = try directory.add(age: .init(ageYears: 30, guardianManaged: false), name: "Retained profile")
+        let vault = MemoryAccountCredentials(); try vault.save(stored)
+        let wire = AccountTestTransport(); wire.holdFirst = true
+        wire.replies = [Data(#"{"challenge":"challenge","expiresAt":"2030-01-01T00:00:00Z"}"#.utf8), try AccountJSON.encoder().encode(stored.session)]
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: AccountTestAuthorization())
+        let coordinator = AccountWorkspaceCoordinator(account: account, root: root)
+        let start = ProcessInfo.processInfo.systemUptime
+        let restore = Task { await account.restore() }
+        while wire.held == nil { await Task.yield() }
+        coordinator.accountChanged()
+        print("TASK10_RESTORE_HELD_CACHED_STATE_\(account.state)_WORKSPACE_\(coordinator.visibleWorkspace != nil)_ELAPSED_\(ProcessInfo.processInfo.systemUptime - start)")
+        XCTAssertEqual(account.state, .trustedOffline)
+        XCTAssertEqual(coordinator.visibleWorkspace?.scope.profileID, person.id)
+        XCTAssertEqual(account.lastTrustedVerification, cachedVerification, "Cached restoration must not mint Watch freshness")
+        wire.held?.resume(); wire.held = nil
+        await restore.value
+        coordinator.accountChanged()
+        XCTAssertEqual(account.state, .trustedOnline)
+        XCTAssertGreaterThan(try XCTUnwrap(account.lastTrustedVerification), cachedVerification)
+        coordinator.visibleWorkspace?.suspend()
+    }
+    func testKnown401CannotRestoreCachedTrustAfterReopenOffline() async throws {
+        let vault = MemoryAccountCredentials(); try vault.save(fixtureCredential())
+        let wire = AccountTestTransport(); wire.failure = AccountFailure.service(401, "Revoked")
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: AccountTestAuthorization())
+        await account.restore(); XCTAssertFalse(account.trusted)
+        wire.failure = URLError(.notConnectedToInternet)
+        let reopened = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: AccountTestAuthorization())
+        await reopened.restore()
+        XCTAssertFalse(reopened.trusted, "Known revoked credentials cannot become trusted again merely by going offline")
+    }
+    func testWrongPartialEmailCodeDoesNotInvalidateRetainedDeviceSessionOrVerification() async throws {
+        var stored = try fixtureCredential(); stored.lastTrustedVerification = Date().addingTimeInterval(-3600)
+        let vault = MemoryAccountCredentials(); try vault.save(stored)
+        let wire = AccountTestTransport(); wire.failure = URLError(.notConnectedToInternet)
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: AccountTestAuthorization())
+        await account.restore()
+        wire.failure = nil
+        wire.replies = [Data(#"{"challenge":"challenge","expiresAt":"2030-01-01T00:00:00Z"}"#.utf8), Data(#"{"flowToken":"partial-link","expiresAt":"2030-01-01T00:00:00Z","accepted":true}"#.utf8)]
+        await account.startEmail(email: "owner@example.test", purpose: .link)
+        wire.status = 401; wire.replies = [Data(#"{"error":"verification_failed"}"#.utf8)]
+        await account.verifyEmail(code: "000000")
+        XCTAssertEqual(try vault.load()?.lastTrustedVerification, stored.lastTrustedVerification, "A wrong partial-flow code is not a device-session revocation")
+        wire.status = 200; wire.failure = URLError(.notConnectedToInternet)
+        let reopened = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: AccountTestAuthorization())
+        await reopened.restore(); XCTAssertTrue(reopened.trusted)
+    }
+    func testCancelledNewIdentityFlowReturnsToRetainedAccountWithoutMintingFreshness() async throws {
+        var stored = try fixtureCredential(); stored.lastTrustedVerification = Date().addingTimeInterval(-3600)
+        let vault = MemoryAccountCredentials(); try vault.save(stored)
+        let wire = AccountTestTransport(); wire.failure = URLError(.notConnectedToInternet)
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: AccountTestAuthorization())
+        await account.restore()
+        try account.setCheckpoint(ageYears: 30, role: .adultSelf)
+        wire.failure = nil; wire.replies = [Data(#"{"flowToken":"partial-enroll","expiresAt":"2030-01-01T00:00:00Z","accepted":true}"#.utf8)]
+        await account.startEmail(email: "owner@example.test", purpose: .enroll)
+        XCTAssertEqual(account.state, .pendingMFA); XCTAssertNil(account.accountID)
+        account.cancelSetup()
+        XCTAssertTrue(account.trusted); XCTAssertEqual(account.accountID, stored.session.accountID)
+        XCTAssertEqual(account.lastTrustedVerification, stored.lastTrustedVerification)
+    }
+    func testSafeExpiredAccessShowsCachedAccountDuringRefreshButExpiredAmbiguityDoesNot() async throws {
+        let original = try fixtureCredential(), prior = original.session
+        let expired = NativeAccountSession(authenticated: true, accountID: prior.accountID, appAccountToken: prior.accountID, deviceID: prior.deviceID, accessToken: "expired", refreshToken: prior.refreshToken, accessExpiresAt: Date().addingTimeInterval(-60), refreshExpiresAt: prior.refreshExpiresAt)
+        let vault = MemoryAccountCredentials(); try vault.save(.init(session: expired, privateKey: original.privateKey))
+        let wire = AccountTestTransport(); wire.holdFirst = true; wire.failure = URLError(.notConnectedToInternet)
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: AccountTestAuthorization())
+        let restore = Task { await account.restore() }
+        while wire.held == nil { await Task.yield() }
+        XCTAssertEqual(account.state, .trustedOffline)
+        XCTAssertNil(account.lastTrustedVerification)
+        wire.held?.resume(); wire.held = nil; await restore.value
+        var ambiguous = try XCTUnwrap(vault.load()); ambiguous.refreshStartedAt = Date().addingTimeInterval(-70)
+        try vault.save(ambiguous)
+        let previousRequests = wire.requests.count
+        let reopened = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: AccountTestAuthorization())
+        await reopened.restore()
+        XCTAssertFalse(reopened.trusted); XCTAssertEqual(wire.requests.count, previousRequests)
+    }
+    func testCorruptRetainedSigningKeyNeverRestoresOfflineTrust() async throws {
+        let stored = try fixtureCredential(), vault = MemoryAccountCredentials()
+        try vault.save(.init(session: stored.session, privateKey: Data([1, 2, 3])))
+        let wire = AccountTestTransport(); wire.failure = URLError(.notConnectedToInternet)
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: AccountTestAuthorization())
+        await account.restore()
+        XCTAssertFalse(account.trusted)
+    }
+    func testKnownInvalidCredentialIsClearedIfPersistingItsDenialFails() async throws {
+        let vault = RevocationSaveFailureVault(value: try fixtureCredential())
+        let wire = AccountTestTransport(); wire.failure = AccountFailure.service(401, "Revoked")
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: AccountTestAuthorization())
+        await account.restore()
+        XCTAssertFalse(account.trusted)
+        XCTAssertNil(vault.value, "Only the known-invalid credential should be cleared when its denial cannot be saved")
+        wire.failure = URLError(.notConnectedToInternet)
+        let reopened = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: AccountTestAuthorization())
+        await reopened.restore(); XCTAssertFalse(reopened.trusted)
+    }
     func testRevocationSerializesCanonicalServerDeviceIDAndSignsExactRequestBody() async throws {
         let serverID = "abcdef12-3456-4789-abcd-ef1234567890"
         let deviceID = try XCTUnwrap(UUID(uuidString: serverID))
@@ -302,6 +406,25 @@ import CryptoKit
         XCTAssertEqual(wire.requests.count, before + 2)
     }
 
+    func testContinuouslyOpenAccountRefreshesBeforeSignedDeviceAction() async throws {
+        let wire = AccountTestTransport(), vault = MemoryAccountCredentials()
+        let original = try fixtureCredential(), session = original.session
+        let expiring = NativeAccountSession(authenticated: true, accountID: session.accountID, appAccountToken: session.appAccountToken, deviceID: session.deviceID, accessToken: "expiring", refreshToken: session.refreshToken, accessExpiresAt: Date().addingTimeInterval(0.2), refreshExpiresAt: session.refreshExpiresAt)
+        try vault.save(.init(session: expiring, privateKey: original.privateKey))
+        wire.failure = URLError(.notConnectedToInternet)
+        let store = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: AccountTestAuthorization())
+        await store.restore(); XCTAssertTrue(store.trusted)
+        try await Task.sleep(for: .milliseconds(250))
+        wire.failure = nil
+        let challenge = Data("{\"challenge\":\"challenge\",\"expiresAt\":\"2030-01-01T00:00:00Z\"}".utf8)
+        wire.replies = [challenge, try AccountJSON.encoder().encode(session), challenge, Data("{\"signedOut\":true}".utf8)]
+        await store.revoke(deviceID: UUID())
+        XCTAssertEqual(wire.requests.filter { $0.url?.path.hasSuffix("/session/refresh") == true }.count, 1)
+        XCTAssertEqual(wire.requests.last?.value(forHTTPHeaderField: "Authorization"), "Bearer " + session.accessToken)
+        XCTAssertNil(try vault.load()?.refreshRequestID)
+        XCTAssertTrue(store.trusted)
+    }
+
     private func fixtureCredential() throws -> StoredAccountCredential {
         let account = UUID()
         return StoredAccountCredential(session: NativeAccountSession(authenticated: true, accountID: account, appAccountToken: account, deviceID: UUID(), accessToken: "access", refreshToken: "refresh", accessExpiresAt: Date().addingTimeInterval(900), refreshExpiresAt: Date().addingTimeInterval(86400)), privateKey: P256.Signing.PrivateKey().rawRepresentation)
@@ -346,4 +469,12 @@ import CryptoKit
     }
     func authenticate(options: PasskeyRequestOptions) async throws -> AssertionCredential { throw AccountFailure.cancelled }
     func guardian() async throws { if !succeed { throw AccountFailure.cancelled } }
+}
+
+@MainActor private final class RevocationSaveFailureVault: AccountCredentialStorage {
+    var value: StoredAccountCredential?
+    init(value: StoredAccountCredential) { self.value = value }
+    func load() throws -> StoredAccountCredential? { value }
+    func save(_ value: StoredAccountCredential) throws { throw AccountFailure.keychain(-50) }
+    func clear() throws { value = nil }
 }

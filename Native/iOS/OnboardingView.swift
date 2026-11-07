@@ -5,6 +5,7 @@ struct OnboardingView: View {
     let healthStore: HealthDataStore
     let history: [SessionRecord]
     let programme: ProgrammeStore?
+    let analytics: ConsentedAnalyticsStore?
     var guardianAuthorization: (any NativeAccountAuthorization)? = nil
     var onComplete: () -> Void = {}
     @Environment(\.dismiss) private var dismiss
@@ -25,14 +26,17 @@ struct OnboardingView: View {
     @State private var error: String?
     @State private var previewAnchor = Date.now
     @AccessibilityFocusState private var focusedFamily: ExerciseFamily?
+    @AccessibilityFocusState private var focusedError: Bool
     @AppStorage("trainer.audioEnabled") private var audioEnabled = false
     @State var previews: VoicePreviewCoordinator
     private var playback: RemoteVoicePlayback { previews.preferences }
 
     init(profileStore: NativeProfileStore, healthStore: HealthDataStore? = nil,
-         guardianAuthorization: (any NativeAccountAuthorization)? = nil, history: [SessionRecord] = [], programme: ProgrammeStore? = nil, voicePreviews: VoicePreviewCoordinator? = nil, onComplete: @escaping () -> Void = {}) {
+         guardianAuthorization: (any NativeAccountAuthorization)? = nil, history: [SessionRecord] = [], programme: ProgrammeStore? = nil, analytics: ConsentedAnalyticsStore? = nil, voicePreviews: VoicePreviewCoordinator? = nil, onComplete: @escaping () -> Void = {}) {
         self.profileStore = profileStore; self.healthStore = healthStore ?? HealthDataStore()
         self.guardianAuthorization = guardianAuthorization; self.history = history; self.onComplete = onComplete; self.programme = programme
+        self.analytics = analytics
+        _stage = State(initialValue: analytics == nil ? .body : .account)
         _audioEnabled = AppStorage(wrappedValue: false, "trainer.audioEnabled", store: profileStore.preferencesDefaults)
         _previews = State(initialValue: voicePreviews ?? VoicePreviewCoordinator(preferences: RemoteVoicePlayback(offlineOnly: true, defaults: profileStore.preferencesDefaults,
             gentleOnly: (profileStore.profile?.programmePreferences?.ageContext?.ageYears ?? 0) < 18), permitsSelection: { profileStore.permitsPolicyCallbacks }, canPreview: { false }))
@@ -62,22 +66,26 @@ struct OnboardingView: View {
                         VStack(alignment: .leading, spacing: 24) {
                             ScreenHeading(title: stage.title)
                             switch stage {
-                            case .account: EmptyView()
+                            case .account: accountPrivacy
                             case .body: bodyProfile
                             case .goals: rhythm
                             case .comfort: comfort(proxy)
                             case .permissions: PhonePermissionsView(profileStore: profileStore, healthStore: healthStore)
                             case .coach: coach
                             }
-                            if let error { Text(error).foregroundStyle(Palette.red).accessibilityIdentifier("setup-error") }
                         }.padding(24).id(stage)
                     }.scrollDismissesKeyboard(.interactively).clipped()
                         .onChange(of: stage) { _, next in proxy.scrollTo(next, anchor: .top) }
                 }
                 VStack(spacing: 10) {
+                    if let error {
+                        Text(error).font(.subheadline).foregroundStyle(Palette.red)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .accessibilityIdentifier("setup-error").accessibilityFocused($focusedError)
+                    }
                     PrimaryButton(title: stage == .coach ? "Save my training setup" : "Continue", action: advance)
                         .accessibilityIdentifier("onboarding-continue")
-                    if stage != .body {
+                    if stage.rawValue > (analytics == nil ? TrainingSetup.Stage.body.rawValue : TrainingSetup.Stage.account.rawValue) {
                         Button("Back", systemImage: "arrow.left") { stage = TrainingSetup.Stage(rawValue: stage.rawValue - 1) ?? .body; error = nil }
                             .frame(minHeight: 44).buttonStyle(.bordered).tint(Palette.blue)
                     }
@@ -90,7 +98,29 @@ struct OnboardingView: View {
         }.interactiveDismissDisabled(!AccountPolicy.setupComplete(profile: profileStore.profile))
             .onDisappear { previews.stop() }
             .onChange(of: stage) { _, _ in previews.stop() }
+            .onChange(of: error) { _, value in focusedError = value != nil }
             .environment(\.profileWebsiteAccess, ProfileWebsiteAccess(profile: profileStore, guardian: guardianAuthorization))
+    }
+    private var accountPrivacy: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            if adult {
+                Text("Choose what you share. Both choices are optional and you can continue with them off.")
+                WebsiteLink(title: "Privacy policy", url: URL(string: AccountClient.origin + "/privacy/")!)
+                if let analytics { AnalyticsConsentChoices(store: analytics) }
+                Text("Your personal reports use your saved records. You can change sharing later in Privacy and statistics.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+            } else {
+                WebsiteLink(title: "Privacy policy", url: URL(string: AccountClient.origin + "/privacy/")!)
+                VStack(alignment: .leading, spacing: 14) {
+                    Image(systemName: "lock.shield.fill").font(.system(size: 40)).foregroundStyle(Palette.blue).accessibilityHidden(true)
+                    Text("Your practice stays private").font(.title2.bold())
+                    if let analytics { AnalyticsConsentChoices(store: analytics) }
+                }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Palette.blue.opacity(0.06), in: RoundedRectangle(cornerRadius: 20))
+                Text("A guardian manages this profile. Your movement and progress stay with your profile and paired devices.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+            }
+        }
     }
     private var bodyProfile: some View {
         VStack(alignment: .leading, spacing: 18) {

@@ -1,27 +1,67 @@
 import Foundation
 import WatchConnectivity
 
+protocol CompanionContextChannel {
+    var activated: Bool { get }
+    var paired: Bool { get }
+    var reachable: Bool { get }
+    var applicationContext: [String: Any] { get }
+    func replaceContext(_ value: [String: Any]) throws
+    func sendContext(_ value: [String: Any])
+}
+
+private struct SystemCompanionContextChannel: CompanionContextChannel {
+    let session: WCSession
+    var activated: Bool { session.activationState == .activated }
+    var paired: Bool {
+        #if os(iOS)
+        session.isPaired
+        #else
+        true
+        #endif
+    }
+    var reachable: Bool { session.isReachable }
+    var applicationContext: [String: Any] { session.applicationContext }
+    func replaceContext(_ value: [String: Any]) throws { try session.updateApplicationContext(value) }
+    func sendContext(_ value: [String: Any]) { session.sendMessage(value, replyHandler: nil, errorHandler: nil) }
+}
+
 final class CompanionLink: NSObject, WCSessionDelegate {
     var onProgramme: ((WatchProgrammeTransport) -> Void)?
     var onScopedSnapshot: ((WatchScopedSnapshot) -> Void)?
     var onWorkout: ((WatchWorkoutJournal) -> Void)?
     var onWorkoutAcknowledgement: ((WatchWorkoutAcknowledgement) -> Void)?
     private var supportsScopedWorkouts = false
+    private var lastProgramme: WatchProgrammeTransport?
+    private var lastProgrammeData: Data?
+    private var lastIdleData: Data?
+    private var lastIdleProtocol: Bool?
     func publishProgramme(_ transport: WatchProgrammeTransport) {
         telemetryLock.lock(); defer { telemetryLock.unlock() }
-        guard supportsScopedWorkouts, let data = try? JSONEncoder().encode(transport) else { return }
-        updateContext(key: "watchProgramme", data: data)
+        guard supportsScopedWorkouts, let channel = publicationChannel, channel.activated, channel.paired else { return }
+        if lastProgramme == transport, let lastProgrammeData,
+           channel.applicationContext["watchProgramme"] as? Data == lastProgrammeData { return }
+        lastIdleData = nil; lastIdleProtocol = nil
+        guard let data = try? JSONEncoder().encode(transport) else { return }
+        if updateContext(key: "watchProgramme", data: data) { lastProgramme = transport; lastProgrammeData = data }
     }
     func publishScoped(_ snapshot: WatchScopedSnapshot?) {
         telemetryLock.lock(); defer { telemetryLock.unlock() }
-        guard let session, session.activationState == .activated,
-              let idle = try? JSONEncoder().encode(CompanionSnapshot(session: TrainingSession())) else { return }
-        var payload = session.applicationContext
+        guard let channel = publicationChannel, channel.activated, channel.paired else { return }
+        var payload = channel.applicationContext
+        if snapshot == nil, let lastIdleData, lastIdleProtocol == supportsScopedWorkouts,
+           payload["snapshot"] as? Data == lastIdleData, payload["scopedSnapshot"] == nil,
+           supportsScopedWorkouts || payload["watchProgramme"] == nil { return }
+        lastIdleData = nil; lastIdleProtocol = nil
+        guard let idle = try? JSONEncoder().encode(CompanionSnapshot(session: TrainingSession())) else { return }
         payload["snapshot"] = idle
         if !supportsScopedWorkouts { payload["watchProgramme"] = nil }
         payload["scopedSnapshot"] = supportsScopedWorkouts ? snapshot.flatMap { try? JSONEncoder().encode($0) } : nil
-        try? session.updateApplicationContext(payload)
-        if session.isReachable { session.sendMessage(payload, replyHandler: nil, errorHandler: nil) }
+        do {
+            try channel.replaceContext(payload)
+            if snapshot == nil { lastIdleData = idle; lastIdleProtocol = supportsScopedWorkouts }
+        } catch {}
+        if channel.reachable { channel.sendContext(payload) }
     }
     func sendWorkout(_ journal: WatchWorkoutJournal) {
         guard let session, session.activationState == .activated, journal.finishedAt != nil,
@@ -54,11 +94,16 @@ final class CompanionLink: NSObject, WCSessionDelegate {
         _ = session.transferUserInfo(["watchWorkoutAck": data])
         try? FileManager.default.removeItem(at: workoutFile(id: value.id, owner: value.owner, folder: "incoming"))
     }
-    private func updateContext(key: String, data: Data) {
-        guard let session, session.activationState == .activated else { return }
-        var payload = session.applicationContext; payload[key] = data
-        try? session.updateApplicationContext(payload)
-        if session.isReachable { session.sendMessage(payload, replyHandler: nil, errorHandler: nil) }
+    private func updateContext(key: String, data: Data) -> Bool {
+        guard let channel = publicationChannel, channel.activated, channel.paired else { return false }
+        var payload = channel.applicationContext; payload[key] = data
+        let replaced: Bool
+        do { try channel.replaceContext(payload); replaced = true } catch { replaced = false }
+        if channel.reachable { channel.sendContext(payload) }
+        return replaced
+    }
+    private func resetPublications() {
+        lastProgramme = nil; lastProgrammeData = nil; lastIdleData = nil; lastIdleProtocol = nil
     }
     var onSnapshot: ((CompanionSnapshot) -> Void)?
     var onCommand: ((CompanionCommand) -> Void)?
@@ -69,6 +114,8 @@ final class CompanionLink: NSObject, WCSessionDelegate {
     var onReachability: ((Bool) -> Void)?
     var onRequest: (() -> Void)?
     private let session: WCSession? = WCSession.isSupported() ? .default : nil
+    private let suppliedPublicationChannel: (any CompanionContextChannel)?
+    private var publicationChannel: (any CompanionContextChannel)? { suppliedPublicationChannel ?? session.map(SystemCompanionContextChannel.init) }
     private let telemetryLock = NSRecursiveLock()
     private let outbox: WatchTelemetryOutbox?
     private let workoutTransferRoot: URL
@@ -131,18 +178,20 @@ final class CompanionLink: NSObject, WCSessionDelegate {
                      droppedSamples: outbox?.droppedSampleCount ?? 0, message: deliveryMessage ?? rejectionMessage)
     }
 
-    init(telemetryOutboxURL: URL? = nil) {
+    init(telemetryOutboxURL: URL? = nil, publicationChannel: (any CompanionContextChannel)? = nil) {
+        suppliedPublicationChannel = publicationChannel
         let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support")
         let url = telemetryOutboxURL ?? directory.appendingPathComponent("Spottr/watch-telemetry-outbox.json")
         workoutTransferRoot = url.deletingLastPathComponent().appendingPathComponent("workout-transfers")
         do { outbox = try WatchTelemetryOutbox(url: url) }
         catch { outbox = nil; deliveryMessage = "Watch data queue unavailable. Local storage needs attention." }
-        super.init(); session?.delegate = self; session?.activate(); requestProtocol()
+        super.init()
+        if publicationChannel == nil { session?.delegate = self; session?.activate(); requestProtocol() }
     }
     private func requestProtocol() {
+        telemetryLock.lock(); supportsScopedWorkouts = false; resetPublications(); telemetryLock.unlock()
         guard let session, session.activationState == .activated, session.isReachable else { return }
-        telemetryLock.lock(); supportsScopedWorkouts = false; telemetryLock.unlock()
         publishScoped(nil)
         session.sendMessage(["workoutProbe": true], replyHandler: { [weak self] payload in
             self?.receive(payload); self?.onRequest?()
@@ -290,7 +339,9 @@ final class CompanionLink: NSObject, WCSessionDelegate {
     private func notifyDeliveryStatus() { onTelemetryDeliveryStatus?(telemetryDeliveryStatus) }
     private func receive(_ payload: [String: Any], marksArrival: Bool = true) {
         if payload["workoutProtocol"] as? Int == 1 {
-            telemetryLock.lock(); supportsScopedWorkouts = true; telemetryLock.unlock()
+            telemetryLock.lock()
+            if !supportsScopedWorkouts { resetPublications() }
+            supportsScopedWorkouts = true; telemetryLock.unlock()
         }
         if let data = payload["watchProgramme"] as? Data, data.count <= 256 * 1024,
            let value = try? JSONDecoder().decode(WatchProgrammeTransport.self, from: data) { onProgramme?(value) }
@@ -326,10 +377,15 @@ final class CompanionLink: NSObject, WCSessionDelegate {
             queueTelemetry(includeUnsealed: false); notifyDeliveryStatus()
             telemetryLock.unlock()
         }
-        if payload["request"] as? Bool == true { onRequest?() }
+        if payload["request"] as? Bool == true {
+            telemetryLock.lock(); resetPublications(); telemetryLock.unlock()
+            onRequest?()
+        }
     }
     #if os(iOS)
-    func sessionWatchStateDidChange(_ session: WCSession) { invalidateSetupStatus(clearReceipt: true) }
+    func sessionWatchStateDidChange(_ session: WCSession) {
+        invalidateSetupStatus(clearReceipt: true); requestProtocol(); onRequest?()
+    }
     func sessionDidBecomeInactive(_ session: WCSession) { invalidateSetupStatus(clearReceipt: true) }
     func sessionDidDeactivate(_ session: WCSession) { invalidateSetupStatus(clearReceipt: true); session.activate() }
     #endif
