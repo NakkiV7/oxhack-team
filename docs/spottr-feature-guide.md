@@ -1,6 +1,6 @@
 # Spottr feature guide and next improvements
 
-Prepared on 7 November 2026 from accepted functional source 93c0a92b and frozen candidate 3a0833d for version 0.1 build 24. The signed archive, IPA and separate development Release bundles have passed their artifact audits. TestFlight upload, phone installation and physical acceptance remain pending.
+Prepared on 7 November 2026 from accepted functional source 93c0a92b and frozen candidate 3a0833d for version 0.1 build 24. The signed archive, IPA and separate development Release bundles have passed their artifact audits. At 19:00:31 UTC, build 24 was VALID and IN_BETA_TESTING in the existing internal TestFlight group. Final phone installation and physical acceptance remain pending. External distribution remains on hold.
 
 ## What the app brings together
 

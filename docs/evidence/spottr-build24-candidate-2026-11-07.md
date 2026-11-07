@@ -1,6 +1,6 @@
 # Spottr build 24 candidate evidence
 
-Prepared on 7 November 2026. Version 0.1 build 24 is a signed release candidate. Upload, distribution and phone installation are on hold until the controller audits the concrete artifacts and records the remaining readiness decision.
+This document records candidate preparation on 7 November 2026. The controller subsequently approved the exact artifact for internal beta delivery. At 19:00:31 UTC, version 0.1 build 24 was VALID and IN_BETA_TESTING in the existing internal group. See the [dated internal delivery receipt](testflight-build-24-2026-11-07.md). Final phone installation, external distribution and physical acceptance remain separate gates.
 
 The accepted functional source is `93c0a92b6f78e26ea1423758998b5a7061e1525e`. Candidate commit `3a0833d3d8cbd767e292bccd8579b79d3f020cbd` changes only build numbers in the generator and all phone, Watch and test configurations. A private manifest freezes 1623 input entries, including actual resources, Vendor payloads and signing configuration. The candidate uses the existing checkout and Xcode toolchain.
 
