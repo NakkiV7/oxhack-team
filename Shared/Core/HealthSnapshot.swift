@@ -125,6 +125,7 @@ public final class HealthSnapshotStore {
     private let calendar: @MainActor () -> Calendar
     @ObservationIgnored private var dayRefresh: Task<Void, Never>?
     @ObservationIgnored private var readingID = UUID()
+    @ObservationIgnored private var retired = false
 
     public init(client: any HealthReadingClient, defaults: any HealthPreferenceStorage = UserDefaults.standard,
                 now: @escaping @MainActor () -> Date = { .now },
@@ -148,7 +149,7 @@ public final class HealthSnapshotStore {
     }
 
     public func connect() async {
-        guard !isBusy else { return }
+        guard !retired, !isBusy else { return }
         guard client.isAvailable else {
             statusMessage = "Apple Health is not available on this device."
             return
@@ -200,15 +201,26 @@ public final class HealthSnapshotStore {
     }
 
     public func disconnect() {
+        guard !retired else { return }
+        clearReadState()
+        defaults.set(false, forKey: "health.accessRequested")
+    }
+
+    public func retire() {
+        retired = true
+        clearReadState()
+    }
+
+    private func clearReadState() {
         readingID = UUID()
         dayRefresh?.cancel()
         latestSnapshot = nil
         hasRequestedAccess = false
-        defaults.set(false, forKey: "health.accessRequested")
         statusMessage = "Apple Health is optional. Choose which data you want to show."
     }
 
     public func setZonePreference(_ preference: HealthZonePreference?) {
+        guard !retired else { return }
         zonePreference = preference
         guard let preference else {
             defaults.removeObject(forKey: "health.zoneMaximum")

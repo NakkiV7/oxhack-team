@@ -100,6 +100,69 @@ final class HealthAccessTests: XCTestCase {
         XCTAssertFalse(reopened.hasRequestedAccess)
     }
 
+    func testRetiredReaderDropsHeldResultsAndCannotChangeReplacementPreferences() async throws {
+        let domain = "Spottr.Health.Tests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: domain))
+        defer { defaults.removePersistentDomain(forName: domain) }
+        let client = HealthTestClient()
+        client.observations = [try XCTUnwrap(.init(metric: .restingHeartRate, value: 62, date: .now, source: "Watch"))]
+        let store = HealthSnapshotStore(client: client, defaults: defaults)
+        await store.connect()
+        store.setZonePreference(.init(maximumHeartRate: 180, isEstimated: false))
+        client.deferRead = true
+        let refresh = Task { await store.refresh() }
+        for _ in 0..<100 where client.pendingRead == nil { await Task.yield() }
+        XCTAssertNotNil(client.pendingRead)
+        store.retire()
+        let retiredStatus = store.statusMessage
+        client.pendingRead?.resume(returning: client.observations)
+        await refresh.value
+        XCTAssertNil(store.snapshot)
+        XCTAssertFalse(store.hasRequestedAccess)
+        XCTAssertEqual(store.statusMessage, retiredStatus)
+        await store.connect()
+        await store.refresh()
+        store.disconnect()
+        store.setZonePreference(nil)
+        store.setZonePreference(.init(maximumHeartRate: 190, isEstimated: true))
+        XCTAssertNil(store.snapshot)
+        XCTAssertFalse(store.hasRequestedAccess)
+        XCTAssertEqual(client.requests, 1)
+        XCTAssertEqual(client.reads, 2)
+        let reopened = HealthSnapshotStore(client: client, defaults: defaults)
+        XCTAssertTrue(reopened.hasRequestedAccess)
+        XCTAssertEqual(reopened.zonePreference, .init(maximumHeartRate: 180, isEstimated: false))
+        XCTAssertNil(reopened.snapshot)
+        reopened.disconnect()
+        XCTAssertFalse(HealthSnapshotStore(client: client, defaults: defaults).hasRequestedAccess)
+        await reopened.connect()
+        XCTAssertTrue(reopened.hasRequestedAccess, "Explicit disconnect must still allow a later explicit connection")
+    }
+
+    func testRetirementRejectsLateAuthorizationSuccessAndFailureWithoutClearingSavedIntent() async throws {
+        for authorizationFails in [false, true] {
+            let domain = "Spottr.Health.Tests.\(UUID().uuidString)"
+            let defaults = try XCTUnwrap(UserDefaults(suiteName: domain))
+            defer { defaults.removePersistentDomain(forName: domain) }
+            let client = HealthTestClient(); client.deferAuthorization = true
+            let store = HealthSnapshotStore(client: client, defaults: defaults)
+            let pending = Task { await store.connect() }
+            for _ in 0..<100 where client.pendingAuthorization == nil { await Task.yield() }
+            XCTAssertNotNil(client.pendingAuthorization)
+            store.retire()
+            let retiredStatus = store.statusMessage
+            if authorizationFails { client.pendingAuthorization?.resume(throwing: CocoaError(.userCancelled)) }
+            else { client.pendingAuthorization?.resume() }
+            await pending.value
+            XCTAssertEqual(store.statusMessage, retiredStatus)
+            XCTAssertFalse(store.hasRequestedAccess)
+            XCTAssertFalse(store.isBusy)
+            XCTAssertNil(store.snapshot)
+            XCTAssertEqual(client.reads, 0)
+            XCTAssertTrue(HealthSnapshotStore(client: client, defaults: defaults).hasRequestedAccess)
+        }
+    }
+
     func testLateAuthorizationFailureCannotReplaceDisconnectedStatus() async throws {
         let defaults = UserDefaults(suiteName: "Spottr.Health.Tests.\(UUID().uuidString)")!
         let client = HealthTestClient(); client.deferAuthorization = true

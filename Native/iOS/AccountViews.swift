@@ -173,6 +173,7 @@ import AuthenticationServices
             }
             guard let next = replacement else { throw AccountFailure.invalidResponse }
             configureLaunch(next)
+            workspace.health.retire()
             workspace.invalidatePolicy()
             self.workspace = next
             message = "Your selected records were copied. Original files and a verified local archive are preserved."
