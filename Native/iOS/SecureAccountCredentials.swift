@@ -4,7 +4,7 @@ import AuthenticationServices
 import LocalAuthentication
 import UIKit
 
-struct StoredAccountCredential: Codable {
+struct StoredAccountCredential: Codable, Equatable {
     var session: NativeAccountSession
     let privateKey: Data
     var refreshRequestID: UUID?

@@ -44,10 +44,10 @@ public struct AnalyticsLedger: Codable, Sendable {
         let formatter = DateFormatter(); formatter.locale = Locale(identifier: "en_US_POSIX"); formatter.timeZone = calendar.timeZone; formatter.dateFormat = "yyyy-MM-dd"
         return formatter.string(from: start)
     }
-    private mutating func add(_ counts: [String: Int], kind: AnalyticsKind, at date: Date) {
-        let week = Self.week(date), previous = Self.week(date.addingTimeInterval(-7 * 86400))
-        snapshots.removeAll { $0.week != week && $0.week != previous }
-        seen = seen.filter { $0.key == week || $0.key == previous }
+    private mutating func add(_ counts: [String: Int], kind: AnalyticsKind, at date: Date, retainingAt now: Date) {
+        let week = Self.week(date), current = Self.week(now), previous = Self.week(now.addingTimeInterval(-7 * 86400))
+        snapshots.removeAll { $0.week != current && $0.week != previous }
+        seen = seen.filter { $0.key == current || $0.key == previous }
         let index: Int
         if let existing = snapshots.firstIndex(where: { $0.week == week && $0.kind == kind }) { index = existing }
         else { snapshots.append(.init(kind: kind, week: week, tag: UUID(), sequence: 1, counts: [:])); index = snapshots.count - 1 }
@@ -76,12 +76,12 @@ public struct AnalyticsLedger: Codable, Sendable {
         }
         for source in sets.map(\.source) + legacy.map(\.source) { counts[record.trainingContext?.recordingDevice == .watch ? "watch" : source == .camera ? "camera" : "manual", default: 0] += 1 }
         for effort in sets.compactMap(\.effort) { counts[effort.rawValue <= 4 ? "effortEasy" : effort.rawValue <= 6 ? "effortModerate" : "effortHard", default: 0] += 1 }
-        add(counts, kind: .workout, at: ended)
+        add(counts, kind: .workout, at: ended, retainingAt: date)
         seen[week, default: []].append(record.id)
     }
     public mutating func feature(_ name: String, captured: AnalyticsCapture?, currentAge: TrainingAgeContext?, at date: Date) {
         guard date.timeIntervalSince1970.isFinite, permits(captured, kind: .usage, currentAge: currentAge),
               ["today", "programme", "practice", "insights", "coach", "quests"].contains(name) else { return }
-        add([name: 1], kind: .usage, at: date)
+        add([name: 1], kind: .usage, at: date, retainingAt: date)
     }
 }

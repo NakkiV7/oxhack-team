@@ -3,6 +3,62 @@ import CryptoKit
 @testable import Spottr
 
 @MainActor final class AccountFlowTests: XCTestCase {
+    func testDelayedCurrentSuccessPreservesPendingRefreshReservation() async throws {
+        try await delayedCurrentCannotReplaceRefresh(pending: true, status: 200)
+    }
+    func testDelayedCurrentFailurePreservesPendingRefreshReservation() async throws {
+        try await delayedCurrentCannotReplaceRefresh(pending: true, status: 401)
+    }
+    func testDelayedCurrentSuccessPreservesCompletedRotation() async throws {
+        try await delayedCurrentCannotReplaceRefresh(pending: false, status: 200)
+    }
+    func testDelayedCurrentFailureCannotRevokeCompletedRotation() async throws {
+        try await delayedCurrentCannotReplaceRefresh(pending: false, status: 401)
+    }
+    private func delayedCurrentCannotReplaceRefresh(pending: Bool, status: Int) async throws {
+        var original = try fixtureCredential(); original.lastTrustedVerification = Date().addingTimeInterval(-3600)
+        let prior = original.session
+        let successor = NativeAccountSession(authenticated: true, accountID: prior.accountID, appAccountToken: prior.appAccountToken, deviceID: prior.deviceID,
+            accessToken: "rotated-access", refreshToken: "rotated-refresh", accessExpiresAt: Date().addingTimeInterval(900), refreshExpiresAt: prior.refreshExpiresAt)
+        let vault = MemoryAccountCredentials(); try vault.save(original)
+        let wire = RestoreRotationTransport(successor: successor, holdRefresh: pending)
+        defer { wire.cancelHeldResponses() }
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: AccountTestAuthorization())
+        let restoring = Task { await account.restore() }
+        let currentDeadline = Date().addingTimeInterval(5)
+        while wire.current == nil && Date() < currentDeadline { try await Task.sleep(for: .milliseconds(1)) }
+        let current = try XCTUnwrap(wire.current)
+        XCTAssertEqual(account.state, .trustedOffline); XCTAssertEqual(account.lastTrustedVerification, original.lastTrustedVerification)
+        let refreshing = Task { await account.refresh() }
+        if pending {
+            let refreshDeadline = Date().addingTimeInterval(5)
+            while wire.refresh == nil && Date() < refreshDeadline { try await Task.sleep(for: .milliseconds(1)) }
+            let reserved = try XCTUnwrap(vault.load()), requestID = try XCTUnwrap(reserved.refreshRequestID)
+            XCTAssertNotNil(wire.refresh)
+            current.resume(returning: (try AccountJSON.encoder().encode(prior), status)); wire.current = nil
+            await restoring.value
+            XCTAssertEqual(try vault.load()?.refreshRequestID, requestID, "A delayed current-session result must preserve the durable retry identity")
+            XCTAssertEqual(try vault.load()?.refreshStartedAt, reserved.refreshStartedAt)
+            XCTAssertEqual(try vault.load()?.lastTrustedVerification, reserved.lastTrustedVerification)
+            XCTAssertNotEqual(try vault.load()?.requiresReauthentication, true, "A stale failure cannot retire the in-flight successor")
+            wire.refresh?.resume(returning: (try AccountJSON.encoder().encode(successor), 200)); wire.refresh = nil
+            await refreshing.value
+        } else {
+            await refreshing.value
+            let verified = try vault.load()?.lastTrustedVerification
+            current.resume(returning: (try AccountJSON.encoder().encode(prior), status)); wire.current = nil
+            await restoring.value
+            XCTAssertEqual(try vault.load()?.lastTrustedVerification, verified, "Stale success or failure must not alter successor freshness")
+        }
+        XCTAssertEqual(try vault.load()?.session.accessToken, successor.accessToken)
+        XCTAssertEqual(try vault.load()?.session.refreshToken, successor.refreshToken)
+        XCTAssertNil(try vault.load()?.refreshRequestID); XCTAssertNotEqual(try vault.load()?.requiresReauthentication, true)
+        XCTAssertTrue(account.trusted)
+        await account.revoke(deviceID: UUID())
+        XCTAssertEqual(wire.requests.filter { $0.url?.path.hasSuffix("/session/refresh") == true }.count, 1)
+        XCTAssertEqual(wire.requests.last?.value(forHTTPHeaderField: "Authorization"), "Bearer " + successor.accessToken, "The next signed action must use the durably rotated credential without MFA")
+        XCTAssertTrue(account.trusted)
+    }
     func testRetainedTrustedAccountOpensWorkspaceWhileActualVerificationIsHeld() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -428,6 +484,31 @@ import CryptoKit
     private func fixtureCredential() throws -> StoredAccountCredential {
         let account = UUID()
         return StoredAccountCredential(session: NativeAccountSession(authenticated: true, accountID: account, appAccountToken: account, deviceID: UUID(), accessToken: "access", refreshToken: "refresh", accessExpiresAt: Date().addingTimeInterval(900), refreshExpiresAt: Date().addingTimeInterval(86400)), privateKey: P256.Signing.PrivateKey().rawRepresentation)
+    }
+}
+
+@MainActor private final class RestoreRotationTransport: AccountTransport {
+    let successor: NativeAccountSession
+    let holdRefresh: Bool
+    var requests: [URLRequest] = []
+    var current: CheckedContinuation<(Data, Int), Error>?
+    var refresh: CheckedContinuation<(Data, Int), Error>?
+    init(successor: NativeAccountSession, holdRefresh: Bool) { self.successor = successor; self.holdRefresh = holdRefresh }
+    func send(_ request: URLRequest) async throws -> (Data, Int) {
+        requests.append(request)
+        switch request.url?.lastPathComponent {
+        case "challenge": return (Data(#"{"challenge":"challenge","expiresAt":"2030-01-01T00:00:00Z"}"#.utf8), 200)
+        case "current": return try await withCheckedThrowingContinuation { current = $0 }
+        case "refresh":
+            if holdRefresh { return try await withCheckedThrowingContinuation { refresh = $0 } }
+            return (try AccountJSON.encoder().encode(successor), 200)
+        case "revoke": return (Data(#"{"signedOut":true}"#.utf8), 200)
+        default: throw URLError(.badServerResponse)
+        }
+    }
+    func cancelHeldResponses() {
+        current?.resume(throwing: CancellationError()); current = nil
+        refresh?.resume(throwing: CancellationError()); refresh = nil
     }
 }
 

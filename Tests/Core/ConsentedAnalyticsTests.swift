@@ -5,8 +5,35 @@ final class ConsentedAnalyticsTests: XCTestCase {
     private let owner = WorkoutOwner(accountID: UUID(), profileID: UUID())
     private var adult: TrainingAgeContext { try! .init(ageYears: 30, guardianManaged: false) }
     private let date = Date(timeIntervalSince1970: 1794000000)
-    private func record(age: TrainingAgeContext?, owner: WorkoutOwner) -> SessionRecord {
-        .init(id: UUID(), date: date, sets: [], loggedSets: [.init(id: UUID(), exerciseID: "squat", reps: 13, seconds: 0, source: .manual, reason: .voluntary)], endedAt: date, trainingContext: .init(owner: owner, age: age))
+    private func record(age: TrainingAgeContext?, owner: WorkoutOwner, endedAt: Date? = nil) -> SessionRecord {
+        .init(id: UUID(), date: endedAt ?? date, sets: [], loggedSets: [.init(id: UUID(), exerciseID: "squat", reps: 13, seconds: 0, source: .manual, reason: .voluntary)], endedAt: endedAt ?? date, trainingContext: .init(owner: owner, age: age))
+    }
+    func testLateSundayImportPreservesMondayCumulativeCountsAndReplayProtection() throws {
+        let monday = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-11-02T10:00:00Z"))
+        let sunday = monday.addingTimeInterval(-12 * 3600)
+        var ledger = AnalyticsLedger(owner: owner, age: adult)
+        ledger.consent(.workout, enabled: true); ledger.consent(.usage, enabled: true)
+        let capture = ledger.capture(.workout)
+        let firstMonday = record(age: adult, owner: owner, endedAt: monday)
+        ledger.record(firstMonday, captured: capture, currentAge: adult, at: monday)
+        ledger.feature("today", captured: ledger.capture(.usage), currentAge: adult, at: monday)
+        ledger.record(record(age: adult, owner: owner, endedAt: sunday), captured: capture, currentAge: adult, at: monday.addingTimeInterval(3600))
+        XCTAssertEqual(ledger.snapshots.first { $0.week == "2026-11-02" && $0.kind == .workout }?.counts["sessions"], 1, "Late previous-week work must not retire current-week totals")
+        XCTAssertEqual(ledger.snapshots.first { $0.week == "2026-11-02" && $0.kind == .usage }?.counts["today"], 1)
+        let secondMonday = record(age: adult, owner: owner, endedAt: monday.addingTimeInterval(2 * 3600))
+        ledger.record(secondMonday, captured: capture, currentAge: adult, at: monday.addingTimeInterval(2 * 3600))
+        ledger.feature("today", captured: ledger.capture(.usage), currentAge: adult, at: monday.addingTimeInterval(2 * 3600))
+        XCTAssertEqual(ledger.snapshots.first { $0.week == "2026-11-02" && $0.kind == .workout }?.counts["sessions"], 2)
+        let beforeReplay = ledger.snapshots
+        ledger.record(firstMonday, captured: capture, currentAge: adult, at: monday.addingTimeInterval(3 * 3600))
+        XCTAssertEqual(ledger.snapshots, beforeReplay, "The original Monday identity must remain deduplicated after a late Sunday import")
+        XCTAssertEqual(ledger.snapshots.first { $0.week == "2026-10-26" && $0.kind == .workout }?.counts["sessions"], 1)
+        XCTAssertEqual(ledger.snapshots.first { $0.week == "2026-11-02" && $0.kind == .workout }?.counts["sessions"], 2, "Replaying the first Monday workout must be ignored")
+        XCTAssertEqual(ledger.snapshots.first { $0.week == "2026-11-02" && $0.kind == .workout }?.counts["reps"], 20)
+        XCTAssertEqual(ledger.snapshots.first { $0.week == "2026-11-02" && $0.kind == .usage }?.counts["today"], 2)
+        ledger.feature("coach", captured: ledger.capture(.usage), currentAge: adult, at: monday.addingTimeInterval(7 * 86400))
+        XCTAssertFalse(ledger.snapshots.contains { $0.week == "2026-10-26" }, "Feature events also retire weeks relative to their current receipt time")
+        XCTAssertEqual(ledger.snapshots.first { $0.week == "2026-11-02" && $0.kind == .workout }?.counts["sessions"], 2)
     }
     func testIndependentAdultOnlyConsentsAndCoarseProjection() throws {
         var ledger = AnalyticsLedger(owner: owner, age: adult)

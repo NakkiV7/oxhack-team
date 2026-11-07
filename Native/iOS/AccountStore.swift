@@ -111,13 +111,14 @@ import CryptoKit
     func restore() async {
         guard !busy else { return }
         let capturedEpoch = epoch
+        var capturedCredential: StoredAccountCredential?
         do {
             guard let stored = try credentials.load(), !stored.locallySignedOut else { return }
             if stored.requiresReauthentication == true || (credential?.requiresReauthentication == true && credential?.session.deviceID == stored.session.deviceID) {
                 if stored.requiresReauthentication == true { credential = stored }
                 accountID = nil; appAccountToken = nil; state = .credentialsUnknown; return
             }
-            try stored.session.validate(); credential = stored
+            try stored.session.validate(); credential = stored; capturedCredential = stored
             guard (try? P256.Signing.PrivateKey(rawRepresentation: stored.privateKey)) != nil else { throw AccountFailure.reauthenticate }
             guard stored.session.refreshExpiresAt > Date() else { state = .credentialsUnknown; return }
             let needsRefresh = stored.refreshRequestID != nil || stored.session.accessExpiresAt <= Date()
@@ -125,12 +126,14 @@ import CryptoKit
             trust(stored, online: false)
             if needsRefresh { await refresh(); return }
             let reply: CurrentSessionReply = try await client.post("/session/current", body: EmptyRequest(), credential: stored)
-            guard epoch == capturedEpoch else { return }
+            guard epoch == capturedEpoch, credential == stored else { return }
             guard reply.authenticated, reply.accountID == stored.session.accountID, reply.appAccountToken == reply.accountID, reply.deviceID == stored.session.deviceID else { throw AccountFailure.invalidResponse }
             var verified = stored; verified.lastTrustedVerification = Date()
             try credentials.save(verified); credential = verified
             trust(verified, online: true)
-        } catch { if epoch == capturedEpoch { handle(error, restoring: true) } }
+        } catch {
+            if epoch == capturedEpoch, capturedCredential == nil || credential == capturedCredential { handle(error, restoring: true) }
+        }
     }
     func refresh() async {
         if let refreshTask { await refreshTask.value; return }
