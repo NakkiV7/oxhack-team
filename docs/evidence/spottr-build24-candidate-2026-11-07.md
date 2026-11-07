@@ -16,7 +16,7 @@ The separate development Release phone and Watch bundle also passed its artifact
 
 The deployed AWS SES provider path and native source activation are accepted. Read-only AASA, privacy page and actual health endpoint checks pass. No additional email was sent during packaging. Human inbox delivery, native MFA and explicitly typed Apple private relay email have their own readiness and acceptance checks.
 
-Apple readback shows configured prices of £10 monthly and £200 lifetime and one eligible two-week free trial period. Both products remain `MISSING_METADATA`. The tester lifetime offer definition is active with zero production and sandbox codes in the readback. This is configuration evidence, not a claim of StoreKit fetching, purchase success or a usable SPOTTRTESTERS code. Public submission and App Privacy publication are separate actions.
+The worker snapshot at 18:23 UTC on 7 November 2026 showed configured prices of £10 monthly and £200 lifetime and one eligible two-week free trial period. Both products were `MISSING_METADATA` at that time. The later controller readback at 18:30 UTC showed lifetime `READY_TO_SUBMIT` and monthly `MISSING_METADATA`, with both review assets processed `COMPLETE` without errors or warnings. The controller saved and read back ordinary draft review notes for both products at 18:38 UTC. Monthly still required metadata and lifetime remained ready to submit. The tester lifetime offer definition was active with zero production and sandbox codes in the worker snapshot. This is configuration evidence, not a claim of StoreKit fetching, purchase success or a usable SPOTTRTESTERS code. Public submission and App Privacy publication are separate actions.
 
 ## Preserved attempts and limits
 
