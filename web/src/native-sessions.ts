@@ -11,7 +11,8 @@ export const isoDateSchema=z.iso.datetime({offset:false});
 export async function digest(value:string):Promise<string>{return bytesToBase64URL(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))));}
 export function context(env:NativeEnv,deps:Dependencies={}) {
  const now=deps.clock??Date.now;
- return {env,now,fetch:deps.fetch??fetch,sql:(sql:string,...args:(string|number|null)[])=>env.DB.prepare(sql).bind(...args),hash:(value:string)=>hashToken(value,env.AUTH_TOKEN_PEPPER)};
+ const selectedFetch=deps.fetch??fetch;
+ return {env,now,fetch:(...args:Parameters<typeof fetch>)=>selectedFetch(...args),sql:(sql:string,...args:(string|number|null)[])=>env.DB.prepare(sql).bind(...args),hash:(value:string)=>hashToken(value,env.AUTH_TOKEN_PEPPER)};
 }
 export type Context=ReturnType<typeof context>;
 export type Device={id:string;user_id:string;auth_version:number;public_key:string;access_hash:string;access_expires:number;refresh_hash:string;refresh_expires:number;mfa_at:number};

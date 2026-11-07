@@ -25,7 +25,7 @@ test('SES sends one SigV4 signed London request through the injected fetch seam 
  assert.equal((await f.request('/identity/email/start',{email:'recipient@example.com',purpose:'enroll'})).response.status,200);
  assert.equal(requests.length,1);const request=requests[0];assert.ok(request);
  assert.equal(request.url,'https://email.eu-west-2.amazonaws.com/v2/email/outbound-emails');
- assert.equal(request.method,'POST');assert.equal(request.redirect,'error');
+ assert.equal(request.method,'POST');assert.equal(request.redirect,'manual');
  assert.match(request.headers.get('Authorization')??'',/^AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE\/\d{8}\/eu-west-2\/ses\/aws4_request,/);
  assert.equal(request.headers.get('X-Amz-Security-Token'),'test-only-session-token');
  assert.match(request.headers.get('X-Amz-Date')??'',/^\d{8}T\d{6}Z$/);

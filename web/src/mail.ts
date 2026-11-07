@@ -12,7 +12,7 @@ export async function sendOwnershipCode(c:Context,email:string,code:string) {
  try {
   const client=new AwsClient({accessKeyId,secretAccessKey,sessionToken:c.env.AWS_SES_SESSION_TOKEN,region,service:'ses',retries:0});
   const request=await client.sign('https://email.eu-west-2.amazonaws.com/v2/email/outbound-emails',{
-   method:'POST',redirect:'error',signal:AbortSignal.timeout(10000),headers:{'Content-Type':'application/json'},
+   method:'POST',redirect:'manual',signal:AbortSignal.timeout(10000),headers:{'Content-Type':'application/json'},
    body:JSON.stringify({FromEmailAddress:sender,Destination:{ToAddresses:[email]},ConfigurationSetName:configurationSet,Content:{Simple:{Subject:{Charset:'UTF-8',Data:'Your Spottr verification code'},Body:{Text:{Charset:'UTF-8',Data:`Your Spottr verification code is ${code}. It expires in five minutes. If you did not request this, ignore this email.`}}}}})
   });
   const response=await c.fetch(request);
