@@ -1,6 +1,8 @@
 # Reviewed source activation checklist
 
-This is a candidate checklist, not a live deployment receipt. The controller owns provider credentials, DNS, D1 backups/migrations and deployment. NativeAccountTransport.providerConfigurationReady remains false until those checks have actual receipts. A source change to enable it requires scoped review before release freeze.
+The controller owns provider credentials, DNS, D1 backups/migrations and deployment. On 7 November 2026 the reviewed source `492e92c` was deployed and the actual Worker SES mailbox-simulator path returned HTTP 200 with the documented partial-flow shape. HTTPS health, exact AASA and account-client bytes also passed readback. Those operational receipts authorize the native provider readiness switch; the activation amendment still requires scoped source review before release freeze. This checklist is not proof of inbox delivery or completed native MFA.
+
+The active Worker version is `9f2f82ad-7d62-4eca-822c-3e216804d01b`; reviewed deployed module SHA256 is `a6bedb734349e3070d031f921ce2df1789e5aefb079fab2f6ba2c680386c0a29`. Existing secrets, three committed SES vars and the 10 ms CPU setting were retained. The receipt's checker initially omitted the documented accepted key; its corrected contract assessment used the same observed 200 response without another mail request. Apple source registration for explicitly typed private-relay addresses remains pending; Apple bootstrap does not automatically email Apple's returned address. No relay delivery, physical MFA, StoreKit availability or load benchmark is inferred.
 
 ## Existing resources to preserve
 

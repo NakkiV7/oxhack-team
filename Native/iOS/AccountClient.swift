@@ -82,8 +82,8 @@ struct NativeDeviceProof: Codable {
 
 @MainActor protocol AccountTransport { func send(_ request: URLRequest) async throws -> (Data, Int) }
 @MainActor final class NativeAccountTransport: NSObject, AccountTransport, URLSessionTaskDelegate {
-    // Task 10 enables this only after the reviewed provider and associated-domain acceptance.
-    static let providerConfigurationReady = false
+    // Enabled after reviewed provider deployment and associated-domain acceptance.
+    static let providerConfigurationReady = true
     private lazy var session: URLSession = {
         let config = URLSessionConfiguration.ephemeral
         config.httpCookieStorage = nil; config.urlCache = nil; config.timeoutIntervalForRequest = 20
