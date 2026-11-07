@@ -43,6 +43,9 @@ public final class MembershipCoordinator {
     private var claimError: String?
     public private(set) var status = "Checking App Store availability…"
     public private(set) var accountID: UUID?
+    public private(set) var entitlementsResolved = false
+    @ObservationIgnored private var currentRefresh: Task<Void, Never>?
+    @ObservationIgnored private var currentRefreshID = UUID()
     private var entitlements: [MembershipVerification] = []
     private var restoredClaims: Set<MembershipClaim> = []
     private var accountGeneration = UUID()
@@ -63,12 +66,13 @@ public final class MembershipCoordinator {
             }
         }
     }
-    deinit { transactionUpdates?.cancel(); expirationRefresh?.cancel() }
+    deinit { transactionUpdates?.cancel(); expirationRefresh?.cancel(); currentRefresh?.cancel() }
 
     public func setAccount(_ accountID: UUID?) {
         guard self.accountID != accountID else { return }
         self.accountID = accountID; accountGeneration = UUID(); entitlementRefreshID = UUID()
         entitlements = []; restoredClaims = []; operationError = nil; claimError = nil
+        entitlementsResolved = false; currentRefresh?.cancel(); currentRefresh = nil; currentRefreshID = UUID()
         expirationRefresh?.cancel()
         status = accountID == nil ? "Sign in to use membership. Restore purchases remains available." : "Checking your Apple membership…"
     }
@@ -77,7 +81,7 @@ public final class MembershipCoordinator {
         return entitlements.compactMap { result in
             guard case .verified(let transaction) = result,
                   let plan = MembershipPlan.allCases.first(where: { $0.productID == transaction.productID }), plan.kind == transaction.kind,
-                  transaction.appAccountToken == accountID || (transaction.appAccountToken == nil && MembershipClaim(transaction: transaction).map(restoredClaims.contains) == true) else { return nil }
+                  transaction.appAccountToken == accountID || MembershipClaim(transaction: transaction).map(restoredClaims.contains) == true else { return nil }
             return transaction
         }
     }
@@ -162,7 +166,7 @@ public final class MembershipCoordinator {
             guard generation == accountGeneration else { return }
             if let restoringAccount {
                 let verifiedClaims = Set(entitlements.compactMap { result -> MembershipClaim? in
-                    guard case .verified(let transaction) = result, transaction.appAccountToken == nil,
+                    guard case .verified(let transaction) = result,
                           MembershipAccess.resolve([result], now: now()).hasAccess else { return nil }
                     return MembershipClaim(transaction: transaction)
                 })
@@ -199,12 +203,24 @@ public final class MembershipCoordinator {
         case .failure: operationError = "Code redemption was not completed. Try again with the App Store."
         }
     }
+    public func refreshCurrentEntitlements() async {
+        if let currentRefresh { await currentRefresh.value; return }
+        let id = UUID(), generation = accountGeneration
+        currentRefreshID = id
+        let task = Task { [weak self] in
+            guard let self, self.accountGeneration == generation else { return }
+            await self.refreshEntitlements()
+        }
+        currentRefresh = task
+        await task.value
+        if currentRefreshID == id { currentRefresh = nil }
+    }
     public func refreshEntitlements() async {
         let refreshID = UUID(), generation = accountGeneration
         entitlementRefreshID = refreshID
         let current = await client.currentEntitlements()
         guard generation == accountGeneration, entitlementRefreshID == refreshID else { return }
-        entitlements = current
+        entitlements = current; entitlementsResolved = true
         restoredClaims = []
         claimError = nil
         if let accountID {

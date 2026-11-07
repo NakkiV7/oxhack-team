@@ -252,7 +252,7 @@ struct WatchSetupView: View {
     private var workoutAccess: some View {
         SpottrCard {
             Text("Record a workout").font(.title3.bold())
-            Text("Start a workout on iPhone, then choose Record on Watch. Review workout access on your Watch when asked.")
+            Text("Health recording starts automatically for eligible workouts after you review access on your Watch. Start from iPhone or choose a saved workout on Watch to train without your phone.")
                 .font(.subheadline)
             Text("Heart rate, active energy and movement appear when available. A connection check does not grant Health access.")
                 .font(.subheadline).foregroundStyle(.secondary)

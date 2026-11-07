@@ -5,6 +5,33 @@ import WatchConnectivity
 @testable import Spottr
 
 @MainActor final class WatchWorkoutIntegrationTests: XCTestCase {
+    func testMeasuredRestSurvivesCheckpointOutboxPhoneImportAndExport() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let scope = AccountDataScope(accountID: UUID(), profileID: UUID(), root: root)
+        try scope.prepare()
+        let date = Date().addingTimeInterval(-200), owner = WorkoutOwner(accountID: scope.accountID, profileID: scope.profileID)
+        let grant = WatchAccessGrant(owner: owner, policyID: UUID(), age: try .init(ageYears: 30, guardianManaged: false), verifiedAt: date, membershipDeadline: nil)
+        let plan = try CoachSavedPlan.catalogue(exerciseID: "squat", sets: 2, target: 8, restSeconds: 60)
+        let url = root.appendingPathComponent("watch.json"), archive = try WatchWorkoutArchive(url: url)
+        try archive.receive(.init(sequence: 1, owner: owner, policyID: grant.policyID, age: grant.age, sharing: true, grant: grant, choices: [.init(id: "today", date: date, plan: plan)], support: [], timeZoneID: "Europe/London"))
+        try archive.start(choiceID: "today", at: date)
+        try archive.update { try $0.beginSet(); try $0.setReps(3); $0.advance(seconds: 5); try $0.endSet(); $0.advance(seconds: 17.25); try $0.nextSet() }
+        let restarted = try WatchWorkoutArchive(url: url)
+        try restarted.update { try $0.beginSet(); try $0.setReps(2); $0.advance(seconds: 4); try $0.endSet(); $0.finish(at: date.addingTimeInterval(40)) }
+        let outbox = try WatchWorkoutArchive(url: url), journal = try XCTUnwrap(outbox.pendingWorkouts().first)
+        XCTAssertNil(journal.record.loggedSets.first?.restSecondsBefore)
+        XCTAssertEqual(journal.record.loggedSets.last?.restSecondsBefore, 17.25)
+        let phone = TrainingStore(historyURL: scope.file("history.json"), accountScope: scope)
+        XCTAssertTrue(try phone.importWatchWorkout(journal))
+        let saved = try XCTUnwrap(HistoryStore(url: scope.file("history.json")).load().first)
+        XCTAssertEqual(saved.loggedSets.last?.restSecondsBefore, 17.25)
+        let export = try scope.exportLocalData()
+        defer { try? FileManager.default.removeItem(at: export.deletingLastPathComponent()) }
+        let data = try JSONDecoder().decode(AccountLocalExport.self, from: Data(contentsOf: export))
+        XCTAssertEqual(data.history.first?.loggedSets.last?.restSecondsBefore, 17.25)
+        XCTAssertEqual(outbox.pendingCount, 1)
+    }
     func testSharingIsExplicitAndScopedAndPolicyReplacementDoesNotInheritConsent() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

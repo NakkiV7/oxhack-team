@@ -9,7 +9,10 @@ import AuthenticationServices
     private(set) var workspace: AccountWorkspace?
     private(set) var message: String?
     private var pendingWorkoutURL: URL?
-    init(account: NativeAccountStore? = nil, root: URL? = nil, membership: MembershipCoordinator? = nil, membershipClient: (any MembershipClient)? = nil) {
+    private let analyticsSender: ConsentedAnalyticsStore.Sender?
+    private let programmeClient: (any ProgrammeCloudClient)?
+    init(account: NativeAccountStore? = nil, root: URL? = nil, membership: MembershipCoordinator? = nil, membershipClient: (any MembershipClient)? = nil, analyticsSender: ConsentedAnalyticsStore.Sender? = nil, programmeClient: (any ProgrammeCloudClient)? = nil) {
+        self.analyticsSender = analyticsSender; self.programmeClient = programmeClient
         self.account = account ?? NativeAccountStore()
         let base = URL.applicationSupportDirectory.appendingPathComponent("Spottr")
         let namespace = ProcessInfo.processInfo.environment["SPOTTR_DATA_NAMESPACE"].flatMap(UUID.init(uuidString:))
@@ -42,6 +45,15 @@ import AuthenticationServices
     }
     func accountChanged() {
         membership.setAccount(account.trusted ? account.appAccountToken : nil)
+        if account.trusted, !membership.entitlementsResolved {
+            let generation = account.authenticationGeneration, owner = account.accountID
+            Task { [weak self] in
+                guard let self, self.account.trusted, self.account.authenticationGeneration == generation, self.account.accountID == owner else { return }
+                await self.membership.refreshCurrentEntitlements()
+                guard self.account.trusted, self.account.authenticationGeneration == generation, self.account.accountID == owner else { return }
+                self.visibleWorkspace?.training.publish()
+            }
+        }
         if account.state == .pendingMFA { workspace?.launch?.authenticationWillBegin() }
         if account.trusted && account.step == .complete { workspace?.launch?.authenticationDidComplete() }
         if account.state == .revoked { cancelPendingLaunch() }
@@ -106,7 +118,7 @@ import AuthenticationServices
         if workspace?.scope == scope { workspace?.watchSharing.setActive(true); workspace?.training.setAccountActive(true); return }
         try requireNoOtherWorkout()
         workspace?.suspend()
-        let next = try AccountWorkspace(scope: scope)
+        let next = try AccountWorkspace(scope: scope, analyticsSender: analyticsSender)
         configureLaunch(next)
         try directory.select(id)
         workspace = next
@@ -119,7 +131,7 @@ import AuthenticationServices
                       self.account.accountID == scope.accountID else { return nil }
                 return .init(accountID: scope.accountID, profileID: scope.profileID)
             }, generation: { [weak account] in account?.authenticationGeneration ?? UUID() })
-        workspace.programmeSync = ProgrammeSyncStore(programme: workspace.programme, profile: workspace.profile, client: account,
+        workspace.programmeSync = ProgrammeSyncStore(programme: workspace.programme, profile: workspace.profile, client: programmeClient ?? account,
             isCurrent: { [weak self, weak workspace] in
                 guard let self, let workspace else { return false }
                 return self.visibleWorkspace === workspace && self.account.trusted && self.account.accountID == scope.accountID
@@ -155,9 +167,14 @@ import AuthenticationServices
             try await account.authorization.guardian()
             guard visibleWorkspace === workspace else { throw AccountFailure.reauthenticate }
             try requireNoOtherWorkout()
-            try workspace.scope.importLegacy(from: root, age: age)
-            self.workspace = try AccountWorkspace(scope: workspace.scope)
-            if let next = self.workspace { configureLaunch(next) }
+            var replacement: AccountWorkspace?
+            try workspace.scope.importLegacy(from: root, age: age) {
+                replacement = try AccountWorkspace(scope: workspace.scope, analyticsSender: analyticsSender)
+            }
+            guard let next = replacement else { throw AccountFailure.invalidResponse }
+            configureLaunch(next)
+            workspace.invalidatePolicy()
+            self.workspace = next
             message = "Your selected records were copied. Original files and a verified local archive are preserved."
         } catch { message = error.localizedDescription }
     }

@@ -37,6 +37,7 @@ public struct WatchWorkoutJournal: Codable, Equatable, Sendable, Identifiable {
     public private(set) var reps: Int?
     public private(set) var activeSeconds = 0.0
     public private(set) var restSeconds = 0.0
+    public private(set) var restSecondsBefore: Double?
     public private(set) var hasStarted = false
     public private(set) var completionAllowsAdult: Bool
     public private(set) var policyRestricted = false
@@ -74,6 +75,7 @@ public struct WatchWorkoutJournal: Codable, Equatable, Sendable, Identifiable {
               TimeZone(identifier: timeZoneID) != nil,
               completionTimeZoneID.map({ TimeZone(identifier: $0) != nil }) ?? true,
               activeSeconds.isFinite, activeSeconds >= 0, restSeconds.isFinite, restSeconds >= 0,
+              restSecondsBefore.map({ $0.isFinite && $0 >= 0 }) ?? true,
               reps.map({ (1...200).contains($0) }) ?? true,
               omittedSensorSamples >= 0, completed.count <= items.count,
               Set(completed.map(\.id)).count == completed.count,
@@ -85,7 +87,8 @@ public struct WatchWorkoutJournal: Codable, Equatable, Sendable, Identifiable {
         return completed.enumerated().allSatisfy { offset, set in
             let item = items[offset]
             guard set.exerciseID == item.exerciseID, set.source == .manual,
-                  set.activeSeconds.map({ $0.isFinite && $0 >= 0 }) ?? true else { return false }
+                  set.activeSeconds.map({ $0.isFinite && $0 >= 0 }) ?? true,
+                  set.restSecondsBefore.map({ $0.isFinite && $0 >= 0 }) ?? true else { return false }
             return item.unit == .reps
                 ? (1...200).contains(set.reps) && set.seconds == 0 && set.quantityOrigin == .selfReport
                 : set.reps == 0 && set.seconds.isFinite && set.seconds >= 1 && set.quantityOrigin == .activeTimer
@@ -118,10 +121,12 @@ public struct WatchWorkoutJournal: Codable, Equatable, Sendable, Identifiable {
     public mutating func resume() { if phase == .paused && !policyRestricted { phase = .active } }
     public mutating func endSet() throws {
         guard canEndSet else { throw Failure.invalidAction }
-        completed.append(.init(id: UUID(), exerciseID: current.exerciseID, reps: current.unit == .reps ? (reps ?? 0) : 0,
+        var result = LoggedSet(id: UUID(), exerciseID: current.exerciseID, reps: current.unit == .reps ? (reps ?? 0) : 0,
             seconds: current.unit == .seconds ? activeSeconds : 0, source: .manual, reason: .voluntary,
             number: setNumber, target: current.target, activeSeconds: activeSeconds,
-            quantityOrigin: current.unit == .seconds ? .activeTimer : .selfReport))
+            quantityOrigin: current.unit == .seconds ? .activeTimer : .selfReport)
+        result.restSecondsBefore = index == 0 ? nil : restSecondsBefore
+        completed.append(result)
         phase = .rest; restSeconds = 0
     }
     public mutating func effort(_ value: SetEffort?) throws {
@@ -130,6 +135,7 @@ public struct WatchWorkoutJournal: Codable, Equatable, Sendable, Identifiable {
     }
     public mutating func nextSet() throws {
         guard phase == .rest, index + 1 < items.count, !policyRestricted else { throw Failure.invalidAction }
+        restSecondsBefore = restSeconds
         index += 1; hasStarted = false; reps = nil; activeSeconds = 0; restSeconds = 0; phase = .active
     }
     public mutating func finish(at date: Date, timeZone: TimeZone = .current) {
@@ -151,15 +157,16 @@ public struct WatchProgrammeTransport: Codable, Equatable, Sendable {
     public let age: TrainingAgeContext?
     public let sharing: Bool
     public let grant: WatchAccessGrant?
+    public let membershipResolved: Bool?
     public let choices: [Choice]
     public let support: Set<String>
     public let timeZoneID: String
     public let programmeID: String?
     public let programmeRevision: Int?
-    public init(sequence: UInt64, owner: WorkoutOwner, policyID: UUID, age: TrainingAgeContext?, sharing: Bool, grant: WatchAccessGrant?, choices: [Choice], support: Set<String>, timeZoneID: String, programmeID: String? = nil, programmeRevision: Int? = nil) {
+    public init(sequence: UInt64, owner: WorkoutOwner, policyID: UUID, age: TrainingAgeContext?, sharing: Bool, grant: WatchAccessGrant?, membershipResolved: Bool? = nil, choices: [Choice], support: Set<String>, timeZoneID: String, programmeID: String? = nil, programmeRevision: Int? = nil) {
         self.programmeID = programmeID; self.programmeRevision = programmeRevision
         self.sequence = sequence; self.owner = owner; self.policyID = policyID; self.age = age; self.sharing = sharing
-        self.grant = grant; self.choices = choices; self.support = support; self.timeZoneID = timeZoneID
+        self.grant = grant; self.membershipResolved = membershipResolved; self.choices = choices; self.support = support; self.timeZoneID = timeZoneID
     }
 }
 
@@ -222,8 +229,17 @@ public final class WatchWorkoutArchive {
     public func receive(_ transport: WatchProgrammeTransport) throws {
         guard transport.sequence > (contents.transport?.sequence ?? 0) else { return }
         guard transport.choices.count <= 31,
+              transport.membershipResolved != false || (transport.grant == nil && transport.choices.isEmpty),
               transport.grant == nil || (transport.grant?.owner == transport.owner && transport.grant?.policyID == transport.policyID && transport.grant?.age == transport.age) else { throw WatchWorkoutJournal.Failure.unavailable }
-        var next = contents; next.transport = transport
+        var next = contents
+        if transport.membershipResolved == false, transport.sharing,
+           let previous = contents.transport, previous.sharing,
+           previous.owner == transport.owner, previous.policyID == transport.policyID, previous.age == transport.age {
+            next.transport = .init(sequence: transport.sequence, owner: transport.owner, policyID: transport.policyID,
+                age: transport.age, sharing: true, grant: previous.grant, membershipResolved: false,
+                choices: previous.choices, support: previous.support, timeZoneID: previous.timeZoneID,
+                programmeID: previous.programmeID, programmeRevision: previous.programmeRevision)
+        } else { next.transport = transport }
         next.active?.applyPolicy(owner: transport.owner, age: transport.age, sharing: transport.sharing)
         // Known policy cannot roll back when disk persistence fails. Quantities stay
         // in the existing journal; only authority and its sequence become effective now.
@@ -334,18 +350,18 @@ public final class WatchWorkoutArchive {
 }
 
 extension WatchProgrammeTransport {
-    public static func authorized(sequence: UInt64, owner: WorkoutOwner, policyID: UUID, trustedOwner: WorkoutOwner?, verifiedAt: Date?, profile: LocalProfile?, sharing: Bool, membership: MembershipAccess, programme: TrainingProgramme?, at date: Date, analyticsCapture: AnalyticsCapture? = nil) -> WatchProgrammeTransport {
+    public static func authorized(sequence: UInt64, owner: WorkoutOwner, policyID: UUID, trustedOwner: WorkoutOwner?, verifiedAt: Date?, profile: LocalProfile?, sharing: Bool, membership: MembershipAccess, membershipResolved: Bool = true, programme: TrainingProgramme?, at date: Date, analyticsCapture: AnalyticsCapture? = nil) -> WatchProgrammeTransport {
         let age = profile?.programmePreferences?.ageContext
         let support = profile?.effectiveProgrammePreferences.availableSupport ?? []
         let candidate = verifiedAt.map { WatchAccessGrant(owner: owner, policyID: policyID, age: age, verifiedAt: $0, membershipDeadline: membership.lifetime ? nil : membership.expiresAt, analyticsCapture: analyticsCapture) }
-        let eligible = sharing && trustedOwner == owner && membership.hasAccess && AccountPolicy.setupComplete(profile: profile) && candidate?.permitsStart(at: date) == true
+        let eligible = membershipResolved && sharing && trustedOwner == owner && membership.hasAccess && AccountPolicy.setupComplete(profile: profile) && candidate?.permitsStart(at: date) == true
         let choices: [Choice] = eligible ? (programme?.days.compactMap { day in
             guard let plan = day.plan,
                   WorkoutAccessPolicy.decide(trustedOwner: trustedOwner, activeOwner: nil, profile: profile, membership: membership.hasAccess, plan: plan, origin: .watch) == .start else { return nil }
             return Choice(id: day.id, date: day.date, plan: plan)
         } ?? []) : []
         return .init(sequence: sequence, owner: owner, policyID: policyID, age: age, sharing: sharing,
-                     grant: eligible && !choices.isEmpty ? candidate : nil, choices: choices, support: support,
+                     grant: eligible && !choices.isEmpty ? candidate : nil, membershipResolved: membershipResolved || !sharing || trustedOwner != owner || !AccountPolicy.setupComplete(profile: profile), choices: choices, support: support,
                      timeZoneID: programme?.timeZoneID ?? TimeZone.current.identifier, programmeID: programme?.id, programmeRevision: programme?.revision)
     }
 }

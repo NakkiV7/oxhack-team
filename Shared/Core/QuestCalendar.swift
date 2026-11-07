@@ -144,6 +144,11 @@ public struct QuestArchive: Codable, Equatable, Sendable {
         guard benchmarkPolicy == nil else { return }
         benchmarkPolicy = .init(owner: owner, legacyHistory: history, calendar: calendar)
     }
+    public mutating func importOriginalLegacyBenchmarks(history: [SessionRecord], calendar: Calendar) throws {
+        let empty = SkillCurriculum.BenchmarkPolicy(owner: owner, legacyHistory: [], calendar: calendar)
+        guard benchmarkPolicy == nil || benchmarkPolicy == empty else { throw CocoaError(.fileWriteFileExists) }
+        benchmarkPolicy = .init(owner: owner, legacyHistory: history, calendar: calendar)
+    }
     public var totalXP: Int { claims.reduce(0) { $0 + $1.quest.xp } }
     public init(owner: WorkoutOwner) { self.owner = owner }
     public mutating func checkIn(kind: QuestKind, age: TrainingAgeContext, at date: Date, calendar: Calendar) {

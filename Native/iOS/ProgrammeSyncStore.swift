@@ -56,6 +56,13 @@ struct ProgrammeWithdrawReply: Decodable { let withdrawn: Bool; let revision: In
         // Missing in legacy files is conservatively treated as possibly submitted.
         var slotState: SlotState? = nil
     }
+    private struct WithdrawalIntent { let generation: UUID; let saved: Saved }
+    private static var pendingOff: [String: WithdrawalIntent] = [:]
+    private static var scopeGenerations: [String: UUID] = [:]
+    private var scopeKey: String { programme.scope.folder.path }
+    private var scopeGeneration = UUID()
+    private var currentGeneration: Bool { Self.scopeGenerations[scopeKey] == scopeGeneration }
+    private var persistencePending: Bool { Self.pendingOff[scopeKey] != nil }
     private var saved: Saved
     private let programme: ProgrammeStore
     private let profile: NativeProfileStore
@@ -72,21 +79,24 @@ struct ProgrammeWithdrawReply: Decodable { let withdrawn: Bool; let revision: In
     private(set) var message: String?
     private(set) var pendingRemote: ProgrammeReadReply?
     var profileSlot: UUID { saved.profileSlot }
-    var consented: Bool { saved.consented && saved.policyAge == capturedAge }
+    var consented: Bool { currentGeneration && !persistencePending && saved.consented && saved.policyAge == capturedAge }
     var serverRevision: Int { saved.serverRevision }
-    var withdrawalPending: Bool { saved.withdrawalPending }
+    var withdrawalPending: Bool { saved.withdrawalPending || persistencePending }
     private var url: URL { programme.scope.file("programme-cloud-consent.json") }
     init(programme: ProgrammeStore, profile: NativeProfileStore, client: any ProgrammeCloudClient, isCurrent: @escaping () -> Bool, hasOngoingWorkout: @escaping () -> Bool) {
         self.programme = programme; self.profile = profile; self.client = client
         self.isCurrent = isCurrent; self.hasOngoingWorkout = hasOngoingWorkout
         capturedAge = profile.profile?.programmePreferences?.ageContext
         saved = Saved(profileSlot: UUID(), consented: false, serverRevision: 0, withdrawalPending: false, policyAge: capturedAge, slotState: .fresh)
+        scopeGeneration = Self.scopeGenerations[scopeKey] ?? scopeGeneration
+        Self.scopeGenerations[scopeKey] = scopeGeneration
         if FileManager.default.fileExists(atPath: url.path) {
             do { saved = try JSONDecoder().decode(Saved.self, from: Data(contentsOf: url)) }
             catch { readable = false; message = "Saved sync settings could not be read. They have not been replaced." }
         }
+        if let intent = Self.pendingOff[scopeKey] { saved = intent.saved; readable = true }
     }
-    private var valid: Bool { readable && isCurrent() && profile.permitsPolicyCallbacks && capturedAge == profile.profile?.programmePreferences?.ageContext && capturedAge?.allowsCloudPlanSync == true }
+    private var valid: Bool { currentGeneration && readable && isCurrent() && profile.permitsPolicyCallbacks && capturedAge == profile.profile?.programmePreferences?.ageContext && capturedAge?.allowsCloudPlanSync == true }
     func consent() throws {
         guard valid, !busy, !withdrawalPending else { throw AccountFailure.checkpointRequired }
         consentEpoch = UUID()
@@ -151,11 +161,13 @@ struct ProgrammeWithdrawReply: Decodable { let withdrawn: Bool; let revision: In
     func withdraw() async {
         guard valid, consented || withdrawalPending else { return }
         do {
-            consentEpoch = UUID()
+            consentEpoch = UUID(); scopeGeneration = UUID()
+            Self.scopeGenerations[scopeKey] = scopeGeneration
             var next = saved; next.consented = false
             next.withdrawalPending = !(saved.slotState == .fresh && serverRevision == 0 && !busy && !hasPendingWrite)
+            saved = next; pendingRemote = nil
+            Self.pendingOff[scopeKey] = WithdrawalIntent(generation: scopeGeneration, saved: next)
             try persist(next)
-            pendingRemote = nil
             guard next.withdrawalPending else { message = "Local syncing is off. No programme was uploaded from this profile."; return }
             guard !busy, !hasPendingWrite, serverRevision > 0 else {
                 message = "Local syncing is off. Choose Remove saved programme to check and remove any saved copy after the current request finishes."
@@ -167,13 +179,18 @@ struct ProgrammeWithdrawReply: Decodable { let withdrawn: Bool; let revision: In
             guard removalIsCurrent(epoch: epoch, slot: slot), reply.withdrawn, reply.revision == expected + 1 else { throw AccountFailure.invalidResponse }
             next.serverRevision = reply.revision; next.withdrawalPending = false; try persist(next)
             message = "Cloud configuration removed. Local programme and history are retained."
-        } catch { if valid { message = "Local syncing is off. Cloud removal is still pending. Choose Remove saved programme to retry." } }
+        } catch { if valid { message = persistencePending ? "Local syncing is off now, but this choice could not be saved. Keep this app open and retry removal when local storage is available." : "Local syncing is off. Cloud removal is still pending. Choose Remove saved programme to retry." } }
     }
     private func removalIsCurrent(epoch: UUID, slot: UUID) -> Bool {
         valid && consentEpoch == epoch && profileSlot == slot && !consented && withdrawalPending && !hasPendingWrite
     }
     func removeSavedProgramme() async {
         guard valid, !consented, withdrawalPending, !busy else { return }
+        if persistencePending {
+            do { try persist(saved) }
+            catch { message = "Local syncing is off now, but saving this choice is still pending. Retry when local storage is available."; return }
+            guard saved.withdrawalPending else { message = "Local syncing is off. No programme was uploaded from this profile."; return }
+        }
         guard !hasPendingWrite else {
             message = "Local syncing remains off. A previous save is still finishing. Choose Remove saved programme again once it finishes."
             return
@@ -217,6 +234,7 @@ struct ProgrammeWithdrawReply: Decodable { let withdrawn: Bool; let revision: In
     private func persist(_ next: Saved) throws {
         guard valid else { throw AccountFailure.checkpointRequired }
         try ProtectedLocalStorage.write(JSONEncoder().encode(next), to: url); saved = next
+        if !next.consented, Self.pendingOff[scopeKey]?.generation == scopeGeneration { Self.pendingOff[scopeKey] = nil }
     }
     private func failure(_ error: Error) -> String {
         if case AccountFailure.service(409, _) = error { return "Another device changed the saved programme. Read it, then choose which version to keep." }

@@ -5,6 +5,28 @@ private let testAccount = UUID()
 
 @MainActor
 final class MembershipJourneyTests: XCTestCase {
+    func testExplicitRestoreRecoversAttributedPurchaseIntoNewAccountAndRevalidates() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let a = UUID(), b = UUID(), client = MembershipTestClient()
+        let now = Date()
+        func receipt(expiry: Date = now.addingTimeInterval(3600), revoked: Date? = nil) -> MembershipVerification {
+            .verified(.init(id: 45, originalID: 44, appAccountToken: a, productID: MembershipPlan.monthly.productID, kind: .autoRenewable, expirationDate: expiry, revocationDate: revoked))
+        }
+        client.entitlements = [receipt()]
+        let store = MembershipCoordinator(client: client, claims: ProtectedMembershipClaimStore(root: root))
+        store.setAccount(b); await store.load()
+        XCTAssertFalse(store.hasAccess, "No automatic grant of another account's attributed purchase")
+        await store.restore(); XCTAssertTrue(store.hasAccess)
+        let reopened = MembershipCoordinator(client: client, claims: ProtectedMembershipClaimStore(root: root))
+        reopened.setAccount(b); await reopened.load(); XCTAssertTrue(reopened.hasAccess)
+        XCTAssertEqual(client.restoreCount, 1)
+        for value in [receipt(expiry: now.addingTimeInterval(-1)), receipt(revoked: now), .unverified(.init(id: 45, originalID: 44, appAccountToken: a, productID: MembershipPlan.monthly.productID, kind: .autoRenewable, expirationDate: now.addingTimeInterval(3600)))] {
+            client.entitlements = [value]; await reopened.refreshEntitlements(); XCTAssertFalse(reopened.hasAccess)
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent("Accounts/\(a.uuidString)").path), "Restoring creates no old account data or authentication")
+    }
+
     func testCatalogueFailureStaysSeparateFromVerifiedAccessAndRestoreErrors() async {
         let client = MembershipTestClient()
         client.entitlements = [.verified(.init(appAccountToken: testAccount, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable))]
@@ -86,7 +108,7 @@ final class MembershipJourneyTests: XCTestCase {
         let rejected: [[MembershipVerification]] = [[], [.unverified(transaction())],
             [.verified(transaction(revoked: now))], [.verified(transaction(expires: now.addingTimeInterval(-1)))],
             [.verified(transaction(upgraded: true))], [.verified(transaction(originalID: 99))],
-            [.verified(transaction(token: UUID()))], [.verified(transaction(productID: MembershipPlan.lifetime.productID, kind: .nonConsumable))],
+            [.verified(transaction(productID: MembershipPlan.lifetime.productID, kind: .nonConsumable))],
             [.verified(transaction(kind: .nonConsumable))]]
         for current in rejected {
             client.entitlements = current
@@ -95,7 +117,7 @@ final class MembershipJourneyTests: XCTestCase {
         }
     }
 
-    func testRestoreDoesNotPersistUnverifiedRevokedExpiredOrMismatchedReceipts() async throws {
+    func testRestoreDoesNotPersistUnverifiedRevokedExpiredOrWrongProductReceipts() async throws {
         let client = MembershipTestClient(), claims = MembershipTestClaims()
         let store = MembershipCoordinator(client: client, claims: claims)
         store.setAccount(testAccount)
@@ -103,7 +125,6 @@ final class MembershipJourneyTests: XCTestCase {
             .unverified(.init(id: 1, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable)),
             .verified(.init(id: 2, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable, revocationDate: .now)),
             .verified(.init(id: 3, productID: MembershipPlan.monthly.productID, kind: .autoRenewable, expirationDate: .distantPast)),
-            .verified(.init(id: 4, appAccountToken: UUID(), productID: MembershipPlan.lifetime.productID, kind: .nonConsumable)),
             .verified(.init(id: 5, productID: MembershipPlan.lifetime.productID, kind: .autoRenewable)),
             .verified(.init(id: 6, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable, isUpgraded: true))]
         await store.restore()

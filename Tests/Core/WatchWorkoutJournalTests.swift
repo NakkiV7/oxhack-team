@@ -2,6 +2,34 @@ import XCTest
 @testable import SpottrCore
 
 final class WatchWorkoutJournalTests: XCTestCase {
+    func testUnresolvedMembershipPreservesOnlySamePolicyAuthorityWithoutRenewingItsDeadline() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let date = Date(), age = try TrainingAgeContext(ageYears: 30, guardianManaged: false)
+        let owner = WorkoutOwner(accountID: UUID(), profileID: UUID()), policy = UUID()
+        let grant = WatchAccessGrant(owner: owner, policyID: policy, age: age, verifiedAt: date, membershipDeadline: date.addingTimeInterval(90))
+        let plan = try CoachSavedPlan.catalogue(exerciseID: "squat", sets: 1, target: 8, restSeconds: 60)
+        let resolved = WatchProgrammeTransport(sequence: 1, owner: owner, policyID: policy, age: age, sharing: true, grant: grant, choices: [.init(id: "day", date: date, plan: plan)], support: [], timeZoneID: "UTC")
+        for change in ["same", "off", "owner", "policy", "age", "revoked"] {
+            let archive = try WatchWorkoutArchive(url: root.appendingPathComponent(change + ".json"))
+            try archive.receive(resolved)
+            let next = WatchProgrammeTransport(sequence: 2,
+                owner: change == "owner" ? .init(accountID: UUID(), profileID: UUID()) : owner,
+                policyID: change == "policy" ? UUID() : policy,
+                age: change == "age" ? try .init(ageYears: 12, guardianManaged: true) : age,
+                sharing: change != "off", grant: nil, membershipResolved: change == "revoked",
+                choices: [], support: [], timeZoneID: "UTC")
+            try archive.receive(next)
+            if change == "same" {
+                XCTAssertEqual(archive.transport?.grant, grant)
+                XCTAssertEqual(archive.transport?.choices, resolved.choices)
+                let reopened = try WatchWorkoutArchive(url: root.appendingPathComponent(change + ".json"))
+                XCTAssertEqual(reopened.transport?.grant?.expiresAt, grant.expiresAt)
+                XCTAssertThrowsError(try reopened.start(choiceID: "day", at: date.addingTimeInterval(91)))
+            } else { XCTAssertNil(archive.transport?.grant); XCTAssertTrue(archive.transport?.choices.isEmpty == true) }
+        }
+    }
+
     func testLeaseNeverExceedsGenuineVerificationOrEarlierMembershipAndRejectsClockRollback() throws {
         let verified = Date(timeIntervalSince1970: 1_800_000_000)
         let owner = WorkoutOwner(accountID: UUID(), profileID: UUID())
@@ -38,6 +66,8 @@ final class WatchWorkoutJournalTests: XCTestCase {
         XCTAssertEqual(journal.activeSeconds, 2)
         journal.resume(); try journal.endSet(); journal.finish(at: date.addingTimeInterval(40))
         XCTAssertEqual(journal.completed.map(\.reps), [3, 2])
+        XCTAssertNil(journal.completed.first?.restSecondsBefore)
+        XCTAssertEqual(journal.completed.last?.restSecondsBefore, 4)
         XCTAssertEqual(journal.finishedAt, date.addingTimeInterval(40))
         let finished = journal; journal.finish(at: date.addingTimeInterval(50))
         XCTAssertEqual(journal, finished)

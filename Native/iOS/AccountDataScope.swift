@@ -1,6 +1,7 @@
 import Foundation
 import CryptoKit
 import Observation
+import Darwin
 
 struct AccountDataScope: Hashable {
     let accountID: UUID
@@ -12,36 +13,68 @@ struct AccountDataScope: Hashable {
         try ProtectedLocalStorage.prepare(folder)
         for file in try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil) { try ProtectedLocalStorage.protect(file) }
     }
-    func importLegacy(from source: URL, age: TrainingAgeContext) throws {
+    func importLegacy(from source: URL, age: TrainingAgeContext, afterInstall: () throws -> Void = {}) throws {
         guard age.ageYears >= 18 else { throw AccountFailure.checkpointRequired }
         try prepare()
-        guard !FileManager.default.fileExists(atPath: file("legacy-import.json").path) else { throw CocoaError(.fileWriteFileExists) }
+        let manager = FileManager.default
+        guard !manager.fileExists(atPath: file("legacy-import.json").path),
+              !manager.fileExists(atPath: file("history.json").path),
+              !manager.fileExists(atPath: file("watch-history-deletion.json").path),
+              !manager.fileExists(atPath: file("watch-workout-imports.json").path) else { throw CocoaError(.fileWriteFileExists) }
         let names = ["history.json", "rewards.json", "training-path.json", "watch-inbox.json"]
-        let available = names.filter { FileManager.default.fileExists(atPath: source.appendingPathComponent($0).path) }
+        let available = names.filter { manager.fileExists(atPath: source.appendingPathComponent($0).path) }
         guard !available.isEmpty else { throw CocoaError(.fileNoSuchFile) }
-        for name in available where FileManager.default.fileExists(atPath: file(name).path) { throw CocoaError(.fileWriteFileExists) }
+        for name in available where manager.fileExists(atPath: file(name).path) { throw CocoaError(.fileWriteFileExists) }
         var dataByName: [String: Data] = [:]
         for name in available { dataByName[name] = try Data(contentsOf: source.appendingPathComponent(name)) }
-        if let data = dataByName["history.json"] {
-            let records = try JSONDecoder().decode([SessionRecord].self, from: data)
-            let owner = WorkoutOwner(accountID: accountID, profileID: profileID)
-            guard records.allSatisfy({ $0.trainingContext == nil || $0.trainingContext?.owner == owner }) else { throw AccountFailure.invalidResponse }
-        }
+        let owner = WorkoutOwner(accountID: accountID, profileID: profileID)
+        let records = try dataByName["history.json"].map { try JSONDecoder().decode([SessionRecord].self, from: $0) } ?? []
+        guard records.allSatisfy({ $0.trainingContext == nil || $0.trainingContext?.owner == owner }) else { throw AccountFailure.invalidResponse }
         if let data = dataByName["rewards.json"] { _ = try JSONDecoder().decode(GamificationLedger.self, from: data) }
         if let data = dataByName["training-path.json"] { _ = try JSONDecoder().decode(TrainingPathStore.Saved.self, from: data) }
-        let archive = folder.appendingPathComponent("LegacyArchive")
-        try ProtectedLocalStorage.prepare(archive)
-        for (name, data) in dataByName {
-            let copy = archive.appendingPathComponent(name)
-            try ProtectedLocalStorage.write(data, to: copy)
-            guard try Data(contentsOf: copy) == data else { throw CocoaError(.fileReadCorruptFile) }
+        var quests = manager.fileExists(atPath: file("quests.json").path)
+            ? try JSONDecoder().decode(QuestArchive.self, from: Data(contentsOf: file("quests.json"))) : QuestArchive(owner: owner)
+        guard quests.owner == owner else { throw AccountFailure.invalidResponse }
+        try quests.importOriginalLegacyBenchmarks(history: records, calendar: .current)
+        let staging = folder.deletingLastPathComponent().appendingPathComponent(".legacy-stage-" + UUID().uuidString)
+        do {
+            try manager.copyItem(at: folder, to: staging)
+            try ProtectedLocalStorage.protect(staging)
+            let archive = staging.appendingPathComponent("LegacyArchive")
+            try ProtectedLocalStorage.prepare(archive)
+            for (name, data) in dataByName {
+                let copy = archive.appendingPathComponent(name)
+                try ProtectedLocalStorage.write(data, to: copy)
+                guard try Data(contentsOf: copy) == data else { throw CocoaError(.fileReadCorruptFile) }
+                try ProtectedLocalStorage.write(data, to: staging.appendingPathComponent(name))
+            }
+            let oldProfile = source.appendingPathComponent("profile.json")
+            if manager.fileExists(atPath: oldProfile.path) { try ProtectedLocalStorage.write(Data(contentsOf: oldProfile), to: archive.appendingPathComponent("profile.json")) }
+            try ProtectedLocalStorage.write(JSONEncoder().encode(quests), to: staging.appendingPathComponent("quests.json"))
+            let hashes = dataByName.mapValues { Data(SHA256.hash(data: $0)).base64URL }
+            try ProtectedLocalStorage.write(JSONEncoder().encode(hashes), to: staging.appendingPathComponent("legacy-import.json"))
+        } catch {
+            try? manager.removeItem(at: staging)
+            throw error
         }
-        let oldProfile = source.appendingPathComponent("profile.json")
-        if FileManager.default.fileExists(atPath: oldProfile.path) { try ProtectedLocalStorage.write(Data(contentsOf: oldProfile), to: archive.appendingPathComponent("profile.json")) }
-        for (name, data) in dataByName { try ProtectedLocalStorage.write(data, to: file(name)) }
-        let hashes = dataByName.mapValues { Data(SHA256.hash(data: $0)).base64URL }
-        try ProtectedLocalStorage.write(JSONEncoder().encode(hashes), to: file("legacy-import.json"))
+        func swap() throws {
+            guard renamex_np(staging.path, folder.path, UInt32(RENAME_SWAP)) == 0 else {
+                throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+            }
+        }
+        do { try swap() }
+        catch { try? manager.removeItem(at: staging); throw error }
+        do { try afterInstall() }
+        catch {
+            let failure = error
+            // If rollback itself fails, retain the original protected directory at staging.
+            try swap()
+            try? manager.removeItem(at: staging)
+            throw failure
+        }
+        try? manager.removeItem(at: staging)
     }
+
 }
 
 struct TrainingProfileDescriptor: Codable, Identifiable, Equatable {
@@ -114,7 +147,7 @@ struct TrainingProfileDescriptor: Codable, Identifiable, Equatable {
     let watchSharing: WatchSharingStore
     var watchBridge: WatchWorkoutBridge?
     var programmeSync: ProgrammeSyncStore?
-    init(scope: AccountDataScope) throws {
+    init(scope: AccountDataScope, analyticsSender: ConsentedAnalyticsStore.Sender? = nil) throws {
         try scope.prepare(); self.scope = scope
         let directoryURL = scope.root.appendingPathComponent("Accounts").appendingPathComponent(scope.accountID.uuidString).appendingPathComponent("profiles.json")
         var knownAge: TrainingAgeContext?
@@ -124,15 +157,17 @@ struct TrainingProfileDescriptor: Codable, Identifiable, Equatable {
                   NativeProfileStore(url: scope.file("profile.json")).profile?.programmePreferences?.ageContext == descriptor.age else { throw AccountFailure.invalidResponse }
             knownAge = descriptor.age
         }
+        let healthPreferences = try FileHealthPreferences(url: scope.file("health-preferences.plist"))
         let defaults = UserDefaults(suiteName: "Spottr.Scope.\(scope.accountID.uuidString).\(scope.profileID.uuidString)")!
         profile = NativeProfileStore(url: scope.file("profile.json"), fixedAge: knownAge, preferencesDefaults: defaults)
+        health = HealthDataStore(client: ScopedHealthReadingClient(profile: profile), defaults: healthPreferences)
         watchSharing = try WatchSharingStore(scope: scope, age: profile.profile?.programmePreferences?.ageContext)
         programme = ProgrammeStore(scope: scope, profile: profile)
         path = TrainingPathStore(url: scope.file("training-path.json"))
         let rewards = NativeRewardsStore(url: scope.file("rewards.json"), allowsTimePressureRewards: profile.profile?.programmePreferences?.ageContext?.allowsTimePressureRewards == true, requiresCapturedAdult: true)
         let voice = RemoteVoicePlayback(offlineOnly: true, defaults: defaults, gentleOnly: (profile.profile?.programmePreferences?.ageContext?.ageYears ?? 0) < 18)
         training = TrainingStore(historyURL: scope.file("history.json"), voicePlayback: voice, rewardsStore: rewards, defaults: defaults, accountScope: scope)
-        training.analytics = ConsentedAnalyticsStore(scope: scope, profile: profile)
+        training.analytics = ConsentedAnalyticsStore(scope: scope, profile: profile, send: analyticsSender)
         training.analytics?.onConsentChange = { [weak training] in training?.publish() }
         training.watchSharing = watchSharing
         training.programme = programme
@@ -140,7 +175,6 @@ struct TrainingProfileDescriptor: Codable, Identifiable, Equatable {
         training.rewardReminders = RewardReminderStore(scope: scope, profile: profile, rewards: rewards, programme: programme, client: LocalRewardNotificationClient())
         Task { [weak training] in await training?.rewardReminders?.refresh() }
         programme.protectedDayIDs = { [weak training] in training?.protectedProgrammeDayIDs ?? [] }
-        health = HealthDataStore(client: ScopedHealthReadingClient(profile: profile), defaults: try FileHealthPreferences(url: scope.file("health-preferences.plist")))
     }
     func invalidatePolicy() { suspend(); profile.invalidatePolicy() }
     var hasOngoingWorkout: Bool { training.sessionPhase != .idle && training.sessionPhase != .finished }

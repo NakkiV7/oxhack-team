@@ -161,18 +161,17 @@ extension EnvironmentValues {
         workspace.training.publish()
         let date = Date()
         guard workspace.watchSharing.enabled, !refreshingAuthority,
-              date.timeIntervalSince(lastAuthorityAttempt) >= 60,
-              account.lastTrustedVerification.map({ date.timeIntervalSince($0) >= 86400 }) ?? true else { return }
+              date.timeIntervalSince(lastAuthorityAttempt) >= 60 else { return }
         refreshingAuthority = true; lastAuthorityAttempt = date
         let generation = account.authenticationGeneration
         Task { [weak self] in
             guard let self else { return }
             defer { self.refreshingAuthority = false }
-            await account.restore()
+            if account.lastTrustedVerification.map({ date.timeIntervalSince($0) >= 86400 }) ?? true { await account.restore() }
             guard self.isCurrent(), self.workspace === workspace, workspace.profile.permitsPolicyCallbacks,
                   workspace.watchSharing.enabled, account.authenticationGeneration == generation,
                   account.accountID == workspace.scope.accountID else { return }
-            await self.membership.refreshEntitlements()
+            await self.membership.refreshCurrentEntitlements()
             guard self.isCurrent(), self.workspace === workspace, workspace.profile.permitsPolicyCallbacks,
                   workspace.watchSharing.enabled, account.authenticationGeneration == generation,
                   account.accountID == workspace.scope.accountID else { return }
@@ -195,11 +194,11 @@ extension EnvironmentValues {
         let access = membership.accountID == owner.accountID ? membership.access : MembershipAccess.resolve([], now: Date())
         let value = WatchProgrammeTransport.authorized(sequence: 0, owner: owner, policyID: workspace.watchSharing.policyID,
             trustedOwner: trusted, verifiedAt: account?.lastTrustedVerification, profile: workspace.profile.profile,
-            sharing: sharing, membership: access, programme: workspace.programme.current, at: Date(), analyticsCapture: current ? workspace.training.analytics?.ledger.capture(.workout) : nil)
+            sharing: sharing, membership: access, membershipResolved: membership.accountID != owner.accountID || membership.entitlementsResolved, programme: workspace.programme.current, at: Date(), analyticsCapture: current ? workspace.training.analytics?.ledger.capture(.workout) : nil)
         do {
             let equivalent = lastTransport.map { previous in
                 WatchProgrammeTransport(sequence: 0, owner: previous.owner, policyID: previous.policyID, age: previous.age,
-                    sharing: previous.sharing, grant: previous.grant, choices: previous.choices, support: previous.support, timeZoneID: previous.timeZoneID, programmeID: previous.programmeID, programmeRevision: previous.programmeRevision) == value
+                    sharing: previous.sharing, grant: previous.grant, membershipResolved: previous.membershipResolved, choices: previous.choices, support: previous.support, timeZoneID: previous.timeZoneID, programmeID: previous.programmeID, programmeRevision: previous.programmeRevision) == value
             } ?? false
             if !equivalent {
                 let previous = FileManager.default.fileExists(atPath: sequenceURL.path)
@@ -208,7 +207,7 @@ extension EnvironmentValues {
                 let sequence = previous + 1
                 try ProtectedLocalStorage.write(JSONEncoder().encode(sequence), to: sequenceURL)
                 lastTransport = .init(sequence: sequence, owner: owner, policyID: value.policyID, age: value.age,
-                    sharing: value.sharing, grant: value.grant, choices: value.choices, support: value.support, timeZoneID: value.timeZoneID, programmeID: value.programmeID, programmeRevision: value.programmeRevision)
+                    sharing: value.sharing, grant: value.grant, membershipResolved: value.membershipResolved, choices: value.choices, support: value.support, timeZoneID: value.timeZoneID, programmeID: value.programmeID, programmeRevision: value.programmeRevision)
             }
             if let lastTransport { link.publishProgramme(lastTransport) }
         } catch { workspace.training.error = "Watch access could not be saved. Your existing workouts are unchanged." }
