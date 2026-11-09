@@ -37,6 +37,107 @@ final class MembershipJourneyTests: XCTestCase {
         client.purchaseContinuation?.resume(returning: .pending); await buying.value
         XCTAssertNil(store.operationMessage); XCTAssertFalse(store.hasAccess)
     }
+    func testUnrelatedUpdatesPreservePendingAndCancelledLifetimeOutcomes() async throws {
+        for (result, text) in [(MembershipPurchaseResult.pending, "pending approval"), (.cancelled, "cancelled")] {
+            let client = MembershipTestClient()
+            client.availableOffers = [.init(plan: .lifetime, displayName: "Lifetime", displayPrice: "£200")]
+            let monthly = MembershipTransaction(id: 801, appAccountToken: testAccount, productID: MembershipPlan.monthly.productID, kind: .autoRenewable, expirationDate: .now.addingTimeInterval(3600))
+            client.entitlements = [.verified(monthly)]; client.purchaseResult = result
+            let store = MembershipCoordinator(client: client, claims: MembershipTestClaims())
+            store.setAccount(testAccount); await store.load(); await store.buy(.lifetime)
+            let unrelated = [monthly,
+                MembershipTransaction(id: 802, appAccountToken: UUID(), productID: MembershipPlan.lifetime.productID, kind: .nonConsumable),
+                MembershipTransaction(id: 803, appAccountToken: testAccount, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable, revocationDate: .now)]
+            for transaction in unrelated {
+                let requests = client.productRequests
+                client.continuation.yield(.verified(transaction))
+                for _ in 0..<200 where client.productRequests == requests || !client.finished.contains(transaction.id) { await Task.yield() }
+                try await Task.sleep(for: .milliseconds(1))
+                XCTAssertGreaterThan(client.productRequests, requests); XCTAssertTrue(client.finished.contains(transaction.id))
+                XCTAssertTrue(store.operationMessage?.contains(text) == true, "Unrelated updates cannot replace this lifetime outcome")
+                XCTAssertTrue(store.hasAccess); XCTAssertFalse(store.access.lifetime)
+            }
+        }
+    }
+    func testVerifiedCurrentAccountLifetimeUpdateResolvesPendingOutcome() async throws {
+        let client = MembershipTestClient()
+        client.availableOffers = [.init(plan: .lifetime, displayName: "Lifetime", displayPrice: "£200")]
+        let monthly = MembershipTransaction(id: 811, appAccountToken: testAccount, productID: MembershipPlan.monthly.productID, kind: .autoRenewable, expirationDate: .now.addingTimeInterval(3600))
+        client.entitlements = [.verified(monthly)]; client.purchaseResult = .pending
+        let store = MembershipCoordinator(client: client, claims: MembershipTestClaims())
+        store.setAccount(testAccount); await store.load(); await store.buy(.lifetime)
+        XCTAssertTrue(store.operationMessage?.contains("pending approval") == true)
+        let lifetime = MembershipTransaction(id: 812, appAccountToken: testAccount, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable)
+        client.entitlements.append(.verified(lifetime)); let requests = client.productRequests
+        client.continuation.yield(.verified(lifetime))
+        for _ in 0..<200 where client.productRequests == requests || !client.finished.contains(lifetime.id) { await Task.yield() }
+        try await Task.sleep(for: .milliseconds(1))
+        XCTAssertTrue(store.access.lifetime); XCTAssertEqual(store.operationMessage, "Membership is active.")
+    }
+    func testDelayedLifetimeResolutionCannotReplaceNewerUserOutcome() async throws {
+        let client = MembershipTestClient()
+        client.availableOffers = [.init(plan: .lifetime, displayName: "Lifetime", displayPrice: "£200")]
+        let monthly = MembershipTransaction(id: 821, appAccountToken: testAccount, productID: MembershipPlan.monthly.productID, kind: .autoRenewable, expirationDate: .now.addingTimeInterval(3600))
+        client.entitlements = [.verified(monthly)]; client.purchaseResult = .pending
+        let store = MembershipCoordinator(client: client, claims: MembershipTestClaims())
+        store.setAccount(testAccount); await store.load(); await store.buy(.lifetime)
+        let lifetime = MembershipTransaction(id: 822, appAccountToken: testAccount, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable)
+        client.deferNextEntitlementRequest = true
+        client.continuation.yield(.verified(lifetime))
+        for _ in 0..<200 where client.deferredEntitlements == nil { await Task.yield() }
+        let held = try XCTUnwrap(client.deferredEntitlements)
+        client.purchaseResult = .cancelled; await store.buy(.lifetime)
+        XCTAssertTrue(store.operationMessage?.contains("cancelled") == true)
+        client.entitlements.append(.verified(lifetime)); let requests = client.productRequests
+        held.resume(returning: client.entitlements); client.deferredEntitlements = nil
+        for _ in 0..<200 where client.productRequests == requests || !client.finished.contains(lifetime.id) { await Task.yield() }
+        try await Task.sleep(for: .milliseconds(1))
+        XCTAssertTrue(store.access.lifetime)
+        XCTAssertTrue(store.operationMessage?.contains("cancelled") == true, "An older stream refresh cannot replace a newer user result")
+    }
+    func testVerifiedPendingPlanEndsApprovalWhileCurrentEntitlementsCatchUp() async throws {
+        let client = MembershipTestClient()
+        client.availableOffers = [.init(plan: .lifetime, displayName: "Lifetime", displayPrice: "£200")]
+        client.entitlements = [.verified(.init(appAccountToken: testAccount, productID: MembershipPlan.monthly.productID, kind: .autoRenewable, expirationDate: .now.addingTimeInterval(3600)))]
+        client.purchaseResult = .pending
+        let store = MembershipCoordinator(client: client, claims: MembershipTestClaims())
+        store.setAccount(testAccount); await store.load(); await store.buy(.lifetime)
+        let lifetime = MembershipTransaction(id: 831, appAccountToken: testAccount, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable)
+        let requests = client.productRequests; client.continuation.yield(.verified(lifetime))
+        for _ in 0..<200 where client.productRequests == requests || !client.finished.contains(lifetime.id) { await Task.yield() }
+        try await Task.sleep(for: .milliseconds(1))
+        XCTAssertTrue(store.operationMessage?.contains("Purchase verified") == true)
+        XCTAssertFalse(store.access.lifetime, "The operation result must not grant access without current verified entitlements")
+    }
+    func testLifetimeResolutionBeforePendingReplyDoesNotRestorePendingNotice() async throws {
+        let client = MembershipTestClient()
+        client.availableOffers = [.init(plan: .lifetime, displayName: "Lifetime", displayPrice: "£200")]
+        client.entitlements = [.verified(.init(appAccountToken: testAccount, productID: MembershipPlan.monthly.productID, kind: .autoRenewable, expirationDate: .now.addingTimeInterval(3600)))]
+        let store = MembershipCoordinator(client: client, claims: MembershipTestClaims())
+        store.setAccount(testAccount); await store.load(); client.deferPurchase = true
+        let buying = Task { await store.buy(.lifetime) }
+        for _ in 0..<200 where client.purchaseContinuation == nil { await Task.yield() }
+        let held = try XCTUnwrap(client.purchaseContinuation)
+        let lifetime = MembershipTransaction(id: 841, appAccountToken: testAccount, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable)
+        client.entitlements.append(.verified(lifetime)); let requests = client.productRequests
+        client.continuation.yield(.verified(lifetime))
+        for _ in 0..<200 where client.productRequests == requests || !client.finished.contains(lifetime.id) { await Task.yield() }
+        try await Task.sleep(for: .milliseconds(1))
+        XCTAssertTrue(store.access.lifetime)
+        held.resume(returning: .pending); await buying.value
+        XCTAssertEqual(store.operationMessage, "Membership is active.")
+    }
+    func testCurrentVerifiedPendingPlanResolvesOnReloadWithoutStreamReplay() async {
+        let client = MembershipTestClient()
+        client.availableOffers = [.init(plan: .lifetime, displayName: "Lifetime", displayPrice: "£200")]
+        client.entitlements = [.verified(.init(appAccountToken: testAccount, productID: MembershipPlan.monthly.productID, kind: .autoRenewable, expirationDate: .now.addingTimeInterval(3600)))]
+        client.purchaseResult = .pending
+        let store = MembershipCoordinator(client: client, claims: MembershipTestClaims())
+        store.setAccount(testAccount); await store.load(); await store.buy(.lifetime)
+        client.entitlements.append(.verified(.init(appAccountToken: testAccount, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable)))
+        await store.load()
+        XCTAssertTrue(store.access.lifetime); XCTAssertEqual(store.operationMessage, "Membership is active.")
+    }
     func testExplicitRestoreRecoversAttributedPurchaseIntoNewAccountAndRevalidates() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -505,6 +606,7 @@ private final class MembershipTestClient: MembershipClient {
     var entitlements: [MembershipVerification] = []
     var availableOffers: [MembershipOffer] = []
     var productError: Error?
+    var productRequests = 0
     var purchaseResult: MembershipPurchaseResult = .cancelled
     var purchaseError: Error?
     var purchaseEntitlements: [MembershipVerification]?
@@ -530,6 +632,7 @@ private final class MembershipTestClient: MembershipClient {
     }
 
     func products() async throws -> [MembershipOffer] {
+        productRequests += 1
         if let productError { throw productError }
         return availableOffers
     }

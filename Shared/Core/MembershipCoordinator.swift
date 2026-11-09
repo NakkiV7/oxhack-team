@@ -40,6 +40,12 @@ public final class MembershipCoordinator {
     public var accessError: String? { claimError ?? operationError }
     public private(set) var catalogueError: String?
     public private(set) var operationMessage: String?
+    private struct PendingPurchase: Equatable {
+        let id = UUID()
+        let accountID: UUID
+        let plan: MembershipPlan
+    }
+    private var pendingPurchase: PendingPurchase?
     private var operationError: String?
     private var claimError: String?
     public private(set) var status = "Checking App Store availability…"
@@ -72,7 +78,7 @@ public final class MembershipCoordinator {
     public func setAccount(_ accountID: UUID?) {
         guard self.accountID != accountID else { return }
         self.accountID = accountID; accountGeneration = UUID(); entitlementRefreshID = UUID()
-        entitlements = []; restoredClaims = []; operationError = nil; claimError = nil; operationMessage = nil
+        entitlements = []; restoredClaims = []; operationError = nil; claimError = nil; operationMessage = nil; pendingPurchase = nil
         entitlementsResolved = false; currentRefresh?.cancel(); currentRefresh = nil; currentRefreshID = UUID()
         expirationRefresh?.cancel()
         status = accountID == nil ? "Sign in to use membership. Restore purchases remains available." : "Checking your Apple membership…"
@@ -128,14 +134,20 @@ public final class MembershipCoordinator {
     public func buy(_ plan: MembershipPlan) async {
         guard let accountID, !busy, offers.contains(where: { $0.plan == plan }), access.mayPurchase(plan) else { return }
         let generation = accountGeneration
-        busy = true; operationError = nil; operationMessage = nil
+        busy = true; operationError = nil; operationMessage = nil; pendingPurchase = nil
         defer { busy = false }
         do {
             let result = try await client.purchase(plan, appAccountToken: accountID)
             guard generation == accountGeneration else { return }
             switch result {
             case .cancelled: status = "Purchase cancelled. Access has not changed."; operationMessage = status
-            case .pending: status = "Purchase is pending approval. Access has not changed."; operationMessage = status
+            case .pending:
+                if access.activePlans.contains(plan) { status = "Membership is active." }
+                else {
+                    pendingPurchase = PendingPurchase(accountID: accountID, plan: plan)
+                    status = "Purchase is pending approval. Access has not changed."
+                }
+                operationMessage = status
             case .completed(let result):
                 guard case .verified(let transaction) = result,
                       transaction.productID == plan.productID, transaction.kind == plan.kind,
@@ -159,7 +171,7 @@ public final class MembershipCoordinator {
     public func restore() async {
         guard !busy else { return }
         let generation = accountGeneration, restoringAccount = accountID
-        busy = true; operationError = nil; operationMessage = nil
+        busy = true; operationError = nil; operationMessage = nil; pendingPurchase = nil
         defer { busy = false }
         do {
             try await client.restore()
@@ -195,7 +207,7 @@ public final class MembershipCoordinator {
         }
     }
     public func completeRedemption(_ result: Result<Void, Error>) async {
-        operationMessage = nil
+        operationMessage = nil; pendingPurchase = nil
         let generation = accountGeneration
         await refreshEntitlements()
         guard generation == accountGeneration else { return }
@@ -220,7 +232,7 @@ public final class MembershipCoordinator {
         if currentRefreshID == id { currentRefresh = nil }
     }
     public func refreshEntitlements() async {
-        let refreshID = UUID(), generation = accountGeneration
+        let refreshID = UUID(), generation = accountGeneration, pending = pendingPurchase
         entitlementRefreshID = refreshID
         let current = await client.currentEntitlements()
         guard generation == accountGeneration, entitlementRefreshID == refreshID else { return }
@@ -230,6 +242,10 @@ public final class MembershipCoordinator {
         if let accountID {
             do { restoredClaims = try claims.load(accountID: accountID) }
             catch { claimError = "Your saved membership claim could not be read. Try again or use Restore purchases." }
+        }
+        if let pending, pendingPurchase == pending, pending.accountID == accountID,
+           access.activePlans.contains(pending.plan) {
+            pendingPurchase = nil; operationMessage = "Membership is active."
         }
         expirationRefresh?.cancel()
         guard let deadline = access.expiresAt else { return }
@@ -246,13 +262,17 @@ public final class MembershipCoordinator {
         guard case .verified(let transaction) = result,
               let plan = MembershipPlan.allCases.first(where: { $0.productID == transaction.productID }),
               plan.kind == transaction.kind else { return }
-        let generation = accountGeneration
+        let generation = accountGeneration, pending = pendingPurchase
         await refreshEntitlements()
         await client.finish(transactionID: transaction.id)
         guard generation == accountGeneration else { return }
         await refreshOffers()
         guard generation == accountGeneration else { return }
         status = hasAccess ? "Membership is active." : "No active membership. Your history, export and help remain available."
-        operationMessage = status
+        guard let pending, pendingPurchase == pending,
+              pending.accountID == accountID, transaction.appAccountToken == pending.accountID,
+              pending.plan == plan, MembershipAccess.resolve([result], now: now()).activePlans.contains(plan) else { return }
+        pendingPurchase = nil
+        operationMessage = access.activePlans.contains(plan) ? "Membership is active." : "Purchase verified. Use Restore purchases to confirm current access."
     }
 }

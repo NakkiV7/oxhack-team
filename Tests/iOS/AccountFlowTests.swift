@@ -663,6 +663,63 @@ import AuthenticationServices
         XCTAssertEqual(account.step, .restart); XCTAssertNil(account.setupExpiresAt)
         XCTAssertTrue(account.message?.contains("expired") == true)
     }
+    func testUnusableEnrollmentOptionsRequireFreshIdentity() async throws {
+        try await unusableOptionsRequireRestart(purpose: .enroll)
+    }
+    func testUnusableRecoveryOptionsRequireFreshIdentity() async throws {
+        try await unusableOptionsRequireRestart(purpose: .recover)
+    }
+    private func unusableOptionsRequireRestart(purpose: IdentityPurpose) async throws {
+        for failure in StagedAccountTransport.OptionsFailure.allCases {
+            let wire = StagedAccountTransport(), vault = MemoryAccountCredentials()
+            let retained = retryCredential(); try vault.save(retained)
+            let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            defer { try? FileManager.default.removeItem(at: root) }
+            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            let saved = root.appendingPathComponent("saved-record.txt"), bytes = Data("retained local records".utf8)
+            try bytes.write(to: saved)
+            let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: RetryAccountAuthorization())
+            let coordinator = AccountWorkspaceCoordinator(account: account, root: root)
+            try account.setCheckpoint(ageYears: 30, role: .adultSelf)
+            await account.startEmail(email: "owner@example.test", purpose: purpose); await account.verifyEmail(code: "123456")
+            wire.optionsFailure = failure
+            await account.enrollPasskey(recoveryBackup: purpose == .recover ? "unused-backup" : nil)
+            XCTAssertEqual(wire.stage, .registration)
+            XCTAssertEqual(account.step, .restart, "Unknown options commitment requires restart: \(failure)")
+            XCTAssertTrue(account.message?.contains("Start again") == true)
+            let requests = wire.requests.count
+            await account.enrollPasskey(recoveryBackup: purpose == .recover ? "unused-backup" : nil)
+            XCTAssertEqual(wire.requests.count, requests, "An advanced one-time options request must not be replayed")
+            XCTAssertEqual(wire.optionsRequests, 1); XCTAssertNil(account.authenticatorSecret)
+            XCTAssertEqual(try vault.load(), retained); XCTAssertEqual(try Data(contentsOf: saved), bytes)
+            XCTAssertNil(coordinator.visibleWorkspace)
+        }
+    }
+    func testExplicitRecoveryOptionsDenialAllowsCorrectedBackupProof() async throws {
+        let wire = StagedAccountTransport(), vault = MemoryAccountCredentials()
+        let retained = retryCredential(); try vault.save(retained)
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: RetryAccountAuthorization())
+        await account.startEmail(email: "owner@example.test", purpose: .recover); await account.verifyEmail(code: "123456")
+        await account.enrollPasskey(recoveryBackup: "")
+        XCTAssertEqual(account.step, .recoveryBackup); XCTAssertEqual(wire.optionsRequests, 0)
+        await account.enrollPasskey(recoveryBackup: "wrong-backup")
+        XCTAssertEqual(account.step, .recoveryBackup); XCTAssertEqual(wire.stage, .identity)
+        await account.enrollPasskey(recoveryBackup: "unused-backup")
+        XCTAssertEqual(account.step, .authenticatorSetup); XCTAssertEqual(wire.optionsRequests, 2)
+        XCTAssertEqual(try vault.load(), retained)
+    }
+    func testIncorrectEnrollmentTOTPRemainsRetryableWithoutReplacingCredentials() async throws {
+        let wire = StagedAccountTransport(), vault = MemoryAccountCredentials()
+        let retained = retryCredential(); try vault.save(retained)
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: RetryAccountAuthorization())
+        await account.startEmail(email: "owner@example.test", purpose: .recover); await account.verifyEmail(code: "123456")
+        await account.enrollPasskey(recoveryBackup: "unused-backup")
+        await account.complete(code: "000000")
+        XCTAssertEqual(account.step, .authenticatorSetup); XCTAssertEqual(wire.stage, .enrollment)
+        XCTAssertNotNil(account.authenticatorSecret); XCTAssertEqual(try vault.load(), retained)
+        await account.complete(code: "654321")
+        XCTAssertTrue(account.trusted); XCTAssertEqual(wire.stage, .complete)
+    }
     func testExpiredSetupClearsSecretAndPreservesRetainedCredential() async throws {
         let wire = StagedAccountTransport(), auth = RetryAccountAuthorization(), vault = MemoryAccountCredentials()
         let retained = retryCredential(); try vault.save(retained)
@@ -683,6 +740,8 @@ import AuthenticationServices
 
 @MainActor final class StagedAccountTransport: AccountTransport {
     enum Stage { case email, identity, registration, enrollment, secondFactor, complete }
+    enum OptionsFailure: CaseIterable { case malformedSuccess, invalidTransportResponse, serverFailure }
+    var optionsFailure: OptionsFailure?
     var stage = Stage.email
     var expiry = Date.now.addingTimeInterval(300)
     var requests: [URLRequest] = []
@@ -718,6 +777,14 @@ import AuthenticationServices
             optionsRequests += 1
             guard stage == .identity, purpose != "recover" || body["backupCode"] as? String == "unused-backup" else { return reject() }
             stage = .registration; token = "registration-\(flow)"
+            if let failure = optionsFailure {
+                optionsFailure = nil
+                switch failure {
+                case .malformedSuccess: return (Data("{truncated".utf8), 200)
+                case .invalidTransportResponse: throw AccountFailure.invalidResponse
+                case .serverFailure: return (Data(#"{"error":"proxy_unavailable"}"#.utf8), 502)
+                }
+            }
             return try reply(["flowToken": token, "options": ["challenge": Data("challenge-\(flow)".utf8).base64URL, "rp": ["id": "spottr.omarchoudhry.co.uk", "name": "Spottr"], "user": ["id": "dXNlci1oYW5kbGU", "name": "Account", "displayName": "Account"], "authenticatorSelection": ["userVerification": "required", "residentKey": "required"]]])
         case "/passkey/enroll/verify":
             guard stage == .registration else { return reject() }; stage = .enrollment; token = "enrollment-\(flow)"

@@ -87,13 +87,20 @@ import AuthenticationServices
                pending.expiry == self.setupExpiresAt, pending.purpose == self.purpose {
                 options = pending.options
             } else {
+                let recoveryProof: String?
+                if self.purpose == .recover {
+                    guard let recoveryBackup, !recoveryBackup.isEmpty else { throw AccountFailure.reauthenticate }
+                    recoveryProof = recoveryBackup
+                } else { recoveryProof = nil }
                 let reply: RegistrationOptionsReply
                 do {
-                    if self.purpose == .recover {
-                        guard let recoveryBackup, !recoveryBackup.isEmpty else { throw AccountFailure.reauthenticate }
-                        reply = try await self.client.post("/recovery/options", body: RecoveryOptionsRequest(flowToken: token, backupCode: recoveryBackup))
+                    if let recoveryProof {
+                        reply = try await self.client.post("/recovery/options", body: RecoveryOptionsRequest(flowToken: token, backupCode: recoveryProof))
                     } else { reply = try await self.client.post("/passkey/enroll/options", body: FlowRequest(flowToken: token)) }
-                } catch is URLError { throw SetupFailure.restart }
+                } catch {
+                    if case AccountFailure.service(let status, _) = error, (400..<500).contains(status) { throw error }
+                    throw SetupFailure.restart
+                }
                 _ = try self.requireFlow()
                 guard let expiry = self.setupExpiresAt else { throw SetupFailure.expired }
                 self.flowToken = reply.flowToken
