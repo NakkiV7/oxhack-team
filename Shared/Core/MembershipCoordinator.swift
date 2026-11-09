@@ -133,22 +133,23 @@ public final class MembershipCoordinator {
     }
     public func buy(_ plan: MembershipPlan) async {
         guard let accountID, !busy, offers.contains(where: { $0.plan == plan }), access.mayPurchase(plan) else { return }
-        let generation = accountGeneration
-        busy = true; operationError = nil; operationMessage = nil; pendingPurchase = nil
+        let generation = accountGeneration, purchase = PendingPurchase(accountID: accountID, plan: plan)
+        busy = true; operationError = nil; operationMessage = nil; pendingPurchase = purchase
         defer { busy = false }
         do {
             let result = try await client.purchase(plan, appAccountToken: accountID)
             guard generation == accountGeneration else { return }
             switch result {
-            case .cancelled: status = "Purchase cancelled. Access has not changed."; operationMessage = status
+            case .cancelled:
+                if pendingPurchase == purchase { pendingPurchase = nil }
+                status = "Purchase cancelled. Access has not changed."; operationMessage = status
             case .pending:
-                if access.activePlans.contains(plan) { status = "Membership is active." }
-                else {
-                    pendingPurchase = PendingPurchase(accountID: accountID, plan: plan)
-                    status = "Purchase is pending approval. Access has not changed."
-                }
+                guard pendingPurchase == purchase else { return }
+                if access.activePlans.contains(plan) { pendingPurchase = nil; status = "Membership is active." }
+                else { status = "Purchase is pending approval. Access has not changed." }
                 operationMessage = status
             case .completed(let result):
+                if pendingPurchase == purchase { pendingPurchase = nil }
                 guard case .verified(let transaction) = result,
                       transaction.productID == plan.productID, transaction.kind == plan.kind,
                       transaction.appAccountToken == accountID else {
@@ -165,6 +166,7 @@ public final class MembershipCoordinator {
             }
         } catch {
             guard generation == accountGeneration else { return }
+            if pendingPurchase == purchase { pendingPurchase = nil }
             self.operationError = "The App Store purchase could not be completed. Try again."
         }
     }
