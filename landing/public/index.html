@@ -22,7 +22,7 @@
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 <link rel="stylesheet" href="/styles.css">
 </head>
-<body>
+<body class="homepage">
 <a class="skip" href="#main">Skip to content</a>
 <header class="site-header shell">
 <a class="brand" href="/" aria-label="Spottr home"><img src="/assets/app-icon.png" width="37" height="37" alt="">spottr</a>
@@ -30,30 +30,107 @@
 </header>
 <main id="main">
 <section class="hero shell" aria-labelledby="hero-title">
-<div class="hero-copy">
-<p class="availability">Made for iPhone. Open for testing.</p>
-<h1 id="hero-title">A workout plan<br>that grows with you.</h1>
-<p class="lead">A weekly programme, on-device camera tracking and honest progress from the work you record. Start at your own level and build a routine that fits.</p>
-<div class="actions"><a class="button" href="https://testflight.apple.com/join/f3MhePbf">Join on TestFlight</a><a class="button secondary" href="#explore">Explore Spottr</a></div>
-<p class="fine">iPhone app in testing. Apple’s TestFlight app is required; places and builds depend on availability.</p>
-</div>
-<figure class="hero-stage"><div class="phone"><img src="/assets/today-programme.png" width="1206" height="2622" alt="Spottr Today screen showing a complete four-movement programme and an illustrative three-rep manual test entry" fetchpriority="high"></div><figcaption class="screen-caption">Illustrative local test profile. Simulator capture.<br>The available TestFlight build may differ.</figcaption></figure>
+  <div class="hero-copy">
+    <p class="availability">Made for iPhone. Open for testing.</p>
+    <h1 id="hero-title">Your next workout.<br>Already planned.</h1>
+    <p class="lead">A weekly programme that fits your starting point. Record your sets with your camera or by hand, then see the work you’ve saved.</p>
+    <div class="actions">
+      <a class="button" href="https://testflight.apple.com/join/f3MhePbf">Join on TestFlight</a>
+      <a class="text-link" href="#explore">See how it works</a>
+    </div>
+    <p class="fine">Requires Apple’s TestFlight app. Places and builds depend on availability.</p>
+  </div>
+  <figure class="hero-stage">
+    <div class="phone"><img src="/assets/today-programme.png" width="1206" height="2622" alt="Spottr Today screen showing a complete four-movement programme and an illustrative three-rep manual test entry" aria-describedby="screen-disclosure" fetchpriority="high"></div>
+    <figcaption id="screen-disclosure" class="screen-caption">Illustrative simulator screens of a local testing candidate. The public TestFlight build may differ.</figcaption>
+  </figure>
 </section>
 <div class="essentials shell">
-<article class="essential"><span class="symbol art" aria-hidden="true"><img src="/assets/privacy-shield.png" width="256" height="256" alt="" loading="lazy"></span><div><h2>Keep your routine offline</h2><p>Core training and local coaching work on your iPhone.</p></div></article>
-<article class="essential"><span class="symbol" aria-hidden="true"><svg viewBox="0 0 28 28"><path d="M4 9h5l2-3h6l2 3h5v15H4Z"/><circle cx="14" cy="16" r="4"/></svg></span><div><h2>Choose how you track</h2><p>Camera tracking for supported moves, with manual options.</p></div></article>
-<article class="essential"><span class="symbol" aria-hidden="true"><svg viewBox="0 0 28 28"><rect x="5" y="6" width="18" height="16" rx="5"/><path d="m9 6 1-4h8l1 4M9 22l1 4h8l1-4M10 14h3l2-4 2 8 2-4h2"/></svg></span><div><h2>Add your Apple Watch</h2><p>Optional workout and heart-rate context, with your permission.</p></div></article>
+  <article class="essential">
+    <span class="symbol art" aria-hidden="true"><img src="/assets/privacy-shield.png" width="256" height="256" alt="" loading="lazy"></span>
+    <div><h2>Train offline</h2><p>Core training and coaching work on your iPhone after setup.</p></div>
+  </article>
+  <article class="essential">
+    <span class="symbol" aria-hidden="true"><svg viewBox="0 0 28 28"><path d="M4 9h5l2-3h6l2 3h5v15H4Z"/><circle cx="14" cy="16" r="4"/></svg></span>
+    <div><h2>Track your way</h2><p>Use the camera for supported moves, or record your own sets.</p></div>
+  </article>
+  <article class="essential">
+    <span class="symbol" aria-hidden="true"><svg viewBox="0 0 28 28"><path d="M5 4v20h20M10 19v-5m6 5V9m6 10V5"/></svg></span>
+    <div><h2>Keep your progress</h2><p>Look back at the sessions you save on your device.</p></div>
+  </article>
 </div>
 <section id="explore" class="section shell" aria-labelledby="explore-title">
-<div class="section-intro"><h2 id="explore-title">Find your starting point.</h2><p>The local beta candidate includes 53 exercises and 52 camera profiles, with manual and timed tracking. Your goals, comfortable movements and available support shape a complete weekly programme with recovery days.</p></div>
-<div class="pathway"><div class="movement-panel"><figure class="movement"><img src="/assets/wall-pushup.png" width="420" height="420" alt="Faceless stick-figure demonstration of a wall push-up" loading="lazy"><figcaption>Wall push-ups<small>A starting variation</small></figcaption></figure><span class="path-join" aria-hidden="true"></span><figure class="movement"><img src="/assets/incline-pushup.png" width="420" height="420" alt="Faceless stick-figure demonstration of an incline push-up" loading="lazy"><figcaption>Incline push-ups<small>Another step to explore</small></figcaption></figure></div><div class="section-copy"><h3>Your session, at your pace.</h3><p>Follow your prepared workout, record each set and how it felt, then review your actual progress. Future adjustments preserve work already started or saved.</p><ul class="plain-list"><li>Clear setup and equipment guidance</li><li>Repetition and timed exercise options</li><li>A local history of the sessions you save</li></ul></div></div>
+  <div class="section-intro"><h2 id="explore-title">A little structure.<br>Room to find your pace.</h2><p>Start with movements that suit you, your space and the support you have. Build your routine one session at a time.</p></div>
+  <div class="workout-path">
+    <figure class="movement">
+      <img src="/assets/wall-pushup.png" width="420" height="420" alt="Faceless stick-figure demonstration of a wall push-up with the movement joints highlighted in green" loading="lazy">
+      <figcaption>Find your starting point.<small>Wall push-ups are one variation to explore.</small></figcaption>
+    </figure>
+    <ol class="workout-steps" aria-label="Your workout with Spottr">
+      <li><h3>Open a prepared workout.</h3><p>Your weekly programme brings together your goals, comfortable movements and recovery days. Setup guidance helps you get ready.</p></li>
+      <li><h3>Record the work you do.</h3><p>Use camera tracking for supported movements, manual reps or a timed set. Save each set and how it felt.</p></li>
+      <li><h3>See what you’ve built.</h3><p>Your progress reflects the sessions you’ve saved. Camera, manual and video-review sources stay distinct. A video review is not a completed workout.</p></li>
+    </ol>
+  </div>
 </section>
-<section class="coach-section" aria-labelledby="coach-title"><div class="split-feature section shell"><figure class="coach-scene"><div class="phone"><img src="/assets/coach-programme.png" width="1206" height="2622" alt="Spottr Coach screen showing a complete programme with Make it easier and Shorten this workout controls" loading="lazy"></div></figure><div class="coach-copy"><h2 id="coach-title">A little guidance.<br>In your corner.</h2><p class="lead">Make today easier, shorten a workout, swap a movement or move a training day. The offline coach updates your programme and opens your real progress. Bundled voices provide encouragement without an online AI service.</p><div class="coach-voices" aria-label="Coaching features"><span class="voice"><svg class="wave" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10v4m5-8v12m4-16v20m4-17v14m5-9v4"/></svg>Voice cues</span><span class="voice">Your pace</span></div><p class="fine">Coaching is general fitness guidance. It does not diagnose conditions, assess injuries or replace individual advice from a qualified professional.</p></div></div></section>
-<section class="section shell" aria-labelledby="tracking-title"><div class="section-intro"><h2 id="tracking-title">More ways to keep moving.</h2><p>Use the tracking option that fits the exercise and your space. The app makes the source of a recorded set clear.</p></div><div class="tracking-grid"><article><h3>Set up your camera</h3><p>For supported movements, position your iPhone so your whole body stays in view. Camera-based counts and cues depend on the movement, angle, light and visibility.</p></article><article><h3>Log it yourself</h3><p>Manual tracking gives you an option for movements the camera cannot reliably assess. Record your own reps or use a timed set.</p></article><article><h3>Look back, locally</h3><p>Review the sessions you save on your iPhone. Camera, manual and video-review sources stay distinct. A video review is not a completed workout.</p></article></div><div class="watch-line"><svg viewBox="0 0 48 62" aria-hidden="true"><rect x="6" y="14" width="36" height="34" rx="10"/><path d="M14 14 16 2h16l2 12M14 48l2 12h16l2-12M12 31h9l4-9 5 18 4-9h3"/></svg><div><h3>A companion on your wrist.</h3><p>The optional Apple Watch companion adds workout and heart-rate context when you grant the relevant permissions. An Apple Watch is not required for iPhone camera or manual training. Watch data is not a medical assessment.</p></div></div></section>
-<section id="membership" class="pricing-section shell" aria-labelledby="membership-title"><div class="section-intro"><div><img class="plan-art" src="/assets/membership-gem.png" width="256" height="256" alt="" loading="lazy"><p class="plan-label">Apple membership</p><h2 id="membership-title">A plan for your routine.</h2></div><p>An account and verified Apple membership are required to start workouts in the new candidate. UK products are configured at these prices. Apple approval and availability are still pending. This website has no checkout.</p></div><div class="pricing-grid"><article class="card price-card"><h3>Monthly</h3><p class="price">£10<span>/ month</span></p><p>A 14-day introductory trial is configured for eligible new subscribers. Monthly membership renews until cancelled.</p><p class="plan-tag">Monthly subscription</p></article><article class="card price-card"><h3>Lifetime</h3><p class="price">£200<span>once</span></p><p>A one-time purchase for lifetime access to the Spottr membership features included with this product. It does not cancel an existing monthly subscription.</p><p class="plan-tag">One-time purchase</p></article></div><p class="fine pricing-note">Apple must make the products and introductory offer available. The app’s Apple purchase screen will show the actual prices, terms and eligibility before you confirm. A website account does not unlock paid membership. TestFlight access does not establish a paid entitlement.</p></section>
-<section id="questions" class="faq section shell" aria-labelledby="questions-title"><div class="faq-title"><h2 id="questions-title">A few good questions.</h2><p>Something else on your mind?<br><a href="/support/">Visit support</a>.</p></div><div><details><summary>What do I need to start?</summary><p>An account is required to start workouts, together with verified Apple membership. Set up using Apple or a verified email, then a passkey and Authenticator. Trusted sessions persist so ordinary training does not require repeated sign-in. Your history, video and raw health data stay on your device.</p></details><details><summary>Is this the app I can get on TestFlight?</summary><p>The images show local testing profiles captured on 6–7 November 2026, including an illustrative manual test entry. The available public TestFlight build may differ. The expanded catalogue and camera variations described here are local beta candidate features, not a claim that all are publicly distributed. New camera variations, Watch behavior and coaching changes still need physical-device testing; these screens do not establish their accuracy.</p></details><details><summary>How accurate is the camera tracking?</summary><p>Camera tracking estimates movement from visible joints. Counts and cues can be wrong, especially when your body is out of frame or the angle is unsuitable. Use supported setups and manual tracking when needed. Spottr does not claim clinical validation or guaranteed form assessment.</p></details><details><summary>Does my video go to a server?</summary><p>The core camera-training workflow processes frames on your device. Completed workout logs, video and raw Health readings are not uploaded. Adults can separately opt in to coarse feature counts and weekly workout statistics. Imported clips and personal reports stay local. See <a href="/privacy/">Privacy</a> for the details and backup considerations.</p></details><details><summary>Can I manage my account on the website?</summary><p>Use your passkey and Authenticator to manage the same account on the <a href="/account/">account page</a>. Existing website accounts remain supported. An account does not unlock paid membership or back up completed workouts. Adult profiles can separately choose to save a programme configuration.</p></details><details><summary>Can I use Spottr for rehabilitation?</summary><p>Spottr provides general fitness guidance and is not a medical device or a rehabilitation programme. Do not use it to diagnose, treat or monitor an injury or condition. Choose activities appropriate for you and stop if they cause pain or discomfort.</p></details><details><summary>How will purchases and cancellations work?</summary><p>Membership uses Apple in-app purchases when the configured products become available. The app will present Apple’s current terms before a purchase. Subscriptions are managed through your Apple account; deleting a Spottr account does not cancel one. No purchase or active promotional code is offered on this website.</p></details></div></section>
+<section class="coach-section" aria-labelledby="coach-title">
+  <div class="split-feature section shell">
+    <figure class="coach-scene"><div class="phone"><img src="/assets/coach-programme.png" width="1206" height="2622" alt="Spottr Coach screen showing a complete programme with Make it easier and Shorten this workout controls" aria-describedby="screen-disclosure" loading="lazy"></div></figure>
+    <div class="coach-copy">
+      <h2 id="coach-title">A plan that can<br>meet your day.</h2>
+      <p class="lead">Less time or a little less energy? Ask the offline coach to shorten a workout, make it easier, swap a movement or move a training day.</p>
+      <p>Adjustments keep the work you’ve already started or saved. Bundled voices offer encouragement along the way.</p>
+      <div class="coach-voices"><span class="voice"><svg class="wave" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10v4m5-8v12m4-16v20m4-17v14m5-9v4"/></svg>Voice cues, on your device</span></div>
+      <p class="fine">Coaching offers general fitness guidance. It does not diagnose conditions, assess injuries or replace advice from a qualified professional.</p>
+    </div>
+  </div>
+</section>
+<div class="watch-line shell">
+  <svg viewBox="0 0 48 62" aria-hidden="true"><rect x="6" y="14" width="36" height="34" rx="10"/><path d="M14 14 16 2h16l2 12M14 48l2 12h16l2-12M12 31h9l4-9 5 18 4-9h3"/></svg>
+  <div><h2>A companion on your wrist.</h2><p>An optional Apple Watch adds workout and heart-rate context with your permission. You can use iPhone camera or manual training without one. Watch data is not a medical assessment.</p></div>
+</div>
+<section id="membership" class="pricing-section shell" aria-labelledby="membership-title">
+  <div class="section-intro">
+    <div><img class="plan-art" src="/assets/membership-gem.png" width="256" height="256" alt="" loading="lazy"><h2 id="membership-title">Make room for<br>your routine.</h2></div>
+    <div class="membership-intro"><p>An account and verified Apple membership are required to start workouts. These UK products are configured, with Apple approval and availability still pending.</p><a class="text-link" href="#account-membership">Account and membership help</a></div>
+  </div>
+  <div class="pricing-grid">
+    <article class="price-card"><h3>Monthly</h3><p class="price">£10<span>/ month</span></p><p>A 14-day introductory trial is configured for eligible new subscribers. Monthly membership renews until cancelled.</p><p class="plan-tag">Monthly subscription</p></article>
+    <article class="price-card"><h3>Lifetime</h3><p class="price">£200<span>once</span></p><p>A one-time purchase for the Spottr membership features included with this product. It does not cancel an existing monthly subscription.</p><p class="plan-tag">One-time purchase</p></article>
+  </div>
+  <p class="fine pricing-note">The app’s Apple purchase screen will show actual prices, terms and eligibility before you confirm. Apple must make the products and trial available. This website has no checkout. A website account does not unlock paid membership, and TestFlight access does not establish a paid entitlement.</p>
+</section>
+<section id="questions" class="faq section shell" aria-labelledby="questions-title">
+  <div class="faq-title"><h2 id="questions-title">A few good questions.</h2><p>The details, when you need them.</p></div>
+  <div>
+    <details id="account-membership">
+      <summary>How do my account and membership work?</summary>
+      <p>Start with Apple or a verified email, then set up a passkey and Authenticator. Your account and verified Apple membership are required to start workouts. Trusted sessions persist so ordinary training does not require repeated sign-in.</p>
+      <p>Use the <a href="/account/">account page</a> to manage the same account on the website. Existing website accounts remain supported. A website account does not unlock paid membership or back up completed workouts. TestFlight access does not establish a paid entitlement.</p>
+      <p>Apple handles purchases and subscriptions when the configured products become available. Manage subscriptions through your Apple account. Deleting a Spottr account or buying lifetime access does not cancel a monthly subscription. No active promotional code is offered here. <a href="/support/">Get account and membership support</a>.</p>
+    </details>
+    <details>
+      <summary>Is this the app I can get on TestFlight?</summary>
+      <p>The local beta candidate includes 53 exercises and 52 camera profiles, with manual and timed tracking options. These features may not all be in the public TestFlight build.</p>
+      <p>Screens show local profiles captured on 6–7 November 2026, including an illustrative manual test entry. New camera variations, Watch behaviour and coaching changes still need physical-device testing. These screens do not establish their accuracy.</p>
+    </details>
+    <details>
+      <summary>How accurate is the camera tracking?</summary>
+      <p>Camera tracking estimates movement from visible joints. Counts and cues can be wrong, especially when your body is out of frame or the angle is unsuitable. Follow the setup guidance, keep your whole body visible in clear lighting and use manual tracking when needed. Spottr does not claim clinical validation or guaranteed form assessment.</p>
+    </details>
+    <details>
+      <summary>What stays on my iPhone?</summary>
+      <p>Your workout history, video and raw Health data stay on your device. The core camera-training workflow processes frames locally. Your account does not back up completed workouts.</p>
+      <p>Adults can separately choose to save a programme configuration and opt in to coarse feature counts or weekly workout statistics. Those statistics are two independent choices, both off by default. Imported clips and personal reports stay local. See <a href="/privacy/">Privacy</a> for details and backup considerations.</p>
+    </details>
+    <details>
+      <summary>Can I use Spottr for rehabilitation?</summary>
+      <p>Spottr provides general fitness guidance and is not a medical device or a rehabilitation programme. Do not use it to diagnose, treat or monitor an injury or condition. Choose activities appropriate for you and stop if they cause pain or discomfort.</p>
+    </details>
+  </div>
+</section>
 <aside class="closing shell" aria-label="Join Spottr testing"><div><h2>Your next step starts here.</h2><p>Try the available build, find your starting point, and help shape what comes next.</p></div><a class="button white" href="https://testflight.apple.com/join/f3MhePbf">Join on TestFlight</a></aside>
 </main>
-<footer class="site-footer shell"><div class="footer-top"><a class="brand" href="/" aria-label="Spottr home">spottr</a><nav class="footer-nav" aria-label="Footer navigation"><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="/support/">Support</a><a href="/delete-account/">Delete account</a><a href="/account/">Account</a></nav></div><div class="footer-bottom"><p>© 2026 Spottr. General fitness guidance, currently in testing.<br>App screens show a local testing candidate, not validated exercise outcomes.</p><p>Made by <a href="https://omarchoudhry.co.uk/">Omar Choudhry</a></p></div></footer>
+<footer class="site-footer shell"><div class="footer-top"><a class="brand" href="/" aria-label="Spottr home">spottr</a><nav class="footer-nav" aria-label="Footer navigation"><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="/support/">Support</a><a href="/delete-account/">Delete account</a><a href="/account/">Account</a></nav></div><div class="footer-bottom"><p>© 2026 Spottr. General fitness guidance, currently in testing.</p><p>Made by <a href="https://omarchoudhry.co.uk/">Omar Choudhry</a></p></div></footer>
 </body>
 </html>

@@ -165,3 +165,56 @@ test('all notices remove optional accounts and explain independent adult statist
  for(const fragment of [/two independent/i,/off by default/i,/under.18.*unknown/i,/ten contributing installations.*bucket/i,/pseudonymous/i,/28 days/i,/Amazon (?:Simple Email Service|SES)/i,/recipient.*verification code/i,/backup.excluded/i]) assert.match(privacy,fragment);
  assert.doesNotMatch(privacy,/Resend|free (?:mail|email|service)/i);
 });
+
+
+test('visitors get a clear workout sequence and one concise disclosure for both real screens', async () => {
+  const html = await page('');
+  const journey = html.match(/<ol\b[^>]*aria-label="Your workout with Spottr"[^>]*>([\s\S]*?)<\/ol>/)?.[1];
+  assert.ok(journey, 'Explain the workout as one accessible ordered journey');
+  const steps = [...journey.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/g)].map(match => textContent(match[1]));
+  assert.equal(steps.length, 3);
+  assert.match(steps[0], /programme|plan/i);
+  assert.match(steps[1], /camera.*manual|manual.*camera/i);
+  assert.match(steps[2], /saved.*progress|progress.*saved/i);
+  const disclosures = [...html.matchAll(/<figcaption\b[^>]*id="screen-disclosure"[^>]*>([\s\S]*?)<\/figcaption>/g)];
+  assert.equal(disclosures.length, 1);
+  const disclosure = textContent(disclosures[0][1]).trim();
+  assert.ok(disclosure.split(/\s+/).length <= 24, 'Keep the screen caption concise');
+  assert.match(disclosure, /illustrative.*simulator/i);
+  assert.match(disclosure, /TestFlight build may differ/i);
+  for (const asset of ['today-programme.png', 'coach-programme.png']) {
+    const screen = [...html.matchAll(/<img\b[^>]*>/g)].find(match => match[0].includes(asset))?.[0];
+    assert.ok(screen);
+    assert.match(screen, /aria-describedby="screen-disclosure"/);
+  }
+});
+
+test('plan comparison leads to one account and membership help answer with actionable destinations', async () => {
+  const html = await page('');
+  const pricing = html.match(/<section\b[^>]*id="membership"[^>]*>([\s\S]*?)<\/section>/)?.[1];
+  assert.ok(pricing);
+  assert.match(pricing, /href="#account-membership"[^>]*>Account and membership help<\/a>/);
+  assert.match(textContent(pricing), /account and verified Apple membership are required to start workouts/i);
+  assert.match(textContent(pricing), /Apple approval and availability.*pending/i);
+  assert.match(textContent(pricing), /renews until cancelled/i);
+  assert.match(textContent(pricing), /does not cancel an existing monthly subscription/i);
+  assert.match(textContent(pricing), /Apple purchase screen.*actual prices, terms and eligibility/i);
+  const answers = [...html.matchAll(/<details\b[^>]*id="account-membership"[^>]*>([\s\S]*?)<\/details>/g)];
+  assert.equal(answers.length, 1);
+  const answer = answers[0][1];
+  assert.match(answer, /<summary>How do my account and membership work\?<\/summary>/);
+  assert.match(textContent(answer), /Apple or a verified email.*passkey and Authenticator/i);
+  assert.match(textContent(answer), /TestFlight.*does not.*paid entitlement/i);
+  assert.match(answer, /href="\/account\/"/);
+  assert.match(answer, /href="\/support\/"/);
+});
+
+test('real app screenshots remain upright and uncropped in their presentation rules', async () => {
+  const css = await readFile(path.join(publicRoot, 'styles.css'), 'utf8');
+  const screenRules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter(([, selectors]) => /\.(?:phone|hero-stage|coach-scene)\b/.test(selectors));
+  assert.ok(screenRules.length > 0);
+  for (const [, selectors, declarations] of screenRules) {
+    assert.doesNotMatch(declarations, /rotate\(|object-fit\s*:\s*cover|overflow\s*:\s*(?:hidden|clip)|clip-path\s*:/, selectors.trim());
+  }
+});
