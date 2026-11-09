@@ -39,7 +39,18 @@ public final class MembershipCoordinator {
     public var error: String? { accessError ?? catalogueError }
     public var accessError: String? { claimError ?? operationError }
     public private(set) var catalogueError: String?
-    public private(set) var operationMessage: String?
+    private enum OperationFeedback {
+        case accessSnapshot(String, Bool)
+        case outcome(String)
+    }
+    private var operationFeedback: OperationFeedback?
+    public var operationMessage: String? {
+        switch operationFeedback {
+        case .accessSnapshot(let message, _)?: return message
+        case .outcome(let message)?: return message
+        case nil: return nil
+        }
+    }
     private struct PendingPurchase: Equatable {
         let id = UUID()
         let accountID: UUID
@@ -78,7 +89,7 @@ public final class MembershipCoordinator {
     public func setAccount(_ accountID: UUID?) {
         guard self.accountID != accountID else { return }
         self.accountID = accountID; accountGeneration = UUID(); entitlementRefreshID = UUID()
-        entitlements = []; restoredClaims = []; operationError = nil; claimError = nil; operationMessage = nil; pendingPurchase = nil
+        entitlements = []; restoredClaims = []; operationError = nil; claimError = nil; operationFeedback = nil; pendingPurchase = nil
         entitlementsResolved = false; currentRefresh?.cancel(); currentRefresh = nil; currentRefreshID = UUID()
         expirationRefresh?.cancel()
         status = accountID == nil ? "Sign in to use membership. Restore purchases remains available." : "Checking your Apple membership…"
@@ -134,7 +145,7 @@ public final class MembershipCoordinator {
     public func buy(_ plan: MembershipPlan) async {
         guard let accountID, !busy, offers.contains(where: { $0.plan == plan }), access.mayPurchase(plan) else { return }
         let generation = accountGeneration, purchase = PendingPurchase(accountID: accountID, plan: plan)
-        busy = true; operationError = nil; operationMessage = nil; pendingPurchase = purchase
+        busy = true; operationError = nil; operationFeedback = nil; pendingPurchase = purchase
         defer { busy = false }
         do {
             let result = try await client.purchase(plan, appAccountToken: accountID)
@@ -142,12 +153,13 @@ public final class MembershipCoordinator {
             switch result {
             case .cancelled:
                 if pendingPurchase == purchase { pendingPurchase = nil }
-                status = "Purchase cancelled. Access has not changed."; operationMessage = status
+                status = "Purchase cancelled. Access has not changed."; operationFeedback = .outcome(status)
             case .pending:
                 guard pendingPurchase == purchase else { return }
-                if access.activePlans.contains(plan) { pendingPurchase = nil; status = "Membership is active." }
+                let planActive = access.activePlans.contains(plan)
+                if planActive { pendingPurchase = nil; status = "Membership is active." }
                 else { status = "Purchase is pending approval. Access has not changed." }
-                operationMessage = status
+                operationFeedback = planActive ? .accessSnapshot(status, true) : .outcome(status)
             case .completed(let result):
                 if pendingPurchase == purchase { pendingPurchase = nil }
                 guard case .verified(let transaction) = result,
@@ -161,8 +173,9 @@ public final class MembershipCoordinator {
                 guard generation == accountGeneration else { return }
                 await refreshOffers()
                 guard generation == accountGeneration else { return }
-                status = hasAccess ? "Membership is active." : "Purchase verified. No active membership was found."
-                operationMessage = status
+                let active = hasAccess
+                status = active ? "Membership is active." : "Purchase verified. No active membership was found."
+                operationFeedback = .accessSnapshot(status, active)
             }
         } catch {
             guard generation == accountGeneration else { return }
@@ -173,7 +186,7 @@ public final class MembershipCoordinator {
     public func restore() async {
         guard !busy else { return }
         let generation = accountGeneration, restoringAccount = accountID
-        busy = true; operationError = nil; operationMessage = nil; pendingPurchase = nil
+        busy = true; operationError = nil; operationFeedback = nil; pendingPurchase = nil
         defer { busy = false }
         do {
             try await client.restore()
@@ -201,15 +214,16 @@ public final class MembershipCoordinator {
             guard generation == accountGeneration else { return }
             await refreshOffers()
             guard generation == accountGeneration else { return }
-            status = hasAccess ? "Membership is active." : "No active membership for this account. Sign in and restore a previous Apple purchase."
-            operationMessage = status
+            let active = hasAccess
+            status = active ? "Membership is active." : "No active membership for this account. Sign in and restore a previous Apple purchase."
+            operationFeedback = .accessSnapshot(status, active)
         } catch {
             guard generation == accountGeneration else { return }
             self.operationError = "Purchases could not be restored. Check your connection and try again."
         }
     }
     public func completeRedemption(_ result: Result<Void, Error>) async {
-        operationMessage = nil; pendingPurchase = nil
+        operationFeedback = nil; pendingPurchase = nil
         let generation = accountGeneration
         await refreshEntitlements()
         guard generation == accountGeneration else { return }
@@ -217,7 +231,10 @@ public final class MembershipCoordinator {
         guard generation == accountGeneration else { return }
         operationError = nil
         switch result {
-        case .success: status = hasAccess ? "Membership is active." : "If Apple completed your redemption, use Restore purchases to verify it for this account."; operationMessage = status
+        case .success:
+            let active = hasAccess
+            status = active ? "Membership is active." : "If Apple completed your redemption, use Restore purchases to verify it for this account."
+            operationFeedback = .accessSnapshot(status, active)
         case .failure: operationError = "Code redemption was not completed. Try again with the App Store."
         }
     }
@@ -245,12 +262,17 @@ public final class MembershipCoordinator {
             do { restoredClaims = try claims.load(accountID: accountID) }
             catch { claimError = "Your saved membership claim could not be read. Try again or use Restore purchases." }
         }
+        let currentAccess = access
+        if case .accessSnapshot(_, let previouslyActive)? = operationFeedback, previouslyActive != currentAccess.hasAccess {
+            operationFeedback = nil
+            status = currentAccess.hasAccess ? "Membership is active." : "No active membership. Your history, export and help remain available."
+        }
         if let pending, pendingPurchase == pending, pending.accountID == accountID,
-           access.activePlans.contains(pending.plan) {
-            pendingPurchase = nil; operationMessage = "Membership is active."
+           currentAccess.activePlans.contains(pending.plan) {
+            pendingPurchase = nil; operationFeedback = .accessSnapshot("Membership is active.", true)
         }
         expirationRefresh?.cancel()
-        guard let deadline = access.expiresAt else { return }
+        guard let deadline = currentAccess.expiresAt else { return }
         expirationRefresh = Task { [weak self] in
             do { try await Task.sleep(for: .seconds(max(0, deadline.timeIntervalSince(self?.now() ?? .now)))) }
             catch { return }
@@ -275,6 +297,6 @@ public final class MembershipCoordinator {
               pending.accountID == accountID, transaction.appAccountToken == pending.accountID,
               pending.plan == plan, MembershipAccess.resolve([result], now: now()).activePlans.contains(plan) else { return }
         pendingPurchase = nil
-        operationMessage = access.activePlans.contains(plan) ? "Membership is active." : "Purchase verified. Use Restore purchases to confirm current access."
+        operationFeedback = access.activePlans.contains(plan) ? .accessSnapshot("Membership is active.", true) : .outcome("Purchase verified. Use Restore purchases to confirm current access.")
     }
 }

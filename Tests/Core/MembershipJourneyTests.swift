@@ -196,6 +196,82 @@ final class MembershipJourneyTests: XCTestCase {
         await store.load()
         XCTAssertTrue(store.access.lifetime); XCTAssertEqual(store.operationMessage, "Membership is active.")
     }
+    func testSuccessfulRestoreRetiresCurrentAccessFeedbackOnAcceptedExpiry() async {
+        let client = MembershipTestClient()
+        var clock = Date.now
+        let expiry = clock.addingTimeInterval(300)
+        client.availableOffers = [.init(plan: .monthly, displayName: "Monthly", displayPrice: "£10")]
+        client.entitlements = [.verified(.init(id: 901, appAccountToken: testAccount, productID: MembershipPlan.monthly.productID, kind: .autoRenewable, expirationDate: expiry))]
+        let store = MembershipCoordinator(client: client, claims: MembershipTestClaims(), now: { clock })
+        store.setAccount(testAccount); await store.restore()
+        XCTAssertTrue(store.hasAccess); XCTAssertEqual(store.operationMessage, "Membership is active.")
+        clock = expiry.addingTimeInterval(1); await store.refreshCurrentEntitlements()
+        XCTAssertFalse(store.hasAccess); XCTAssertEqual(store.condition, .expired)
+        XCTAssertNil(store.operationMessage, "A successful restore must not keep asserting access after accepted expiry")
+        XCTAssertFalse(store.status.contains("Membership is active."), "Retired feedback must not expose an older active status")
+    }
+    func testSuccessfulPurchaseRetiresCurrentAccessFeedbackOnRevocationAndReload() async {
+        let client = MembershipTestClient()
+        client.availableOffers = [.init(plan: .lifetime, displayName: "Lifetime", displayPrice: "£200")]
+        let lifetime = MembershipTransaction(id: 902, appAccountToken: testAccount, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable)
+        client.purchaseResult = .completed(.verified(lifetime)); client.purchaseEntitlements = [.verified(lifetime)]
+        let store = MembershipCoordinator(client: client, claims: MembershipTestClaims())
+        store.setAccount(testAccount); await store.load(); await store.buy(.lifetime)
+        XCTAssertTrue(store.access.lifetime); XCTAssertEqual(store.operationMessage, "Membership is active.")
+        let revoked = MembershipTransaction(id: 902, appAccountToken: testAccount, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable, revocationDate: .now)
+        client.entitlements = [.verified(revoked)]
+        let requests = client.productRequests, finished = client.finished.count
+        client.continuation.yield(.verified(revoked))
+        for _ in 0..<200 where client.productRequests == requests || client.finished.count == finished { await Task.yield() }
+        XCTAssertGreaterThan(client.finished.count, finished); XCTAssertEqual(store.condition, .revoked)
+        XCTAssertFalse(store.hasAccess); XCTAssertNil(store.operationMessage)
+        XCTAssertFalse(store.status.contains("Membership is active."))
+        await store.load()
+        XCTAssertFalse(store.hasAccess); XCTAssertNil(store.operationMessage, "Foreground reload must not restore an obsolete success claim")
+    }
+    func testResolvedPendingPurchaseRetiresAccessFeedbackOnForegroundExpiryReload() async {
+        let client = MembershipTestClient()
+        var clock = Date.now
+        let expiry = clock.addingTimeInterval(300)
+        client.availableOffers = [.init(plan: .monthly, displayName: "Monthly", displayPrice: "£10")]
+        client.purchaseResult = .pending
+        let store = MembershipCoordinator(client: client, claims: MembershipTestClaims(), now: { clock })
+        store.setAccount(testAccount); await store.load(); await store.buy(.monthly)
+        XCTAssertTrue(store.operationMessage?.contains("pending approval") == true); XCTAssertFalse(store.hasAccess)
+        client.entitlements = [.verified(.init(id: 903, appAccountToken: testAccount, productID: MembershipPlan.monthly.productID, kind: .autoRenewable, expirationDate: expiry))]
+        await store.refreshCurrentEntitlements()
+        XCTAssertTrue(store.hasAccess); XCTAssertEqual(store.operationMessage, "Membership is active.")
+        clock = expiry.addingTimeInterval(1); await store.load()
+        XCTAssertEqual(store.condition, .expired); XCTAssertFalse(store.hasAccess)
+        XCTAssertNil(store.operationMessage, "An accepted pending resolution is a current-access claim, not a permanent outcome")
+    }
+    func testRestoreAccessGuidanceRetiresWhenAcceptedAccessChangesToActive() async {
+        let client = MembershipTestClient()
+        client.availableOffers = [.init(plan: .lifetime, displayName: "Lifetime", displayPrice: "£200")]
+        let store = MembershipCoordinator(client: client, claims: MembershipTestClaims())
+        store.setAccount(testAccount); await store.restore()
+        XCTAssertFalse(store.hasAccess); XCTAssertTrue(store.operationMessage?.contains("No active membership") == true)
+        client.entitlements = [.verified(.init(id: 905, appAccountToken: testAccount, productID: MembershipPlan.lifetime.productID, kind: .nonConsumable))]
+        await store.load()
+        XCTAssertTrue(store.access.lifetime); XCTAssertNil(store.operationMessage, "Access guidance must describe the accepted current snapshot")
+    }
+    func testPendingAndCancelledOutcomesSurviveLossOfPreviouslyRestoredAccess() async {
+        for (result, text) in [(MembershipPurchaseResult.pending, "pending approval"), (.cancelled, "cancelled")] {
+            let client = MembershipTestClient()
+            var clock = Date.now
+            let expiry = clock.addingTimeInterval(300)
+            client.availableOffers = [.init(plan: .lifetime, displayName: "Lifetime", displayPrice: "£200")]
+            client.entitlements = [.verified(.init(id: 904, appAccountToken: testAccount, productID: MembershipPlan.monthly.productID, kind: .autoRenewable, expirationDate: expiry))]
+            let store = MembershipCoordinator(client: client, claims: MembershipTestClaims(), now: { clock })
+            store.setAccount(testAccount); await store.restore()
+            XCTAssertEqual(store.operationMessage, "Membership is active.")
+            client.purchaseResult = result; await store.buy(.lifetime)
+            XCTAssertTrue(store.operationMessage?.contains(text) == true)
+            clock = expiry.addingTimeInterval(1); await store.load()
+            XCTAssertFalse(store.hasAccess); XCTAssertFalse(store.access.lifetime)
+            XCTAssertTrue(store.operationMessage?.contains(text) == true, "Intentional checkout outcomes must survive independent membership expiry")
+        }
+    }
     func testExplicitRestoreRecoversAttributedPurchaseIntoNewAccountAndRevalidates() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
