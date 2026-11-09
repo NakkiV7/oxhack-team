@@ -1,5 +1,6 @@
 import XCTest
 import CryptoKit
+import AuthenticationServices
 @testable import Spottr
 
 @MainActor final class AccountFlowTests: XCTestCase {
@@ -558,4 +559,206 @@ import CryptoKit
     func load() throws -> StoredAccountCredential? { value }
     func save(_ value: StoredAccountCredential) throws { throw AccountFailure.keychain(-50) }
     func clear() throws { value = nil }
+}
+
+@MainActor final class AccountRetryTests: XCTestCase {
+    func testCancelledEnrollmentReusesOutstandingChallenge() async throws {
+        try await cancelledRegistration(purpose: .enroll)
+    }
+    func testCancelledRecoveryReusesIdentityAndBackupProof() async throws {
+        try await cancelledRegistration(purpose: .recover)
+    }
+    private func cancelledRegistration(purpose: IdentityPurpose) async throws {
+        let wire = StagedAccountTransport(), auth = RetryAccountAuthorization(), vault = MemoryAccountCredentials()
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: auth)
+        try account.setCheckpoint(ageYears: 30, role: .adultSelf)
+        await account.startEmail(email: "owner@example.test", purpose: purpose); await account.verifyEmail(code: "123456")
+        auth.cancelNextRegistration = true
+        await account.enrollPasskey(recoveryBackup: purpose == .recover ? "unused-backup" : nil)
+        XCTAssertFalse(account.trusted); XCTAssertNil(try vault.load())
+        await account.enrollPasskey(recoveryBackup: purpose == .recover ? "" : nil)
+        XCTAssertEqual(account.step, .authenticatorSetup)
+        XCTAssertEqual(wire.optionsRequests, 1, "A cancelled system sheet must reuse the still-valid challenge")
+        await account.complete(code: "654321")
+        XCTAssertTrue(account.trusted); XCTAssertEqual(account.backupCodes, ["new-backup"])
+        XCTAssertEqual(wire.rejectedTransitions, 0)
+    }
+    func testNewFlowCannotReuseCancelledChallenge() async throws {
+        let wire = StagedAccountTransport(), auth = RetryAccountAuthorization()
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: MemoryAccountCredentials(), authorization: auth)
+        try account.setCheckpoint(ageYears: 30, role: .adultSelf)
+        await account.startEmail(email: "owner@example.test", purpose: .enroll); await account.verifyEmail(code: "123456")
+        auth.cancelNextRegistration = true; await account.enrollPasskey()
+        await account.startEmail(email: "owner@example.test", purpose: .recover); await account.verifyEmail(code: "123456")
+        await account.enrollPasskey(recoveryBackup: "unused-backup")
+        XCTAssertEqual(account.step, .authenticatorSetup); XCTAssertEqual(wire.optionsRequests, 2)
+        XCTAssertEqual(auth.challenges, ["Y2hhbGxlbmdlLTE", "Y2hhbGxlbmdlLTI"])
+        XCTAssertEqual(wire.rejectedTransitions, 0)
+    }
+    func testAmbiguousVerificationCannotReplayAdvancedRegistration() async throws {
+        let wire = StagedAccountTransport(), auth = RetryAccountAuthorization()
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: MemoryAccountCredentials(), authorization: auth)
+        try account.setCheckpoint(ageYears: 30, role: .adultSelf)
+        await account.startEmail(email: "owner@example.test", purpose: .enroll); await account.verifyEmail(code: "123456")
+        wire.loseVerificationReply = true
+        await account.enrollPasskey()
+        XCTAssertTrue(account.message?.contains("Start again") == true)
+        let requests = wire.requests.count
+        await account.enrollPasskey()
+        XCTAssertEqual(wire.requests.count, requests, "An uncertain advanced stage must require a fresh flow")
+        XCTAssertNil(account.authenticatorSecret); XCTAssertFalse(account.trusted)
+        account.cancelSetup()
+        await account.startEmail(email: "owner@example.test", purpose: .enroll); await account.verifyEmail(code: "123456")
+        await account.enrollPasskey()
+        XCTAssertEqual(account.step, .authenticatorSetup); XCTAssertEqual(wire.rejectedTransitions, 0)
+    }
+    func testLostFinalCompletionOffersOrdinarySignInWithoutReplayingCommittedFlow() async throws {
+        let wire = StagedAccountTransport(), vault = MemoryAccountCredentials(), auth = RetryAccountAuthorization()
+        let retained = retryCredential(); try vault.save(retained)
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: auth)
+        await account.startEmail(email: "owner@example.test", purpose: .recover); await account.verifyEmail(code: "123456")
+        await account.enrollPasskey(recoveryBackup: "unused-backup")
+        wire.loseCompletionReply = true
+        await account.complete(code: "654321")
+        XCTAssertEqual(wire.stage, .complete, "The server consumed the one-time completion before the response was lost")
+        XCTAssertTrue(account.message?.contains("passkey and Authenticator") == true)
+        XCTAssertNil(account.authenticatorSecret); XCTAssertFalse(account.trusted)
+        let requests = wire.requests.count
+        await account.complete(code: "654321")
+        XCTAssertEqual(wire.requests.count, requests, "A committed flow cannot be replayed")
+        XCTAssertEqual(try vault.load(), retained)
+        account.cancelSetup(); await account.login()
+        XCTAssertEqual(account.step, .secondFactor, "Ordinary passkey plus existing Authenticator sign-in remains reachable")
+    }
+    func testActualPlatformCancellationRetainsTheOutstandingChallenge() async throws {
+        let wire = StagedAccountTransport(), auth = RetryAccountAuthorization()
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: MemoryAccountCredentials(), authorization: auth)
+        try account.setCheckpoint(ageYears: 30, role: .adultSelf)
+        await account.startEmail(email: "owner@example.test", purpose: .enroll); await account.verifyEmail(code: "123456")
+        auth.registrationError = ASAuthorizationError(.canceled)
+        await account.enrollPasskey(); auth.registrationError = nil
+        await account.enrollPasskey()
+        XCTAssertEqual(account.step, .authenticatorSetup); XCTAssertEqual(wire.optionsRequests, 1)
+    }
+    func testCancelledOrdinarySignInAfterRestartShowsItsOwnFeedback() async throws {
+        let wire = StagedAccountTransport(), auth = RetryAccountAuthorization()
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: MemoryAccountCredentials(), authorization: auth)
+        try account.setCheckpoint(ageYears: 30, role: .adultSelf)
+        await account.startEmail(email: "owner@example.test", purpose: .enroll); await account.verifyEmail(code: "123456")
+        wire.loseVerificationReply = true; await account.enrollPasskey()
+        auth.cancelAuthentication = true; await account.login()
+        XCTAssertTrue(account.message?.contains("cancelled") == true, "A new ordinary sign-in must replace earlier restart feedback")
+        XCTAssertFalse(account.trusted)
+    }
+    func testExpiredCancelledChallengeIsNeverPresentedOrRequestedAgain() async throws {
+        let wire = StagedAccountTransport(), auth = RetryAccountAuthorization()
+        var now = Date.now
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: MemoryAccountCredentials(), authorization: auth, now: { now })
+        try account.setCheckpoint(ageYears: 30, role: .adultSelf)
+        await account.startEmail(email: "owner@example.test", purpose: .enroll); await account.verifyEmail(code: "123456")
+        auth.cancelNextRegistration = true; await account.enrollPasskey()
+        let requests = wire.requests.count
+        now = now.addingTimeInterval(301); await account.enrollPasskey()
+        XCTAssertEqual(wire.requests.count, requests); XCTAssertEqual(auth.challenges.count, 1)
+        XCTAssertEqual(account.step, .restart); XCTAssertNil(account.setupExpiresAt)
+        XCTAssertTrue(account.message?.contains("expired") == true)
+    }
+    func testExpiredSetupClearsSecretAndPreservesRetainedCredential() async throws {
+        let wire = StagedAccountTransport(), auth = RetryAccountAuthorization(), vault = MemoryAccountCredentials()
+        let retained = retryCredential(); try vault.save(retained)
+        var now = Date.now
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: auth, now: { now })
+        wire.expiry = now.addingTimeInterval(300)
+        await account.startEmail(email: "owner@example.test", purpose: .recover); await account.verifyEmail(code: "123456")
+        await account.enrollPasskey(recoveryBackup: "unused-backup")
+        XCTAssertNotNil(account.authenticatorSecret)
+        now = now.addingTimeInterval(301)
+        await account.complete(code: "654321")
+        XCTAssertNil(account.authenticatorSecret); XCTAssertNil(account.authenticatorURI)
+        XCTAssertTrue(account.message?.contains("expired") == true)
+        XCTAssertEqual(try vault.load(), retained); XCTAssertNil(wire.completedBody)
+        account.cancelSetup(); XCTAssertEqual(account.step, .identity)
+    }
+}
+
+@MainActor final class StagedAccountTransport: AccountTransport {
+    enum Stage { case email, identity, registration, enrollment, secondFactor, complete }
+    var stage = Stage.email
+    var expiry = Date.now.addingTimeInterval(300)
+    var requests: [URLRequest] = []
+    var optionsRequests = 0
+    var rejectedTransitions = 0
+    var loseVerificationReply = false
+    var loseCompletionReply = false
+    var completedBody: [String: String]?
+    private var flow = 0
+    private var token = ""
+    private var purpose = "enroll"
+    func send(_ request: URLRequest) async throws -> (Data, Int) {
+        requests.append(request)
+        let body = (try JSONSerialization.jsonObject(with: request.httpBody ?? Data("{}".utf8))) as? [String: Any] ?? [:]
+        let path = request.url?.path.replacingOccurrences(of: "/api/native/v1", with: "") ?? ""
+        if path == "/identity/email/start" {
+            flow += 1; stage = .email; token = "email-\(flow)"; purpose = body["purpose"] as? String ?? "enroll"
+            return try reply(["flowToken": token, "expiresAt": expiryString, "accepted": true])
+        }
+        if path == "/passkey/login/options" {
+            flow += 1; token = "login-\(flow)"; stage = .identity
+            return try reply(["flowToken": token, "expiresAt": expiryString, "options": ["challenge": "YWJj", "rpId": "spottr.omarchoudhry.co.uk", "userVerification": "required"]])
+        }
+        guard body["flowToken"] as? String == token, expiry > .now else { return reject() }
+        switch path {
+        case "/identity/email/verify":
+            guard stage == .email else { return reject() }; stage = .identity; token = "identity-\(flow)"
+            return try reply(["flowToken": token, "verified": true])
+        case "/passkey/login/verify":
+            guard stage == .identity else { return reject() }; stage = .secondFactor
+            return try reply(["flowToken": token, "needsSecondFactor": true])
+        case "/passkey/enroll/options", "/recovery/options":
+            optionsRequests += 1
+            guard stage == .identity, purpose != "recover" || body["backupCode"] as? String == "unused-backup" else { return reject() }
+            stage = .registration; token = "registration-\(flow)"
+            return try reply(["flowToken": token, "options": ["challenge": Data("challenge-\(flow)".utf8).base64URL, "rp": ["id": "spottr.omarchoudhry.co.uk", "name": "Spottr"], "user": ["id": "dXNlci1oYW5kbGU", "name": "Account", "displayName": "Account"], "authenticatorSelection": ["userVerification": "required", "residentKey": "required"]]])
+        case "/passkey/enroll/verify":
+            guard stage == .registration else { return reject() }; stage = .enrollment; token = "enrollment-\(flow)"
+            if loseVerificationReply { loseVerificationReply = false; throw URLError(.networkConnectionLost) }
+            return try reply(["flowToken": token, "secret": "TEMPORARYSETUPKEY", "uri": "otpauth://totp/Spottr?secret=TEMPORARYSETUPKEY"])
+        case "/enroll/complete":
+            guard stage == .enrollment, body["code"] as? String == "654321", body["backupCode"] == nil else { return reject() }
+            completedBody = body.compactMapValues { $0 as? String }; stage = .complete
+            if loseCompletionReply { loseCompletionReply = false; throw URLError(.networkConnectionLost) }
+            var session = retryCredential().session; session.backupCodes = ["new-backup"]
+            return (try AccountJSON.encoder().encode(session), 200)
+        default: return reject()
+        }
+    }
+    private var expiryString: String {
+        let formatter = ISO8601DateFormatter(); formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.string(from: expiry)
+    }
+    private func reply(_ object: [String: Any]) throws -> (Data, Int) { (try JSONSerialization.data(withJSONObject: object), 200) }
+    private func reject() -> (Data, Int) { rejectedTransitions += 1; return (Data(#"{"error":"invalid_stage"}"#.utf8), 401) }
+}
+@MainActor final class RetryAccountAuthorization: NativeAccountAuthorization {
+    var cancelNextRegistration = false
+    var registrationError: Error?
+    var cancelAuthentication = false
+    var guardianAllowed = true
+    var challenges: [String] = []
+    func register(options: PasskeyCreationOptions) async throws -> RegistrationCredential {
+        challenges.append(options.challenge)
+        if let registrationError { throw registrationError }
+        if cancelNextRegistration { cancelNextRegistration = false; throw AccountFailure.cancelled }
+        return RegistrationCredential(id: "aWQ", rawId: "aWQ", response: .init(clientDataJSON: "Y2xpZW50", attestationObject: "YXR0ZXN0"))
+    }
+    func authenticate(options: PasskeyRequestOptions) async throws -> AssertionCredential {
+        if cancelAuthentication { throw AccountFailure.cancelled }
+        return AssertionCredential(id: "aWQ", rawId: "aWQ", response: .init(clientDataJSON: "Y2xpZW50", authenticatorData: "YXV0aA", signature: "c2ln", userHandle: "dXNlcg"))
+    }
+    func apple(nonce: String) async throws -> AppleIdentityResult { throw AccountFailure.cancelled }
+    func guardian() async throws { if !guardianAllowed { throw AccountFailure.cancelled } }
+}
+@MainActor func retryCredential() -> StoredAccountCredential {
+    let id = UUID()
+    return .init(session: .init(authenticated: true, accountID: id, appAccountToken: id, deviceID: UUID(), accessToken: "access", refreshToken: "refresh", accessExpiresAt: .now.addingTimeInterval(900), refreshExpiresAt: .now.addingTimeInterval(86400)), privateKey: P256.Signing.PrivateKey().rawRepresentation)
 }

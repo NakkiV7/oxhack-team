@@ -2,6 +2,7 @@ import XCTest
 import SwiftUI
 import UIKit
 import CryptoKit
+import Vision
 @testable import Spottr
 
 @MainActor final class AccountRevisionTests: XCTestCase {
@@ -282,4 +283,187 @@ private struct RevisionWorkspaceView: View {
     init(available: Bool) { isAvailable = available }
     func requestReadAuthorization() async throws { requests += 1 }
     func read(asOf: Date, dayStart: Date, dayEnd: Date) async throws -> [HealthObservation] { [] }
+}
+
+@MainActor final class AccountRetryRenderedTests: XCTestCase {
+    func testRetainedSetupUsesNewAuthenticatorAfterBackupLoginThenEnrollment() async throws {
+        try await retainedSetup(purpose: .enroll)
+    }
+    func testRetainedSetupUsesNewAuthenticatorAfterBackupLoginThenRecovery() async throws {
+        try await retainedSetup(purpose: .recover)
+    }
+    private func retainedSetup(purpose: IdentityPurpose) async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let wire = StagedAccountTransport(), auth = RetryAccountAuthorization()
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: MemoryAccountCredentials(), authorization: auth)
+        let coordinator = AccountWorkspaceCoordinator(account: account, root: root)
+        let window = try mount(AccountSetupView(account: account, coordinator: coordinator))
+        defer { restoreWindow(); coordinator.visibleWorkspace?.suspend() }
+        try await settle(window)
+        try await activate("Sign in with passkey", in: window)
+        XCTAssertEqual(account.step, .secondFactor)
+        let toggle = try XCTUnwrap(elements(window).first { ($0.accessibilityLabel == "Use a backup code" || $0.accessibilityValue == "Use a backup code") })
+        if let control = toggle as? UISwitch { control.setOn(true, animated: false); control.sendActions(for: .valueChanged) }
+        else { XCTAssertTrue(toggle.accessibilityActivate()) }
+        try await settle(window)
+        XCTAssertTrue(fields(window).contains { $0.placeholder == "Backup code" })
+        try await activate("Cancel setup", in: window)
+        try account.setCheckpoint(ageYears: 30, role: .adultSelf)
+        await account.startEmail(email: "owner@example.test", purpose: purpose)
+        await account.verifyEmail(code: "123456")
+        try await settle(window)
+        if purpose == .recover {
+            try enter("unused-backup", placeholder: "Unused backup code", in: window)
+            try await activate("Create replacement passkey", in: window)
+        } else { try await activate("Create your verified passkey", in: window) }
+        XCTAssertEqual(account.step, .authenticatorSetup)
+        try enter("654321", placeholder: "Authenticator code", in: window)
+        try await activate("Complete secure sign-in", in: window)
+        XCTAssertEqual(wire.completedBody?["code"], "654321"); XCTAssertNil(wire.completedBody?["backupCode"])
+        XCTAssertTrue(account.trusted)
+        try await settle(window)
+        XCTAssertTrue(labels(window).contains { $0.contains("new-backup") }, "Successful enrollment must render newly issued backup codes in the same hosted view")
+    }
+    func testExpiredRenderedSetupHidesSeedAndOffersUsableStartAgain() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let marker = root.appendingPathComponent("saved-record.txt")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try Data("retained records".utf8).write(to: marker)
+        let wire = StagedAccountTransport(), vault = MemoryAccountCredentials()
+        let retained = retryCredential(); try vault.save(retained)
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: vault, authorization: RetryAccountAuthorization())
+        wire.expiry = .now.addingTimeInterval(2)
+        await account.startEmail(email: "owner@example.test", purpose: .recover); await account.verifyEmail(code: "123456")
+        await account.enrollPasskey(recoveryBackup: "unused-backup")
+        let coordinator = AccountWorkspaceCoordinator(account: account, root: root)
+        let window = try mount(AccountSetupView(account: account, coordinator: coordinator)); defer { restoreWindow() }
+        try await settle(window)
+        let validText = try renderedText(window, name: "Valid Authenticator setup")
+        XCTAssertTrue(validText.contains("temporarysetupkey")); XCTAssertTrue(validText.contains("completesecuresignin"))
+        try await Task.sleep(for: .milliseconds(2100)); try await settle(window)
+        XCTAssertNil(account.authenticatorSecret); XCTAssertEqual(account.step, .restart)
+        let expiredText = try renderedText(window, name: "Expired setup with restart")
+        XCTAssertFalse(expiredText.contains("temporarysetupkey"))
+        XCTAssertFalse(expiredText.contains("completesecuresignin"))
+        XCTAssertTrue(labels(window).contains { $0.lowercased().contains("expired") })
+        try await activate("Start again", in: window)
+        XCTAssertEqual(account.step, .identity); XCTAssertNil(wire.completedBody)
+        XCTAssertEqual(try vault.load(), retained); XCTAssertEqual(try Data(contentsOf: marker), Data("retained records".utf8))
+        wire.expiry = .now.addingTimeInterval(300)
+        await account.startEmail(email: "owner@example.test", purpose: .recover); await account.verifyEmail(code: "123456")
+        await account.enrollPasskey(recoveryBackup: "unused-backup")
+        XCTAssertEqual(account.step, .authenticatorSetup)
+    }
+    func testMonthlyMemberSeesPendingAndCancelledLifetimePurchase() async throws {
+        for (result, message) in [(MembershipPurchaseResult.pending, "pending approval"), (.cancelled, "cancelled")] {
+            let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            defer { try? FileManager.default.removeItem(at: root) }
+            let id = UUID(), client = RetryMembershipClient(accountID: id, result: result)
+            let membership = MembershipStore(root: root, client: client); membership.setAccount(id)
+            let profile = NativeProfileStore(url: root.appendingPathComponent("profile.json"))
+            try profile.save(LocalProfile(programmePreferences: .init(goals: [.balance], weekdays: [1], ageContext: .init(ageYears: 30, guardianManaged: false))))
+            let window = try mount(NavigationStack { MembershipView(store: membership).environment(\.profileWebsiteAccess, ProfileWebsiteAccess(profile: profile, guardian: RetryAccountAuthorization())) })
+            defer { restoreWindow() }
+            try await settle(window)
+            try await activate("Explore membership options", in: window)
+            try await activate("Buy lifetime membership", in: window)
+            XCTAssertTrue(labels(window).contains { $0.contains(message) }, "An active monthly member must see the lifetime operation outcome")
+            XCTAssertTrue(membership.hasAccess); XCTAssertFalse(membership.access.lifetime)
+            XCTAssertEqual(client.purchases, [.lifetime])
+        }
+    }
+    func testSignedOutRestoreKeepsGuardianFenceAndDeliversAfterApproval() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let client = RetryMembershipClient(accountID: UUID(), result: .cancelled), auth = RetryAccountAuthorization()
+        auth.guardianAllowed = false
+        let membership = MembershipStore(root: root, client: client)
+        let window = try mount(NavigationStack { MembershipView(store: membership).environment(\.profileWebsiteAccess, ProfileWebsiteAccess(guardian: auth, isCurrent: { true })) })
+        defer { restoreWindow() }
+        try await settle(window); try await activate("Restore purchases", in: window)
+        XCTAssertEqual(client.restores, 0); XCTAssertFalse(membership.hasAccess)
+        XCTAssertTrue(labels(window).contains { $0.contains("Approval is needed") })
+        auth.guardianAllowed = true
+        try await activate("Restore purchases", in: window)
+        XCTAssertEqual(client.restores, 1); XCTAssertFalse(membership.hasAccess)
+        XCTAssertTrue(labels(window).contains { $0.contains("No active membership for this account") })
+    }
+    private var activeWindow: UIWindow?
+    private var originalRoot: UIViewController?
+    private var originalHidden = false
+    private var originalLevel = UIWindow.Level.normal
+    private func mount<V: View>(_ view: V) throws -> UIWindow {
+        restoreWindow()
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let window = try XCTUnwrap(scene.windows.first { $0.isKeyWindow })
+        activeWindow = window; originalRoot = window.rootViewController
+        originalHidden = window.isHidden; originalLevel = window.windowLevel
+        window.rootViewController = UIHostingController(rootView: view)
+        window.makeKeyAndVisible(); return window
+    }
+    private func restoreWindow() {
+        guard let window = activeWindow else { return }
+        window.rootViewController = originalRoot; window.windowLevel = originalLevel; window.isHidden = originalHidden; window.makeKey()
+        activeWindow = nil; originalRoot = nil
+    }
+    private func settle(_ window: UIWindow) async throws {
+        window.setNeedsLayout(); window.layoutIfNeeded(); try await Task.sleep(for: .milliseconds(250)); window.layoutIfNeeded()
+        let renderer = UIGraphicsImageRenderer(bounds: window.bounds)
+        let image = renderer.image { _ in XCTAssertTrue(window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)) }
+        XCTAssertGreaterThan(try XCTUnwrap(image.pngData()).count, 1000)
+    }
+    private func renderedText(_ window: UIWindow, name: String) throws -> String {
+        let image = UIGraphicsImageRenderer(bounds: window.bounds).image { _ in window.drawHierarchy(in: window.bounds, afterScreenUpdates: true) }
+        let attachment = XCTAttachment(image: image); attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
+        let request = VNRecognizeTextRequest(); request.recognitionLevel = .accurate
+        try VNImageRequestHandler(cgImage: XCTUnwrap(image.cgImage)).perform([request])
+        return (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }.joined().lowercased().filter { $0.isLetter || $0.isNumber }
+    }
+    private func elements(_ root: NSObject) -> [NSObject] {
+        var result: [NSObject] = [], seen = Set<ObjectIdentifier>()
+        func visit(_ object: NSObject) {
+            guard seen.insert(ObjectIdentifier(object)).inserted else { return }
+            result.append(object); (object as? UIView)?.subviews.forEach(visit)
+            object.accessibilityElements?.compactMap { $0 as? NSObject }.forEach(visit)
+            let count = object.accessibilityElementCount()
+            if count > 0 && count < 500 { for index in 0..<count { if let child = object.accessibilityElement(at: index) as? NSObject { visit(child) } } }
+        }
+        visit(root); return result
+    }
+    private func labels(_ window: UIWindow) -> [String] { elements(window).flatMap { [$0.accessibilityLabel, $0.accessibilityValue].compactMap { $0 } } }
+    private func fields(_ window: UIWindow) -> [UITextField] { elements(window).compactMap { $0 as? UITextField } }
+    private func enter(_ text: String, placeholder: String, in window: UIWindow) throws {
+        let field = try XCTUnwrap(fields(window).first { $0.placeholder == placeholder }, "Missing rendered \(placeholder)")
+        field.text = text; field.sendActions(for: .editingChanged)
+    }
+    private func activate(_ label: String, in window: UIWindow) async throws {
+        for _ in 0..<8 {
+            if let element = elements(window).first(where: { $0.accessibilityTraits.contains(.button) && ($0.accessibilityLabel == label || $0.accessibilityValue == label) }) {
+                if let control = element as? UIControl { control.sendActions(for: .touchUpInside) }
+                else { XCTAssertTrue(element.accessibilityActivate(), "Could not activate \(label)") }
+                try await settle(window); return
+            }
+            for scroll in elements(window).compactMap({ $0 as? UIScrollView }) where scroll.contentSize.height > scroll.bounds.height {
+                let bottom = max(0, scroll.contentSize.height - scroll.bounds.height + scroll.adjustedContentInset.bottom)
+                scroll.setContentOffset(CGPoint(x: 0, y: min(bottom, scroll.contentOffset.y + scroll.bounds.height * 0.6)), animated: false)
+            }
+            try await settle(window)
+        }
+        XCTFail("Missing rendered button \(label): \(labels(window))")
+    }
+}
+@MainActor private final class RetryMembershipClient: MembershipClient {
+    let accountID: UUID
+    let result: MembershipPurchaseResult
+    var purchases: [MembershipPlan] = []
+    var restores = 0
+    init(accountID: UUID, result: MembershipPurchaseResult) { self.accountID = accountID; self.result = result }
+    func products() async throws -> [MembershipOffer] { [.init(plan: .lifetime, displayName: "Lifetime membership", displayPrice: "£200")] }
+    func currentEntitlements() async -> [MembershipVerification] { [.verified(.init(appAccountToken: accountID, productID: MembershipPlan.monthly.productID, kind: .autoRenewable, expirationDate: .now.addingTimeInterval(3600)))] }
+    func updates() -> AsyncStream<MembershipVerification> { AsyncStream { $0.finish() } }
+    func purchase(_ plan: MembershipPlan, appAccountToken: UUID) async throws -> MembershipPurchaseResult { purchases.append(plan); return result }
+    func restore() async throws { restores += 1 }
+    func finish(transactionID: UInt64) async {}
 }

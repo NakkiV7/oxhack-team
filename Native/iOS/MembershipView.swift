@@ -33,6 +33,7 @@ struct MembershipView: View {
                     Button("Restore purchases") { authorize { await store.restore() } }
                         .buttonStyle(.bordered).tint(Palette.blue).foregroundStyle(Palette.blue)
                         .frame(minHeight: 44).disabled(store.busy || approvalPending).accessibilityIdentifier("membershipRestore")
+                    if selectedOffer == nil { operationFeedback }
                     if let approvalMessage { Text(approvalMessage).font(.footnote).foregroundStyle(.secondary) }
                 }.frame(maxWidth: .infinity).padding(18).background(Palette.surface, in: RoundedRectangle(cornerRadius: 22))
 
@@ -80,13 +81,14 @@ struct MembershipView: View {
                         .buttonStyle(.borderedProminent).foregroundStyle(.white).controlSize(.large).frame(maxWidth: .infinity, minHeight: 48)
                         .disabled(store.accountID == nil || store.busy || approvalPending || !store.access.mayPurchase(offer.plan))
                         .accessibilityIdentifier("membershipPurchase-\(offer.plan.rawValue)")
+                    operationFeedback
                 }
                 if store.access.hasOverlappingSubscription {
                     Text("You own lifetime membership and have an active monthly subscription. Lifetime does not cancel monthly billing. Review your subscription with Apple.")
                         .font(.subheadline).accessibilityIdentifier("membershipOverlapNotice")
                 }
                 VStack(spacing: 12) {
-                    if !store.hasAccess && store.status != "Prices and eligible trials are supplied by the App Store." { Text(store.status).font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("membershipStoreStatus") }
+                    if store.operationMessage == nil && !store.hasAccess && store.status != "Prices and eligible trials are supplied by the App Store." { Text(store.status).font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("membershipStoreStatus") }
                     if let error = store.accessError { Text(error).font(.subheadline).foregroundStyle(Palette.red).accessibilityIdentifier("membershipError") }
                     if let catalogueError = store.catalogueError, !store.hasAccess || showOtherPlans {
                         Text(catalogueError).font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("membershipCatalogueStatus")
@@ -107,6 +109,12 @@ struct MembershipView: View {
         .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await store.load() } } }
         .offerCodeRedemption(isPresented: $redeemPresented) { result in Task { await store.completeRedemption(result) } }
         .onDisappear { approvalRequest = UUID(); approvalPending = false }
+    }
+    @ViewBuilder private var operationFeedback: some View {
+        if let message = store.operationMessage {
+            Text(message).font(.subheadline).foregroundStyle(.secondary)
+                .accessibilityIdentifier("membershipOperationStatus")
+        }
     }
     private func authorize(_ action: @escaping @MainActor () async -> Void) {
         guard !approvalPending else { return }

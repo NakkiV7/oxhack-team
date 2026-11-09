@@ -1,10 +1,11 @@
 import Foundation
 import Observation
 import CryptoKit
+import AuthenticationServices
 
 @MainActor @Observable final class NativeAccountStore {
     enum State: Equatable { case signedOut, pendingMFA, trustedOnline, trustedOffline, credentialsUnknown, revoked, error }
-    enum Step: Equatable { case identity, emailCode, passkey, recoveryBackup, authenticatorSetup, secondFactor, complete }
+    enum Step: Equatable { case identity, emailCode, passkey, recoveryBackup, authenticatorSetup, secondFactor, complete, restart }
     private(set) var state: State = .signedOut
     private(set) var step: Step = .identity
     private(set) var checkpoint: TrainingAgeContext?
@@ -16,7 +17,16 @@ import CryptoKit
     private(set) var backupCodes: [String] = []
     private(set) var busy = false
     private var flowToken: String?
-    private var flowExpiry: Date?
+    private(set) var setupExpiresAt: Date?
+    private struct OutstandingRegistration {
+        let token: String
+        let expiry: Date
+        let purpose: IdentityPurpose
+        let options: PasskeyCreationOptions
+    }
+    private var outstandingRegistration: OutstandingRegistration?
+    private enum SetupFailure: Error { case expired, restart, completionUnconfirmed }
+    private let now: @MainActor () -> Date
     private var purpose: IdentityPurpose = .enroll
     private var credential: StoredAccountCredential?
     private var refreshTask: Task<Void, Never>?
@@ -25,8 +35,8 @@ import CryptoKit
     private let client: AccountClient
     private let credentials: any AccountCredentialStorage
     let authorization: any NativeAccountAuthorization
-    init(client: AccountClient, credentials: any AccountCredentialStorage, authorization: any NativeAccountAuthorization) {
-        self.client = client; self.credentials = credentials; self.authorization = authorization
+    init(client: AccountClient, credentials: any AccountCredentialStorage, authorization: any NativeAccountAuthorization, now: @escaping @MainActor () -> Date = { .now }) {
+        self.client = client; self.credentials = credentials; self.authorization = authorization; self.now = now
     }
     convenience init() { self.init(client: AccountClient(), credentials: SecureAccountCredentials(), authorization: AuthenticationServicesAccountAuthorization()) }
     var lastTrustedVerification: Date? { trusted ? credential?.lastTrustedVerification : nil }
@@ -46,6 +56,7 @@ import CryptoKit
     func verifyEmail(code: String) async {
         await operation {
             let reply: FlowReply = try await self.client.post("/identity/email/verify", body: EmailVerify(flowToken: try self.requireFlow(), code: code))
+            _ = try self.requireFlow()
             guard reply.verified == true else { throw AccountFailure.invalidResponse }
             self.flowToken = reply.flowToken; self.step = self.purpose == .recover ? .recoveryBackup : .passkey
             if self.purpose == .link { try await self.completeLink() }
@@ -61,21 +72,47 @@ import CryptoKit
             self.purpose = purpose; self.beginFlow(reply.flowToken, expires: reply.expiresAt)
             let apple = try await self.authorization.apple(nonce: nonce)
             let verified: FlowReply = try await self.client.post("/identity/apple/verify", body: AppleVerify(flowToken: try self.requireFlow(), identityToken: apple.identityToken, authorizationCode: apple.authorizationCode))
+            _ = try self.requireFlow()
             guard verified.verified == true else { throw AccountFailure.invalidResponse }
             self.flowToken = verified.flowToken; self.step = purpose == .recover ? .recoveryBackup : .passkey
             if purpose == .link { try await self.completeLink() }
         }
     }
     func enrollPasskey(recoveryBackup: String? = nil) async {
+        guard step == .passkey || step == .recoveryBackup else { return }
         await operation {
-            let reply: RegistrationOptionsReply
-            if self.purpose == .recover {
-                guard let recoveryBackup, !recoveryBackup.isEmpty else { throw AccountFailure.reauthenticate }
-                reply = try await self.client.post("/recovery/options", body: RecoveryOptionsRequest(flowToken: try self.requireFlow(), backupCode: recoveryBackup))
-            } else { reply = try await self.client.post("/passkey/enroll/options", body: FlowRequest(flowToken: try self.requireFlow())) }
-            self.flowToken = reply.flowToken
-            let registration = try await self.authorization.register(options: reply.options)
-            let seed: EnrollmentSecret = try await self.client.post("/passkey/enroll/verify", body: RegistrationVerify(flowToken: try self.requireFlow(), credential: registration))
+            let token = try self.requireFlow()
+            let options: PasskeyCreationOptions
+            if let pending = self.outstandingRegistration, pending.token == token,
+               pending.expiry == self.setupExpiresAt, pending.purpose == self.purpose {
+                options = pending.options
+            } else {
+                let reply: RegistrationOptionsReply
+                do {
+                    if self.purpose == .recover {
+                        guard let recoveryBackup, !recoveryBackup.isEmpty else { throw AccountFailure.reauthenticate }
+                        reply = try await self.client.post("/recovery/options", body: RecoveryOptionsRequest(flowToken: token, backupCode: recoveryBackup))
+                    } else { reply = try await self.client.post("/passkey/enroll/options", body: FlowRequest(flowToken: token)) }
+                } catch is URLError { throw SetupFailure.restart }
+                _ = try self.requireFlow()
+                guard let expiry = self.setupExpiresAt else { throw SetupFailure.expired }
+                self.flowToken = reply.flowToken
+                self.outstandingRegistration = OutstandingRegistration(token: reply.flowToken, expiry: expiry, purpose: self.purpose, options: reply.options)
+                options = reply.options
+            }
+            let registration: RegistrationCredential
+            do { registration = try await self.authorization.register(options: options) }
+            catch {
+                if case AccountFailure.cancelled = error { throw error }
+                if (error as? ASAuthorizationError)?.code == .canceled { throw AccountFailure.cancelled }
+                throw SetupFailure.restart
+            }
+            let registrationToken = try self.requireFlow()
+            self.outstandingRegistration = nil
+            let seed: EnrollmentSecret
+            do { seed = try await self.client.post("/passkey/enroll/verify", body: RegistrationVerify(flowToken: registrationToken, credential: registration)) }
+            catch { throw SetupFailure.restart }
+            _ = try self.requireFlow()
             self.flowToken = seed.flowToken; self.authenticatorSecret = seed.secret; self.authenticatorURI = seed.uri; self.step = .authenticatorSetup
         }
     }
@@ -85,17 +122,26 @@ import CryptoKit
             self.beginFlow(reply.flowToken, expires: reply.expiresAt)
             let assertion = try await self.authorization.authenticate(options: reply.options)
             let verified: FlowReply = try await self.client.post("/passkey/login/verify", body: AssertionVerify(flowToken: try self.requireFlow(), credential: assertion))
+            _ = try self.requireFlow()
             guard verified.needsSecondFactor == true else { throw AccountFailure.invalidResponse }
             self.flowToken = verified.flowToken; self.step = .secondFactor
         }
     }
     func complete(code: String, useBackup: Bool = false) async {
+        guard step == .authenticatorSetup || step == .secondFactor else { return }
         await operation {
             let key = P256.Signing.PrivateKey()
             let reply: NativeAccountSession
             if self.step == .authenticatorSetup {
                 guard !useBackup else { throw AccountFailure.invalidResponse }
-                reply = try await self.client.post("/enroll/complete", body: EnrollmentComplete(flowToken: try self.requireFlow(), code: code, deviceKey: NativeDeviceProof.publicKey(key)))
+                let token = try self.requireFlow()
+                do {
+                    let enrolled: NativeAccountSession = try await self.client.post("/enroll/complete", body: EnrollmentComplete(flowToken: token, code: code, deviceKey: NativeDeviceProof.publicKey(key)))
+                    try enrolled.validate(); reply = enrolled
+                } catch {
+                    if case AccountFailure.service(let status, _) = error, status < 500 { throw error }
+                    throw SetupFailure.completionUnconfirmed
+                }
             } else {
                 guard self.step == .secondFactor else { throw AccountFailure.reauthenticate }
                 reply = try await self.client.post("/mfa/complete", body: MFAComplete(flowToken: try self.requireFlow(), code: useBackup ? nil : code, backupCode: useBackup ? code : nil, deviceKey: NativeDeviceProof.publicKey(key)))
@@ -189,7 +235,7 @@ import CryptoKit
     func dismissBackupCodes() { backupCodes = [] }
     func cancelSetup() {
         guard !busy else { return }
-        clearFlow(); step = .identity
+        clearFlow(); step = .identity; message = nil
         if let credential, !credential.locallySignedOut, credential.requiresReauthentication != true,
            credential.session.refreshExpiresAt > Date() { trust(credential, online: false) }
         else { accountID = nil; appAccountToken = nil; state = credential?.requiresReauthentication == true ? .credentialsUnknown : .signedOut }
@@ -205,10 +251,23 @@ import CryptoKit
         do { try await action() } catch { handle(error) }
     }
     private func beginFlow(_ token: String, expires: Date) {
-        epoch = UUID(); flowToken = token; flowExpiry = expires
+        clearFlow()
+        epoch = UUID(); flowToken = token; setupExpiresAt = expires
         accountID = nil; appAccountToken = nil; state = .pendingMFA
     }
-    private func requireFlow() throws -> String { guard let flowToken, let flowExpiry, flowExpiry > Date() else { throw AccountFailure.reauthenticate }; return flowToken }
+    var setupTimeRemaining: TimeInterval? { setupExpiresAt.map { max(0, $0.timeIntervalSince(now())) } }
+    func checkSetupExpiry() {
+        guard let setupExpiresAt, setupExpiresAt <= now() else { return }
+        restartSetup("Setup expired. Start again to verify your identity. Your saved data and existing credentials are unchanged.")
+    }
+    private func restartSetup(_ reason: String) {
+        clearFlow(); step = .restart; message = reason
+    }
+    private func requireFlow() throws -> String {
+        guard let flowToken, let setupExpiresAt else { throw AccountFailure.reauthenticate }
+        guard setupExpiresAt > now() else { throw SetupFailure.expired }
+        return flowToken
+    }
     private func requireCredential(allowExpiredAccess: Bool = false) throws -> StoredAccountCredential {
         guard let credential, !credential.locallySignedOut, credential.requiresReauthentication != true, credential.session.refreshExpiresAt > Date(), allowExpiredAccess || credential.session.accessExpiresAt > Date() else { throw AccountFailure.reauthenticate }
         return credential
@@ -230,7 +289,7 @@ import CryptoKit
             throw error
         }
     }
-    private func clearFlow() { flowToken = nil; flowExpiry = nil; authenticatorSecret = nil; authenticatorURI = nil }
+    private func clearFlow() { flowToken = nil; setupExpiresAt = nil; outstandingRegistration = nil; authenticatorSecret = nil; authenticatorURI = nil }
     private func trust(_ stored: StoredAccountCredential, online: Bool) { accountID = stored.session.accountID; appAccountToken = stored.session.appAccountToken; state = online ? .trustedOnline : .trustedOffline; message = nil }
     private func requireRetainedAccountAuthentication() {
         epoch = UUID(); accountID = nil; appAccountToken = nil; state = .credentialsUnknown
@@ -245,6 +304,17 @@ import CryptoKit
         }
     }
     private func handle(_ error: Error, restoring: Bool = false) {
+        if !restoring, case SetupFailure.completionUnconfirmed = error {
+            restartSetup("Setup may have finished, but this phone could not confirm it. Sign in with your passkey and Authenticator, or Start again. Your saved local data is unchanged.")
+            return
+        }
+        if !restoring, let setupExpiresAt, setupExpiresAt <= now() { checkSetupExpiry(); return }
+        if !restoring, case SetupFailure.expired = error { checkSetupExpiry(); return }
+        if !restoring, case SetupFailure.restart = error {
+            restartSetup("This setup could not be confirmed. Start again to verify your identity. Your saved data and existing credentials are unchanged.")
+            return
+        }
+        if !restoring, step == .restart, flowToken == nil { return }
         message = (error as? AccountFailure)?.errorDescription ?? "The request could not be completed. Your saved data is unchanged. Retry when connected."
         if case AccountFailure.service(401, _) = error, restoring { requireRetainedAccountAuthentication(); return }
         if case AccountFailure.reauthenticate = error, restoring { requireRetainedAccountAuthentication(); return }

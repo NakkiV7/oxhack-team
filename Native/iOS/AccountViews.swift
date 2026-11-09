@@ -256,11 +256,13 @@ struct AccountSetupView: View {
     @State private var backup = false
     @State private var purpose = IdentityPurpose.enroll
     @State private var localMessage: String?
+    @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         NavigationStack {
             Form {
                 Section {
                     Text(account.trusted ? "Create a training profile for yourself or someone you care for." : "Start with your age, then sign in securely. An adult guardian manages children’s profiles.")
+                    if !account.trusted { Text("Use a passkey and an Authenticator code to protect your account.").font(.footnote) }
                     DisclosureGroup("How your account is protected") {
                         Text("Sign-in uses a passkey and an Authenticator code. A saved backup code can replace your Authenticator code.")
                         Text("Children do not need an email address. Guardians confirm their role themselves. Spottr does not verify legal guardianship.")
@@ -277,7 +279,7 @@ struct AccountSetupView: View {
                         Button("Keep snapshot and close paused session") { Task { await coordinator.archivePausedWorkout() } }
                     }
                 }
-                if let message = localMessage ?? account.message ?? coordinator.message { Section { Text(message).foregroundStyle(.secondary) } }
+                if account.step != .restart, let message = localMessage ?? account.message ?? coordinator.message { Section { Text(message).foregroundStyle(.secondary) } }
                 Section("Membership and help") {
                     NavigationLink("Membership & restore purchases") { MembershipView(store: coordinator.membership) }.accessibilityIdentifier("account-membership")
                     WebsiteLink(title: "Spottr support", url: URL(string: "https://spottr.omarchoudhry.co.uk/support")!)
@@ -291,6 +293,25 @@ struct AccountSetupView: View {
                 .safeAreaInset(edge: .top) { SetupProgressHeader(stage: .account).background(Color(uiColor: .systemGroupedBackground)) }
         }
         .environment(\.profileWebsiteAccess, coordinator.websiteAccess)
+        .onChange(of: account.step) { _, _ in clearAuthenticationInput() }
+        .onChange(of: account.authenticationGeneration) { _, _ in clearAuthenticationInput() }
+        .onChange(of: purpose) { _, _ in clearAuthenticationInput() }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { account.checkSetupExpiry() } }
+        .task(id: account.setupExpiresAt) {
+            account.checkSetupExpiry()
+            guard let remaining = account.setupTimeRemaining else { return }
+            do { try await Task.sleep(for: .seconds(remaining)) } catch { return }
+            account.checkSetupExpiry()
+        }
+    }
+    private var usesBackupCode: Bool { account.step == .secondFactor && backup }
+    private func clearAuthenticationInput() { code = ""; backup = false }
+    private func restartSetup() {
+        coordinator.cancelPendingLaunch(); account.cancelSetup(); clearAuthenticationInput(); localMessage = nil
+    }
+    private func setupAction(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) { Text(title).frame(maxWidth: .infinity, minHeight: 32) }
+            .buttonStyle(.borderedProminent).tint(Palette.blue).disabled(account.busy)
     }
     @ViewBuilder private var authentication: some View {
         if account.step == .identity || account.step == .complete {
@@ -319,17 +340,27 @@ struct AccountSetupView: View {
                 Button("Sign in with passkey") { Task { await account.login() } }.disabled(account.busy)
             }
         }
+        if let expiry = account.setupExpiresAt {
+            Section { Text("Finish account security by \(expiry.formatted(date: .omitted, time: .shortened)). Setup expires after five minutes.").font(.footnote).foregroundStyle(.secondary) }
+        }
+        if account.step == .restart {
+            Section("Set up your account again") {
+                if let message = account.message { Text(message).foregroundStyle(.secondary) }
+                setupAction("Start again") { restartSetup() }
+                Button("Sign in with passkey") { clearAuthenticationInput(); Task { await account.login() } }.disabled(account.busy)
+            }
+        }
         if account.step == .emailCode {
             Section("Email verification") {
                 SecureField("Email code", text: $code).textContentType(.oneTimeCode).keyboardType(.numberPad)
-                Button("Verify email") { let entered = code; code = ""; Task { await account.verifyEmail(code: entered) } }.disabled(account.busy)
+                setupAction("Verify email") { let entered = code; code = ""; Task { await account.verifyEmail(code: entered) } }
             }
         }
-        if account.step == .passkey { Section { Button("Create your verified passkey") { Task { await account.enrollPasskey() } }.disabled(account.busy) } }
+        if account.step == .passkey { Section("Create a passkey") { setupAction("Create your verified passkey") { Task { await account.enrollPasskey() } } } }
         if account.step == .recoveryBackup {
             Section("Recover with a linked identity and backup") {
                 SecureField("Unused backup code", text: $code).textInputAutocapitalization(.never)
-                Button("Create replacement passkey") { let entered = code; code = ""; Task { await account.enrollPasskey(recoveryBackup: entered) } }.disabled(account.busy)
+                setupAction("Create replacement passkey") { let entered = code; code = ""; Task { await account.enrollPasskey(recoveryBackup: entered) } }
                 Text("Your existing credentials remain valid until the replacement passkey and Authenticator setup both finish.")
             }
         }
@@ -340,11 +371,11 @@ struct AccountSetupView: View {
                     Text(seed).font(.system(.body, design: .monospaced)).textSelection(.enabled).privacySensitive()
                 }
                 if account.step == .secondFactor { Toggle("Use a backup code", isOn: $backup) }
-                SecureField(backup ? "Backup code" : "Authenticator code", text: $code).textContentType(.oneTimeCode).privacySensitive()
-                Button("Complete secure sign-in") { let entered = code; code = ""; Task { await account.complete(code: entered, useBackup: backup) } }.disabled(account.busy)
+                SecureField(usesBackupCode ? "Backup code" : "Authenticator code", text: $code).textContentType(.oneTimeCode).privacySensitive()
+                setupAction("Complete secure sign-in") { let entered = code, useBackup = usesBackupCode; code = ""; Task { await account.complete(code: entered, useBackup: useBackup) } }
             }
         }
-        if account.step != .identity { Section { Button("Cancel setup") { coordinator.cancelPendingLaunch(); account.cancelSetup(); code = "" }.disabled(account.busy) } }
+        if account.step != .identity && account.step != .restart { Section { Button("Cancel setup") { restartSetup() }.buttonStyle(.bordered).disabled(account.busy) } }
     }
     private var initialProfileCheckpoint: TrainingAgeContext? {
         coordinator.directory?.profiles.isEmpty == true ? account.checkpoint : nil

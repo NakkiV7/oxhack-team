@@ -5,6 +5,38 @@ private let testAccount = UUID()
 
 @MainActor
 final class MembershipJourneyTests: XCTestCase {
+    func testMonthlyMembershipSurvivesPendingAndCancelledLifetimeAttempts() async {
+        for (result, text) in [(MembershipPurchaseResult.pending, "pending approval"), (.cancelled, "cancelled")] {
+            let client = MembershipTestClient()
+            client.availableOffers = [.init(plan: .lifetime, displayName: "Lifetime", displayPrice: "£200")]
+            client.entitlements = [.verified(.init(appAccountToken: testAccount, productID: MembershipPlan.monthly.productID, kind: .autoRenewable, expirationDate: .now.addingTimeInterval(3600)))]
+            client.purchaseResult = result
+            let store = MembershipCoordinator(client: client, claims: MembershipTestClaims())
+            store.setAccount(testAccount); await store.load(); await store.buy(.lifetime)
+            XCTAssertTrue(store.status.contains(text)); XCTAssertTrue(store.operationMessage?.contains(text) == true)
+            await store.load()
+            XCTAssertTrue(store.operationMessage?.contains(text) == true, "A catalogue refresh must not hide the purchase outcome")
+            XCTAssertTrue(store.hasAccess)
+            XCTAssertFalse(store.access.lifetime); XCTAssertTrue(store.access.mayPurchase(.lifetime))
+            XCTAssertTrue(client.finished.isEmpty)
+            store.setAccount(UUID()); XCTAssertNil(store.operationMessage)
+        }
+    }
+    func testNewUpgradeClearsPreviousOutcomeAndLateResultCannotCrossAccounts() async {
+        let client = MembershipTestClient()
+        client.availableOffers = [.init(plan: .lifetime, displayName: "Lifetime", displayPrice: "£200")]
+        client.entitlements = [.verified(.init(appAccountToken: testAccount, productID: MembershipPlan.monthly.productID, kind: .autoRenewable, expirationDate: .now.addingTimeInterval(3600)))]
+        let store = MembershipCoordinator(client: client, claims: MembershipTestClaims())
+        store.setAccount(testAccount); await store.load(); await store.buy(.lifetime)
+        XCTAssertTrue(store.operationMessage?.contains("cancelled") == true)
+        client.deferPurchase = true
+        let buying = Task { await store.buy(.lifetime) }
+        for _ in 0..<100 where client.purchaseContinuation == nil { await Task.yield() }
+        XCTAssertNotNil(client.purchaseContinuation); XCTAssertNil(store.operationMessage)
+        store.setAccount(UUID())
+        client.purchaseContinuation?.resume(returning: .pending); await buying.value
+        XCTAssertNil(store.operationMessage); XCTAssertFalse(store.hasAccess)
+    }
     func testExplicitRestoreRecoversAttributedPurchaseIntoNewAccountAndRevalidates() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

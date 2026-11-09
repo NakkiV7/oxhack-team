@@ -39,6 +39,7 @@ public final class MembershipCoordinator {
     public var error: String? { accessError ?? catalogueError }
     public var accessError: String? { claimError ?? operationError }
     public private(set) var catalogueError: String?
+    public private(set) var operationMessage: String?
     private var operationError: String?
     private var claimError: String?
     public private(set) var status = "Checking App Store availability…"
@@ -71,7 +72,7 @@ public final class MembershipCoordinator {
     public func setAccount(_ accountID: UUID?) {
         guard self.accountID != accountID else { return }
         self.accountID = accountID; accountGeneration = UUID(); entitlementRefreshID = UUID()
-        entitlements = []; restoredClaims = []; operationError = nil; claimError = nil
+        entitlements = []; restoredClaims = []; operationError = nil; claimError = nil; operationMessage = nil
         entitlementsResolved = false; currentRefresh?.cancel(); currentRefresh = nil; currentRefreshID = UUID()
         expirationRefresh?.cancel()
         status = accountID == nil ? "Sign in to use membership. Restore purchases remains available." : "Checking your Apple membership…"
@@ -127,14 +128,14 @@ public final class MembershipCoordinator {
     public func buy(_ plan: MembershipPlan) async {
         guard let accountID, !busy, offers.contains(where: { $0.plan == plan }), access.mayPurchase(plan) else { return }
         let generation = accountGeneration
-        busy = true; operationError = nil
+        busy = true; operationError = nil; operationMessage = nil
         defer { busy = false }
         do {
             let result = try await client.purchase(plan, appAccountToken: accountID)
             guard generation == accountGeneration else { return }
             switch result {
-            case .cancelled: status = "Purchase cancelled. Access has not changed."
-            case .pending: status = "Purchase is pending approval. Access has not changed."
+            case .cancelled: status = "Purchase cancelled. Access has not changed."; operationMessage = status
+            case .pending: status = "Purchase is pending approval. Access has not changed."; operationMessage = status
             case .completed(let result):
                 guard case .verified(let transaction) = result,
                       transaction.productID == plan.productID, transaction.kind == plan.kind,
@@ -148,6 +149,7 @@ public final class MembershipCoordinator {
                 await refreshOffers()
                 guard generation == accountGeneration else { return }
                 status = hasAccess ? "Membership is active." : "Purchase verified. No active membership was found."
+                operationMessage = status
             }
         } catch {
             guard generation == accountGeneration else { return }
@@ -157,7 +159,7 @@ public final class MembershipCoordinator {
     public func restore() async {
         guard !busy else { return }
         let generation = accountGeneration, restoringAccount = accountID
-        busy = true; operationError = nil
+        busy = true; operationError = nil; operationMessage = nil
         defer { busy = false }
         do {
             try await client.restore()
@@ -186,12 +188,14 @@ public final class MembershipCoordinator {
             await refreshOffers()
             guard generation == accountGeneration else { return }
             status = hasAccess ? "Membership is active." : "No active membership for this account. Sign in and restore a previous Apple purchase."
+            operationMessage = status
         } catch {
             guard generation == accountGeneration else { return }
             self.operationError = "Purchases could not be restored. Check your connection and try again."
         }
     }
     public func completeRedemption(_ result: Result<Void, Error>) async {
+        operationMessage = nil
         let generation = accountGeneration
         await refreshEntitlements()
         guard generation == accountGeneration else { return }
@@ -199,7 +203,7 @@ public final class MembershipCoordinator {
         guard generation == accountGeneration else { return }
         operationError = nil
         switch result {
-        case .success: status = hasAccess ? "Membership is active." : "If Apple completed your redemption, use Restore purchases to verify it for this account."
+        case .success: status = hasAccess ? "Membership is active." : "If Apple completed your redemption, use Restore purchases to verify it for this account."; operationMessage = status
         case .failure: operationError = "Code redemption was not completed. Try again with the App Store."
         }
     }
@@ -249,5 +253,6 @@ public final class MembershipCoordinator {
         await refreshOffers()
         guard generation == accountGeneration else { return }
         status = hasAccess ? "Membership is active." : "No active membership. Your history, export and help remain available."
+        operationMessage = status
     }
 }
