@@ -82,3 +82,12 @@ Signed-out first-launch discoverability without scrolling. A single membership e
 - [ ] Run focused Node contract GREEN and plutil lint. Run only affected hosted packaging-resource test under controller native lease if needed to verify actual bundled plist, not all native suites; jobs1/driver1/backend1/serial/exactBF27/SSD/scrubbed environment. Record actual counts/limits, self-review, commit exactly task paths and write task-6-report.md.
 
 **Final order:** Complete/reviewTask5, then Task6/review, then one final review of all new source since8b48ea7, then Task3 freeze/sign/audit/upload/install and supported App Store UI submission. Keep1.0(26), preserve all old products, hold Support until corrected review rejection.
+
+### Task 7: Repair captured-view evidence for App Store screenshots
+
+**Spec:** docs/superpowers/specs/2026-11-10-app-store-screenshot-evidence.md
+**Files:** existing CoachPolishRenderedTests.swift, ProgrammeRenderedTests.swift and QuestRenderedTests.swift only.
+
+- [ ] Inspect retained actual failed phone capture run and attached pixels, identify why AX assertions disagree with production view rendering. No assumed lifecycle fix before evidence.
+- [ ] Correct only meaningful view-evidence checks using existing actual pixel/OCR or properly owned host boundaries. Preserve assertion semantics, isolated profiles and ordinary production UI. No shipping source or bypass changes.
+- [ ] Under controller lease, focused phone and required existing iPad capture runs, then fresh review. Document sample-data and hardware limits, retain original images and all failed evidence. Confirm functional26sources/inputsunchanged before provider use. Controller owns Watch captures and App Store work.
