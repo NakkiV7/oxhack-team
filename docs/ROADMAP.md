@@ -1,5 +1,7 @@
 # Remaining work and evidence gates
 
+For the current application, start with the [10 November build 26 delivery receipt](evidence/spottr-build26-delivery-2026-11-10.md), [feature guide](spottr-feature-guide.md) and [release readiness](release-readiness.md). The 25 October checklist below is historical, including its former camera/provider and build-4 scope. It is not authority to reintroduce paired cameras or runtime generative AI.
+
 Checkpoint: **25 October 2026, 01:32:51.286 UTC**. Local training is usable; the next priority is a real iPhone/Watch rehearsal, followed by a truthful demo and bounded optional integrations. Source, fake/simulator tests, provider execution, physical acceptance and release access are separate evidence states. No CI/CD is planned.
 
 ## Completed foundation

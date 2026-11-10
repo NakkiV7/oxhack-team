@@ -14,6 +14,8 @@ The page uses actual Today and Coach simulator captures from the local overhaul 
 
 Before publication, inspect desktop and narrow layouts, both current screenshots, keyboard focus and Skip to content, section links, FAQ disclosure, the TestFlight destination, and the privacy, terms, support and deletion pages. Inspect the account page separately with the real Worker API for authentication acceptance. The public page explains mandatory native accounts, separate Apple membership, optional adult analytics and the distinction between local training records and Apple Health syncing.
 
+The native privacy contract in this command requires macOS with `plutil` available on `PATH`. It parses the real iOS privacy plist rather than a test copy. Other operating systems need a supported plist parser before this complete command can be treated as portable.
+
 Run source checks from the repository root:
 
 ```sh
