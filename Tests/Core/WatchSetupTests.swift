@@ -75,6 +75,51 @@ final class WatchSetupTests: XCTestCase {
         XCTAssertEqual(WatchSetupStore(defaults: defaults, observe: { .init() }, request: {}).selectedModel, .se)
     }
 
+    @MainActor func testReturningFromWatchSetupReloadsPhoneOnlyWithoutObservingOrRequesting() async throws {
+        let name = "WatchSetupReturnTests.\(UUID().uuidString)"
+        let summaryDefaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        let destinationDefaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { summaryDefaults.removePersistentDomain(forName: name) }
+        var requests = 0, observations = 0
+        let destination = WatchSetupStore(defaults: destinationDefaults, observe: { .init() }, request: { requests += 1 })
+        destination.select(.se)
+        let summary = WatchSetupStore(defaults: summaryDefaults, observe: {
+            observations += 1
+            return .init(supported: true, activated: true, paired: true, installed: true, reachable: true)
+        }, request: { requests += 1 })
+        XCTAssertEqual(summary.selectedModel, .se)
+
+        destination.select(.noWatch)
+        summary.refresh()
+
+        XCTAssertEqual(summary.selectedModel, .noWatch, "The returning permissions summary must use the destination's current Phone only choice")
+        XCTAssertEqual(observations, 0, "Phone only must suppress connection observation after reloading the choice")
+        XCTAssertEqual(requests, 0, "Returning to the summary must never request a connection")
+    }
+
+    @MainActor func testReturningFromPhoneOnlyReloadsWatchChoiceAndObservesWithoutRequesting() async throws {
+        let name = "WatchSetupReturnTests.\(UUID().uuidString)"
+        let summaryDefaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        let destinationDefaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { summaryDefaults.removePersistentDomain(forName: name) }
+        var requests = 0, observations = 0
+        let destination = WatchSetupStore(defaults: destinationDefaults, observe: { .init() }, request: { requests += 1 })
+        destination.select(.noWatch)
+        let summary = WatchSetupStore(defaults: summaryDefaults, observe: {
+            observations += 1
+            return .init(supported: true, activated: true, paired: true, installed: true, reachable: true)
+        }, request: { requests += 1 })
+        XCTAssertEqual(summary.selectedModel, .noWatch)
+
+        destination.select(.ultra)
+        summary.refresh()
+
+        XCTAssertEqual(summary.selectedModel, .ultra, "The returning permissions summary must stop displaying Phone only")
+        XCTAssertEqual(summary.presentation.summary, "Your Watch is reachable. Check the companion.")
+        XCTAssertEqual(observations, 1, "The current Watch choice must restore observation after the prior Phone only guard")
+        XCTAssertEqual(requests, 0, "A status refresh must not request a connection")
+    }
+
     @MainActor func testLiveSetupChecksAreThrottledAndRetryWhenWatchBecomesReachable() async throws {
         let name = "WatchSetupPollingTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: name))

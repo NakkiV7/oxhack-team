@@ -24,6 +24,7 @@ public final class WatchSetupStore {
     }
 
     public func refresh(at date: Date = Date()) {
+        selectedModel = defaults.string(forKey: Self.modelKey).flatMap(WatchModelPreference.init(rawValue:)) ?? .notSure
         guard selectedModel != .noWatch else { return }
         presentation = .init(observation: observe(), at: date)
     }
