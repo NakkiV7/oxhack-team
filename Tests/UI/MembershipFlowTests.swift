@@ -11,8 +11,8 @@ final class MembershipFlowTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Account and privacy"].waitForExistence(timeout: 8))
         XCTAssertFalse(app.buttons["today-start-session"].exists)
         let membership = app.buttons["account-membership"]
-        for _ in 0..<8 where !membership.isHittable { app.swipeUp() }
-        XCTAssertTrue(membership.isHittable)
+        XCTAssertTrue(membership.exists)
+        XCTAssertTrue(membership.isHittable, "Membership must be visible on first launch without scrolling")
         membership.tap()
         XCTAssertTrue(app.navigationBars["Membership"].waitForExistence(timeout: 5))
         let restore = app.buttons["membershipRestore"]

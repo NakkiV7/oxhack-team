@@ -260,6 +260,17 @@ struct AccountSetupView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section("Membership and help") {
+                    NavigationLink {
+                        MembershipView(store: coordinator.membership)
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image("membership-gem").resizable().scaledToFit().frame(width: 32, height: 32).accessibilityHidden(true)
+                            Text("Membership & Apple purchases")
+                        }
+                    }.accessibilityIdentifier("account-membership")
+                    WebsiteLink(title: "Spottr support", url: URL(string: "https://spottr.omarchoudhry.co.uk/support")!)
+                }
                 Section {
                     Text(account.trusted ? "Create a training profile for yourself or someone you care for." : "Start with your age, then sign in securely. An adult guardian manages children’s profiles.")
                     if !account.trusted { Text("Use a passkey and an Authenticator code to protect your account.").font(.footnote) }
@@ -280,10 +291,6 @@ struct AccountSetupView: View {
                     }
                 }
                 if account.step != .restart, let message = localMessage ?? account.message ?? coordinator.message { Section { Text(message).foregroundStyle(.secondary) } }
-                Section("Membership and help") {
-                    NavigationLink("Membership & restore purchases") { MembershipView(store: coordinator.membership) }.accessibilityIdentifier("account-membership")
-                    WebsiteLink(title: "Spottr support", url: URL(string: "https://spottr.omarchoudhry.co.uk/support")!)
-                }
                 Section("Saved local data") {
                     NavigationLink("View or export existing phone records") { ProtectedLegacyRecordsView(root: coordinator.root, authorization: account.authorization) }
                     NavigationLink("Unlock retained account records") { LocalAccountArchivesView(root: coordinator.root, authorization: account.authorization) }
