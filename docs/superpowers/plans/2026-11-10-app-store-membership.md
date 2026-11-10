@@ -70,3 +70,15 @@ Signed-out first-launch discoverability without scrolling. A single membership e
 - [ ] Run focused new and affected hosted setup/permissions/account tests under root lease; capture actual ordinary/accessibility screenshots of representative pages. No obsolete guest-flow tests or broad repeats without failures. Self-review, commit task paths, write task-5-report.md with commands/results/limits.
 
 **Execution order update:** Task1 and Task2 preparation, task-scoped reviews, Task4, Task5, one final review of all new source, then Task3 build26/provider submission. Do not archive a candidate before the owner's new onboarding changes are incorporated and reviewed.
+
+### Task 6: Align source and packaged privacy declarations
+
+**Spec:** docs/superpowers/specs/2026-11-10-privacy-alignment-design.md, backed by workspace privacy-final-answers-addendum.md.
+**Files:** Native/iOS/PrivacyInfo.xcprivacy, landing/tests-public/native-service-contract.test.mjs, Tests/iOS/ReleasePackagingTests.swift only.
+**Interfaces:** Apple's real plist data-type/purpose constants; source and actual packaged manifest parser. Preserve existing entitlement/scheme contracts and Watch API reason checks. No data-path or UI behavior changes.
+
+- [ ] Update existing Node native-service contract tests first to parse actual plist and assert the exact six types, linked/no-tracking flags and per-type purpose sets. Run actual RED against current five-type/two-Fitness-purpose manifest; record missing CustomerSupport and Fitness Personalization failures independently.
+- [ ] Make the two narrow manifest additions from spec, preserving other purposes/API reasons. Correct the stale hosted helper and host test to validate API reasons plus real collection declarations rather than forbidding them; retain Watch expectations and no unsupported broad skips.
+- [ ] Run focused Node contract GREEN and plutil lint. Run only affected hosted packaging-resource test under controller native lease if needed to verify actual bundled plist, not all native suites; jobs1/driver1/backend1/serial/exactBF27/SSD/scrubbed environment. Record actual counts/limits, self-review, commit exactly task paths and write task-6-report.md.
+
+**Final order:** Complete/reviewTask5, then Task6/review, then one final review of all new source since8b48ea7, then Task3 freeze/sign/audit/upload/install and supported App Store UI submission. Keep1.0(26), preserve all old products, hold Support until corrected review rejection.
