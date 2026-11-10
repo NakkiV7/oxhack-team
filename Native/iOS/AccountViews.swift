@@ -256,50 +256,71 @@ struct AccountSetupView: View {
     @State private var backup = false
     @State private var purpose = IdentityPurpose.enroll
     @State private var localMessage: String?
+    private enum Presentation { case welcome, checkpoint, identity, recovery }
+    private enum IdentityRoute { case apple, email }
+    @State private var presentation = Presentation.welcome
+    @State private var identityRoute = IdentityRoute.email
+    @State private var welcomeSignInRequested = false
+    @AccessibilityFocusState private var errorFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Membership and help") {
-                    NavigationLink {
-                        MembershipView(store: coordinator.membership)
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image("membership-gem").resizable().scaledToFit().frame(width: 32, height: 32).accessibilityHidden(true)
-                            Text("Membership & Apple purchases")
+            ScrollViewReader { scroll in
+                Form {
+                    Section("Membership") {
+                        NavigationLink {
+                            MembershipView(store: coordinator.membership)
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image("membership-gem").resizable().scaledToFit().frame(width: 32, height: 32).accessibilityHidden(true)
+                                Text("Membership & Apple purchases")
+                            }
+                        }.accessibilityIdentifier("account-membership")
+                    }
+                    if account.trusted {
+                        Section { Text("Create a training profile for yourself or someone you care for.") }
+                        profileSetup
+                    } else {
+                        authentication
+                    }
+                    if coordinator.workspace?.hasOngoingWorkout == true {
+                        Section("Protected paused workout") {
+                            Text("Return to its original account to resume, or keep its recorded quantities as an unfinished local snapshot before using another profile.")
+                            Button("Keep snapshot and close paused session") { Task { await coordinator.archivePausedWorkout() } }
                         }
-                    }.accessibilityIdentifier("account-membership")
-                    WebsiteLink(title: "Spottr support", url: URL(string: "https://spottr.omarchoudhry.co.uk/support")!)
-                }
-                Section {
-                    Text(account.trusted ? "Create a training profile for yourself or someone you care for." : "Start with your age, then sign in securely. An adult guardian manages children’s profiles.")
-                    if !account.trusted { Text("Use a passkey and an Authenticator code to protect your account.").font(.footnote) }
-                    DisclosureGroup("How your account is protected") {
-                        Text("Sign-in uses a passkey and an Authenticator code. A saved backup code can replace your Authenticator code.")
-                        Text("Children do not need an email address. Guardians confirm their role themselves. Spottr does not verify legal guardianship.")
                     }
-                }
-                if account.trusted {
-                    profileSetup
-                } else {
-                    authentication
-                }
-                if coordinator.workspace?.hasOngoingWorkout == true {
-                    Section("Protected paused workout") {
-                        Text("Return to its original account to resume, or keep its recorded quantities as an unfinished local snapshot before using another profile.")
-                        Button("Keep snapshot and close paused session") { Task { await coordinator.archivePausedWorkout() } }
+                    if account.step != .restart, let message = feedback {
+                        Section {
+                            Text(message).foregroundStyle(.secondary)
+                                .id("account-feedback").accessibilityIdentifier("account-feedback")
+                                .accessibilityFocused($errorFocused)
+                        }
                     }
-                }
-                if account.step != .restart, let message = localMessage ?? account.message ?? coordinator.message { Section { Text(message).foregroundStyle(.secondary) } }
-                Section("Saved local data") {
-                    NavigationLink("View or export existing phone records") { ProtectedLegacyRecordsView(root: coordinator.root, authorization: account.authorization) }
-                    NavigationLink("Unlock retained account records") { LocalAccountArchivesView(root: coordinator.root, authorization: account.authorization) }
-                    Text("Existing records stay on this phone. Importing them into an adult training profile is an explicit choice after sign-in.")
-                }
-            }.navigationTitle("Account and privacy").navigationBarTitleDisplayMode(.inline)
-                .safeAreaInset(edge: .top) { SetupProgressHeader(stage: .account).background(Color(uiColor: .systemGroupedBackground)) }
+                    Section {
+                        DisclosureGroup("Account help and saved data") {
+                            Text("Sign-in uses a passkey and an Authenticator code. A saved backup code can replace your Authenticator code.")
+                            Text("Children do not need an email address. Guardians confirm their role themselves. Spottr does not verify legal guardianship.")
+                            WebsiteLink(title: "Spottr support", url: URL(string: "https://spottr.omarchoudhry.co.uk/support")!)
+                            NavigationLink("View or export existing phone records") { ProtectedLegacyRecordsView(root: coordinator.root, authorization: account.authorization) }
+                            NavigationLink("Unlock retained account records") { LocalAccountArchivesView(root: coordinator.root, authorization: account.authorization) }
+                            Text("Existing records stay on this phone. Importing them into an adult training profile is an explicit choice after sign-in.")
+                        }
+                    }
+                }.navigationTitle("Account and privacy").navigationBarTitleDisplayMode(.inline)
+                    .safeAreaInset(edge: .top) { SetupProgressHeader(stage: .account).background(Color(uiColor: .systemGroupedBackground)) }
+                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: presentation)
+                    .task(id: feedback) {
+                        guard feedback != nil, account.step != .restart else { return }
+                        guard presentation != .welcome || account.step != .identity || welcomeSignInRequested else { return }
+                        await Task.yield()
+                        scroll.scrollTo("account-feedback", anchor: .center)
+                        errorFocused = true
+                    }
+            }
         }
         .environment(\.profileWebsiteAccess, coordinator.websiteAccess)
+        .onChange(of: presentation) { _, _ in SpottrHaptics.selection() }
         .onChange(of: account.step) { _, _ in clearAuthenticationInput() }
         .onChange(of: account.authenticationGeneration) { _, _ in clearAuthenticationInput() }
         .onChange(of: purpose) { _, _ in clearAuthenticationInput() }
@@ -311,40 +332,65 @@ struct AccountSetupView: View {
             account.checkSetupExpiry()
         }
     }
+    private var feedback: String? { localMessage ?? account.message ?? coordinator.message }
     private var usesBackupCode: Bool { account.step == .secondFactor && backup }
     private func clearAuthenticationInput() { code = ""; backup = false }
     private func restartSetup() {
         coordinator.cancelPendingLaunch(); account.cancelSetup(); clearAuthenticationInput(); localMessage = nil
+        presentation = .welcome; purpose = .enroll
     }
     private func setupAction(_ title: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) { Text(title).frame(maxWidth: .infinity, minHeight: 32) }
+        Button(action: action) { Text(title).fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, minHeight: 44) }
             .buttonStyle(.borderedProminent).tint(Palette.blue).disabled(account.busy)
     }
     @ViewBuilder private var authentication: some View {
         if account.step == .identity || account.step == .complete {
-            Section("Who is the training profile for?") {
-                TextField("Training person’s age in years", text: $age).keyboardType(.numberPad)
-                Picker("Account owner", selection: $role) { Text("Adult training for myself").tag(AccountPolicy.Role.adultSelf); Text("Adult guardian managing a profile").tag(AccountPolicy.Role.guardian) }
-                Button("Confirm age and role") {
-                    do { guard let age = Int(age) else { throw AccountFailure.checkpointRequired }; try account.setCheckpoint(ageYears: age, role: role); localMessage = nil }
-                    catch { localMessage = error.localizedDescription }
+            if presentation == .welcome {
+                Section {
+                    VStack(alignment: .leading, spacing: 14) {
+                        ScreenHeading(title: "Move at your own pace", subtitle: "Build a practice that fits you with a securely protected account.")
+                        MovementDemonstration(exercise: .halfSquat).frame(height: 120)
+                        AppleAccountButton(enabled: !account.busy) { selectIdentity(.apple) }.frame(height: 50)
+                        secondaryAction("Continue with email", symbol: "envelope") { selectIdentity(.email) }
+                        secondaryAction("Sign in with passkey", symbol: "key") { welcomeSignInRequested = true; Task { await account.login() } }
+                        secondaryAction("Recover account", symbol: "arrow.clockwise") {
+                            purpose = .recover; localMessage = nil; presentation = .recovery
+                        }
+                    }.padding(.vertical, 8)
                 }
-                .buttonStyle(.borderedProminent).tint(Palette.blue)
-                if account.checkpoint != nil { Label("Age and role confirmed", systemImage: "checkmark.circle") }
-            }
-            Section("Create or recover") {
-                Picker("Purpose", selection: $purpose) { Text("Create account").tag(IdentityPurpose.enroll); Text("Recover account").tag(IdentityPurpose.recover) }
-                TextField("Adult account owner’s email", text: $email).textContentType(.emailAddress).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
-                Button { Task { await account.startEmail(email: email, purpose: purpose) } } label: {
-                    Text("Send verification code").frame(maxWidth: .infinity, minHeight: 32)
-                }.buttonStyle(.borderedProminent).tint(Palette.blue)
-                    .disabled(account.busy || (purpose == .enroll && account.checkpoint == nil))
-                AppleAccountButton(enabled: !account.busy && (purpose != .enroll || account.checkpoint != nil)) {
-                    Task { await account.startApple(purpose: purpose) }
-                }.frame(height: 50)
-            }
-            Section("Already have a passkey?") {
-                Button("Sign in with passkey") { Task { await account.login() } }.disabled(account.busy)
+            } else if presentation == .checkpoint {
+                Section("Who is the training profile for?") {
+                    TextField("Training person’s age in years", text: $age).keyboardType(.numberPad)
+                    Picker("Account owner", selection: $role) { Text("Adult training for myself").tag(AccountPolicy.Role.adultSelf); Text("Adult guardian managing a profile").tag(AccountPolicy.Role.guardian) }
+                    Text("An adult guardian manages children’s profiles.").font(.footnote)
+                    PrimaryButton(title: "Confirm age and role") {
+                        do {
+                            guard let age = Int(age) else { throw AccountFailure.checkpointRequired }
+                            try account.setCheckpoint(ageYears: age, role: role); localMessage = nil; presentation = .identity
+                        } catch { localMessage = error.localizedDescription; errorFocused = true }
+                    }.disabled(account.busy)
+                    presentationBack
+                }
+            } else if presentation == .recovery {
+                Section("Recover account") {
+                    Text("Choose your linked identity to replace a lost passkey using a saved backup code and Authenticator setup.")
+                    AppleAccountButton(enabled: !account.busy) { selectIdentity(.apple) }.frame(height: 50)
+                    secondaryAction("Continue with email", symbol: "envelope") { selectIdentity(.email) }
+                    presentationBack
+                }
+            } else {
+                Section(purpose == .recover ? "Recover account" : "Create your secure account") {
+                    if purpose == .recover { Text("Use the identity already linked to your account.") }
+                    if identityRoute == .email {
+                        TextField("Adult account owner’s email", text: $email).textContentType(.emailAddress).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
+                        setupAction("Send verification code") { Task { await account.startEmail(email: email, purpose: purpose) } }
+                    } else {
+                        AppleAccountButton(enabled: !account.busy && (purpose != .enroll || account.checkpoint != nil)) {
+                            Task { await account.startApple(purpose: purpose) }
+                        }.frame(height: 50)
+                    }
+                    presentationBack
+                }
             }
         }
         if let expiry = account.setupExpiresAt {
@@ -383,6 +429,31 @@ struct AccountSetupView: View {
             }
         }
         if account.step != .identity && account.step != .restart { Section { Button("Cancel setup") { restartSetup() }.buttonStyle(.bordered).disabled(account.busy) } }
+    }
+    private func selectIdentity(_ route: IdentityRoute) {
+        guard !account.busy else { return }
+        identityRoute = route; localMessage = nil
+        presentation = purpose == .enroll && account.checkpoint == nil ? .checkpoint : .identity
+    }
+    private var presentationBack: some View {
+        secondaryAction("Back", symbol: "arrow.left") {
+            guard !account.busy else { return }
+            localMessage = nil
+            switch presentation {
+            case .identity: presentation = purpose == .recover ? .recovery : .checkpoint
+            case .checkpoint, .recovery: presentation = .welcome; purpose = .enroll
+            case .welcome: break
+            }
+        }
+    }
+    private func secondaryAction(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: symbol).font(.body.weight(.semibold))
+                .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, minHeight: 44)
+                .padding(.horizontal, 10).padding(.vertical, 4)
+                .foregroundStyle(Palette.blue)
+                .background(RoundedRectangle(cornerRadius: 12).stroke(Palette.blue.opacity(0.4)))
+        }.buttonStyle(SpottrPressStyle()).disabled(account.busy)
     }
     private var initialProfileCheckpoint: TrainingAgeContext? {
         coordinator.directory?.profiles.isEmpty == true ? account.checkpoint : nil

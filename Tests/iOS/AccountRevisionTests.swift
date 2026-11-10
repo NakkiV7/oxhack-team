@@ -3,6 +3,7 @@ import SwiftUI
 import UIKit
 import CryptoKit
 import Vision
+import AuthenticationServices
 @testable import Spottr
 
 @MainActor final class AccountRevisionTests: XCTestCase {
@@ -286,6 +287,73 @@ private struct RevisionWorkspaceView: View {
 }
 
 @MainActor final class AccountRetryRenderedTests: XCTestCase {
+    func testWelcomeOffersNativeAppleEmailPasskeyRecoveryAndDirectMembershipWithoutInputs() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let wire = StagedAccountTransport()
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: MemoryAccountCredentials(), authorization: RetryAccountAuthorization())
+        let coordinator = AccountWorkspaceCoordinator(account: account, root: root)
+        let window = try mount(AccountSetupView(account: account, coordinator: coordinator)); defer { restoreWindow() }
+        try await settle(window)
+        XCTAssertTrue(fields(window).isEmpty, "Welcome must defer both age and email inputs")
+        XCTAssertNotNil(elements(window).first { $0 is ASAuthorizationAppleIDButton })
+        let text = try renderedText(window, name: "Account welcome ordinary size")
+        for choice in ["moveatyourownpace", "continuewithemail", "signinwithpasskey", "recoveraccount", "membershipapplepurchases"] {
+            XCTAssertTrue(text.contains(choice), "Missing visible welcome choice \(choice)")
+        }
+        XCTAssertFalse(text.contains("trainingpersonsage"))
+        XCTAssertTrue(wire.requests.isEmpty)
+        // The real XCUI regression verifies this visible route's identifier, tap and destination.
+    }
+
+    func testActiveMFAOwnsTheScreenAtAccessibilitySize() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let wire = StagedAccountTransport()
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: MemoryAccountCredentials(), authorization: RetryAccountAuthorization())
+        await account.login()
+        XCTAssertEqual(account.step, .secondFactor)
+        let window = try mount(AccountSetupView(account: account, coordinator: AccountWorkspaceCoordinator(account: account, root: root)).environment(\.dynamicTypeSize, .accessibility3)); defer { restoreWindow() }
+        try await settle(window)
+        XCTAssertFalse(try renderedText(window, name: "Active MFA replaces welcome").contains("moveatyourownpace"))
+        try await revealField("Authenticator code", in: window)
+        XCTAssertNotNil(fields(window).first { $0.placeholder == "Authenticator code" })
+        _ = try renderedText(window, name: "Account active MFA accessibility size")
+        XCTAssertFalse(account.trusted)
+    }
+
+    func testAsyncVerificationErrorIsVisibleInReducedViewportAtAccessibilitySize() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let wire = AccountTestTransport()
+        wire.replies = [Data(#"{"flowToken":"visible-email-task","expiresAt":"2030-01-01T00:00:00Z","accepted":true}"#.utf8)]
+        let account = NativeAccountStore(client: AccountClient(transport: wire), credentials: MemoryAccountCredentials(), authorization: RetryAccountAuthorization())
+        try account.setCheckpoint(ageYears: 30, role: .adultSelf)
+        await account.startEmail(email: "owner@example.test", purpose: .enroll)
+        XCTAssertEqual(account.step, .emailCode)
+        wire.failure = URLError(.notConnectedToInternet)
+        let window = try mount(AccountSetupView(account: account, coordinator: AccountWorkspaceCoordinator(account: account, root: root)).environment(\.dynamicTypeSize, .accessibility3))
+        let host = try XCTUnwrap(window.rootViewController), originalInsets = host.additionalSafeAreaInsets
+        defer { host.additionalSafeAreaInsets = originalInsets; restoreWindow() }
+        try await settle(window)
+        try await revealField("Email code", in: window)
+        let field = try XCTUnwrap(fields(window).first { $0.placeholder == "Email code" })
+        field.becomeFirstResponder(); try await settle(window)
+        try enter("123456", placeholder: "Email code", in: window)
+        let fullHeight = host.view.safeAreaLayoutGuide.layoutFrame.height
+        host.additionalSafeAreaInsets.bottom = 300
+        try await settle(window)
+        XCTAssertLessThan(host.view.safeAreaLayoutGuide.layoutFrame.height, fullHeight - 250, "The hosted content must actually lose a keyboard-sized area")
+        await account.verifyEmail(code: "123456")
+        try await settle(window)
+        XCTAssertNotNil(account.message); XCTAssertFalse(account.busy); XCTAssertEqual(wire.requests.count, 2)
+        XCTAssertEqual(account.step, .emailCode); XCTAssertFalse(account.trusted)
+        XCTAssertTrue(field.isFirstResponder, "Text editing remains active in the deliberately reduced viewport")
+        let text = try renderedText(window, name: "Async account error accessibility reduced viewport")
+        let message = try XCTUnwrap(account.message).lowercased().filter { $0.isLetter || $0.isNumber }
+        XCTAssertTrue(text.contains(message), "The complete actual failure must be readable without manual scrolling")
+    }
+
     func testRetainedSetupUsesNewAuthenticatorAfterBackupLoginThenEnrollment() async throws {
         try await retainedSetup(purpose: .enroll)
     }
@@ -409,7 +477,7 @@ private struct RevisionWorkspaceView: View {
         activeWindow = nil; originalRoot = nil
     }
     private func settle(_ window: UIWindow) async throws {
-        window.setNeedsLayout(); window.layoutIfNeeded(); try await Task.sleep(for: .milliseconds(250)); window.layoutIfNeeded()
+        window.setNeedsLayout(); window.layoutIfNeeded(); try await Task.sleep(for: .milliseconds(450)); window.layoutIfNeeded()
         let renderer = UIGraphicsImageRenderer(bounds: window.bounds)
         let image = renderer.image { _ in XCTAssertTrue(window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)) }
         XCTAssertGreaterThan(try XCTUnwrap(image.pngData()).count, 1000)
@@ -433,14 +501,37 @@ private struct RevisionWorkspaceView: View {
         visit(root); return result
     }
     private func labels(_ window: UIWindow) -> [String] { elements(window).flatMap { [$0.accessibilityLabel, $0.accessibilityValue].compactMap { $0 } } }
-    private func fields(_ window: UIWindow) -> [UITextField] { elements(window).compactMap { $0 as? UITextField } }
+    private func isExposed(_ object: NSObject, in window: UIWindow) -> Bool {
+        if let view = object as? UIView {
+            guard view.window === window, view.convert(view.bounds, to: window).intersects(window.bounds) else { return false }
+            var ancestor: UIView? = view
+            while let current = ancestor {
+                if current.isHidden || current.alpha < 0.01 { return false }
+                ancestor = current.superview
+            }
+            return true
+        }
+        return object.accessibilityFrame.intersects(window.convert(window.bounds, to: nil))
+    }
+    private func fields(_ window: UIWindow) -> [UITextField] { elements(window).compactMap { $0 as? UITextField }.filter { isExposed($0, in: window) } }
+    private func revealField(_ placeholder: String, in window: UIWindow) async throws {
+        for _ in 0..<8 {
+            if fields(window).contains(where: { $0.placeholder == placeholder }) { return }
+            for scroll in elements(window).compactMap({ $0 as? UIScrollView }) where scroll.contentSize.height > scroll.bounds.height {
+                let bottom = max(0, scroll.contentSize.height - scroll.bounds.height + scroll.adjustedContentInset.bottom)
+                scroll.setContentOffset(CGPoint(x: 0, y: min(bottom, scroll.contentOffset.y + scroll.bounds.height * 0.6)), animated: false)
+            }
+            try await settle(window)
+        }
+        XCTFail("Missing visible field \(placeholder)")
+    }
     private func enter(_ text: String, placeholder: String, in window: UIWindow) throws {
         let field = try XCTUnwrap(fields(window).first { $0.placeholder == placeholder }, "Missing rendered \(placeholder)")
         field.text = text; field.sendActions(for: .editingChanged)
     }
     private func activate(_ label: String, in window: UIWindow) async throws {
         for _ in 0..<8 {
-            if let element = elements(window).first(where: { $0.accessibilityTraits.contains(.button) && ($0.accessibilityLabel == label || $0.accessibilityValue == label) }) {
+            if let element = elements(window).first(where: { isExposed($0, in: window) && $0.accessibilityTraits.contains(.button) && ($0.accessibilityLabel == label || $0.accessibilityValue == label) }) {
                 if let control = element as? UIControl { control.sendActions(for: .touchUpInside) }
                 else { XCTAssertTrue(element.accessibilityActivate(), "Could not activate \(label)") }
                 try await settle(window); return
