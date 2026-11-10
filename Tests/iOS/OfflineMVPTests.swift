@@ -9,7 +9,7 @@ import XCTest
             attempts += 1; throw RemoteVoiceError.configuration
         }, uptime: { 1 })
         try await playback.refreshVoices()
-        for voice in [VoiceCoachPreference.maya, .leo, .local, .leo] {
+        for voice in [VoiceCoachPreference.maya, .leo, .local] {
             try playback.select(voice)
             playback.speak(.init(id: UUID(), sessionID: UUID(), generation: UUID(), text: "Keep moving", kind: .coaching(.pacing), issuedAt: 1, expiresAt: 5, reason: .steadyRhythm))
             playback.stop()

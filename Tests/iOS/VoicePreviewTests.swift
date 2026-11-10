@@ -105,14 +105,22 @@ import UIKit
         let defaults = UserDefaults(suiteName: UUID().uuidString)!
         let live = RemoteVoicePlayback(offlineOnly: true, defaults: defaults, gentleOnly: true)
         var valid = true
-        let preview = VoicePreviewCoordinator(preferences: live, permitsSelection: { valid }, canPreview: { true })
+        var outputs: [PreviewOutput] = []
+        let samples = RemoteVoicePlayback(offlineOnly: true, defaults: defaults, gentleOnly: true, makeAudio: { _ in
+            let output = PreviewOutput(); outputs.append(output); return output
+        })
+        let preview = VoicePreviewCoordinator(preferences: live, playback: samples, permitsSelection: { valid }, canPreview: { true })
         preview.select(.leo, tone: .direct)
         XCTAssertEqual(preview.preference, .leo)
         XCTAssertEqual(live.tone, .gentle)
+        XCTAssertEqual(outputs.count, 1)
         preview.stop()
         valid = false
-        preview.select(.leo, tone: .gentle)
+        preview.select(.maya, tone: .gentle)
         XCTAssertEqual(preview.preference, .leo)
+        XCTAssertEqual(preview.message, "Reopen this profile to choose your coaching voice.")
+        XCTAssertFalse(preview.isPlaying)
+        XCTAssertEqual(outputs.count, 1)
     }
 }
 
