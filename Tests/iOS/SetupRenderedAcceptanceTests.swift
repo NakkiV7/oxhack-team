@@ -3,6 +3,7 @@ import SwiftUI
 import UIKit
 import Observation
 import CryptoKit
+import Vision
 @testable import Spottr
 
 @MainActor final class SetupRenderedAcceptanceTests: XCTestCase {
@@ -19,6 +20,224 @@ import CryptoKit
         originalWindow = nil; originalController = nil
         super.tearDown()
     }
+    func testTrainingBodyKeepsPolicyDetailsCollapsedUntilRequested() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = NativeProfileStore(url: root.appendingPathComponent("profile.json"))
+        try store.save(acceptedProfile())
+        let window = try host(OnboardingView(profileStore: store))
+        try await Task.sleep(for: .milliseconds(450))
+        let text = try trainingRenderedText(window, name: "training-body-ordinary")
+        XCTAssertTrue(text.contains("heightandweight"), text)
+        XCTAssertTrue(text.contains("profiledetails"), text)
+        XCTAssertFalse(text.contains("yourlocalageanswer"), text)
+    }
+
+    func testTrainingPermissionsInitiallyShowsCoreRowsAndHidesVoiceOptions() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = NativeProfileStore(url: root.appendingPathComponent("profile.json"))
+        try store.save(acceptedProfile())
+        let window = try host(NavigationStack {
+            ScrollView { PhonePermissionsView(profileStore: store, healthStore: HealthDataStore()).padding(24) }
+        })
+        try await Task.sleep(for: .milliseconds(450))
+        let text = try trainingRenderedText(window, name: "training-permissions-collapsed-ordinary")
+        XCTAssertTrue(text.contains("camerasessions"), text)
+        XCTAssertTrue(text.contains("voiceloggingandreminders"), text)
+        XCTAssertTrue(text.contains("watchsetup"), text)
+        XCTAssertFalse(text.contains("spokenloggingmicrophone"), text)
+        XCTAssertFalse(text.contains("ondevicespeech"), text)
+        XCTAssertFalse(text.contains("scheduledreminders"), text)
+    }
+
+    func testPermissionRenderReadsStatusesWithoutRequestingAccess() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let profile = NativeProfileStore(url: root.appendingPathComponent("profile.json"))
+        try profile.save(acceptedProfile())
+        let client = TrainingPermissionClient()
+        let permissions = PhonePermissionStore(client: client)
+        let healthClient = TrainingHealthClient()
+        let health = HealthDataStore(client: healthClient, defaults: profile.preferencesDefaults)
+        let window = try host(NavigationStack {
+            ScrollView { PhonePermissionsView(profileStore: profile, healthStore: health, permissions: permissions).padding(24) }
+        })
+        try await Task.sleep(for: .milliseconds(450))
+        XCTAssertEqual(permissions.camera, .denied)
+        XCTAssertEqual(permissions.microphone, .allowed)
+        XCTAssertEqual(permissions.speech, .unavailable)
+        XCTAssertTrue(client.requests.isEmpty)
+        XCTAssertEqual(healthClient.requests, 0)
+        let text = try trainingRenderedText(window, name: "training-permission-statuses-without-request")
+        XCTAssertTrue(text.contains("notallowed"), text)
+        XCTAssertFalse(text.contains("spokenloggingmicrophone"), text)
+    }
+
+    func testExpandedVoiceOptionsShowStatusAndNeverRequestAccessOnExpansion() async throws {
+        let client = TrainingPermissionClient()
+        let permissions = PhonePermissionStore(client: client)
+        await permissions.refresh()
+        let window = try host(NavigationStack {
+            ScrollView { VoiceLoggingPermissionDisclosure(permissions: permissions, isExpanded: .constant(true)).padding(24) }
+        })
+        try await Task.sleep(for: .milliseconds(450))
+        let text = try trainingRenderedText(window, name: "training-permissions-expanded")
+        XCTAssertTrue(text.contains("spokenloggingmicrophone"), text)
+        XCTAssertTrue(text.contains("available"), text)
+        XCTAssertTrue(text.contains("ondevicespeech"), text)
+        XCTAssertTrue(text.contains("unavailable"), text)
+        XCTAssertTrue(text.contains("scheduledreminders"), text)
+        XCTAssertTrue(client.requests.isEmpty)
+    }
+
+    func testTrainingStageComponentsShowOnlyTheirChoicesAtOrdinaryAndAccessibilitySizes() async throws {
+        let window = try host(Color.white)
+        for size in [DynamicTypeSize.large, .accessibility2] {
+            let suffix = size.isAccessibilitySize ? "accessibility2" : "ordinary"
+            for step in [TrainingSetupPresentation.RhythmStep.goals, .schedule, .support] {
+                let content = TrainingRhythmContent(step: step, goals: .constant([.strength]), weekdays: .constant([1, 3]),
+                    minutes: .constant(20), hour: .constant(18), support: .constant([]), floor: .constant(true), adult: true)
+                window.rootViewController = UIHostingController(rootView: NavigationStack {
+                    ScrollView { content.padding(24) }.environment(\.dynamicTypeSize, size)
+                })
+                try await Task.sleep(for: .milliseconds(300))
+                let text = try trainingRenderedText(window, name: "training-\(step.rawValue)-\(suffix)")
+                switch step {
+                case .goals:
+                    XCTAssertTrue(text.contains("strength"), text)
+                    XCTAssertFalse(text.contains("minutespersession"), text)
+                    XCTAssertFalse(text.contains("floormovements"), text)
+                case .schedule:
+                    XCTAssertTrue(text.contains("minutespersession"), text)
+                    XCTAssertFalse(text.contains("weightmanagement"), text)
+                    XCTAssertFalse(text.contains("floormovements"), text)
+                case .support:
+                    XCTAssertTrue(text.contains("stablesupport"), text)
+                    XCTAssertFalse(text.contains("minutespersession"), text)
+                }
+            }
+            window.rootViewController = UIHostingController(rootView: NavigationStack {
+                ScrollView { TrainingStartingPointChoices(selection: .constant(.somePractice)).padding(24) }
+                    .environment(\.dynamicTypeSize, size)
+            })
+            try await Task.sleep(for: .milliseconds(300))
+            let text = try trainingRenderedText(window, name: "training-starting-point-\(suffix)")
+            XCTAssertTrue(text.contains("startingout"), text)
+            if !size.isAccessibilitySize {
+                XCTAssertTrue(text.contains("somepractice"), text)
+                XCTAssertTrue(text.contains("regularpractice"), text)
+                XCTAssertTrue(text.contains("experienced"), text)
+            }
+            let preferences = try ProgrammePreferences(goals: [.balance], weekdays: [1], ageContext: .init(ageYears: 30, guardianManaged: false))
+            let choices = ExerciseCatalog.all.filter { $0.family == .legs && preferences.canUse($0) }
+            window.rootViewController = UIHostingController(rootView: NavigationStack {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        ScreenHeading(title: "Lower body")
+                        TrainingComfortFamily(family: .legs, choices: choices, answer: nil, expanded: false, onExpand: {}, onAnswer: { _ in })
+                    }.padding(24)
+                }.environment(\.dynamicTypeSize, size)
+            })
+            try await Task.sleep(for: .milliseconds(300))
+            let familyText = try trainingRenderedText(window, name: "training-one-family-\(suffix)")
+            XCTAssertTrue(familyText.contains("lowerbody"), familyText)
+            XCTAssertFalse(familyText.contains("conditioning"), familyText)
+            XCTAssertFalse(familyText.contains("pushups"), familyText)
+        }
+    }
+
+    func testTrainingPrivacyKeepsOptionalChoicesOffAndJuniorCollectionClosed() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let window = try host(Color.white)
+        for years in [30, 10] {
+            let scope = AccountDataScope(accountID: UUID(), profileID: UUID(), root: root)
+            let profile = NativeProfileStore(url: scope.file("profile.json"))
+            try profile.save(LocalProfile(programmePreferences: .init(goals: [.balance], weekdays: [1],
+                ageContext: .init(ageYears: years, guardianManaged: years < 18))))
+            var requests = 0
+            let analytics = ConsentedAnalyticsStore(scope: scope, profile: profile, send: { _ in requests += 1; return 202 })
+            window.rootViewController = UIHostingController(rootView: OnboardingView(profileStore: profile, analytics: analytics))
+            try await Task.sleep(for: .milliseconds(350))
+            let text = try trainingRenderedText(window, name: "training-privacy-age-\(years)")
+            XCTAssertTrue(text.contains("privacypolicy"), text)
+            XCTAssertTrue(text.contains("sharingdetails"), text)
+            if years >= 18 {
+                XCTAssertTrue(text.contains("sharefeatureusage"), text)
+                XCTAssertTrue(text.contains("shareweeklyworkoutstatistics"), text)
+            } else {
+                XCTAssertTrue(text.contains("notcollected"), text)
+                XCTAssertFalse(text.contains("sharefeatureusage"), text)
+                XCTAssertFalse(text.contains("shareweeklyworkoutstatistics"), text)
+            }
+            XCTAssertFalse(analytics.ledger.usage)
+            XCTAssertFalse(analytics.ledger.workout)
+            XCTAssertEqual(requests, 0)
+        }
+    }
+
+    func testJuniorTrainingBodyKeepsOptionalMeasurementsAndStickyContinueAtAccessibilitySize() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = NativeProfileStore(url: root.appendingPathComponent("profile.json"))
+        try store.save(LocalProfile(name: "Junior", programmePreferences: .init(goals: [.balance], weekdays: [1],
+            ageContext: .init(ageYears: 10, guardianManaged: true))))
+        let guardian = SetupRenderedAuthorization()
+        let window = try host(OnboardingView(profileStore: store, guardianAuthorization: guardian)
+            .environment(\.dynamicTypeSize, .accessibility2))
+        try await Task.sleep(for: .milliseconds(350))
+        let text = try trainingRenderedText(window, name: "training-junior-body-accessibility2")
+        XCTAssertTrue(text.contains("measurementsareoptional"), text)
+        XCTAssertTrue(text.contains("continue"), text)
+        XCTAssertEqual(guardian.guardianCalls, 0)
+        XCTAssertNil(store.profile?.bodyMeasurements)
+        XCTAssertFalse(AccountPolicy.allowsHealth(profile: store.profile))
+        XCTAssertFalse(store.profile?.trainingGoals.contains(.weightManagement) == true)
+    }
+
+    func testPreparedWeekKeepsFullMovementListInsideClosedWeekDisclosure() async throws {
+        let date = Date(timeIntervalSince1970: 1_794_275_200)
+        let plan = try CoachSavedPlan(items: [
+            .init(exerciseID: "squat", sets: 1, target: 8, unit: .reps, restSeconds: 60),
+            .init(exerciseID: "pushup", sets: 1, target: 8, unit: .reps, restSeconds: 60)
+        ], availableSupport: [], createdAt: date, rationale: "A local prepared week")
+        var days: [TrainingProgramme.Day] = []
+        for index in 0..<7 {
+            let dayDate = date.addingTimeInterval(TimeInterval(index) * 86400)
+            let kind: TrainingProgramme.DayKind = index == 0 ? .workout : .rest
+            let savedPlan: CoachSavedPlan? = index == 0 ? plan : nil
+            let day = TrainingProgramme.Day(id: "day-\(index)", localDate: "day-\(index)", date: dayDate, kind: kind, plan: savedPlan)
+            days.append(day)
+        }
+        let week = TrainingProgramme(id: "local-week", timeZoneID: "Europe/London", revision: 1, days: days)
+        let window = try host(Color.white)
+        for size in [DynamicTypeSize.large, .accessibility2] {
+            window.rootViewController = UIHostingController(rootView: NavigationStack {
+                ScrollView { TrainingWeekPreview(week: week).padding(24) }.environment(\.dynamicTypeSize, size)
+            })
+            try await Task.sleep(for: .milliseconds(350))
+            let text = try trainingRenderedText(window, name: size.isAccessibilitySize ? "training-week-accessibility2" : "training-week-ordinary")
+            XCTAssertTrue(text.contains("nextpractice"), text)
+            XCTAssertTrue(text.contains("2movements"), text)
+            XCTAssertTrue(text.contains("viewmyweek"), text)
+            XCTAssertFalse(text.contains("pushups"), text)
+        }
+    }
+
+    private func trainingRenderedText(_ window: UIWindow, name: String) throws -> String {
+        window.layoutIfNeeded()
+        let image = UIGraphicsImageRenderer(bounds: window.bounds).image { _ in
+            XCTAssertTrue(window.drawHierarchy(in: window.bounds, afterScreenUpdates: true))
+        }
+        let attachment = XCTAttachment(image: image)
+        attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
+        let request = VNRecognizeTextRequest(); request.recognitionLevel = .accurate
+        try VNImageRequestHandler(cgImage: XCTUnwrap(image.cgImage)).perform([request])
+        return (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }
+            .joined().lowercased().filter { $0.isLetter || $0.isNumber }
+    }
+
     func testCatalogueKeepsPendingRequestWhenItsRenderedBranchChanges() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -373,4 +592,23 @@ import CryptoKit
         if holdGuardian { await withCheckedContinuation { pendingGuardian = $0 } }
         guard guardianAllowed else { throw AccountFailure.cancelled }
     }
+}
+
+@MainActor private final class TrainingPermissionClient: PhonePermissionClient {
+    var requests: [PhonePermissionFeature] = []
+    func status(_ feature: PhonePermissionFeature) async -> PhonePermissionState {
+        switch feature {
+        case .camera: .denied
+        case .microphone: .allowed
+        case .speech: .unavailable
+        case .notifications: .notRequested
+        }
+    }
+    func request(_ feature: PhonePermissionFeature) async { requests.append(feature) }
+}
+@MainActor private final class TrainingHealthClient: HealthReadingClient {
+    var isAvailable = true
+    var requests = 0
+    func requestReadAuthorization() async throws { requests += 1 }
+    func read(asOf: Date, dayStart: Date, dayEnd: Date) async throws -> [HealthObservation] { [] }
 }

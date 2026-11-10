@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AnalyticsConsentChoices: View {
     let store: ConsentedAnalyticsStore
+    var compact = false
     @State private var error: String?
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -9,7 +10,7 @@ struct AnalyticsConsentChoices: View {
                 Toggle("Share feature usage", isOn: choice(.usage)).accessibilityIdentifier("analytics-usage")
                 Text("Optional coarse counts help us understand which features are used.").font(.subheadline).foregroundStyle(.secondary)
                 Toggle("Share weekly workout statistics", isOn: choice(.workout)).accessibilityIdentifier("analytics-workout")
-                Text("Optional weekly totals include sets, rounded reps and minutes, movement families, recording sources and broad effort groups.").font(.subheadline).foregroundStyle(.secondary)
+                Text(compact ? "Optional weekly totals help improve training." : "Optional weekly totals include sets, rounded reps and minutes, movement families, recording sources and broad effort groups.").font(.subheadline).foregroundStyle(.secondary)
             } else {
                 Text("Feature usage and workout statistics are not collected for this profile.")
             }

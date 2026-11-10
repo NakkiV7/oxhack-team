@@ -199,3 +199,150 @@ import CryptoKit
         try await withCheckedThrowingContinuation { pending = $0 }
     }
 }
+
+@MainActor final class TrainingPresentationTests: XCTestCase {
+    private let adult = try! TrainingAgeContext(ageYears: 30, guardianManaged: false)
+
+    func testTrainingStartsAtPrivacyOnlyWhenAnalyticsIsAvailable() {
+        XCTAssertEqual(TrainingSetupPresentation(preferences: nil, hasAnalytics: true).stage, .account)
+        XCTAssertEqual(TrainingSetupPresentation(preferences: nil, hasAnalytics: false).stage, .body)
+    }
+
+    func testGoalsScheduleAndSupportAreSeparateAndRequireTheirOwnAnswers() {
+        var draft = TrainingSetupPresentation(preferences: nil, hasAnalytics: false)
+        XCTAssertEqual(draft.advance(age: adult, hasMeasurements: true), .moved)
+        XCTAssertEqual(draft.stage, .goals)
+        XCTAssertEqual(draft.rhythmStep, .goals)
+        assertBlocked(draft.advance(age: adult, hasMeasurements: true))
+        draft.goals = [.strength]
+        XCTAssertEqual(draft.advance(age: adult, hasMeasurements: true), .moved)
+        XCTAssertEqual(draft.stage, .goals)
+        XCTAssertEqual(draft.rhythmStep, .schedule)
+        assertBlocked(draft.advance(age: adult, hasMeasurements: true))
+        draft.weekdays = [2, 5]
+        XCTAssertEqual(draft.advance(age: adult, hasMeasurements: true), .moved)
+        XCTAssertEqual(draft.stage, .goals)
+        XCTAssertEqual(draft.rhythmStep, .support)
+        XCTAssertEqual(draft.advance(age: adult, hasMeasurements: true), .moved)
+        XCTAssertEqual(draft.stage, .comfort)
+        XCTAssertEqual(draft.comfortStep, .startingPoint)
+    }
+
+    func testBackRetracesLocalStepsWithoutLosingAnySelections() throws {
+        var draft = TrainingSetupPresentation(preferences: try preferences(), hasAnalytics: false)
+        _ = draft.advance(age: adult, hasMeasurements: true)
+        _ = draft.advance(age: adult, hasMeasurements: true)
+        _ = draft.advance(age: adult, hasMeasurements: true)
+        draft.support = [PathSurvey.equipmentChoices[0]]
+        draft.floor = false
+        draft.minutes = 30; draft.hour = 9
+        _ = draft.advance(age: adult, hasMeasurements: true)
+        draft.goBack()
+        XCTAssertEqual(draft.stage, .goals)
+        XCTAssertEqual(draft.rhythmStep, .support)
+        draft.goBack()
+        XCTAssertEqual(draft.rhythmStep, .schedule)
+        draft.goBack()
+        XCTAssertEqual(draft.rhythmStep, .goals)
+        XCTAssertEqual(draft.goals, [.balance])
+        XCTAssertEqual(draft.weekdays, [1, 3])
+        XCTAssertEqual(draft.minutes, 30)
+        XCTAssertEqual(draft.hour, 9)
+        XCTAssertEqual(draft.support, [PathSurvey.equipmentChoices[0]])
+        XCTAssertFalse(draft.floor)
+    }
+
+    func testExplicitUnsureAdvancesOneFamilyThenReviewCanChangeAnAnswer() throws {
+        var draft = try comfortDraft()
+        draft.startingPoint = .somePractice
+        XCTAssertEqual(draft.advance(age: adult, hasMeasurements: true), .moved)
+        let first = try XCTUnwrap(ExerciseFamily.allCases.first)
+        XCTAssertEqual(draft.comfortStep, .family(first))
+        for family in ExerciseFamily.allCases {
+            XCTAssertEqual(draft.comfortStep, .family(family))
+            draft.answer(.unsure, family: family)
+        }
+        XCTAssertEqual(draft.comfortStep, .review)
+        XCTAssertEqual(draft.answers.count, ExerciseFamily.allCases.count)
+        draft.review(first)
+        XCTAssertEqual(draft.comfortStep, .family(first))
+        let entry = try XCTUnwrap(ExerciseCatalog.all.first { $0.family == first && (try? draft.preferences(age: adult).canUse($0)) == true })
+        draft.answer(.movement(entry.id), family: first)
+        XCTAssertEqual(draft.comfortStep, .review)
+        XCTAssertEqual(draft.answers[first], .movement(entry.id))
+        XCTAssertTrue(ExerciseFamily.allCases.dropFirst().allSatisfy { draft.answers[$0] == .unsure })
+        XCTAssertEqual(draft.advance(age: adult, hasMeasurements: true), .moved)
+        XCTAssertEqual(draft.stage, .permissions)
+    }
+
+    func testComfortCannotBeContinuedUntilEveryRequiredAnswerIsValid() throws {
+        var draft = try comfortDraft()
+        assertBlocked(draft.advance(age: adult, hasMeasurements: true))
+        draft.startingPoint = .startingOut
+        _ = draft.advance(age: adult, hasMeasurements: true)
+        assertBlocked(draft.advance(age: adult, hasMeasurements: true))
+        let first = try XCTUnwrap(ExerciseFamily.allCases.first)
+        draft.answer(.unsure, family: first)
+        XCTAssertEqual(draft.stage, .comfort)
+        assertBlocked(draft.advance(age: adult, hasMeasurements: true))
+        for family in ExerciseFamily.allCases { draft.answer(.unsure, family: family) }
+        draft.review(first)
+        draft.answer(.movement("missing-movement"), family: first)
+        assertBlocked(draft.advance(age: adult, hasMeasurements: true))
+        XCTAssertEqual(draft.stage, .comfort)
+    }
+
+    func testMissingAgeAndAdultMeasurementsBlockBeforeAnySaveOutcome() {
+        var draft = TrainingSetupPresentation(preferences: nil, hasAnalytics: false)
+        assertBlocked(draft.advance(age: nil, hasMeasurements: true))
+        assertBlocked(draft.advance(age: adult, hasMeasurements: false))
+        XCTAssertEqual(draft.stage, .body)
+    }
+
+    func testUnderFiveKeepsSupervisedPlayAndJuniorChoicesRemainRestricted() throws {
+        let child = try TrainingAgeContext(ageYears: 4, guardianManaged: true)
+        var draft = TrainingSetupPresentation(preferences: try preferences(age: child), hasAnalytics: false)
+        for _ in 0..<4 { XCTAssertEqual(draft.advance(age: child, hasMeasurements: false), .moved) }
+        XCTAssertEqual(draft.stage, .comfort)
+        XCTAssertEqual(draft.advance(age: child, hasMeasurements: false), .moved)
+        XCTAssertEqual(draft.stage, .permissions)
+        XCTAssertTrue(draft.answers.isEmpty)
+        XCTAssertFalse(try draft.preferences(age: child).canUse(ExerciseCatalog.find("squat")!))
+    }
+
+    func testSaveOutcomeRequiresCompletedReviewAndCurrentExclusionsAreHonoured() throws {
+        var draft = try comfortDraft()
+        draft.startingPoint = .startingOut
+        _ = draft.advance(age: adult, hasMeasurements: true)
+        for family in ExerciseFamily.allCases { draft.answer(.unsure, family: family) }
+        draft.review(.legs)
+        draft.answer(.movement("squat"), family: .legs)
+        assertBlocked(draft.advance(age: adult, hasMeasurements: true, excludedExerciseIDs: ["squat"]))
+        XCTAssertEqual(draft.comfortStep, .family(.legs))
+        draft.answer(.unsure, family: .legs)
+        XCTAssertEqual(draft.advance(age: adult, hasMeasurements: true), .moved)
+        XCTAssertEqual(draft.stage, .permissions)
+        XCTAssertEqual(draft.advance(age: adult, hasMeasurements: true), .moved)
+        XCTAssertEqual(draft.stage, .coach)
+        XCTAssertEqual(draft.advance(age: adult, hasMeasurements: true), .save)
+        draft.goBack()
+        XCTAssertEqual(draft.stage, .permissions)
+        draft.goBack()
+        XCTAssertEqual(draft.stage, .comfort)
+        XCTAssertEqual(draft.comfortStep, .review)
+        XCTAssertEqual(draft.answers.count, 6)
+    }
+
+    private func comfortDraft() throws -> TrainingSetupPresentation {
+        var draft = TrainingSetupPresentation(preferences: try preferences(), hasAnalytics: false)
+        for _ in 0..<4 { _ = draft.advance(age: adult, hasMeasurements: true) }
+        XCTAssertEqual(draft.stage, .comfort)
+        return draft
+    }
+    private func preferences(age: TrainingAgeContext? = nil) throws -> ProgrammePreferences {
+        try .init(goals: [.balance], weekdays: [1, 3], ageContext: age ?? adult)
+    }
+    private func assertBlocked(_ outcome: TrainingSetupPresentation.Advance, file: StaticString = #filePath, line: UInt = #line) {
+        guard case .blocked = outcome else { XCTFail("Required choices must block Continue", file: file, line: line); return }
+    }
+}

@@ -85,41 +85,96 @@ struct PhonePermissionsView: View {
     let profileStore: NativeProfileStore
     let healthStore: HealthDataStore
     @State private var permissions: PhonePermissionStore
-    init(profileStore: NativeProfileStore, healthStore: HealthDataStore) {
+    @State private var watch = WatchSetupStore()
+    @State private var voiceExpanded = false
+    init(profileStore: NativeProfileStore, healthStore: HealthDataStore, permissions: PhonePermissionStore? = nil) {
         self.profileStore = profileStore; self.healthStore = healthStore
-        _permissions = State(initialValue: PhonePermissionStore(valid: { profileStore.permitsPolicyCallbacks }))
+        _permissions = State(initialValue: permissions ?? PhonePermissionStore(valid: { profileStore.permitsPolicyCallbacks }))
     }
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Choose the features you want. Manual logging stays available if you decline.").foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Choose the features you want. Manual logging stays available if you decline.")
+                .font(.subheadline).foregroundStyle(.secondary)
             if (profileStore.profile?.programmePreferences?.ageContext?.ageYears ?? 0) >= 5 {
-                row("Camera sessions", feature: .camera, state: permissions.camera, symbol: "camera")
+                PhonePermissionRow(title: "Camera sessions", feature: .camera, state: permissions.camera, symbol: "camera", permissions: permissions)
             }
-            row("Spoken logging microphone", feature: .microphone, state: permissions.microphone, symbol: "mic")
-            row("On-device speech", feature: .speech, state: permissions.speech, symbol: "waveform")
-            row("Scheduled reminders", feature: .notifications, state: permissions.notifications, symbol: "bell")
             if AccountPolicy.allowsHealth(profile: profileStore.profile) {
                 NavigationLink { HealthSetupView(store: healthStore) } label: {
-                    Label("Choose Apple Health readings", systemImage: "heart.text.square").padding(16).frame(maxWidth: .infinity, alignment: .leading)
-                }.background(Palette.surface, in: RoundedRectangle(cornerRadius: 18)).accessibilityIdentifier("setup-health")
-                Text(healthStore.statusMessage).font(.caption).foregroundStyle(.secondary)
+                    permissionLink("Choose Apple Health readings", detail: healthStore.statusMessage, symbol: "heart.text.square")
+                }.buttonStyle(SpottrPressStyle()).accessibilityIdentifier("setup-health")
             } else {
-                Text("Junior activity stays separate from the guardian’s Health records.").font(.caption).foregroundStyle(.secondary)
+                Label("Junior activity stays separate from the guardian’s Health records.", systemImage: "heart.text.square")
+                    .font(.subheadline).foregroundStyle(.secondary).padding(14)
             }
             NavigationLink { WatchSetupView() } label: {
-                Label("Watch setup or phone only", systemImage: "applewatch").padding(16).frame(maxWidth: .infinity, alignment: .leading)
-            }.background(Palette.surface, in: RoundedRectangle(cornerRadius: 18)).accessibilityIdentifier("setup-watch")
-        }.task { await permissions.refresh() }.onDisappear { permissions.invalidate() }
+                permissionLink("Watch setup or phone only", detail: watch.selectedModel == .noWatch ? "Phone only" : watch.presentation.summary, symbol: "applewatch")
+            }.buttonStyle(SpottrPressStyle()).accessibilityIdentifier("setup-watch")
+            VoiceLoggingPermissionDisclosure(permissions: permissions, isExpanded: $voiceExpanded)
+        }.task { await permissions.refresh(); watch.refresh() }.onDisappear { permissions.invalidate() }
     }
-    private func row(_ title: String, feature: PhonePermissionFeature, state: PhonePermissionState, symbol: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(title, systemImage: symbol).font(.headline)
-            Text(state.rawValue).font(.caption).foregroundStyle(.secondary)
-            if state == .notRequested {
-                Button("Choose access") { Task { await permissions.request(feature) } }.buttonStyle(.bordered).disabled(permissions.busy)
-            } else if state == .denied {
-                Text("You can change this in iPhone Settings. Continue with manual logging.").font(.caption).foregroundStyle(.secondary)
+    private func permissionLink(_ title: String, detail: String, symbol: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: symbol).font(.title3).frame(width: 28).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).font(.headline)
+                Text(detail).font(.caption).foregroundStyle(.secondary)
             }
-        }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(Palette.surface, in: RoundedRectangle(cornerRadius: 18))
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right").font(.caption).accessibilityHidden(true)
+        }.padding(14).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .background(Palette.surface, in: RoundedRectangle(cornerRadius: 18))
+    }
+}
+
+struct VoiceLoggingPermissionDisclosure: View {
+    let permissions: PhonePermissionStore
+    @Binding var isExpanded: Bool
+    var body: some View {
+        DisclosureGroup("Voice logging and reminders", isExpanded: $isExpanded) {
+            VStack(spacing: 12) {
+                PhonePermissionRow(title: "Spoken logging microphone", feature: .microphone, state: permissions.microphone, symbol: "mic", permissions: permissions)
+                PhonePermissionRow(title: "On-device speech", feature: .speech, state: permissions.speech, symbol: "waveform", permissions: permissions)
+                PhonePermissionRow(title: "Scheduled reminders", feature: .notifications, state: permissions.notifications, symbol: "bell", permissions: permissions)
+            }.padding(.top, 12)
+        }.frame(minHeight: 44).accessibilityIdentifier("setup-voice-reminders")
+    }
+}
+
+struct PhonePermissionRow: View {
+    let title: String
+    let feature: PhonePermissionFeature
+    let state: PhonePermissionState
+    let symbol: String
+    let permissions: PhonePermissionStore
+    @Environment(\.dynamicTypeSize) private var typeSize
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if typeSize.isAccessibilitySize {
+                heading
+                accessButton
+            } else {
+                HStack(spacing: 12) { heading; Spacer(minLength: 0); accessButton }
+            }
+            if state == .denied {
+                Text("Change access in iPhone Settings or continue with manual logging.").font(.caption).foregroundStyle(.secondary)
+            }
+        }.padding(14).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .background(Palette.surface, in: RoundedRectangle(cornerRadius: 18))
+    }
+    private var heading: some View {
+        HStack(spacing: 12) {
+            Image(systemName: symbol).font(.title3).frame(width: 28).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).font(.headline)
+                Text(state.rawValue).font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+    @ViewBuilder private var accessButton: some View {
+        if state == .notRequested {
+            Button("Choose access") { Task { await permissions.request(feature) } }
+                .buttonStyle(.bordered).disabled(permissions.busy).frame(minHeight: 44)
+                .accessibilityLabel("Choose \(title) access")
+        }
     }
 }
