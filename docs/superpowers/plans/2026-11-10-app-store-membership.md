@@ -47,3 +47,26 @@ Signed-out first-launch discoverability without scrolling. A single membership e
 - [ ] Build/sign/audit1.0(26) with existing profiles, canonical model/243exactaudio, source freeze, protected-product checks and actual compiler thread limits on SSD. Preserve25andallolderartefacts.
 - [ ] Prepare all required editable App Store metadata and matching build. Inspect actual final review validation, including monthly pricing, and repair only evidenced omissions while preserving UK10/month,200lifetime,14dayeligibletrial.
 - [ ] Submit the compatible app/purchases/group for review once complete access and required fields are workable, using owner's explicit send instruction. Leave any actual new agreement/security credential/required legal certification for appropriate action-time approval. Hold Apple Support until a corrected review attempt is rejected. Record actual state and blockers honestly; no real charged purchase or automatic public release.
+
+
+### Task4: Focused account welcome and secure sign-in steps
+
+**Spec:** docs/superpowers/specs/2026-11-10-onboarding-redesign-design.md, Account welcome and shared constraints.
+**Files:** Native/iOS/AccountViews.swift and Tests/iOS/AccountRevisionTests.swift (or one focused new hosted test file included in generator/project only if actually needed); Tests/UI/MembershipFlowTests.swift only if direct UI regression needs extension.
+**Interfaces:** Consume unchanged NativeAccountStore step/checkpoint/startApple/startEmail/login, coordinator membership and actual AppleAccountButton. Produce a local presentation journey without altering trust, protected actions, expiry or backend request meaning. AccountSetupView initializer remains unchanged. Task1 route/identifier remains stable.
+
+- [ ] Write and run actual RED hosted rendered tests showing first signed-out welcome has Apple/email/passkey/recovery choices but no age/email input, membership is directly reachable, selecting email presents explicit age/role then only email identity input, and Back retains choices. Cover recovery without new checkpoint and no identity network call before enrolment checkpoint.
+- [ ] Implement small local presentation state/subviews using existing components. Keep active MFA and trusted creation paths, visible expiry/errors, real cancellation and busy fencing. Preserve account-step/generation/purpose sensitive-input clearing. No new trust gate or auth bypass.
+- [ ] Run focused new tests plus affected AccountRevisionTests/AccountFlowTests and MembershipFlowTests under root lease. Inspect ordinary/accessibility screenshots, improve only evidenced clipping. Record commands, actual results and limits; self-review and commit only task paths. Write task-4-report.md.
+
+### Task5: Short visual training setup and compact permissions
+
+**Spec:** docs/superpowers/specs/2026-11-10-onboarding-redesign-design.md, Training setup and shared constraints.
+**Files:** Native/iOS/OnboardingView.swift, Native/iOS/PhonePermissionsView.swift, Native/iOS/AnalyticsSettingsView.swift only for compact optional explanatory disclosure, Tests/iOS/SetupRenderedAcceptanceTests.swift or focused new rendered tests and directly affected permission tests. Generator/project only if adding a test file, preserving Task1 version1.0(26) and UUIDs.
+**Interfaces:** Preserve OnboardingView initializer, TrainingSetup.Stage/revision3, ProgrammePreferences, candidate/save, age/guardian and existing VoicePreviewCoordinator. Local presentation steps split goals/schedule/support and starting-point/family/review; never alter existing domain validation. Keep setup-health/setup-watch, analytics-usage/analytics-workout, comfortable-* and onboarding-continue identifiers.
+
+- [ ] Write and run actual RED rendered tests for separated goals/schedule/support, Back-retained selections, one comfort family at a time, explicit unsure advancing/review/edit, required completion preventing early save, accessibility layout, and collapsed optional permissions without requesting access. Use real profile/session state and deterministic existing collaborators.
+- [ ] Implement visual local steps, compact body/privacy/coach sections and permission rows/disclosures as spec. Main category progress remains six, no profile migration/reset. New visible copy has no colons/semicolons/em dashes. Preserve validation and all junior policy/guardian gates.
+- [ ] Run focused new and affected hosted setup/permissions/account tests under root lease; capture actual ordinary/accessibility screenshots of representative pages. No obsolete guest-flow tests or broad repeats without failures. Self-review, commit task paths, write task-5-report.md with commands/results/limits.
+
+**Execution order update:** Task1 and Task2 preparation, task-scoped reviews, Task4, Task5, one final review of all new source, then Task3 build26/provider submission. Do not archive a candidate before the owner's new onboarding changes are incorporated and reviewed.
