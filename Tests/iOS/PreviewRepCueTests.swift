@@ -257,10 +257,10 @@ final class PreviewRepCueTests: XCTestCase {
 
 /// Records which rep clips the rep voice starts, and finishes them on demand.
 @MainActor final class RepClipRecorder {
-    private(set) var made: [(clip: String, folder: String)] = []
+    private(set) var made: [(clip: String, text: String)] = []
     private var current: FakeRepClip?
-    func make(_ clip: String, _ folder: String) -> RepVoiceOutput {
-        made.append((clip, folder)); let output = FakeRepClip(); current = output; return output
+    func make(_ clip: String, _ text: String) -> RepVoiceOutput {
+        made.append((clip, text)); let output = FakeRepClip(); current = output; return output
     }
     func finish() { current?.onFinish?() }
 }
@@ -270,7 +270,7 @@ final class RepCounterVoiceTests: XCTestCase {
     private func store(preview: Bool, coach: RepVoicePlan.Coach?, clips: RepClipRecorder,
                        local: RepRecordingVoice? = nil) -> (TrainingStore, RepRecordingVoice, RepCueClock) {
         let clock = RepCueClock(), cached = RepRecordingVoice()
-        let remote = RemoteVoicePlayback(local: local ?? RepRecordingVoice(), previewPlayback: preview ? cached : nil, arnoldPlayback: cached, client: {
+        let remote = RemoteVoicePlayback(local: local ?? RepRecordingVoice(), previewPlayback: preview ? cached : nil, naturalPlayback: cached, client: {
             throw RemoteVoiceError.configuration
         }, uptime: { clock.now })
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("history.json")
@@ -297,7 +297,7 @@ final class RepCounterVoiceTests: XCTestCase {
         for action in ["voiceCoach", "repCoach", "interruption"] {
             for delay in [1.0, 8.0] {
                 let clips = RepClipRecorder(), local = RepRecordingVoice()
-                let (store, cached, clock) = store(preview: false, coach: .arnold, clips: clips, local: local)
+                let (store, cached, clock) = store(preview: false, coach: .device, clips: clips, local: local)
                 defer { store.cancelCoaching() }
                 store.session.cue = .alignment
                 clock.now += 1
@@ -337,7 +337,7 @@ final class RepCounterVoiceTests: XCTestCase {
     func testCoachChangeAndInterruptionInvalidatePendingStoreClosing() async throws {
         for action in ["voiceCoach", "repCoach", "interruption"] {
             let clips = RepClipRecorder(), local = RepRecordingVoice()
-            let (store, cached, clock) = store(preview: false, coach: .arnold, clips: clips, local: local)
+            let (store, cached, clock) = store(preview: false, coach: .device, clips: clips, local: local)
             defer { store.cancelCoaching() }
             clips.finish(); rep(0, store, clock); clips.finish()
             clock.now = store.now
@@ -369,7 +369,7 @@ final class RepCounterVoiceTests: XCTestCase {
     private func interrupt(_ action: String, store: TrainingStore) async throws {
         switch action {
         case "voiceCoach": try store.remoteVoice?.select(.local)
-        case "repCoach": store.repVoice.choose(.goggins)
+        case "repCoach": store.repVoice.choose(nil)
         default:
             NotificationCenter.default.post(name: AVAudioSession.interruptionNotification, object: nil,
                 userInfo: [AVAudioSessionInterruptionTypeKey: AVAudioSession.InterruptionType.began.rawValue])
@@ -383,7 +383,7 @@ final class RepCounterVoiceTests: XCTestCase {
     func testFormWarningWaitsForCurrentRepAndClearedWarningNeverStartsLater() {
         for cleared in [false, true] {
             let clips = RepClipRecorder()
-            let (store, cached, clock) = store(preview: false, coach: .arnold, clips: clips)
+            let (store, cached, clock) = store(preview: false, coach: .device, clips: clips)
             defer { store.cancelCoaching() }
             store.session.cue = .alignment
             store.coachingTick(at: clock.now)
@@ -402,7 +402,7 @@ final class RepCounterVoiceTests: XCTestCase {
     func testClosingWaitsForCoachingSentenceAndDropsWhenTooLate() throws {
         for delay in [1.0, 10.0] {
             let clips = RepClipRecorder()
-            let (store, cached, clock) = store(preview: false, coach: .arnold, clips: clips)
+            let (store, cached, clock) = store(preview: false, coach: .device, clips: clips)
             defer { store.cancelCoaching() }
             clips.finish(); rep(0, store, clock); clips.finish()
             clock.now = store.now
@@ -420,7 +420,7 @@ final class RepCounterVoiceTests: XCTestCase {
     func testRepYieldMustReleaseAndReacquireTheSharedSession() throws {
         let player = RepVoicePlayer(defaults: UserDefaults(suiteName: UUID().uuidString)!)
         defer { player.cancel() }
-        player.start()
+        player.choose(.device); player.start()
         XCTAssertTrue(player.isPlaying)
         player.yield()
         let session = AVAudioSession.sharedInstance()
@@ -433,7 +433,7 @@ final class RepCounterVoiceTests: XCTestCase {
 
     func testRecoveryWaitsForCurrentRepAndNeverOverlapsTheClosingLine() {
         let clips = RepClipRecorder()
-        let (store, cached, clock) = store(preview: false, coach: .arnold, clips: clips)
+        let (store, cached, clock) = store(preview: false, coach: .device, clips: clips)
         defer { store.cancelCoaching() }
         rep(0, store, clock)
         store.endSet()
@@ -448,7 +448,7 @@ final class RepCounterVoiceTests: XCTestCase {
     func testOldRepCompletionCannotClearAReplacementLine() throws {
         let outputs = RepOutputBank()
         let player = RepVoicePlayer(defaults: UserDefaults(suiteName: UUID().uuidString)!, makeOutput: outputs.make)
-        player.start()
+        player.choose(.device); player.start()
         let stale = try XCTUnwrap(outputs.outputs.first?.onFinish)
         player.yield(); player.rep(1, clean: true)
         stale()
@@ -461,7 +461,7 @@ final class RepCounterVoiceTests: XCTestCase {
     func testRepInterruptionDropsAllWaitingSpeechAndDoesNotRestartOnReturn() async {
         let outputs = RepOutputBank()
         let player = RepVoicePlayer(defaults: UserDefaults(suiteName: UUID().uuidString)!, makeOutput: outputs.make)
-        player.start(); player.rep(1, clean: true)
+        player.choose(.device); player.start(); player.rep(1, clean: true)
         NotificationCenter.default.post(name: AVAudioSession.interruptionNotification, object: nil,
             userInfo: [AVAudioSessionInterruptionTypeKey: AVAudioSession.InterruptionType.began.rawValue])
         for _ in 0..<10 { await Task.yield() }
@@ -473,7 +473,7 @@ final class RepCounterVoiceTests: XCTestCase {
 
     func testResumeAndInputChangeDoNotRepeatStartButNextSetDoes() {
         let clips = RepClipRecorder()
-        let (store, _, clock) = store(preview: false, coach: .arnold, clips: clips)
+        let (store, _, clock) = store(preview: false, coach: .device, clips: clips)
         defer { store.cancelCoaching() }
         clips.finish()
         store.pause(); store.resume(); store.coachingTick(at: clock.now + 1)
@@ -492,7 +492,7 @@ final class RepCounterVoiceTests: XCTestCase {
 
     func testEndingSetFinishesCurrentRepLineThenClosesExactlyOnce() {
         let clips = RepClipRecorder()
-        let (store, _, clock) = store(preview: false, coach: .arnold, clips: clips)
+        let (store, _, clock) = store(preview: false, coach: .device, clips: clips)
         defer { store.cancelCoaching() }
         rep(0, store, clock)
         store.endSet(); store.coachingTick(); store.coachingTick()
@@ -507,18 +507,18 @@ final class RepCounterVoiceTests: XCTestCase {
 
     func testCountsEveryCameraRepAndAddsALineEveryThirdCleanRep() {
         let clips = RepClipRecorder()
-        let (store, _, clock) = store(preview: false, coach: .goggins, clips: clips)
+        let (store, _, clock) = store(preview: false, coach: .device, clips: clips)
         defer { store.cancelCoaching() }
         clips.finish()
         for index in 0..<3 { rep(index, store, clock); clips.finish() }
         XCTAssertEqual(clips.made.map(\.clip), ["start", "count-01", "count-02", "count-03", "motivate-1"])
-        XCTAssertTrue(clips.made.allSatisfy { $0.folder == "DemoVoice/goggins-reps" })
+        XCTAssertEqual(clips.made.map(\.text).prefix(4), ["Begin when you are ready.", "1", "2", "3"])
         XCTAssertTrue(store.history.isEmpty, "Spoken counts never create completed work")
     }
 
     func testTargetCueNeverCutsTheCurrentRepOrBlocksLaterCountsWhenDropped() {
         let clips = RepClipRecorder()
-        let (store, cached, clock) = store(preview: false, coach: .goggins, clips: clips)
+        let (store, cached, clock) = store(preview: false, coach: .device, clips: clips)
         defer { store.cancelCoaching() }
         clips.finish()
         for index in 0..<store.session.exercise.target { rep(index, store, clock); clips.finish() }
@@ -535,7 +535,7 @@ final class RepCounterVoiceTests: XCTestCase {
     func testStaysSilentWhenOffForVideoAndWhenVoiceFeedbackIsOff() {
         for scenario in ["off", "video", "muted"] {
             let clips = RepClipRecorder()
-            let (store, _, clock) = store(preview: false, coach: scenario == "off" ? nil : .arnold, clips: clips)
+            let (store, _, clock) = store(preview: false, coach: scenario == "off" ? nil : .device, clips: clips)
             defer { store.cancelCoaching() }
             if scenario == "video" { store.source = .video; store.session.restartSet(source: .video, at: 0) }
             if scenario == "muted" { store.setVoiceFeedback(false) }
@@ -547,29 +547,30 @@ final class RepCounterVoiceTests: XCTestCase {
 
     func testPreviewEncouragementGivesWayToTheRepCounter() {
         let clips = RepClipRecorder()
-        let (store, cached, clock) = store(preview: true, coach: .arnold, clips: clips)
+        let (store, cached, clock) = store(preview: true, coach: .device, clips: clips)
         defer { store.cancelCoaching() }
         clips.finish()
         for index in 0..<4 { rep(index, store, clock); clips.finish() }
         XCTAssertTrue(cached.spoken.isEmpty, "The every-two-reps clip would double up with the counts")
         XCTAssertEqual(clips.made.map(\.clip), ["start", "count-01", "count-02", "count-03", "motivate-1", "count-04"])
-        XCTAssertTrue(clips.made.allSatisfy { $0.folder == "DemoVoice/arnold-reps" })
+        XCTAssertEqual(clips.made.first?.text, "Begin when you are ready.")
     }
 
-    func testEveryRepClipIsBundledForBothCoachesInThePlayableFormat() throws {
-        for coach in RepVoicePlan.Coach.allCases {
-            for clip in RepVoicePlan.allClips {
-                let url = try XCTUnwrap(Bundle.main.url(forResource: clip, withExtension: "mp3", subdirectory: coach.folder), "\(coach) \(clip)")
-                let player = try AVAudioPlayer(contentsOf: url)
-                XCTAssertEqual(player.format.sampleRate, 22_050, "\(coach) \(clip)")
-                XCTAssertTrue(player.duration > 0 && player.duration <= 10, "\(coach) \(clip)")
-            }
-        }
+    func testExplicitDeviceVoiceChoicePersistsButOffRemainsOffAcrossLaunches() {
+        let suite = "DeviceCounts." + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let player = RepVoicePlayer(defaults: defaults)
+        XCTAssertNil(player.coach)
+        player.choose(.device)
+        XCTAssertEqual(RepVoicePlayer(defaults: defaults).coach, .device)
+        player.choose(nil)
+        XCTAssertNil(RepVoicePlayer(defaults: defaults).coach)
     }
 
     func testCancellingStopsTheQueue() {
         let clips = RepClipRecorder()
-        let (store, _, clock) = store(preview: false, coach: .arnold, clips: clips)
+        let (store, _, clock) = store(preview: false, coach: .device, clips: clips)
         rep(0, store, clock)
         store.pause()
         clips.finish()
@@ -587,7 +588,7 @@ final class RepCounterVoiceTests: XCTestCase {
 
 @MainActor private final class RepOutputBank {
     var outputs: [FakeRepClip] = []
-    func make(_ name: String, _ folder: String) -> RepVoiceOutput {
+    func make(_ name: String, _ text: String) -> RepVoiceOutput {
         let output = FakeRepClip(); outputs.append(output); return output
     }
 }

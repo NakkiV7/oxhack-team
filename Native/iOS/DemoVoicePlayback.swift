@@ -22,7 +22,7 @@ final class DemoVoicePlayback: VoicePlayback {
     private var audioSessionActive = false
 
     static func isAvailable(preview: Bool, coach: VoiceCoachPreference) -> Bool {
-        preview && coach == .arnold
+        preview && coach == .maya
     }
 
     static func clipName(reason: CoachingReason?, priority: CoachingPriority, variant: Int,
@@ -34,28 +34,29 @@ final class DemoVoicePlayback: VoicePlayback {
 
     private static func clipNames(reason: CoachingReason?, priority: CoachingPriority,
                                   recovery: DemoVoiceRecoveryReason?) -> [String] {
-        if priority == .stop { return ["stop"] }
-        if priority == .form, reason == .tracking { return ["tracking"] }
-        if priority == .form, reason == .alignment { return ["alignment"] }
-        if priority == .pacing, reason == .targetReached { return ["target"] }
-        if priority == .rest, reason == .restReminder { return ["rest"] }
-        if priority == .rest, reason == .workoutCompleted { return ["completion"] }
-        if priority == .rest, reason == nil, recovery != nil { return ["recovery", "recovery-2"] }
-        guard priority == .pacing else { return [] }
-        switch reason {
-        case .steadyRhythm: return ["positive-1", "positive-2", "positive-3", "positive-4", "positive-5"]
-        case .slowerRep: return ["slower-1", "slower-2", "slower-3", "slower-4"]
+        let selected: CoachingReason
+        switch (priority, reason) {
+        case (.stop, _): selected = .discomfort
+        case (.form, .tracking?): selected = .tracking
+        case (.form, .alignment?): selected = .alignment
+        case (.pacing, .targetReached?): selected = .targetReached
+        case (.pacing, .steadyRhythm?): selected = .steadyRhythm
+        case (.pacing, .slowerRep?): selected = .slowerRep
+        case (.rest, .restReminder?): selected = .restReminder
+        case (.rest, .workoutCompleted?): selected = .workoutCompleted
+        case (.rest, nil) where recovery != nil: selected = .restReminder
         default: return []
         }
+        return TrainerCueLibrary.lines(reason: selected, tone: .encouraging).indices.map { "\(selected.rawValue)-\($0 + 1)" }
     }
 
-    init(local: VoicePlayback? = nil, makeAudio: (@MainActor (String) throws -> VoiceAudioOutput)? = nil,
+    init(local: VoicePlayback? = nil, tone: TrainerTone = .encouraging, makeAudio: (@MainActor (String) throws -> VoiceAudioOutput)? = nil,
          recoveryReason: @escaping @MainActor (VoiceCue) -> DemoVoiceRecoveryReason? = { _ in nil },
          prepareAudioSession: (@MainActor () throws -> Void)? = nil,
          releaseAudioSession: (@MainActor () -> Void)? = nil,
          uptime: @escaping () -> Double = { ProcessInfo.processInfo.systemUptime }) {
         self.local = local ?? LocalVoicePlayback()
-        self.makeAudio = makeAudio ?? { try DemoBundledAudioOutput(name: $0) }
+        self.makeAudio = makeAudio ?? { try DemoBundledAudioOutput(name: $0, tone: tone) }
         self.recoveryReason = recoveryReason
         self.prepareAudioSession = prepareAudioSession ?? {
             let session = AVAudioSession.sharedInstance()
@@ -91,7 +92,7 @@ final class DemoVoicePlayback: VoicePlayback {
               !cue.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
               cue.text.count <= 500) else { complete(token: token); return }
         guard case .coaching(let priority) = cue.kind else { complete(token: token); return }
-        let names = safety ? ["stop"] : Self.clipNames(reason: cue.reason, priority: priority, recovery: recoveryReason(cue))
+        let names = safety ? ["discomfort-1"] : Self.clipNames(reason: cue.reason, priority: priority, recovery: recoveryReason(cue))
         guard let group = names.first else {
             complete(token: token)
             return
@@ -146,9 +147,8 @@ private final class DemoBundledAudioOutput: NSObject, VoiceAudioOutput, AVAudioP
     var onFinish: (() -> Void)?
     private let player: AVAudioPlayer
 
-    init(name: String, bundle: Bundle = .main) throws {
-        guard ["positive-1", "positive-2", "positive-3", "positive-4", "slower-1", "slower-2", "slower-3", "recovery", "recovery-2", "positive-5", "slower-4", "completion", "tracking", "alignment", "target", "rest", "stop"].contains(name),
-              let url = bundle.url(forResource: name, withExtension: "mp3", subdirectory: "DemoVoice/arnold") else {
+    init(name: String, tone: TrainerTone, bundle: Bundle = .main) throws {
+        guard let url = bundle.url(forResource: name, withExtension: "mp3", subdirectory: "DemoVoice/maya/\(tone.rawValue)") else {
             throw CocoaError(.fileNoSuchFile)
         }
         player = try AVAudioPlayer(contentsOf: url)
@@ -183,12 +183,12 @@ private final class DemoBundledAudioOutput: NSObject, VoiceAudioOutput, AVAudioP
     func stop()
 }
 
-/// Plays `RepVoicePlan` lines from the bundled Arnold or Goggins rep clips (offline, no gateway). Silent unless a coach is
+/// Plays optional `RepVoicePlan` lines using the device speaking voice. Silent unless device voice is
 /// chosen and the workout's Voice feedback is on; `cancel()` on pause, stop, voice off or background.
 @MainActor @Observable
 final class RepVoicePlayer {
     static let defaultsKey = "voice.repCounterCoach"
-    /// The rep counter voice, or nil for off. Defaults to Arnold; `choose(_:)` remembers a person's choice.
+    /// The explicitly chosen rep counter voice, or nil for off.
     var coach: RepVoicePlan.Coach? { didSet { if coach != oldValue { cancel(); onInterrupt?() } } }
     /// Clips started, newest last (for tests and diagnostics).
     @ObservationIgnored private(set) var started: [String] = []
@@ -208,9 +208,10 @@ final class RepVoicePlayer {
          makeOutput: (@MainActor (String, String) throws -> RepVoiceOutput)? = nil) {
         self.defaults = defaults; self.uptime = uptime
         self.usesAudioSession = makeOutput == nil
-        self.makeOutput = makeOutput ?? { try RepClipOutput(name: $0, folder: $1, bundle: .main) }
+        self.makeOutput = makeOutput ?? { _, text in RepDeviceVoiceOutput(text: text) }
         let saved = defaults.string(forKey: Self.defaultsKey)
-        coach = saved == "off" ? nil : RepVoicePlan.Coach(rawValue: saved ?? "") ?? .arnold
+        coach = saved.flatMap(RepVoicePlan.Coach.init(rawValue:))
+        defaults.set(coach?.rawValue ?? "off", forKey: Self.defaultsKey)
         interruptionObserver = NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification,
             object: nil, queue: .main) { [weak self] notification in
             guard (notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt) == AVAudioSession.InterruptionType.began.rawValue else { return }
@@ -258,9 +259,9 @@ final class RepVoicePlayer {
     }
 
     private func pump() {
-        guard output == nil, let coach else { return }
+        guard output == nil, coach != nil else { return }
         while let line = plan.next(at: uptime()) {
-            guard let clip = try? makeOutput(line.clip, coach.folder) else { continue }
+            guard let clip = try? makeOutput(line.clip, Self.spokenText(for: line.clip)) else { continue }
             if usesAudioSession, !audioSessionActive {
                 do {
                     let session = AVAudioSession.sharedInstance()
@@ -291,6 +292,18 @@ final class RepVoicePlayer {
         releaseAudioSession()
     }
 
+    private static func spokenText(for clip: String) -> String {
+        if clip == "start" { return "Begin when you are ready." }
+        if clip.hasPrefix("count-"), let count = Int(clip.suffix(2)), (1...30).contains(count) { return String(count) }
+        if clip.hasPrefix("motivate-"), let number = Int(clip.suffix(1)), (1...7).contains(number) {
+            return TrainerCueLibrary.lines(reason: .steadyRhythm, tone: .gentle)[number - 1]
+        }
+        if clip.hasPrefix("closing-"), let number = Int(clip.suffix(1)), (1...3).contains(number) {
+            return ["Set complete. Take a comfortable rest.", "Your reps are saved. Recover at your pace.", "Well done. Rest before continuing."][number - 1]
+        }
+        return ""
+    }
+
     private func releaseAudioSession() {
         guard audioSessionActive else { return }
         audioSessionActive = false
@@ -299,30 +312,37 @@ final class RepVoicePlayer {
 }
 
 @MainActor
-private final class RepClipOutput: NSObject, RepVoiceOutput, AVAudioPlayerDelegate {
+private final class RepDeviceVoiceOutput: NSObject, RepVoiceOutput, AVSpeechSynthesizerDelegate {
     var onFinish: (() -> Void)?
-    private let player: AVAudioPlayer
+    private let synthesizer = AVSpeechSynthesizer()
+    private let utterance: AVSpeechUtterance
+    private var active = false
 
-    init(name: String, folder: String, bundle: Bundle) throws {
-        guard RepVoicePlan.allClips.contains(name),
-              let url = bundle.url(forResource: name, withExtension: "mp3", subdirectory: folder) else { throw CocoaError(.fileNoSuchFile) }
-        player = try AVAudioPlayer(contentsOf: url)
+    init(text: String) {
+        utterance = AVSpeechUtterance(string: text)
         super.init()
-        guard player.format.sampleRate == 22_050, player.duration.isFinite, player.duration > 0, player.duration <= 10 else {
-            throw CocoaError(.fileReadCorruptFile)
-        }
-        player.delegate = self
-        player.volume = 1
+        synthesizer.usesApplicationAudioSession = true
+        synthesizer.delegate = self
     }
-
-    func play() -> Bool { player.play() }
-    func stop() { player.stop() }
-
-    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) { finished(ObjectIdentifier(player)) }
-    nonisolated func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) { finished(ObjectIdentifier(player)) }
-    private nonisolated func finished(_ identity: ObjectIdentifier) {
+    func play() -> Bool {
+        active = true
+        synthesizer.speak(utterance)
+        return true
+    }
+    func stop() {
+        active = false
+        synthesizer.stopSpeaking(at: .immediate)
+    }
+    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        completed(ObjectIdentifier(utterance))
+    }
+    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
+        completed(ObjectIdentifier(utterance))
+    }
+    private nonisolated func completed(_ id: ObjectIdentifier) {
         Task { @MainActor [weak self] in
-            guard let self, ObjectIdentifier(player) == identity else { return }
+            guard let self, active, ObjectIdentifier(utterance) == id else { return }
+            active = false
             onFinish?()
         }
     }

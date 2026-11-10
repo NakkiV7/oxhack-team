@@ -20,7 +20,7 @@ final class WorkoutCompletionVoiceTests: XCTestCase {
         let defaults = UserDefaults(suiteName: UUID().uuidString)!
         defaults.set("arnold", forKey: "trainer.voice")
         let voice = CompletionRecordingVoice()
-        let remote = RemoteVoicePlayback(offlineOnly: true, defaults: defaults, arnoldPlayback: voice)
+        let remote = RemoteVoicePlayback(offlineOnly: true, defaults: defaults, naturalPlayback: voice)
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
         let store = TrainingStore(historyURL: root.appendingPathComponent("history.json"), voicePlayback: remote, defaults: defaults)
@@ -58,7 +58,7 @@ final class WorkoutCompletionVoiceTests: XCTestCase {
         XCTAssertEqual(cached.spoken.count, 1, "Repeated finish/ticks cannot replay completion")
     }
 
-    func testSelectedArnoldCompletesActualWorkoutOutsidePreview() {
+    func testSelectedMayaCompletesActualWorkoutOutsidePreview() {
         let (store, cached) = makeStore(previewMode: false)
         defer { store.cancelCoaching() }
         store.beginAuthorizedSession(); store.setVoiceFeedback(true); endManualSet(store)

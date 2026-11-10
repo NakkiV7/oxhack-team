@@ -7,13 +7,13 @@ final class PreviewVoiceIntegrationTests: XCTestCase {
         FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("history.json")
     }
 
-    func testPreviewStoreOwnsArnoldCacheButFeedbackStaysOffUntilAFreshFormCue() async throws {
+    func testPreviewStoreOwnsMayaCacheButFeedbackStaysOffUntilAFreshFormCue() async throws {
         let cached = PreviewRecordingVoice()
         let store = TrainingStore(historyURL: historyURL(), previewMode: true, previewPlayback: cached)
         defer { store.cancelCoaching() }
         let remote = try XCTUnwrap(store.remoteVoice)
-        XCTAssertEqual(remote.preference, .arnold)
-        XCTAssertEqual(remote.configuredVoices, [.arnold])
+        XCTAssertEqual(remote.preference, .maya)
+        XCTAssertEqual(remote.configuredVoices, [.maya, .leo, .local])
         XCTAssertFalse(store.voiceFeedbackEnabled)
         store.beginAuthorizedSession()
         XCTAssertTrue(store.remoteVoice === remote)

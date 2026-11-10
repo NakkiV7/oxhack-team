@@ -3,6 +3,42 @@ import CryptoKit
 @testable import Spottr
 
 @MainActor final class TrainingSetupTests: XCTestCase {
+    func testLegacyVoiceMigrationPreservesProgrammeHistoryAndExplicitFeedbackOff() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let directory = try AccountProfileDirectory(accountID: UUID(), root: root)
+        let person = try directory.add(age: .init(ageYears: 30, guardianManaged: false), name: "Adult")
+        let scope = directory.scope(person.id)
+        let workspace = try AccountWorkspace(scope: scope)
+        let profile = try XCTUnwrap(workspace.profile.profile)
+        _ = try workspace.programme.prepare(profile: profile, history: [])
+        workspace.training.beginAuthorizedSession()
+        workspace.training.switchToManualReps(); workspace.training.setManualReps(3)
+        workspace.training.endSet(); workspace.training.finish()
+        let history = workspace.training.history
+        XCTAssertEqual(history.first?.sets.first?.reps, 3)
+        let programmeBytes = try Data(contentsOf: scope.file("programme.json"))
+        let historyBytes = try Data(contentsOf: scope.file("history.json"))
+        let profileBytes = try Data(contentsOf: scope.file("profile.json"))
+        let defaults = workspace.profile.preferencesDefaults
+        defaults.set(false, forKey: "trainer.audioEnabled")
+        for retired in ["arnold", "david", "goggins"] {
+            defaults.set(retired, forKey: "trainer.voice")
+            defaults.set(retired, forKey: RepVoicePlayer.defaultsKey)
+            let reopened = try AccountWorkspace(scope: scope)
+            XCTAssertEqual(reopened.training.remoteVoice?.preference.rawValue, "maya")
+            XCTAssertEqual(defaults.string(forKey: "trainer.voice"), "maya")
+            XCTAssertNil(reopened.training.repVoice.coach)
+            XCTAssertFalse(reopened.training.voiceFeedbackEnabled)
+            XCTAssertEqual(reopened.training.history, history)
+            XCTAssertEqual(try Data(contentsOf: scope.file("programme.json")), programmeBytes)
+            XCTAssertEqual(try Data(contentsOf: scope.file("history.json")), historyBytes)
+            XCTAssertEqual(try Data(contentsOf: scope.file("profile.json")), profileBytes)
+            reopened.training.cancelCoaching()
+        }
+        workspace.training.cancelCoaching()
+    }
+
     func testScopedProfileResetPreservesCanonicalAgeAndRequiresFreshSetup() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -32,7 +68,7 @@ import CryptoKit
         child.training.remoteVoice?.reloadPreferences()
         XCTAssertEqual(child.training.remoteVoice?.tone, .gentle)
         XCTAssertEqual(child.training.remoteVoice?.preference, .maya)
-        XCTAssertFalse(child.training.remoteVoice?.configuredVoices.contains(.david) == true)
+        XCTAssertFalse(child.training.remoteVoice?.configuredVoices.map(\.rawValue).contains("david") == true)
         XCTAssertEqual(first.training.remoteVoice?.tone, .direct)
         child.profile.preferencesDefaults.set("goggins", forKey: RepVoicePlayer.defaultsKey)
         let reopenedJunior = try AccountWorkspace(scope: directory.scope(junior.id))

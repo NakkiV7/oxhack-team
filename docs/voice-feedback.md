@@ -1,5 +1,7 @@
 # Voice feedback
 
+**Current-build supersession — 10 November 2026, 1.0 (27):** The shipping coach choices are Maya, Leo and Local voice. Maya/Leo retain their 144 natural offline recordings and three styles. Legacy celebrity choices resolve to Maya when preferences load or reload; programme and completed history are preserved. The three retired coaching/rep resource folders are excluded after verified SSD preservation. Optional rep counts require explicit **Speak rep counts with device voice** consent and default off for new or retired preferences. The current native client rejects legacy gateway catalogues. The dated adapter and delivery evidence below describes historical builds and does not advertise current celebrity availability. See [current rep counting](rep-counter-voice.md).
+
 Tracked camera workouts have an explicit **Voice feedback** toggle. It starts off for every new workout. Turning it on speaks only newly issued coaching events; existing text is not read back. Muting, pausing, ending a set, changing its generation, or leaving the workout cancels speech immediately.
 
 Arnold is now the initial coach choice. It uses seventeen bundled ElevenLabs recordings for typed workout cues, including form, tracking, pacing, rest, completion and stop warnings. Local remains an explicit Apple speech choice; David remains an optional gateway voice. See [the current Arnold bank and acceptance](arnold-preview-voice.md).

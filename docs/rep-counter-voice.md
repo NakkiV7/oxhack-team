@@ -1,36 +1,19 @@
 # Rep counter voice
 
-Arnold or Goggins counts every camera-counted rep out loud and adds a motivational line every third clean rep, like the
-web squat coach. It uses audio bundled in the app, so it works offline and costs nothing per rep.
+Build 1.0 (27) offers optional rep counts using the iPhone’s device speaking voice. Counts are separate from Maya and Leo’s natural offline coaching recordings. No gateway or paid synthesis is used.
 
 ## Behaviour
 
-- **When it speaks.** Only while the workout's existing **Voice feedback** switch is on (still off by default), for camera
-  reps. Video and manual sets stay silent.
-- **What it says.** A start line when a camera set begins, the rep number on every counted rep (1 to 30), a rotating
-  motivational line on every third clean rep, and a closing line when the set ends.
-- **Queueing.** One line at a time, never cut off by another rep line. A newer count replaces one still waiting, so an old
-  number is never said; counts wait at most 1.5 s, other lines a few seconds.
-- **Safety.** Stop, form and pacing cues take over (`RepVoicePlayer.yield()`). Pause, stop, background, voice off and a pain
-  or discomfort stop cancel it. "Pain is just information. Keep going." from the web coach is not included.
-- **Choosing a voice.** Coach voice sheet → **Rep counter**: Off, Arnold or Goggins (default Arnold). It does not need the
-  gateway or "Check configured voices". While it is on, the preview's "every two reps" clip and the live "Keep a steady
-  rhythm." encouragement are suppressed so lines never double up.
+- **Opt in.** In the coach voice sheet, enable **Speak rep counts with device voice**. New installations and former celebrity-counter preferences start off. Explicit off stays off across launches. Choosing Maya, Leo or Local voice never enables counting automatically.
+- **When it speaks.** The workout’s **Voice feedback** must also be on, and the input must be camera counting. Manual and video sets stay silent. Junior profiles do not offer the counter.
+- **What it says.** A start line, the number for each counted rep from 1 to 30, gentle encouragement after every third clean rep, and a closing line after the set ends.
+- **Queueing.** A new count replaces a waiting count. Counts expire after 1.5 seconds; start/encouragement lines after 4 seconds; closing lines after 8 seconds. A line that already started can finish. Counts cannot interrupt each other.
+- **Shared voice ownership.** Form guidance waits for the current rep sentence and rechecks freshness. Stop guidance interrupts immediately. Muting, pausing, backgrounding, discomfort, or changing the selected voice cancels pending counts. Optional counts suppress routine coaching encouragement so both do not speak together.
 
-## Code
+## Implementation and evidence
 
-- `Shared/Core/VoiceCuePlayback.swift`: `RepVoicePlan`, the queue rules (tests in `Tests/Core/RepVoicePlanTests.swift`).
-- `Native/iOS/DemoVoicePlayback.swift`: `RepVoicePlayer`, bundled clip playback with an injectable output for tests.
-- `Native/iOS/TrainingStore.swift`: `repVoiceTick` after each coaching tick, plus `yield()` when a cue speaks.
-- `Native/iOS/VoiceCoachSettingsView.swift`: the Rep counter picker.
-- `Tests/iOS/PreviewRepCueTests.swift`: `RepCounterVoiceTests`, and the existing preview tests run with the counter off.
+`Shared/Core/VoiceCuePlayback.swift` owns queue rules. `Native/iOS/DemoVoicePlayback.swift` contains `RepVoicePlayer` and its device speech output. `TrainingStore` and `CoachingVoiceBridge` arbitrate counts and coaching. `VoiceCoachSettingsView` owns explicit opt-in.
 
-No new source files, so the Xcode project file is unchanged; the clips sit in the `Native/Resources/DemoVoice` folder
-reference.
+`Tests/Core/RepVoicePlanTests.swift` checks queue and expiry rules. `Tests/iOS/PreviewRepCueTests.swift` exercises the real player/store handoffs with passive outputs, including finish, priority, cancellation and stale callbacks. Actual audible quality and audio coexistence remain physical-device checks.
 
-## Audio
-
-`Native/Resources/DemoVoice/arnold-reps` and `goggins-reps`: 41 clips each (counts 1–30, seven motivational lines, three
-closing lines, one start line), ElevenLabs `eleven_turbo_v2_5`, `mp3_22050_32`, all under 3.4 s. They were synthesised for
-the squat web prototype and reused from its cache, with no new synthesis; each folder's `manifest.json` records the text,
-size and SHA-256 of every clip.
+The retired coaching and rep folders were independently preserved and verified on SSD before removal from the shipping resource tree. Historical builds and dated evidence remain unchanged. The shipping catalogue contains only Maya, Leo and Local voice; legacy Arnold/David/Goggins coaching preferences resolve to Maya without changing programme or workout history.

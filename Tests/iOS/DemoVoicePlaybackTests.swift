@@ -5,8 +5,8 @@ import XCTest
 @MainActor
 final class DemoVoicePlaybackTests: XCTestCase {
     func testBundledBankExistsAndDecodesWithoutPlayingAudio() throws {
-        for name in ["positive-1", "positive-2", "positive-3", "positive-4", "slower-1", "slower-2", "slower-3", "recovery", "recovery-2", "positive-5", "slower-4", "completion", "tracking", "alignment", "target", "rest", "stop"] {
-            let url = try XCTUnwrap(Bundle.main.url(forResource: name, withExtension: "mp3", subdirectory: "DemoVoice/arnold"))
+        for name in ["steadyRhythm-1", "steadyRhythm-2", "steadyRhythm-3", "steadyRhythm-4", "slowerRep-1", "slowerRep-2", "slowerRep-3", "restReminder-1", "restReminder-2", "steadyRhythm-5", "slowerRep-1", "workoutCompleted-1", "tracking-1", "alignment-1", "targetReached-1", "restReminder-1", "discomfort-1"] {
+            let url = try XCTUnwrap(Bundle.main.url(forResource: name, withExtension: "mp3", subdirectory: "DemoVoice/maya/encouraging"))
             let player = try AVAudioPlayer(contentsOf: url)
             XCTAssertEqual(player.format.sampleRate, 22_050)
             XCTAssertGreaterThan(player.duration, 0)
@@ -16,30 +16,30 @@ final class DemoVoicePlaybackTests: XCTestCase {
         }
     }
 
-    func testPreviewArnoldIsTheOnlyCachedSelection() {
-        XCTAssertTrue(DemoVoicePlayback.isAvailable(preview: true, coach: .arnold))
-        XCTAssertFalse(DemoVoicePlayback.isAvailable(preview: false, coach: .arnold))
-        XCTAssertFalse(DemoVoicePlayback.isAvailable(preview: true, coach: .david))
+    func testPreviewMayaIsTheOnlyCachedSelection() {
+        XCTAssertTrue(DemoVoicePlayback.isAvailable(preview: true, coach: .maya))
+        XCTAssertFalse(DemoVoicePlayback.isAvailable(preview: false, coach: .maya))
+        XCTAssertFalse(DemoVoicePlayback.isAvailable(preview: true, coach: .leo))
         XCTAssertFalse(DemoVoicePlayback.isAvailable(preview: true, coach: .local))
     }
 
     func testReasonAndPrioritySelectSafeVariantsWithoutTextGuessing() {
-        XCTAssertEqual(DemoVoicePlayback.clipName(reason: .steadyRhythm, priority: .pacing, variant: 0), "positive-1")
-        XCTAssertEqual(DemoVoicePlayback.clipName(reason: .steadyRhythm, priority: .pacing, variant: 1), "positive-2")
-        XCTAssertEqual(DemoVoicePlayback.clipName(reason: .slowerRep, priority: .pacing, variant: 0), "slower-1")
-        XCTAssertEqual(DemoVoicePlayback.clipName(reason: .slowerRep, priority: .pacing, variant: 1), "slower-2")
-        XCTAssertEqual(DemoVoicePlayback.clipName(reason: .tracking, priority: .form, variant: 0), "tracking")
-        XCTAssertEqual(DemoVoicePlayback.clipName(reason: .alignment, priority: .form, variant: 0), "alignment")
-        XCTAssertEqual(DemoVoicePlayback.clipName(reason: .targetReached, priority: .pacing, variant: 0), "target")
-        XCTAssertEqual(DemoVoicePlayback.clipName(reason: .restReminder, priority: .rest, variant: 0), "rest")
-        XCTAssertEqual(DemoVoicePlayback.clipName(reason: .discomfort, priority: .stop, variant: 0), "stop")
+        XCTAssertEqual(DemoVoicePlayback.clipName(reason: .steadyRhythm, priority: .pacing, variant: 0), "steadyRhythm-1")
+        XCTAssertEqual(DemoVoicePlayback.clipName(reason: .steadyRhythm, priority: .pacing, variant: 1), "steadyRhythm-2")
+        XCTAssertEqual(DemoVoicePlayback.clipName(reason: .slowerRep, priority: .pacing, variant: 0), "slowerRep-1")
+        XCTAssertEqual(DemoVoicePlayback.clipName(reason: .slowerRep, priority: .pacing, variant: 1), "slowerRep-2")
+        XCTAssertEqual(DemoVoicePlayback.clipName(reason: .tracking, priority: .form, variant: 0), "tracking-1")
+        XCTAssertEqual(DemoVoicePlayback.clipName(reason: .alignment, priority: .form, variant: 0), "alignment-1")
+        XCTAssertEqual(DemoVoicePlayback.clipName(reason: .targetReached, priority: .pacing, variant: 0), "targetReached-1")
+        XCTAssertEqual(DemoVoicePlayback.clipName(reason: .restReminder, priority: .rest, variant: 0), "restReminder-1")
+        XCTAssertEqual(DemoVoicePlayback.clipName(reason: .discomfort, priority: .stop, variant: 0), "discomfort-1")
         XCTAssertNil(DemoVoicePlayback.clipName(reason: .steadyRhythm, priority: .form, variant: 0))
         XCTAssertNil(DemoVoicePlayback.clipName(reason: nil, priority: .pacing, variant: 0))
     }
 
     func testRecoveryRequiresAnExplicitEndedSetOrFatigueEventAndRestPriority() {
-        XCTAssertEqual(DemoVoicePlayback.clipName(reason: nil, priority: .rest, variant: 0, recovery: .endedSet), "recovery")
-        XCTAssertEqual(DemoVoicePlayback.clipName(reason: nil, priority: .rest, variant: 0, recovery: .fatigue), "recovery")
+        XCTAssertEqual(DemoVoicePlayback.clipName(reason: nil, priority: .rest, variant: 0, recovery: .endedSet), "restReminder-1")
+        XCTAssertEqual(DemoVoicePlayback.clipName(reason: nil, priority: .rest, variant: 0, recovery: .fatigue), "restReminder-1")
         XCTAssertNil(DemoVoicePlayback.clipName(reason: nil, priority: .rest, variant: 0))
         XCTAssertNil(DemoVoicePlayback.clipName(reason: .tracking, priority: .rest, variant: 0, recovery: .endedSet))
         XCTAssertNil(DemoVoicePlayback.clipName(reason: nil, priority: .pacing, variant: 0, recovery: .fatigue))
@@ -49,7 +49,7 @@ final class DemoVoicePlaybackTests: XCTestCase {
         let playback = DemoVoicePlayback(local: local, makeAudio: { names.append($0); return audio },
             recoveryReason: { $0.id == ended.id ? .endedSet : nil }, prepareAudioSession: {}, releaseAudioSession: {}, uptime: { 2 })
         playback.speak(ended)
-        XCTAssertEqual(names, ["recovery"])
+        XCTAssertEqual(names, ["restReminder-1"])
         let stop = cue(reason: .discomfort, kind: .coaching(.stop), expiry: nil)
         playback.speak(stop)
         XCTAssertTrue(local.spoken.isEmpty)
@@ -65,7 +65,7 @@ final class DemoVoicePlaybackTests: XCTestCase {
         let context = VoiceCueContext(sessionID: completion.sessionID, generation: completion.generation, phase: .finished)
         controller.update(context: context, event: completion, enabled: true, now: 2)
         controller.update(context: context, event: completion, enabled: true, now: 2)
-        XCTAssertEqual(names, ["completion"])
+        XCTAssertEqual(names, ["workoutCompleted-1"])
         XCTAssertEqual(output.plays, 1)
         XCTAssertTrue(local.spoken.isEmpty)
         controller.update(context: context, event: completion, enabled: false, now: 2)
@@ -85,12 +85,12 @@ final class DemoVoicePlaybackTests: XCTestCase {
             playback.speak(cue(reason: .slowerRep))
             playback.speak(cue(reason: nil, kind: .coaching(.rest)))
         }
-        XCTAssertEqual(names, ["positive-1", "slower-1", "recovery", "positive-2", "slower-2", "recovery-2",
-            "positive-3", "slower-3", "recovery", "positive-4", "slower-4", "recovery-2",
-            "positive-5", "slower-1", "recovery", "positive-1", "slower-2", "recovery-2"])
+        XCTAssertEqual(names, ["steadyRhythm-1", "slowerRep-1", "restReminder-1", "steadyRhythm-2", "slowerRep-2", "restReminder-2",
+            "steadyRhythm-3", "slowerRep-3", "restReminder-3", "steadyRhythm-4", "slowerRep-1", "restReminder-1",
+            "steadyRhythm-5", "slowerRep-2", "restReminder-2", "steadyRhythm-6", "slowerRep-3", "restReminder-3"])
     }
 
-    func testCachedPlaybackAlternatesAndStopInterruptsWithImmediateArnoldAudio() {
+    func testCachedPlaybackAlternatesAndStopInterruptsWithImmediateMayaAudio() {
         let local = DemoSilentVoice(), first = DemoSilentAudio(), second = DemoSilentAudio()
         var names: [String] = []
         let playback = DemoVoicePlayback(local: local, makeAudio: { name in
@@ -100,7 +100,7 @@ final class DemoVoicePlaybackTests: XCTestCase {
         playback.speak(one)
         let stale = first.onFinish
         playback.speak(two)
-        XCTAssertEqual(names, ["positive-1", "positive-2"])
+        XCTAssertEqual(names, ["steadyRhythm-1", "steadyRhythm-2"])
         XCTAssertEqual(first.stops, 1)
         var finished: [UUID] = []
         playback.onFinish = { finished.append($0) }
@@ -114,7 +114,7 @@ final class DemoVoicePlaybackTests: XCTestCase {
         XCTAssertEqual(finished, [stop.id])
     }
 
-    func testEveryWorkoutReasonUsesItsArnoldClipIncludingImmediateStop() {
+    func testEveryWorkoutReasonUsesItsMayaClipIncludingImmediateStop() {
         let local = DemoSilentVoice(), output = DemoSilentAudio()
         var names: [String] = []
         let playback = DemoVoicePlayback(local: local, makeAudio: { names.append($0); return output },
@@ -124,12 +124,12 @@ final class DemoVoicePlaybackTests: XCTestCase {
             cue(reason: .restReminder, kind: .coaching(.rest)),
             cue(reason: .discomfort, kind: .coaching(.stop), expiry: nil)]
         for event in events { playback.speak(event) }
-        XCTAssertEqual(names, ["tracking", "alignment", "target", "rest", "stop"])
+        XCTAssertEqual(names, ["tracking-1", "alignment-1", "targetReached-1", "restReminder-1", "discomfort-1"])
         XCTAssertEqual(output.plays, 5)
         XCTAssertTrue(local.spoken.isEmpty)
     }
 
-    func testUnavailableArnoldSafetyClipStillSpeaksImmediateStop() {
+    func testUnavailableMayaSafetyClipStillSpeaksImmediateStop() {
         for missing in [true, false] {
             let local = DemoSilentVoice(), output = DemoSilentAudio()
             output.willPlay = false
@@ -219,7 +219,7 @@ final class DemoVoicePlaybackTests: XCTestCase {
         controller.update(context: context, event: first, enabled: true, now: 2)
         controller.update(context: context, event: event(.restReminder, priority: .rest), enabled: true, now: 2)
         controller.update(context: context, event: event(expiry: 2), enabled: true, now: 2)
-        XCTAssertEqual(names, ["positive-1"])
+        XCTAssertEqual(names, ["steadyRhythm-1"])
         XCTAssertTrue(local.spoken.isEmpty)
         let staleCompletion = audio.onFinish
         let stop = event(.discomfort, priority: .stop, expiry: nil)
@@ -228,10 +228,10 @@ final class DemoVoicePlaybackTests: XCTestCase {
         XCTAssertTrue(local.spoken.isEmpty)
         staleCompletion?()
         controller.update(context: context, event: event(), enabled: true, now: 2)
-        XCTAssertEqual(names, ["positive-1", "stop"], "A stale audio callback cannot clear the active stop")
+        XCTAssertEqual(names, ["steadyRhythm-1", "discomfort-1"], "A stale audio callback cannot clear the active stop")
         controller.cancel()
         controller.update(context: context, event: event(.slowerRep), enabled: true, now: 2)
-        XCTAssertEqual(names.last, "slower-1")
+        XCTAssertEqual(names.last, "slowerRep-1")
         controller.update(context: .init(sessionID: session, generation: generation, phase: .paused), event: nil, enabled: true, now: 2)
         XCTAssertEqual(audio.stops, 3)
         controller.update(context: context, event: event(), enabled: true, now: 2)
@@ -241,7 +241,7 @@ final class DemoVoicePlaybackTests: XCTestCase {
         controller.update(context: .init(sessionID: session, generation: UUID(), phase: .active), event: first, enabled: true, now: 2)
         XCTAssertEqual(audio.stops, 5)
         XCTAssertEqual(audio.plays, 5)
-        XCTAssertEqual(names, ["positive-1", "stop", "slower-1", "positive-2", "positive-3"])
+        XCTAssertEqual(names, ["steadyRhythm-1", "discomfort-1", "slowerRep-1", "steadyRhythm-2", "steadyRhythm-3"])
     }
 
     func testAudioSessionActivatesOnlyForMappedClipsAndReleasesAfterCompletion() {

@@ -86,7 +86,7 @@ final class TrainingStore {
     private var previewObservedReps = 0
     private var previewRepTime: Double?
     private(set) var voiceFeedbackEnabled = false
-    /// Spoken rep counts and lines from bundled Arnold or Goggins clips, under the same Voice feedback switch.
+    /// Optional device-voice rep counts under the same Voice feedback switch.
     var repVoice: RepVoicePlayer { didSet { coachingVoice.repVoice = repVoice } }
     private struct SpokenSet: Hashable { let sessionID: UUID; let index: Int }
     private var startedRepSets: Set<SpokenSet> = []
@@ -251,7 +251,7 @@ final class TrainingStore {
             trackingPromptFinished: trackingFinished, measuredSeconds: configured?.quantityOrigin(at: time) == .cameraObserved ? configured?.measuredSeconds(at: time) : nil
         ))
         // Rep counting replaces the preview's "steady rhythm" encouragement while it is on, as it does outside preview.
-        let previewEncouragement = previewMode && milestone && voiceFeedbackEnabled && remoteVoice?.preference == .arnold && !repVoiceEnabled &&
+        let previewEncouragement = previewMode && milestone && voiceFeedbackEnabled && remoteVoice?.preference == .maya && !repVoiceEnabled &&
             context.phase == .active && acceptsTracking && (configured?.source ?? source) == .camera &&
             cue == .controlled && stopReason == nil && !reportedDiscomfort &&
             coachingEvent?.decision.priority != .stop && coachingEvent?.decision.priority != .form &&
@@ -362,7 +362,7 @@ final class TrainingStore {
         voiceFeedbackEnabled = persistsVoicePreferences && defaults.bool(forKey: "trainer.audioEnabled")
         self.previewMode = previewMode
         self.vision = vision ?? VisionWorker()
-        let playback = voicePlayback ?? RemoteVoicePlayback(offlineOnly: !previewMode, defaults: defaults, previewPlayback: previewMode ? (previewPlayback ?? DemoVoicePlayback()) : nil)
+        let playback = voicePlayback ?? RemoteVoicePlayback(offlineOnly: true, defaults: defaults, previewPlayback: previewMode ? previewPlayback : nil)
         remoteVoice = playback as? RemoteVoicePlayback
 
         coachingVoice = CoachingVoiceBridge(playback: playback)
@@ -385,8 +385,6 @@ final class TrainingStore {
         coachingVoice.repVoice = repVoice
         coachingVoice.onCancellation = { [weak self] in self?.cancelCoaching() }
         if remoteVoice?.gentleOnly == true { repVoice.choose(nil) }
-        if !previewMode, defaults.string(forKey: RepVoicePlayer.defaultsKey) == nil,
-           remoteVoice?.preference == .maya || remoteVoice?.preference == .leo { repVoice.coach = nil }
         do { history = try historyStore.load().reversed() }
         catch { historyAvailable = false; self.error = "Couldn’t read your saved sessions." }
         self.vision.onFrame = { [weak self] frame, image, generation in

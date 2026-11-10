@@ -6,8 +6,6 @@ struct TrainerPortrait: View {
         switch voice {
         case .maya: return .purple
         case .leo: return .teal
-        case .arnold: return .orange
-        case .david: return Palette.ink
         case .local: return Palette.blue
         }
     }
@@ -40,19 +38,14 @@ struct TrainerSelection: View {
         VStack(alignment: .leading, spacing: 15) {
             Text("Your coaching style").font(.headline).padding(.top, 10)
             if gentleOnly { Label("Gentle encouragement", systemImage: "waveform").font(.subheadline) }
-            else if selection == VoiceCoachPreference.arnold.rawValue || selection == VoiceCoachPreference.david.rawValue {
-                Label("Recorded style", systemImage: "waveform").font(.subheadline)
-                Text("This voice pack keeps its original delivery.").font(.caption).foregroundStyle(.secondary)
-            } else {
+            else {
             Slider(value: Binding(get: { Double(TrainerTone.allCases.firstIndex(of: TrainerTone(rawValue: tone) ?? .encouraging) ?? 1) },
                                   set: { let next = TrainerTone.allCases[min(2, max(0, Int($0.rounded())))]; guard tone != next.rawValue else { return }; SpottrHaptics.selection(); if let onToneSelect { onToneSelect(next) } else { tone = next.rawValue } }), in: 0...2, step: 1)
                 .accessibilityLabel("Coaching style").accessibilityValue(tone)
             HStack { Text("Gentle"); Spacer(); Text("Encouraging"); Spacer(); Text("Direct") }.font(.caption).foregroundStyle(.secondary)
             }
-            if selection != VoiceCoachPreference.arnold.rawValue && selection != VoiceCoachPreference.david.rawValue {
-                Text("Style changes encouragement. Form and stop instructions stay clear and calm.").font(.caption).foregroundStyle(.secondary)
-            }
-            ForEach(gentleOnly ? [VoiceCoachPreference.maya, .leo, .local] : [.maya, .leo, .arnold, .david, .local]) { voice in
+            Text("Style changes encouragement. Form and stop instructions stay clear and calm.").font(.caption).foregroundStyle(.secondary)
+            ForEach([VoiceCoachPreference.maya, .leo, .local]) { voice in
                 Button {
                     SpottrHaptics.selection()
                     if let onSelect { onSelect(voice) } else { selection = voice.rawValue }
@@ -60,7 +53,7 @@ struct TrainerSelection: View {
                     HStack(spacing: 15) {
                         TrainerPortrait(voice: voice).frame(width: 58, height: 58)
                         VStack(alignment: .leading, spacing: 5) {
-                            Text(voice == .david ? "Goggins" : voice.title).font(.headline)
+                            Text(voice.title).font(.headline)
                             Text(detail(voice)).font(.caption).foregroundStyle(.secondary)
                         }
                         Spacer()
@@ -75,7 +68,6 @@ struct TrainerSelection: View {
         switch voice {
         case .maya: return "Warm female voice with natural offline coaching"
         case .leo: return "Calm male voice with natural offline coaching"
-        case .arnold, .david: return "Optional inspired voice pack with offline rep audio"
         case .local: return "Your iPhone’s default speaking voice"
         }
     }
@@ -112,14 +104,10 @@ struct VoiceCoachSettingsView: View {
                     }, gentleOnly: previews.preferences.gentleOnly,
                        onToneSelect: { previews.select(previews.preference, tone: $0) }, defaults: previews.preferences.preferencesDefaults)
                     if let repVoice, !previews.preferences.gentleOnly {
-                        Toggle("Speak rep counts", isOn: Binding(get: { repVoice.coach != nil }, set: { enabled in
-                            repVoice.choose(enabled ? (previews.preference == .david ? .goggins : .arnold) : nil)
+                        Toggle("Speak rep counts with device voice", isOn: Binding(get: { repVoice.coach != nil }, set: { enabled in
+                            repVoice.choose(enabled ? .device : nil)
                         }))
-                        Text("Rep counts use Arnold or Goggins recordings.").font(.caption).foregroundStyle(.secondary)
-                    }
-                    if previews.preference == .david {
-                        Text("Goggins provides recorded encouragement and optional rep counts. Form and stop instructions appear on screen. Choose Maya, Leo or Arnold for recorded form guidance.")
-                            .font(.subheadline).foregroundStyle(.secondary)
+                        Text("Optional rep counts use your iPhone’s speaking voice, separately from Maya and Leo coaching. Off until you choose it.").font(.caption).foregroundStyle(.secondary)
                     }
                     DisclosureGroup("About offline voices") {
                         Text("Recordings play on your device. Local voice uses your iPhone’s speaking voice. No workout text, video or health data is sent to a voice service.")

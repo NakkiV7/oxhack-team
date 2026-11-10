@@ -1,6 +1,19 @@
 import XCTest
 
 final class ReleasePackagingTests: XCTestCase {
+    func testShippingBundleExcludesRetiredPacksAndKeepsNaturalCoaching() throws {
+        let root = Bundle.main.bundleURL.appendingPathComponent("DemoVoice")
+        let folders = try FileManager.default.contentsOfDirectory(atPath: root.path)
+        XCTAssertEqual(Set(folders), ["maya", "leo"])
+        let files = try XCTUnwrap(FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil))
+        let mp3s = files.compactMap { $0 as? URL }.filter { $0.pathExtension == "mp3" }
+        XCTAssertEqual(mp3s.count, 144)
+        for voice in ["maya", "leo"] {
+            XCTAssertNotNil(Bundle.main.url(forResource: "discomfort-1", withExtension: "mp3", subdirectory: "DemoVoice/\(voice)/gentle"))
+        }
+        XCTAssertEqual(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String, "27")
+    }
+
     func testGuardianAuthenticationHasFaceIDPurposeInBuiltHost() throws {
         let purpose = try XCTUnwrap(Bundle.main.object(forInfoDictionaryKey: "NSFaceIDUsageDescription") as? String)
         XCTAssertTrue(purpose.contains("guardian"))

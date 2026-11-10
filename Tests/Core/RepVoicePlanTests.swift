@@ -33,5 +33,10 @@ import Testing
     #expect(plan.queue.map(\.clip) == ["closing-2"])
     plan.clear()
     #expect(plan.next(at: 40) == nil)
-    #expect(RepVoicePlan.allClips.count == 41 && RepVoicePlan.Coach.goggins.folder == "DemoVoice/goggins-reps")
+    #expect(RepVoicePlan.allClips.count == 41)
+}
+
+@Test func selectableRepVoiceRequiresExplicitDeviceVoiceConsent() {
+    #expect(RepVoicePlan.Coach.allCases.map(\.rawValue) == ["device"])
+    #expect(RepVoicePlan.Coach.allCases.map(\.title) == ["Device voice"])
 }

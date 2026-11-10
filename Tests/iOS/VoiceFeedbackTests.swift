@@ -62,6 +62,7 @@ final class VoiceFeedbackTests: XCTestCase {
         let vision=VisionWorker(cameraAvailable:{true},requestAccess:{_ in})
         let store=TrainingStore(voicePlayback:playback,vision:vision)
         store.repVoice=RepVoicePlayer(defaults:UserDefaults(suiteName:UUID().uuidString)!,makeOutput:clips.make)
+        store.repVoice.choose(.device)
         store.beginAuthorizedSession(); store.hasInput=true; store.setVoiceFeedback(true); store.coachingTick()
         XCTAssertFalse(store.repVoice.started.isEmpty)
         clips.finish()
@@ -112,7 +113,7 @@ final class VoiceFeedbackTests: XCTestCase {
             let rep = RepVoicePlayer(defaults: UserDefaults(suiteName: UUID().uuidString)!, uptime: { clock }, makeOutput: clips.make)
             let bridge = CoachingVoiceBridge(playback: playback, uptime: { clock })
             bridge.repVoice = rep
-            rep.start()
+            rep.choose(.device); rep.start()
             let sessionID = UUID(), generation = UUID()
             let event = CoachingEvent(sessionID: sessionID, generation: generation,
                 decision: .init(text: "Completed.", priority: .rest, reason: .workoutCompleted, facts: [], elapsed: nil),
@@ -170,11 +171,11 @@ final class VoiceFeedbackTests: XCTestCase {
         XCTAssertTrue(playback.spoken.isEmpty)
     }
 
-    func testAppOwnsOfflineArnoldAndPreservesInjectedPlayback() {
+    func testAppOwnsOfflineMayaAndPreservesInjectedPlayback() {
         let store = TrainingStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
         XCTAssertEqual(store.remoteVoice?.preference, .maya)
         XCTAssertFalse(store.voiceFeedbackEnabled)
-        XCTAssertEqual(store.remoteVoice?.configuredVoices, [.maya, .leo, .local, .arnold, .david])
+        XCTAssertEqual(store.remoteVoice?.configuredVoices, [.maya, .leo, .local])
 
         let remote = RemoteVoicePlayback(local: FakeVoicePlayback(), client: {
             XCTFail("Creating a workout must not contact a voice provider")

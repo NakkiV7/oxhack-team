@@ -43,7 +43,7 @@ import Vision
         let view = VoiceCoachSettingsView(previews: try XCTUnwrap(w.training.voicePreviews), repVoice: w.training.repVoice).dynamicTypeSize(.accessibility2)
         let window = try await host(view, workspace: w)
         let text = try await inspect(window, name: "trainer-large")
-        for title in ["Stop preview", "Preview selections", "Maya", "Leo", "Goggins", "Local voice"] { XCTAssertTrue(text.contains { $0.contains(title) }, title) }
+        for title in ["Stop preview", "Preview selections", "Maya", "Leo", "Local voice"] { XCTAssertTrue(text.contains { $0.contains(title) }, title) }
     }
     func testTodayPartialProgressKeepsActualCountsWithNaturalCopy() async throws {
         let w = try workspace(), day = try XCTUnwrap(w.programme.day())
@@ -104,14 +104,18 @@ import Vision
         XCTAssertFalse(text.contains { $0.contains("Plan sync enabled") || $0.contains("upload its configuration") })
         assertNaturalCopy(text)
     }
-    func testGogginsSettingsExplainRecordedStyleAndFormCoverage() async throws {
+    func testTrainerSettingsOfferOnlyNaturalVoicesAndExplicitDeviceCounts() async throws {
         let w = try workspace()
-        try w.training.remoteVoice?.configureSelection(.david, tone: .direct)
-        let window = try await host(VoiceCoachSettingsView(previews: try XCTUnwrap(w.training.voicePreviews)), workspace: w)
-        let text = try await inspect(window, name: "goggins-coverage")
-        XCTAssertTrue(text.contains { $0.contains("Recorded style") })
-        XCTAssertFalse(text.contains { $0.contains("Style changes encouragement") })
-        XCTAssertTrue(text.contains { $0.contains("Form and stop instructions appear on screen") })
+        let window = try await host(VoiceCoachSettingsView(previews: try XCTUnwrap(w.training.voicePreviews), repVoice: w.training.repVoice), workspace: w)
+        let text = try await inspect(window, name: "natural-voice-choices")
+        for title in ["Maya", "Leo", "Local voice", "Speak rep counts with device voice"] {
+            XCTAssertTrue(text.contains { $0.contains(title) }, title)
+        }
+        XCTAssertFalse(text.contains { $0.contains("Goggins") || $0.contains("Arnold") })
+        for phrase in ["Form and stop instructions stay", "clear and calm"] {
+            XCTAssertTrue(text.contains { $0.contains(phrase) }, phrase)
+        }
+        XCTAssertNil(w.training.repVoice.coach)
     }
     func testDayReportsKeepDistinctActualSessionCards() async throws {
         let w = try workspace()

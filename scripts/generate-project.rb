@@ -78,7 +78,7 @@ resource(project, unit, 'StoreKit/Spottr.storekit')
     config.build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = 'com.omarchoudhry.' + target.name.downcase
     config.build_settings['GENERATE_INFOPLIST_FILE'] = 'YES'
     config.build_settings['MARKETING_VERSION'] = '1.0'
-    config.build_settings['CURRENT_PROJECT_VERSION'] = '26'
+    config.build_settings['CURRENT_PROJECT_VERSION'] = '27'
     config.build_settings['CODE_SIGN_STYLE'] = 'Automatic'
     config.build_settings['SWIFT_EMIT_LOC_STRINGS'] = 'NO'
     config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'YES'

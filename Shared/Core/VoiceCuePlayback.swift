@@ -172,16 +172,14 @@ public final class VoiceCuePlaybackController {
     }
 }
 
-/// Spoken rep counting from bundled coach clips, modelled on the web squat coach: the count on every camera-counted rep,
+/// Optional device-voice rep counting: the count on every camera-counted rep,
 /// a motivational line every third clean rep, a start line when a camera set begins and a closing line when it ends.
 /// One line plays at a time and is never cut off by another rep line; a newer count replaces one still waiting, so an
 /// old number is never said, and lines that waited too long are dropped. Form and stop cues take over through `clear()`.
 public struct RepVoicePlan: Sendable {
     public enum Coach: String, CaseIterable, Codable, Sendable {
-        case arnold, goggins
-        public var title: String { rawValue.capitalized }
-        /// Bundle subdirectory holding this coach's clips.
-        public var folder: String { "DemoVoice/\(rawValue)-reps" }
+        case device
+        public var title: String { "Device voice" }
     }
     public struct Line: Equatable, Sendable {
         public enum Kind: String, Sendable { case count, motivation, start, closing }

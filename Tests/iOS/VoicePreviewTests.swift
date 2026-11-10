@@ -88,12 +88,12 @@ import UIKit
         preview.select(.leo, tone: .direct)
         XCTAssertEqual(fixture.outputs.count, 1)
         preview.setEnabled(true)
-        preview.select(.david, tone: .direct)
+        preview.select(.leo, tone: .direct)
         XCTAssertTrue(preview.isPlaying)
         NotificationCenter.default.post(name: AVAudioSession.routeChangeNotification, object: nil)
         try await Task.sleep(for: .milliseconds(50))
         XCTAssertFalse(preview.isPlaying)
-        preview.select(.arnold, tone: .gentle)
+        preview.select(.maya, tone: .gentle)
         NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
         try await Task.sleep(for: .milliseconds(50))
         XCTAssertFalse(preview.isPlaying)
@@ -101,17 +101,18 @@ import UIKit
         preview.stop()
         XCTAssertFalse(preview.isPlaying)
     }
-    func testJuniorCannotPreviewAdultPackAndRetiredPolicyCannotSelect() throws {
+    func testJuniorKeepsGentleStyleAndRetiredPolicyCannotSelect() throws {
         let defaults = UserDefaults(suiteName: UUID().uuidString)!
         let live = RemoteVoicePlayback(offlineOnly: true, defaults: defaults, gentleOnly: true)
         var valid = true
         let preview = VoicePreviewCoordinator(preferences: live, permitsSelection: { valid }, canPreview: { true })
-        preview.select(.david, tone: .direct)
-        XCTAssertNotEqual(preview.preference, .david)
-        XCTAssertFalse(preview.isPlaying)
+        preview.select(.leo, tone: .direct)
+        XCTAssertEqual(preview.preference, .leo)
+        XCTAssertEqual(live.tone, .gentle)
+        preview.stop()
         valid = false
         preview.select(.leo, tone: .gentle)
-        XCTAssertEqual(preview.preference, .maya)
+        XCTAssertEqual(preview.preference, .leo)
     }
 }
 
@@ -151,7 +152,7 @@ import UIKit
         try profile.save(LocalProfile(name: "Alex", onboardingRevision: TrainingSetup.revision,
             programmePreferences: .init(goals: [.strength], weekdays: [1], ageContext: .init(ageYears: 30, guardianManaged: false))))
         training = TrainingStore(historyURL: directory.appendingPathComponent("history.json"),
-            voicePlayback: RemoteVoicePlayback(offlineOnly: true, defaults: defaults, arnoldPlayback: voice), defaults: defaults)
+            voicePlayback: RemoteVoicePlayback(offlineOnly: true, defaults: defaults, naturalPlayback: voice), defaults: defaults)
         membership = MembershipStore(root: directory, client: RouteNoPurchaseClient())
     }
     func cleanUp() {
