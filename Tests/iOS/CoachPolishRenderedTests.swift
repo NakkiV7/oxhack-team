@@ -198,7 +198,7 @@ import Vision
         var all = Set<String>()
         for index in 0..<14 {
             window.layoutIfNeeded()
-            all.formUnion(elements(window).compactMap(\.accessibilityLabel))
+            all.formUnion(try RenderedScreenEvidence.lines(window))
             if index == 0 || index == 2 || index == 5 { capture(window, "\(name)-\(index)") }
             guard let scroll = elements(window).compactMap({ $0 as? UIScrollView }).first(where: { $0.contentSize.height > $0.bounds.height && $0.bounds.width > 200 }) else { break }
             let maximum = max(0, scroll.contentSize.height - scroll.bounds.height + scroll.adjustedContentInset.bottom)
@@ -252,4 +252,45 @@ private struct PolishCloudClient: ProgrammeCloudClient {
     func purchase(_ plan: MembershipPlan, appAccountToken: UUID) async throws -> MembershipPurchaseResult { purchaseResult }
     func restore() async throws {}
     func finish(transactionID: UInt64) async {}
+}
+
+@MainActor enum RenderedScreenEvidence {
+    static func image(_ window: UIWindow) -> UIImage {
+        window.layoutIfNeeded()
+        return UIGraphicsImageRenderer(bounds: window.bounds).image { _ in
+            window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+        }
+    }
+    static func observations(_ image: UIImage) throws -> [VNRecognizedTextObservation] {
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .accurate
+        request.recognitionLanguages = ["en-GB"]
+        try VNImageRequestHandler(cgImage: XCTUnwrap(image.cgImage)).perform([request])
+        return request.results ?? []
+    }
+    static func lines(_ window: UIWindow) throws -> [String] {
+        try observations(image(window)).compactMap { $0.topCandidates(1).first?.string }
+    }
+    static func unratedButtonWidth(_ window: UIWindow) throws -> CGFloat {
+        let screenshot = image(window)
+        let observation = try XCTUnwrap(try observations(screenshot).first { $0.topCandidates(1).first?.string == "Unrated" })
+        let cgImage = try XCTUnwrap(screenshot.cgImage)
+        let width = cgImage.width, height = cgImage.height
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let context = try XCTUnwrap(CGContext(data: &pixels, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+        let y = min(height - 1, max(0, Int((1 - observation.boundingBox.midY) * Double(height))))
+        let left = Int(observation.boundingBox.minX * Double(width))
+        let right = Int(observation.boundingBox.maxX * Double(width))
+        func background(_ x: Int) -> Bool {
+            let offset = (y * width + x) * 4
+            let channels = pixels[offset..<(offset + 3)]
+            return channels.allSatisfy { $0 > 150 && $0 < 250 } && Int(channels.max()!) - Int(channels.min()!) < 20
+        }
+        var start = max(0, left - 5), end = min(width - 1, right + 5)
+        XCTAssertTrue(background(start) && background(end), "Unrated must have a visible filled control around its label")
+        while start > 0 && background(start - 1) { start -= 1 }
+        while end < width - 1 && background(end + 1) { end += 1 }
+        return CGFloat(end - start) / screenshot.scale
+    }
 }

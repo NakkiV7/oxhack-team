@@ -25,12 +25,12 @@ import UIKit
         window.makeKeyAndVisible()
         for _ in 0..<50 {
             window.layoutIfNeeded()
-            if labels(window).contains("Jump to current") { break }
+            if try RenderedScreenEvidence.lines(window).contains(where: { $0.contains("Jump to current") }) { break }
             try await Task.sleep(for: .milliseconds(100))
         }
-        let text = labels(window)
-        XCTAssertTrue(text.contains("One journey, every movement"), text.joined(separator: " | "))
-        XCTAssertTrue(text.contains("Jump to current"))
+        let text = try RenderedScreenEvidence.lines(window)
+        XCTAssertTrue(text.joined(separator: " ").contains("One journey, every movement"), text.joined(separator: " | "))
+        XCTAssertTrue(text.contains { $0.contains("Jump to current") }, text.joined(separator: " | "))
         XCTAssertTrue(text.contains { $0.contains("Foundations") })
         XCTAssertFalse(text.contains("Training path"))
         XCTAssertTrue(workspace.training.history.isEmpty)

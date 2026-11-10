@@ -20,10 +20,20 @@ import UIKit
         let week = try workspace.programme.prepare(profile: XCTUnwrap(workspace.profile.profile), history: [])
         let expired = try ProgrammePlanner.makeWeek(profile: XCTUnwrap(workspace.profile.profile), history: [], start: Date().addingTimeInterval(-14 * 86400))
         try workspace.programme.restore(expired, profile: XCTUnwrap(workspace.profile.profile))
-        let window = try host(TodayView(store: workspace.training, profileStore: workspace.profile, showSettings: {}))
+        let window = try host(SpottrRoot(store: workspace.training, profileStore: workspace.profile))
         try await waitForContent(window, containing: "Your whole workout")
         capture(window, "today-populated")
-        let labels = elements(window).compactMap(\.accessibilityLabel)
+        var labels = try RenderedScreenEvidence.lines(window)
+        for index in 0..<6 {
+            guard let scroll = elements(window).compactMap({ $0 as? UIScrollView }).first(where: { $0.contentSize.height > $0.bounds.height && $0.bounds.width > 200 }) else { break }
+            let maximum = max(0, scroll.contentSize.height - scroll.bounds.height + scroll.adjustedContentInset.bottom)
+            let next = min(maximum, scroll.contentOffset.y + scroll.bounds.height * 0.6)
+            guard next > scroll.contentOffset.y else { break }
+            scroll.setContentOffset(.init(x: 0, y: next), animated: false)
+            try await Task.sleep(for: .milliseconds(150))
+            labels += try RenderedScreenEvidence.lines(window)
+            if index == 0 { capture(window, "today-workout-scrolled") }
+        }
         XCTAssertTrue(labels.contains("Your whole workout"))
         XCTAssertFalse(labels.contains("Start with Squats"))
         for item in try XCTUnwrap(week.days.first?.plan?.items) {
@@ -83,15 +93,14 @@ import UIKit
         let window = try host(ConfiguredSessionView(store: workspace.training).dynamicTypeSize(.accessibility2))
         try await waitForContent(window, containing: "How did this set feel?")
         try await scrollToContent(window, label: "Unrated"); capture(window, "workout-rest-large-unrated")
-        let unrated = try XCTUnwrap(elements(window).first { $0.accessibilityLabel == "Unrated" && $0.accessibilityTraits.contains(.button) })
-        XCTAssertGreaterThan(unrated.accessibilityFrame.width, window.bounds.width / 2, "Accessibility effort controls need room for readable labels")
+        XCTAssertGreaterThan(try RenderedScreenEvidence.unratedButtonWidth(window), window.bounds.width / 2, "Accessibility effort controls need room for readable labels")
         window.rootViewController = UIHostingController(rootView: ConfiguredSessionView(store: workspace.training).dynamicTypeSize(.large))
         try await waitForContent(window, containing: "Unrated"); capture(window, "workout-rest-normal-unrated")
         workspace.training.finish()
         let record = try XCTUnwrap(workspace.training.history.first)
         window.rootViewController = UIHostingController(rootView: SessionReportView(record: record, profile: workspace.profile.profile))
         try await waitForContent(window, containing: "Recorded work"); capture(window, "junior-report-local-work")
-        let labels = elements(window).compactMap(\.accessibilityLabel)
+        let labels = try RenderedScreenEvidence.lines(window)
         XCTAssertFalse(labels.contains { $0.contains("Watch heart rate") || $0.contains("Watch active energy") || $0.contains("HealthKit") })
         XCTAssertFalse(labels.isEmpty)
     }
@@ -161,7 +170,7 @@ import UIKit
     }
     private func scrollToContent(_ window: UIWindow, label: String) async throws {
         for _ in 0..<5 {
-            if elements(window).contains(where: { $0.accessibilityLabel == label && $0.accessibilityTraits.contains(.button) && window.bounds.intersects($0.accessibilityFrame) }) { return }
+            if try RenderedScreenEvidence.lines(window).contains(label) { return }
             let scroll = try XCTUnwrap(elements(window).compactMap { $0 as? UIScrollView }.first { $0.contentSize.height > $0.bounds.height && $0.bounds.width > 200 })
             let maximum = max(0, scroll.contentSize.height - scroll.bounds.height + scroll.adjustedContentInset.bottom)
             scroll.setContentOffset(CGPoint(x: 0, y: min(maximum, scroll.contentOffset.y + scroll.bounds.height * 0.6)), animated: false)
@@ -172,7 +181,7 @@ import UIKit
     private func waitForContent(_ window: UIWindow, containing text: String) async throws {
         for _ in 0..<50 {
             window.layoutIfNeeded()
-            if elements(window).compactMap(\.accessibilityLabel).contains(where: { $0.contains(text) }) { return }
+            if try RenderedScreenEvidence.lines(window).contains(where: { $0.contains(text) }) { return }
             try await Task.sleep(for: .milliseconds(100))
         }
         print("PROGRAMME_AX_LABELS", elements(window).compactMap(\.accessibilityLabel))
