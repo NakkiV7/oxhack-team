@@ -209,6 +209,16 @@ test('plan comparison leads to one account and membership help answer with actio
   assert.match(answer, /href="\/support\/"/);
 });
 
+test('purchase support gives both paths to Restore purchases and explains which Apple Account to use', async () => {
+  const html = await page('support/');
+  const text = textContent(html).replaceAll('&amp;', '&');
+  assert.match(text, /Today.*Profile and settings.*Membership & Apple purchases/);
+  assert.match(text, /welcome screen.*Membership & Apple purchases/);
+  assert.match(text, /Tap Restore purchases/);
+  assert.match(text, /same Apple Account.*original purchase/);
+  assert.match(html, /href="https:\/\/support\.apple\.com\/en-gb\/108096"/);
+});
+
 test('real app screenshots remain upright and uncropped in their presentation rules', async () => {
   const css = await readFile(path.join(publicRoot, 'styles.css'), 'utf8');
   const screenRules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]

@@ -1,6 +1,6 @@
 # Spottr × OneMedicalGroup
 
-Draft pitch structure, 3 November 2026. Investment terms below are Omar’s proposal. This document does not record agreement from OneMedicalGroup.
+Pitch structure for Spottr 1.0 build 27, installed on Omar’s iPhone. The investment terms and GP-practice pilot are proposals for OneMedicalGroup. Use the [recording checklist](../docs/spottr-pitch-recording-checklist.md) to prepare the demo.
 
 ## 1. Make the next step easier
 
@@ -8,31 +8,31 @@ Draft pitch structure, 3 November 2026. Investment terms below are Omar’s prop
 
 **Say:** “We want to help people turn a recommendation to move more into a small, achievable routine they can follow at home.”
 
-**Visual:** Actual onboarding and Today screenshots. Avoid claims about treatment effectiveness, weight loss achieved or reduced GP workload; those need a pilot.
+**Visual**  Use the current onboarding and Today screens to show how someone starts. The proposed pilot will test engagement, usability and clinician-selected outcomes.
 
 ## 2. One journey, in one app
 
 **On slide:** Choose a goal → find a starting point → practise → see progress.
 
-**Show:** Guest onboarding, the personal training path, a current step, an exercise session and its report. Use wall push-ups or another accessible foundation step to introduce the path before showing standard push-up/squat camera tracking.
+**Show**  Begin with a signed-in profile. Show the planned week, a foundation movement such as a wall push-up and the next available Skills step. Then open an exercise session and its report.
 
-**Say:** “The core experience works without a login, paid voice service or cloud database. Progress stays on the phone.”
+**Say**  “Spottr uses a passwordless account. The iPhone processes camera frames on-device and keeps detailed workout records there. Maya and Leo use recordings bundled with the app, and you can also choose the device voice.”
 
 ## 3. The movement demo
 
 **On slide:** Clear cues while you practise.
 
-**Show:** A 20–30 second owner-recorded phone session, with framing and rep feedback visible, followed by the saved report. Choose the coach voice before filming. Retain actual counts and any tracking warnings.
+**Show**  Play a 20–30 second recording from build 27, with framing, rep feedback and the saved set visible. Select Maya, Leo or the device voice before filming. Compare the recorded rep count with a manual count and retain any tracking warnings that affect the result.
 
-**Fallback:** Today → Demo studio → a recorded squat or push-up example. Say “prepared example” and retain the attribution and replay label. The supplied examples include pre-existing overlays and narration; they are not measurements made by the current native build. Do not use reanalysis of an already annotated tutorial as exercise-accuracy evidence.
+**Fallback**  Keep a locally playable copy of the same phone recording with the slide deck. If the camera trial is unavailable, show how to enter a manual set and save an effort rating. Label App Store simulator screenshots as illustrative when using them as stills.
 
 ## 4. Progress that has a clear source
 
 **On slide:** A routine people can understand and return to.
 
-**Show:** Path prerequisites, logged versus camera sets, an actual calendar day and its report. Preview history can illustrate a longer journey, visibly labelled as example data. Missing Watch values stay missing.
+**Show**  Open the report from the recorded set and the corresponding calendar day. Show camera and manual entries with their actual source labels. Include a Watch view only after confirming the relevant reading or sync on the paired hardware.
 
-**Say:** “The app distinguishes what was logged, what the camera observed and what is a demonstration.”
+**Say**  “The report shows which sets were logged by hand and which the camera counted. An optional Apple Watch can add heart-rate context when the reading is available.”
 
 ## 5. The GP-practice opportunity
 
@@ -72,9 +72,9 @@ Agree use of funds, milestones, governance and final investment terms with the p
 
 ## Recording order
 
-1. Capture a clean 60–90 second app journey: introduction → Today → training path → current step → session → report → calendar.
-2. Film separate squat and push-up sessions on the actual phone, including audible feedback where accepted.
-3. Record a short Demo studio fallback with its example/attribution labels.
-4. Keep each original recording. Edit only pacing and transitions; never change counts or conceal failures that materially affect the claim.
+1. Capture a 60–90 second journey through Today, Skills, a session and the saved report.
+2. Film separate squat and push-up sessions on the iPhone, including audible feedback where it plays cleanly.
+3. Record a short manual set as a fallback. Verify the video and audio from the presentation machine before pitching.
+4. Keep each original recording. Edit pacing and transitions and keep the actual counts visible.
 
-The historical OxHack judges deck remains untouched. This storyboard is the patient/practice pitch direction, ready for the final recordings and current verified screenshots.
+Build 27 is available to internal testers. The public release is awaiting App Store submission, and the rehearsal recordings still need to be captured. See the [build 27 delivery checkpoint](../docs/evidence/spottr-build27-delivery-2026-11-10.md).
